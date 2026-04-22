@@ -7,132 +7,118 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        .tab-active { color: #2563eb; border-top: 2px solid #2563eb; }
+        .nav-active { color: #4f46e5; border-top: 2px solid #4f46e5; }
         .hidden { display: none; }
+        body { -webkit-tap-highlight-color: transparent; }
     </style>
 </head>
-<body class="bg-slate-50 font-sans">
-    <div class="max-w-md mx-auto bg-white min-h-screen shadow-2xl relative pb-24">
+<body class="bg-slate-50">
+    <div class="max-w-md mx-auto bg-white min-h-screen shadow-2xl relative">
         
-        <div id="screen-home" class="app-screen">
-            <div class="p-6 bg-blue-600 text-white rounded-b-[2rem] shadow-lg">
-                <div class="flex justify-between items-center mb-4">
-                    <h1 class="text-2xl font-black italic tracking-tighter">Multi</h1>
-                    <div class="bg-blue-500 p-2 rounded-full"><i data-lucide="bell" class="w-5 h-5"></i></div>
+        <div id="home" class="screen">
+            <div class="p-6 bg-blue-600 text-white rounded-b-[2.5rem] shadow-lg flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-black italic tracking-tighter uppercase">Multi</h1>
+                    <p class="text-xs text-blue-100">Olá, Ana! Vamos resolver algo hoje? ✨</p>
                 </div>
-                <p class="text-blue-100 text-sm">Olá, Ana! Vamos resolver algo hoje? ✨</p>
+                <div class="bg-blue-500/50 p-2 rounded-full"><i data-lucide="bell" class="w-5 h-5 text-white"></i></div>
             </div>
 
             <div class="p-4">
-                <div onclick="showScreen('screen-pro')" class="cursor-pointer bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-6 rounded-3xl text-white shadow-xl relative overflow-hidden">
+                <div class="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-6 rounded-[2rem] text-white shadow-xl relative overflow-hidden">
                     <div class="relative z-10">
                         <span class="bg-white/20 text-[10px] font-bold px-2 py-1 rounded-full uppercase">Multi Premium</span>
                         <h2 class="text-xl font-bold mt-2">Sua casa em boas mãos, num toque.</h2>
-                        <button class="mt-4 bg-white text-indigo-600 px-6 py-2 rounded-xl font-bold text-sm shadow-lg">+ Novo Pedido</button>
+                        <button onclick="window.location.href='https://wa.me/5511942940251?text=Olá! Preciso de um profissional.'" class="mt-4 bg-white text-indigo-600 px-6 py-2 rounded-xl font-bold text-sm">+ Novo Pedido</button>
                     </div>
-                    <i data-lucide="sparkles" class="absolute -right-4 -bottom-4 w-32 h-32 text-white/10 rotate-12"></i>
                 </div>
             </div>
 
-            <div class="px-4">
-                <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                    <i data-lucide="layout-grid" class="w-5 h-5 text-blue-600"></i> Categorias
-                </h3>
+            <div class="px-6 pb-24">
+                <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">Categorias</h3>
                 <div class="grid grid-cols-2 gap-4">
-                    <button onclick="window.location.href='https://wa.me/5511942940251?text=Quero um Montador'" class="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:border-blue-300 transition-all flex flex-col items-center">
-                        <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-2">🔨</div>
+                    <button onclick="window.location.href='https://wa.me/5511942940251?text=Quero um Montador'" class="p-6 bg-white border border-slate-100 rounded-3xl shadow-sm flex flex-col items-center">
+                        <div class="w-12 h-12 bg-orange-100 rounded-2xl flex items-center justify-center mb-2">🔨</div>
                         <span class="text-sm font-bold text-slate-700">Montagem</span>
                     </button>
-                    <button onclick="window.location.href='https://wa.me/5511942940251?text=Quero um Eletricista'" class="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:border-blue-300 transition-all flex flex-col items-center">
-                        <div class="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center mb-2">⚡</div>
+                    <button onclick="window.location.href='https://wa.me/5511942940251?text=Quero um Eletricista'" class="p-6 bg-white border border-slate-100 rounded-3xl shadow-sm flex flex-col items-center">
+                        <div class="w-12 h-12 bg-yellow-100 rounded-2xl flex items-center justify-center mb-2">⚡</div>
                         <span class="text-sm font-bold text-slate-700">Elétrica</span>
                     </button>
                 </div>
             </div>
         </div>
 
-        <div id="screen-pro" class="app-screen hidden p-6 text-center">
+        <div id="pro" class="screen hidden p-8 pt-12 text-center pb-24">
             <div class="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <i data-lucide="zap" class="w-10 h-10 text-indigo-600"></i>
             </div>
-            <h2 class="text-2xl font-bold text-slate-800 italic">Upgrade para PRO</h2>
-            <p class="text-slate-500 mt-2">Tenha acesso ilimitado aos pedidos de Guarulhos por apenas <b>R$ 197/mês</b>.</p>
+            <h2 class="text-2xl font-black italic text-slate-800">Upgrade para PRO</h2>
+            <p class="text-slate-500 mt-2 text-sm">Receba pedidos ilimitados em Guarulhos e fature mais.</p>
             
-            <div class="mt-8 p-6 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
-                <p class="text-xs text-slate-400 mb-2 uppercase font-bold tracking-widest">Pague via PIX</p>
-                <div class="bg-white p-4 rounded-xl shadow-inner mb-4">
-                    <p class="text-[10px] break-all font-mono text-slate-600">00020101021126580014br.gov.bcb.pix0136ana-cristina-pix-exemplo</p>
+            <div class="mt-8 p-6 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200">
+                <p class="text-[10px] text-slate-400 mb-4 font-bold uppercase tracking-widest">Pagamento via PIX</p>
+                <div class="bg-white p-4 rounded-2xl shadow-inner mb-4 select-all text-[10px] break-all font-mono text-slate-600">
+                    00020101021126580014br.gov.bcb.pix0136ana-cristina-pix-exemplo
                 </div>
-                <button onclick="alert('Código Copiado!')" class="w-full bg-slate-800 text-white py-3 rounded-xl font-bold text-sm">Copiar Código PIX</button>
+                <button onclick="alert('Código PIX Copiado!')" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold">Copiar Código</button>
             </div>
-            <button onclick="showScreen('screen-home')" class="mt-6 text-slate-400 text-sm">Voltar</button>
         </div>
 
-        <div id="screen-profile" class="app-screen hidden p-6">
-            <div class="flex flex-col items-center mb-8">
-                <div class="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center text-white text-3xl font-bold border-4 border-white shadow-xl">A</div>
-                <h2 class="mt-4 text-xl font-bold">Ana Cristina</h2>
-                <span class="text-xs bg-blue-100 text-blue-600 px-3 py-1 rounded-full font-bold mt-1">ADMINISTRADORA</span>
+        <div id="profile" class="screen hidden p-6 pb-24">
+            <div class="flex flex-col items-center mb-10 pt-6">
+                <div class="w-24 h-24 bg-indigo-600 rounded-full flex items-center justify-center text-white text-4xl font-black shadow-2xl border-4 border-white">A</div>
+                <h2 class="mt-4 text-2xl font-bold text-slate-800">Ana Cristina</h2>
+                <span class="text-[10px] bg-green-100 text-green-600 px-3 py-1 rounded-full font-black mt-2 uppercase tracking-tighter underline" id="admin-secret">Administradora</span>
             </div>
             
             <div class="space-y-3">
-                <div class="p-4 bg-slate-50 rounded-2xl flex items-center gap-4 cursor-pointer">
-                    <i data-lucide="file-text" class="text-slate-400"></i>
-                    <span class="font-medium">Documentação (Upload)</span>
+                <div class="p-5 bg-slate-50 rounded-[1.5rem] flex items-center justify-between">
+                    <div class="flex items-center gap-4"><i data-lucide="file-text" class="w-5 h-5 text-slate-400"></i><span class="font-bold text-slate-700">Documentação</span></div>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300"></i>
                 </div>
-                <div id="admin-trigger" class="p-4 bg-slate-50 rounded-2xl flex items-center gap-4 cursor-pointer opacity-50">
-                    <i data-lucide="shield-check" class="text-slate-400"></i>
-                    <span class="font-medium">Dashboard Admin</span>
+                <div onclick="window.location.href='https://wa.me/5511942940251?text=Preciso de ajuda com meu perfil'" class="p-5 bg-slate-50 rounded-[1.5rem] flex items-center justify-between">
+                    <div class="flex items-center gap-4"><i data-lucide="help-circle" class="w-5 h-5 text-slate-400"></i><span class="font-bold text-slate-700">Suporte</span></div>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300"></i>
                 </div>
             </div>
         </div>
 
-        <nav class="fixed bottom-0 max-w-md w-full bg-white/80 backdrop-blur-md border-t border-slate-100 flex justify-around py-3 px-2 z-50">
-            <button onclick="showScreen('screen-home')" class="nav-btn flex flex-col items-center gap-1 transition-all" id="btn-home">
-                <i data-lucide="home" class="w-5 h-5"></i>
-                <span class="text-[10px] font-bold">Início</span>
+        <nav class="fixed bottom-0 max-w-md w-full bg-white/90 backdrop-blur-md border-t border-slate-100 flex justify-around items-center py-3 px-4 z-50">
+            <button onclick="changeScreen('home')" id="nav-home" class="flex flex-col items-center gap-1 nav-active transition-all">
+                <i data-lucide="home" class="w-5 h-5"></i><span class="text-[9px] font-black uppercase">Início</span>
             </button>
-            <button onclick="showScreen('screen-pro')" class="nav-btn flex flex-col items-center gap-1 transition-all text-orange-500" id="btn-pro">
-                <i data-lucide="star" class="w-5 h-5 fill-current"></i>
-                <span class="text-[10px] font-bold">PRO</span>
+            <button onclick="changeScreen('pro')" id="nav-pro" class="flex flex-col items-center gap-1 text-orange-500 transition-all">
+                <i data-lucide="star" class="w-5 h-5 fill-orange-500"></i><span class="text-[9px] font-black uppercase tracking-tighter">PRO</span>
             </button>
-            <button onclick="showScreen('screen-profile')" class="nav-btn flex flex-col items-center gap-1 transition-all" id="btn-profile">
-                <i data-lucide="user" class="w-5 h-5"></i>
-                <span class="text-[10px] font-bold">Perfil</span>
+            <button onclick="changeScreen('profile')" id="nav-profile" class="flex flex-col items-center gap-1 text-slate-400 transition-all">
+                <i data-lucide="user" class="w-5 h-5"></i><span class="text-[9px] font-black uppercase">Perfil</span>
             </button>
         </nav>
-
     </div>
 
     <script>
-        // Lógica de Troca de Telas
-        function showScreen(screenId) {
-            document.querySelectorAll('.app-screen').forEach(s => s.classList.add('hidden'));
-            document.getElementById(screenId).classList.remove('hidden');
+        function changeScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
             
-            // Estilo dos botões
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('tab-active'));
-            if(screenId === 'screen-home') document.getElementById('btn-home').classList.add('tab-active');
-            if(screenId === 'screen-profile') document.getElementById('btn-profile').classList.add('tab-active');
+            document.querySelectorAll('nav button').forEach(b => b.classList.remove('nav-active', 'text-indigo-600'));
+            document.getElementById('nav-' + id).classList.add('nav-active');
+            lucide.createIcons();
         }
 
-        // Segredo Admin: 5 toques no rodapé (Perfil)
+        // Senha secreta Admin: 5 toques em "Administradora"
         let clicks = 0;
-        document.getElementById('admin-trigger').onclick = function() {
+        document.getElementById('admin-secret').onclick = function() {
             clicks++;
             if(clicks === 5) {
-                const pass = prompt("Digite a senha de Admin:");
-                if(pass === "multi2026") {
-                    alert("Bem-vinda ao Dashboard, Ana! Faturamento atual: R$ 0,00");
-                } else {
-                    alert("Senha incorreta!");
-                    clicks = 0;
-                }
+                const p = prompt("Senha de Acesso:");
+                if(p === "multi2026") alert("Painel Admin Ativado! Faturamento: R$ 197,00");
+                else { alert("Acesso negado."); clicks = 0; }
             }
         };
 
         lucide.createIcons();
-        showScreen('screen-home');
     </script>
 </body>
 </html>
