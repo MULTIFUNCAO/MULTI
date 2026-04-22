@@ -5,33 +5,61 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Multi - Guarulhos</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .active-tab { color: #2563eb; border-bottom: 2px solid #2563eb; }
+    </style>
 </head>
 <body class="bg-blue-50">
-    <div class="max-w-md mx-auto min-h-screen bg-white shadow-lg">
-        <div class="p-6 bg-blue-600 text-white text-center rounded-b-3xl">
+    <div class="max-w-md mx-auto min-h-screen bg-white shadow-lg pb-20">
+        <div class="p-6 bg-blue-600 text-white text-center rounded-b-3xl shadow-md">
             <h1 class="text-2xl font-bold italic">Multi</h1>
-            <p class="text-sm opacity-90">Serviços em um toque</p>
+            <p class="text-sm opacity-90">Serviços em um toque em Guarulhos</p>
         </div>
 
-        <div class="p-4 space-y-4">
-            <div class="bg-blue-600 p-6 rounded-2xl text-white text-center">
-                <h2 class="text-xl font-bold">Sua casa em boas mãos, num toque.</h2>
-                <button class="mt-4 bg-white text-blue-600 px-6 py-2 rounded-full font-bold"> + Novo Pedido</button>
+        <div class="p-4">
+            <div class="bg-gradient-to-r from-blue-600 to-blue-500 p-6 rounded-2xl text-white text-center shadow-lg">
+                <h2 class="text-xl font-bold leading-tight">Sua casa em boas mãos, num toque.</h2>
+                <p class="text-xs mt-2 opacity-80">Encontre montadores, eletricistas e mais.</p>
+                <a href="https://wa.me/5511942940251?text=Olá! Preciso de um profissional do Multi." 
+                   class="mt-4 inline-block bg-white text-blue-600 px-8 py-2 rounded-full font-bold shadow-md hover:bg-gray-100 transition">
+                   + Novo Pedido
+                </a>
             </div>
+        </div>
 
-            <h3 class="font-bold text-gray-700">Categorias</h3>
+        <div class="px-4 space-y-4">
+            <h3 class="font-bold text-gray-700 text-lg">O que você precisa hoje?</h3>
             <div class="grid grid-cols-2 gap-4">
-                <div class="p-4 border rounded-xl text-center">🔨 Montagem</div>
-                <div class="p-4 border rounded-xl text-center">⚡ Elétrica</div>
-                <div class="p-4 border rounded-xl text-center">🧹 Limpeza</div>
-                <div class="p-4 border rounded-xl text-center">🛠️ Reparos</div>
+                <a href="https://wa.me/5511942940251?text=Olá! Preciso de um Montador." class="p-4 border border-gray-100 rounded-2xl text-center bg-gray-50 hover:bg-blue-100 transition">
+                    <div class="text-2xl mb-1">🔨</div>
+                    <span class="text-sm font-semibold text-gray-700">Montagem</span>
+                </a>
+                <a href="https://wa.me/5511942940251?text=Olá! Preciso de um Eletricista." class="p-4 border border-gray-100 rounded-2xl text-center bg-gray-50 hover:bg-blue-100 transition">
+                    <div class="text-2xl mb-1">⚡</div>
+                    <span class="text-sm font-semibold text-gray-700">Elétrica</span>
+                </a>
+                <a href="https://wa.me/5511942940251?text=Olá! Preciso de uma Diarista." class="p-4 border border-gray-100 rounded-2xl text-center bg-gray-50 hover:bg-blue-100 transition">
+                    <div class="text-2xl mb-1">🧹</div>
+                    <span class="text-sm font-semibold text-gray-700">Limpeza</span>
+                </a>
+                <a href="https://wa.me/5511942940251?text=Olá! Preciso de Reparos Gerais." class="p-4 border border-gray-100 rounded-2xl text-center bg-gray-50 hover:bg-blue-100 transition">
+                    <div class="text-2xl mb-1">🛠️</div>
+                    <span class="text-sm font-semibold text-gray-700">Reparos</span>
+                </a>
             </div>
         </div>
 
-        <div class="fixed bottom-0 max-w-md w-full bg-white border-t p-4 flex justify-around text-blue-600 font-bold">
-            <span>Início</span>
-            <span>Mensagens</span>
-            <span class="text-orange-500">PRO</span>
+        <div class="fixed bottom-0 max-w-md w-full bg-white border-t p-4 flex justify-around items-center text-gray-400">
+            <div class="flex flex-col items-center active-tab">
+                <span class="text-xs">Início</span>
+            </div>
+            <a href="https://wa.me/5511942940251?text=Olá! Sou profissional e quero me cadastrar." class="flex flex-col items-center">
+                <span class="text-xs">Mensagens</span>
+            </a>
+            <a href="https://wa.me/5511942940251?text=Olá! Quero saber mais sobre o Plano PRO." class="flex flex-col items-center text-orange-500 font-bold">
+                <span class="text-xl">⭐</span>
+                <span class="text-xs uppercase">PRO</span>
+            </a>
         </div>
     </div>
 </body>
