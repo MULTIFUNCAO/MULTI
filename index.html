@@ -45,4 +45,94 @@
                     </button>
                     <button onclick="window.location.href='https://wa.me/5511942940251?text=Quero um Eletricista'" class="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:border-blue-300 transition-all flex flex-col items-center">
                         <div class="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center mb-2">⚡</div>
-                        <span class="text-sm font-bold text-slate-700">El
+                        <span class="text-sm font-bold text-slate-700">Elétrica</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-pro" class="app-screen hidden p-6 text-center">
+            <div class="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i data-lucide="zap" class="w-10 h-10 text-indigo-600"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-800 italic">Upgrade para PRO</h2>
+            <p class="text-slate-500 mt-2">Tenha acesso ilimitado aos pedidos de Guarulhos por apenas <b>R$ 197/mês</b>.</p>
+            
+            <div class="mt-8 p-6 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+                <p class="text-xs text-slate-400 mb-2 uppercase font-bold tracking-widest">Pague via PIX</p>
+                <div class="bg-white p-4 rounded-xl shadow-inner mb-4">
+                    <p class="text-[10px] break-all font-mono text-slate-600">00020101021126580014br.gov.bcb.pix0136ana-cristina-pix-exemplo</p>
+                </div>
+                <button onclick="alert('Código Copiado!')" class="w-full bg-slate-800 text-white py-3 rounded-xl font-bold text-sm">Copiar Código PIX</button>
+            </div>
+            <button onclick="showScreen('screen-home')" class="mt-6 text-slate-400 text-sm">Voltar</button>
+        </div>
+
+        <div id="screen-profile" class="app-screen hidden p-6">
+            <div class="flex flex-col items-center mb-8">
+                <div class="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center text-white text-3xl font-bold border-4 border-white shadow-xl">A</div>
+                <h2 class="mt-4 text-xl font-bold">Ana Cristina</h2>
+                <span class="text-xs bg-blue-100 text-blue-600 px-3 py-1 rounded-full font-bold mt-1">ADMINISTRADORA</span>
+            </div>
+            
+            <div class="space-y-3">
+                <div class="p-4 bg-slate-50 rounded-2xl flex items-center gap-4 cursor-pointer">
+                    <i data-lucide="file-text" class="text-slate-400"></i>
+                    <span class="font-medium">Documentação (Upload)</span>
+                </div>
+                <div id="admin-trigger" class="p-4 bg-slate-50 rounded-2xl flex items-center gap-4 cursor-pointer opacity-50">
+                    <i data-lucide="shield-check" class="text-slate-400"></i>
+                    <span class="font-medium">Dashboard Admin</span>
+                </div>
+            </div>
+        </div>
+
+        <nav class="fixed bottom-0 max-w-md w-full bg-white/80 backdrop-blur-md border-t border-slate-100 flex justify-around py-3 px-2 z-50">
+            <button onclick="showScreen('screen-home')" class="nav-btn flex flex-col items-center gap-1 transition-all" id="btn-home">
+                <i data-lucide="home" class="w-5 h-5"></i>
+                <span class="text-[10px] font-bold">Início</span>
+            </button>
+            <button onclick="showScreen('screen-pro')" class="nav-btn flex flex-col items-center gap-1 transition-all text-orange-500" id="btn-pro">
+                <i data-lucide="star" class="w-5 h-5 fill-current"></i>
+                <span class="text-[10px] font-bold">PRO</span>
+            </button>
+            <button onclick="showScreen('screen-profile')" class="nav-btn flex flex-col items-center gap-1 transition-all" id="btn-profile">
+                <i data-lucide="user" class="w-5 h-5"></i>
+                <span class="text-[10px] font-bold">Perfil</span>
+            </button>
+        </nav>
+
+    </div>
+
+    <script>
+        // Lógica de Troca de Telas
+        function showScreen(screenId) {
+            document.querySelectorAll('.app-screen').forEach(s => s.classList.add('hidden'));
+            document.getElementById(screenId).classList.remove('hidden');
+            
+            // Estilo dos botões
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('tab-active'));
+            if(screenId === 'screen-home') document.getElementById('btn-home').classList.add('tab-active');
+            if(screenId === 'screen-profile') document.getElementById('btn-profile').classList.add('tab-active');
+        }
+
+        // Segredo Admin: 5 toques no rodapé (Perfil)
+        let clicks = 0;
+        document.getElementById('admin-trigger').onclick = function() {
+            clicks++;
+            if(clicks === 5) {
+                const pass = prompt("Digite a senha de Admin:");
+                if(pass === "multi2026") {
+                    alert("Bem-vinda ao Dashboard, Ana! Faturamento atual: R$ 0,00");
+                } else {
+                    alert("Senha incorreta!");
+                    clicks = 0;
+                }
+            }
+        };
+
+        lucide.createIcons();
+        showScreen('screen-home');
+    </script>
+</body>
+</html>
