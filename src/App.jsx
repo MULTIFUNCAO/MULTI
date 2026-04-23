@@ -4737,7 +4737,9 @@ export default function App() {
 
   // ── WELCOME EMAIL SIMULATION ─────────────────────────────────────────────────
   // URL do backend — troque para https://api.multifuncao.com.br em produção
-  const API_URL = "http://localhost:3001";
+  const API_URL = typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL
+    ? import.meta.env.VITE_API_URL
+    : "https://web-production-e103b.up.railway.app";
 
   const sendWelcomeEmail = async ({ name, email, role }) => {
     const firstName = name?.trim().split(/\s+/)[0] || "Usuário";
