@@ -2804,11 +2804,10 @@ function CardSection({ showToast }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
-function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange }) {
+function ProfileScreen({ role, isPro, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange }) {
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [editMode,  setEditMode]  = useState(false);
-  const [name,      setName]      = useState(initialUserName || JSON.parse(localStorage.getItem("multiUser") || "{}").name || "");
-  useEffect(() => { if (initialUserName) setName(initialUserName); }, [initialUserName]);
+  const [name,      setName]      = useState(role === "client" ? "Maria Oliveira" : "João Silva");
   const [portfolioImgs, setPortfolioImgs] = useState([]);
   const avatarRef = useRef(null);
   const portfolioRef = useRef(null);
