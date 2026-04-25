@@ -4182,6 +4182,7 @@ function RegisterScreen({ onBack, onComplete }) {
   const [name,    setName]    = useState("");
   const [email,   setEmail]   = useState("");
   const [phone,   setPhone]   = useState("");
+  const [password, setPassword] = useState("");
   const [cep,     setCep]     = useState("");
   const [role,    setRole]    = useState("client");
   const [errors,  setErrors]  = useState({});
@@ -4339,6 +4340,12 @@ function RegisterScreen({ onBack, onComplete }) {
             style={{ ...REG_INPUT, borderColor: errors.email ? "#E53935" : undefined }} />
         </FormField>
 
+        {/* SENHA */}
+        <FormField IconComp={KeyRound} label="Senha" error={errors.password}>
+          <input autoComplete="new-password" type="password" placeholder="Mínimo 6 caracteres" value={password}
+            onChange={e => { setPassword(e.target.value); if (errors.password) setErrors(p => ({ ...p, password:undefined })); }}
+            style={{ ...REG_INPUT, borderColor: errors.password ? "#E53935" : undefined }} />
+        </FormField>
         {/* WHATSAPP */}
         <FormField IconComp={WA_ICON} label="WhatsApp" error={errors.phone}>
           <input autoComplete="tel" type="tel" placeholder="(00) 00000-0000" value={phone}
@@ -4419,6 +4426,12 @@ function GuestMural({ onSignup, allDocsVerified }) {
   }
 
   return (
+        {/* SENHA */}
+        <FormField IconComp={KeyRound} label="Senha" error={errors.password}>
+          <input autoComplete="new-password" type="password" placeholder="Mínimo 6 caracteres" value={password}
+            onChange={e => { setPassword(e.target.value); if (errors.password) setErrors(p => ({ ...p, password:undefined })); }}
+            style={{ ...REG_INPUT, borderColor: errors.password ? "#E53935" : undefined }} />
+        </FormField>
     <div style={{ paddingBottom:100 }}>
 
       {/* ── MURAL HEADER ── */}
