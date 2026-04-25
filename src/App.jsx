@@ -4193,8 +4193,8 @@ function LoginScreen({ onBack, onComplete, onRegister }) {
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Erro ao entrar");
-      localStorage.setItem("multiToken", d.token);
-      localStorage.setItem("multiUser", JSON.stringify(d.user));
+      const session = { name: d.user.name, email: d.user.email, role: d.user.role, isPro: d.user.isPro || false, token: d.token };
+      localStorage.setItem("multiSession", JSON.stringify(session));
       onComplete(d.user.name, d.user.email, false, "", d.user.role, "");
     } catch(e) {
       setLoading(false);
