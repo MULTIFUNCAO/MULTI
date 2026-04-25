@@ -4204,10 +4204,23 @@ function RegisterScreen({ onBack, onComplete }) {
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validate()) return;
     setLoading(true);
-    setTimeout(() => { setLoading(false); setStep("success"); }, 1200);
+    try {
+      const API = "https://web-production-e103b.up.railway.app";
+      const r = await fetch(`${API}/api/auth/cadastro`, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ name, email: email.trim(), password: "multi2026", role }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Erro ao criar conta");
+      setLoading(false);
+      setStep("success");
+    } catch(e) {
+      setLoading(false);
+      alert(e.message);
+    }
   };
 
   const cepFound = cep.replace(/\D/g,"").length === 8;
