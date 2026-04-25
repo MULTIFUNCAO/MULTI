@@ -4177,6 +4177,60 @@ function maskCep(v) {
 }
 
 /* ───────────────────────── AUTH: REGISTER SCREEN ──────────────────────────────── */
+function LoginScreen({ onBack, onComplete, onRegister }) {
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+  const API = "https://web-production-e103b.up.railway.app";
+
+  const handleLogin = async () => {
+    if (!email || !password) return alert("Preencha email e senha");
+    setLoading(true);
+    try {
+      const r = await fetch(`${API}/api/auth/login`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Erro ao entrar");
+      localStorage.setItem("multiToken", d.token);
+      localStorage.setItem("multiUser", JSON.stringify(d.user));
+      onComplete(d.user.name, d.user.email, false, "", d.user.role, "");
+    } catch(e) {
+      setLoading(false);
+      alert(e.message);
+    }
+  };
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#F5F6FA", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px" }}>
+      <div style={{ width:"100%", maxWidth:420, background:"white", borderRadius:20, padding:"32px 24px", boxShadow:"0 4px 24px rgba(0,0,0,.08)" }}>
+        <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", marginBottom:16, color:"#007BFF", fontSize:14 }}>← Voltar</button>
+        <h2 style={{ margin:"0 0 8px", fontSize:24, fontWeight:800, color:"#1a1a2e" }}>Entrar na sua conta</h2>
+        <p style={{ color:"#6B7280", fontSize:14, marginBottom:24 }}>Bem-vindo de volta!</p>
+        <div style={{ marginBottom:16 }}>
+          <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.05em" }}>E-MAIL</label>
+          <input type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)}
+            style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:15, marginTop:6, boxSizing:"border-box", outline:"none" }} />
+        </div>
+        <div style={{ marginBottom:24 }}>
+          <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.05em" }}>SENHA</label>
+          <input type="password" placeholder="Sua senha" value={password} onChange={e => setPassword(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleLogin()}
+            style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:15, marginTop:6, boxSizing:"border-box", outline:"none" }} />
+        </div>
+        <button onClick={handleLogin} disabled={loading}
+          style={{ width:"100%", padding:"14px", background:"#007BFF", color:"white", border:"none", borderRadius:12, fontSize:16, fontWeight:700, cursor:"pointer", opacity:loading?0.7:1 }}>
+          {loading ? "Entrando..." : "Entrar"}
+        </button>
+        <p style={{ textAlign:"center", marginTop:16, fontSize:14, color:"#6B7280" }}>Não tem conta?
+          <button onClick={onRegister} style={{ background:"none", border:"none", color:"#007BFF", fontWeight:700, cursor:"pointer", marginLeft:4 }}>Cadastre-se</button>
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function RegisterScreen({ onBack, onComplete }) {
   const [step,    setStep]    = useState("form");
   const [name,    setName]    = useState("");
@@ -5672,7 +5726,7 @@ export default function App() {
     return wrapper(
       <WelcomeScreen
         onGoogle={() => handleLoginComplete("Usuário Google")}
-        onEmail={() => setAuthScreen("register")}
+        onEmail={() => setAuthScreen("login")}
         onBack={() => { setAuthScreen(null); setPendingIntent(null); }}
       />
     );
@@ -5685,6 +5739,15 @@ export default function App() {
         onComplete={handleLoginComplete}
       />
     );
+  if (authScreen === "login") {
+    return wrapper(
+      <LoginScreen
+        onBack={() => setAuthScreen("welcome")}
+        onComplete={handleLoginComplete}
+        onRegister={() => setAuthScreen("register")}
+      />
+    );
+  }
   }
 
   // ── MAIN APP ─────────────────────────────────────────────────────────────────
