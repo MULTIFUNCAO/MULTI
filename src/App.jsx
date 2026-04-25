@@ -3623,7 +3623,6 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
   // ── END PAYMENT MODAL ─────────────────────────────────────────────────────
 
   return (
-    <>
 
       {/* ── DEAL FORM MODAL (PRO sends proposal) ── */}
       {showDealForm && (
