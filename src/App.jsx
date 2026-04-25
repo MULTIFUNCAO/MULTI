@@ -1670,7 +1670,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
     setPixError("");
     try {
       // Step 1: create customer
-      const userData = (() => { try { return JSON.parse(localStorage.getItem("multiUser") || "{}"); } catch { return {}; } })();
+  const userData = (() => { try { return JSON.parse(localStorage.getItem("multiSession")) || null; } catch { return null; } })();
       const custRes  = await fetch(`${API_URL}/api/criar-cliente`, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ name: userData.name || "Cliente Multi", phone: userData.whatsapp || "11999999999", email: userData.email || "", role:"professional" }),
