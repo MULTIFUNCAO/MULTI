@@ -3408,7 +3408,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
 
   // ── PAYMENT MODAL ────────────────────────────────────────────────────────
   if (showPaymentModal) {
-    const serviceValue = chat.serviceValue || d?.value || "150,00";
+    const serviceValue = chat.serviceValue || chat.proposalValue || "150,00";
 
     // Step: choose payment method
     if (paymentStep === "choose") return (
