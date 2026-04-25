@@ -4223,6 +4223,9 @@ function LoginScreen({ onBack, onComplete, onRegister }) {
           style={{ width:"100%", padding:"14px", background:"#007BFF", color:"white", border:"none", borderRadius:12, fontSize:16, fontWeight:700, cursor:"pointer", opacity:loading?0.7:1 }}>
           {loading ? "Entrando..." : "Entrar"}
         </button>
+        <p style={{ textAlign:"center", marginTop:12, fontSize:13, color:"#6B7280" }}>Esqueceu a senha?
+          <button onClick={async () => { if (!email) return alert("Digite seu e-mail primeiro"); await fetch("https://web-production-e103b.up.railway.app/api/auth/recuperar-senha", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({email}) }); alert("📧 E-mail de recuperação enviado!"); }} style={{ background:"none", border:"none", color:"#007BFF", fontWeight:700, cursor:"pointer", marginLeft:4 }}>Recuperar</button>
+        </p>
         <p style={{ textAlign:"center", marginTop:16, fontSize:14, color:"#6B7280" }}>Não tem conta?
           <button onClick={onRegister} style={{ background:"none", border:"none", color:"#007BFF", fontWeight:700, cursor:"pointer", marginLeft:4 }}>Cadastre-se</button>
         </p>
