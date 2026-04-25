@@ -2805,7 +2805,7 @@ function CardSection({ showToast }) {
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange }) {
-  const [avatarUrl, setAvatarUrl] = useState(null);
+  const [avatarUrl, setAvatarUrl] = useState(() => sessionStorage.getItem("multiAvatar") || null);
   const [editMode,  setEditMode]  = useState(false);
   const [name, setName] = useState(initialUserName || "");
   useEffect(() => { if (initialUserName) setName(initialUserName); }, [initialUserName]);
@@ -2818,7 +2818,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
     const f = e.target.files[0];
     if (!f) return;
     const r = new FileReader();
-    r.onload = ev => setAvatarUrl(ev.target.result);
+    r.onload = ev => { setAvatarUrl(ev.target.result); sessionStorage.setItem("multiAvatar", ev.target.result); };
     r.readAsDataURL(f);
     e.target.value = "";
   };
