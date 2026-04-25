@@ -2896,7 +2896,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
           {editMode ? (
             <input value={name} onChange={e => setName(e.target.value)} style={{ fontSize:18, fontWeight:900, color:"white", background:"rgba(255,255,255,.15)", border:"1.5px solid rgba(255,255,255,.4)", borderRadius:10, padding:"5px 14px", textAlign:"center", outline:"none", fontFamily:"inherit" }} />
           ) : (
-            <h2 style={{ fontSize:20, fontWeight:900, color:"white", margin:0 }}>{name}</h2>
+            <h2 style={{ fontSize:20, fontWeight:900, color:"white", margin:0 }}>{initialUserName || name}</h2>
           )}
 
           <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:8 }}>
