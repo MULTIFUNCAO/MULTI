@@ -5743,7 +5743,6 @@ export default function App() {
       />
     );
   }
-  }
 
   // ── MAIN APP ─────────────────────────────────────────────────────────────────
   // Admin overlay — renders over everything else
