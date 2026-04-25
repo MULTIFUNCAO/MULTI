@@ -4266,7 +4266,7 @@ function RegisterScreen({ onBack, onComplete }) {
       const API = "https://web-production-e103b.up.railway.app";
       const r = await fetch(`${API}/api/auth/cadastro`, {
         method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ name, email: email.trim(), password: "multi2026", role }),
+        body: JSON.stringify({ name, email: email.trim(), password, role }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Erro ao criar conta");
@@ -4480,12 +4480,6 @@ function GuestMural({ onSignup, allDocsVerified }) {
   }
 
   return (
-        {/* SENHA */}
-        <FormField IconComp={KeyRound} label="Senha" error={errors.password}>
-          <input autoComplete="new-password" type="password" placeholder="Mínimo 6 caracteres" value={password}
-            onChange={e => { setPassword(e.target.value); if (errors.password) setErrors(p => ({ ...p, password:undefined })); }}
-            style={{ ...REG_INPUT, borderColor: errors.password ? "#E53935" : undefined }} />
-        </FormField>
     <div style={{ paddingBottom:100 }}>
 
       {/* ── MURAL HEADER ── */}
