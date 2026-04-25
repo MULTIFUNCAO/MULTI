@@ -2805,7 +2805,7 @@ function CardSection({ showToast }) {
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange }) {
-  const [avatarUrl, setAvatarUrl] = useState(() => { try { return JSON.parse(localStorage.getItem("multiUser") || "{}").avatar || null; } catch(e) { return null; } });
+  const [avatarUrl, setAvatarUrl] = useState(() => { try { return JSON.parse(sessionStorage.getItem("multiAvatar") || null; // avatar || null; } catch(e) { return null; } });
   const [editMode,  setEditMode]  = useState(false);
   const [name,      setName]      = useState(initialUserName || JSON.parse(localStorage.getItem("multiUser") || "{}").name || "");
   useEffect(() => { if (initialUserName) setName(initialUserName); }, [initialUserName]);
@@ -2818,7 +2818,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
     const f = e.target.files[0];
     if (!f) return;
     const r = new FileReader();
-    r.onload = ev => { setAvatarUrl(ev.target.result); try { const u = JSON.parse(localStorage.getItem("multiUser") || "{}"); u.avatar = ev.target.result; localStorage.setItem("multiUser", JSON.stringify(u)); } catch(e){} };
+    r.onload = ev => { setAvatarUrl(ev.target.result); try { sessionStorage.setItem("multiAvatar", ev.target.result); } catch(e){} };
     r.readAsDataURL(f);
     e.target.value = "";
   };
