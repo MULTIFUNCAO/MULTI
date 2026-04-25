@@ -2808,6 +2808,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [editMode,  setEditMode]  = useState(false);
   const [name,      setName]      = useState(initialUserName || JSON.parse(localStorage.getItem("multiUser") || "{}").name || "");
+  useEffect(() => { if (initialUserName) setName(initialUserName); }, [initialUserName]);
   const [portfolioImgs, setPortfolioImgs] = useState([]);
   const avatarRef = useRef(null);
   const portfolioRef = useRef(null);
