@@ -4178,9 +4178,9 @@ function maskCep(v) {
 
 /* ───────────────────────── AUTH: REGISTER SCREEN ──────────────────────────────── */
 function LoginScreen({ onBack, onComplete, onRegister }) {
-  const [email, setEmail] = React.useState("");
-  const [password, setPassword] = React.useState("");
-  const [loading, setLoading] = React.useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const API = "https://web-production-e103b.up.railway.app";
 
   const handleLogin = async () => {
