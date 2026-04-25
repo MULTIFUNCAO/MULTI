@@ -2804,11 +2804,10 @@ function CardSection({ showToast }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
-function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange }) {
-    const [avatarUrl, setAvatarUrl] = useState(() => { try { return sessionStorage.getItem("multiAvatar") || null; } catch(e) { return null; } });
+function ProfileScreen({ role, isPro, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange }) {
+  const [avatarUrl, setAvatarUrl] = useState(null);
   const [editMode,  setEditMode]  = useState(false);
-  const [name,      setName]      = useState(initialUserName || JSON.parse(localStorage.getItem("multiUser") || "{}").name || "");
-  useEffect(() => { if (initialUserName) setName(initialUserName); }, [initialUserName]);
+  const [name,      setName]      = useState(role === "client" ? "Maria Oliveira" : "João Silva");
   const [portfolioImgs, setPortfolioImgs] = useState([]);
   const avatarRef = useRef(null);
   const portfolioRef = useRef(null);
@@ -2818,7 +2817,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
     const f = e.target.files[0];
     if (!f) return;
     const r = new FileReader();
-    r.onload = ev => { setAvatarUrl(ev.target.result); try { sessionStorage.setItem("multiAvatar", ev.target.result); } catch(e){} };
+    r.onload = ev => setAvatarUrl(ev.target.result);
     r.readAsDataURL(f);
     e.target.value = "";
   };
@@ -2896,7 +2895,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
           {editMode ? (
             <input value={name} onChange={e => setName(e.target.value)} style={{ fontSize:18, fontWeight:900, color:"white", background:"rgba(255,255,255,.15)", border:"1.5px solid rgba(255,255,255,.4)", borderRadius:10, padding:"5px 14px", textAlign:"center", outline:"none", fontFamily:"inherit" }} />
           ) : (
-            <h2 style={{ fontSize:20, fontWeight:900, color:"white", margin:0 }}>{name}</h2>
+            <h2 style={{ fontSize:20, fontWeight:900, color:"white", margin:0 }}>{initialUserName || name}</h2>
           )}
 
           <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:8 }}>
