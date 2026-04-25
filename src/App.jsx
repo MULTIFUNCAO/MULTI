@@ -5732,6 +5732,7 @@ export default function App() {
         onBack={() => setAuthScreen("welcome")}
         onComplete={handleLoginComplete}
       />
+  }
     );
   if (authScreen === "login") {
     return wrapper(
