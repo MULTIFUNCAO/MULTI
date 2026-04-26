@@ -5419,7 +5419,7 @@ export default function App() {
   // Detect password reset link from email
   useEffect(() => {
     const hash = window.location.hash;
-    if (hash.includes("access_token") && hash.includes("type=recovery")) {
+    if (hash.includes("access_token")) {
       setAuthScreen("reset-password");
     }
   }, []);
