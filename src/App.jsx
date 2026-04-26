@@ -4177,6 +4177,56 @@ function maskCep(v) {
 }
 
 /* ───────────────────────── AUTH: REGISTER SCREEN ──────────────────────────────── */
+function ResetPasswordScreen({ onComplete }) {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [loading, setLoading] = useState(false);
+  const API = "https://web-production-e103b.up.railway.app";
+
+  const handleReset = async () => {
+    if (!password || password.length < 6) return alert("Senha deve ter pelo menos 6 caracteres");
+    if (password !== confirm) return alert("As senhas não coincidem");
+    setLoading(true);
+    try {
+      const hash = window.location.hash;
+      const params = new URLSearchParams(hash.slice(1));
+      const token = params.get("access_token");
+      const r = await fetch(`${API}/api/auth/redefinir-senha`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, password }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Erro ao redefinir senha");
+      window.location.hash = "";
+      onComplete();
+    } catch(e) { setLoading(false); alert(e.message); }
+  };
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#F5F6FA", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px" }}>
+      <div style={{ width:"100%", maxWidth:420, background:"white", borderRadius:20, padding:"32px 24px", boxShadow:"0 4px 24px rgba(0,0,0,.08)" }}>
+        <h2 style={{ margin:"0 0 8px", fontSize:24, fontWeight:800, color:"#1a1a2e" }}>Nova Senha</h2>
+        <p style={{ color:"#6B7280", fontSize:14, marginBottom:24 }}>Digite sua nova senha abaixo.</p>
+        <div style={{ marginBottom:16 }}>
+          <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>NOVA SENHA</label>
+          <input type="password" placeholder="Mínimo 6 caracteres" value={password} onChange={e => setPassword(e.target.value)}
+            style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:15, marginTop:6, boxSizing:"border-box", outline:"none" }} />
+        </div>
+        <div style={{ marginBottom:24 }}>
+          <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>CONFIRMAR SENHA</label>
+          <input type="password" placeholder="Repita a senha" value={confirm} onChange={e => setConfirm(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleReset()}
+            style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:15, marginTop:6, boxSizing:"border-box", outline:"none" }} />
+        </div>
+        <button onClick={handleReset} disabled={loading}
+          style={{ width:"100%", padding:"14px", background:"#007BFF", color:"white", border:"none", borderRadius:12, fontSize:16, fontWeight:700, cursor:"pointer", opacity:loading?0.7:1 }}>
+          {loading ? "Salvando..." : "Salvar Nova Senha"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function LoginScreen({ onBack, onComplete, onRegister }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -5366,6 +5416,13 @@ export default function App() {
   // Auth: starts as guest, modal layers appear on demand
   const [isLoggedIn,    setIsLoggedIn]    = useState(!!savedSession);
   const [authScreen,    setAuthScreen]    = useState(null);
+  // Detect password reset link from email
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.includes("access_token") && hash.includes("type=recovery")) {
+      setAuthScreen("reset-password");
+    }
+  }, []);
   const [pendingIntent, setPendingIntent] = useState(null);
   const [userRole,      setUserRole]      = useState(savedSession?.role      || "client");
   const [userName,      setUserName]      = useState(savedSession?.name      || "");
@@ -5730,6 +5787,9 @@ export default function App() {
   }
 
   if (authScreen === "register") {
+  if (authScreen === "reset-password") {
+    return wrapper(<ResetPasswordScreen onComplete={() => { setAuthScreen(null); showToast("✅ Senha alterada! Faça login."); setAuthScreen("login"); }} />);
+  }
     return wrapper(
       <RegisterScreen
         onBack={() => setAuthScreen("welcome")}
