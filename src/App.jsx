@@ -5410,9 +5410,9 @@ export default function App() {
 
   // ── RESTORE SESSION FROM LOCALSTORAGE ────────────────────────────────────
   const savedSession = (() => {
-    try { return JSON.parse(localStorage.getItem("multiSession") || "null"); } catch { return null; }
+    if (window.location.hash.includes("access_token")) return null;
+    try { return JSON.parse(localStorage.getItem("multiSession")) || null; } catch { return null; }
   })();
-
   // Auth: starts as guest, modal layers appear on demand
   const [isLoggedIn,    setIsLoggedIn]    = useState(!!savedSession);
   const [authScreen,    setAuthScreen]    = useState(null);
