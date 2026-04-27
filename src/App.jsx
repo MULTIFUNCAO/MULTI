@@ -4177,75 +4177,37 @@ function maskCep(v) {
 }
 
 /* ───────────────────────── AUTH: REGISTER SCREEN ──────────────────────────────── */
-const fs = require('fs');
-const content = fs.readFileSync('src/App.jsx', 'utf8');
-const component = `
 function ForgotPasswordScreen({ onBack, onComplete }) {
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const API = "https://web-production-e103b.up.railway.app";
-  const boxStyle = { width:"100%", maxWidth:420, background:"white", borderRadius:20, padding:"32px 24px", boxShadow:"0 4px 24px rgba(0,0,0,.08)" };
-  const wrap = (c) => (
-    <div style={{ minHeight:"100vh", background:"#F5F6FA", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:24 }}>
-      <div style={boxStyle}>{c}</div>
-    </div>
-  );
-  const inputStyle = { width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:15, marginTop:6, marginBottom:16, boxSizing:"border-box" };
-  const btnStyle = { width:"100%", padding:14, background:"#007BFF", color:"white", border:"none", borderRadius:12, fontSize:16, fontWeight:700, cursor:"pointer" };
-  const labelStyle = { fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" };
-  if (step === 1) return wrap(
-    <>
-      <button onClick={onBack} style={{ background:"none", border:"none", color:"#007BFF", cursor:"pointer", marginBottom:16 }}>← Voltar</button>
-      <h2 style={{ margin:"0 0 8px", fontSize:22, fontWeight:800 }}>Recuperar Senha</h2>
-      <p style={{ color:"#6B7280", fontSize:14, marginBottom:24 }}>Digite seu e-mail para receber um código de 6 dígitos.</p>
-      <label style={labelStyle}>E-MAIL</label>
-      <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" style={inputStyle} />
-      <button onClick={async () => {
-        if (!email) return alert("Digite seu e-mail");
-        setLoading(true);
-        try {
-          const r = await fetch(API+"/api/auth/solicitar-codigo", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email}) });
-          if (!r.ok) throw new Error("Erro ao enviar");
-          setStep(2);
-        } catch(e) { alert(e.message); }
-        setLoading(false);
-      }} disabled={loading} style={btnStyle}>{loading ? "Enviando..." : "Enviar Código"}</button>
-    </>
-  );
-  return wrap(
-    <>
-      <h2 style={{ margin:"0 0 8px", fontSize:22, fontWeight:800 }}>Digite o Código</h2>
-      <p style={{ color:"#6B7280", fontSize:14, marginBottom:24 }}>Enviamos um código para {email}</p>
-      <label style={labelStyle}>CÓDIGO</label>
-      <input type="text" value={code} onChange={e => setCode(e.target.value)} placeholder="000000" maxLength={6} style={{ ...inputStyle, fontSize:24, letterSpacing:8, textAlign:"center" }} />
-      <label style={labelStyle}>NOVA SENHA</label>
-      <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" style={inputStyle} />
-      <label style={labelStyle}>CONFIRMAR SENHA</label>
-      <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Repita a senha" style={inputStyle} />
-      <button onClick={async () => {
-        if (!code || code.length < 6) return alert("Digite o código completo");
-        if (!password || password.length < 6) return alert("Senha deve ter 6+ caracteres");
-        if (password !== confirm) return alert("Senhas não coincidem");
-        setLoading(true);
-        try {
-          const r = await fetch(API+"/api/auth/verificar-codigo", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email, code, newPassword:password}) });
-          const d = await r.json();
-          if (!r.ok) throw new Error(d.error);
-          onComplete();
-        } catch(e) { alert(e.message); setLoading(false); }
-      }} disabled={loading} style={btnStyle}>{loading ? "Verificando..." : "Confirmar"}</button>
-    </>
-  );
+  const inp = { width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:15, marginTop:6, marginBottom:16, boxSizing:"border-box" };
+  const btn = { width:"100%", padding:14, background:"#007BFF", color:"white", border:"none", borderRadius:12, fontSize:16, fontWeight:700, cursor:"pointer" };
+  const box = { minHeight:"100vh", background:"#F5F6FA", display:"flex", alignItems:"center", justifyContent:"center", padding:24 };
+  const card = { width:"100%", maxWidth:420, background:"white", borderRadius:20, padding:"32px 24px" };
+  if (step === 1) return <div style={box}><div style={card}>
+    <button onClick={onBack} style={{ background:"none", border:"none", color:"#007BFF", cursor:"pointer", marginBottom:16 }}>← Voltar</button>
+    <h2 style={{ margin:"0 0 8px" }}>Recuperar Senha</h2>
+    <p style={{ color:"#6B7280", fontSize:14, marginBottom:24 }}>Vamos enviar um c༽igo de 6 dígitos para seu e-mail.</p>
+    <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>E-MAIL</label>
+    <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" style={inp} />
+    <button disabled={loading} style={btn} onClick={async () => { if (!email) return alert("Digite seu e-mail"); setLoading(true); const r = await fetch(API+"/api/auth/solicitar-codigo", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email}) }); setLoading(false); if (r.ok) setStep(2); else alert("Erro ao enviar"); }}>{loading ? "Enviando..." : "Enviar C༽igo"}</button>
+  </div></div>;
+  return <div style={box}><div style={card}>
+    <h2 style={{ margin:"0 0 8px" }}>Digite o C༽igo</h2>
+    <p style={{ color:"#6B7280", fontSize:14, marginBottom:24 }}>C༽igo enviado para {email}</p>
+    <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>CഽIGO</label>
+    <input type="text" value={code} onChange={e => setCode(e.target.value)} placeholder="000000" maxLength={6} style={{ ...inp, fontSize:24, letterSpacing:8, textAlign:"center" }} />
+    <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>NOVA SENHA</label>
+    <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" style={inp} />
+    <button disabled={loading} style={btn} onClick={async () => { if (!code||code.length<6) return alert("C༽igo incompleto"); if (!password||password.length<6) return alert("Senha muito curta"); setLoading(true); const r = await fetch(API+"/api/auth/verificar-codigo", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email,code,newPassword:password}) }); const d = await r.json(); if (r.ok) { onComplete(); } else { alert(d.error); setLoading(false); } }}>{loading ? "Verificando..." : "Confirmar"}</button>
+  </div></div>;
 }
 
-`;
-const updated = content.replace('function ResetPasswordScreen', component + 'function ResetPasswordScreen');
-fs.writeFileSync('src/App.jsx', updated);
-console.log('OK');function ResetPasswordScreen({ onComplete }) {
+function ResetPasswordScreen({ onComplete }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
