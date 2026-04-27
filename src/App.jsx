@@ -5822,17 +5822,9 @@ export default function App() {
 
   if (authScreen === "register") {
     return wrapper(
-      <RegisterScreen
-  }
+      <RegisterScreen onBack={() => setAuthScreen("welcome")} onComplete={handleLoginComplete} />
   if (authScreen === "reset-password") {
     return wrapper(<ResetPasswordScreen onComplete={() => { setAuthScreen(null); showToast("✅ Senha alterada! Faça login."); setAuthScreen("login"); }} />);
-  }
-    return wrapper(
-      <RegisterScreen
-        onBack={() => setAuthScreen("welcome")}
-        onComplete={handleLoginComplete}
-      />
-  );
   }
   if (authScreen === "forgot-password") {
     return wrapper(<ForgotPasswordScreen onBack={() => setAuthScreen("login")} onComplete={() => { setAuthScreen("login"); showToast("✅ Senha alterada com sucesso!"); }} />);
