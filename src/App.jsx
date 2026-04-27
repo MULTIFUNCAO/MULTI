@@ -5821,8 +5821,8 @@ export default function App() {
   }
 
   if (authScreen === "register") {
-  if (authScreen === "forgot-password") {
-    return wrapper(<ForgotPasswordScreen onBack={() => setAuthScreen("login")} onComplete={() => { setAuthScreen("login"); showToast("✅ Senha alterada com sucesso!"); }} />);
+    return wrapper(
+      <RegisterScreen
   }
   if (authScreen === "reset-password") {
     return wrapper(<ResetPasswordScreen onComplete={() => { setAuthScreen(null); showToast("✅ Senha alterada! Faça login."); setAuthScreen("login"); }} />);
@@ -5834,15 +5834,11 @@ export default function App() {
       />
   );
   }
+  if (authScreen === "forgot-password") {
+    return wrapper(<ForgotPasswordScreen onBack={() => setAuthScreen("login")} onComplete={() => { setAuthScreen("login"); showToast("✅ Senha alterada com sucesso!"); }} />);
+  }
   if (authScreen === "login") {
-    return wrapper(
-      <LoginScreen
-        onBack={() => setAuthScreen("welcome")}
-        onComplete={handleLoginComplete}
-        onRegister={() => setAuthScreen("register")}
-        onForgot={() => setAuthScreen("forgot-password")}
-      />
-    );
+    return wrapper(<LoginScreen onBack={() => setAuthScreen("welcome")} onComplete={handleLoginComplete} onRegister={() => setAuthScreen("register")} onForgot={() => setAuthScreen("forgot-password")} />);
   }
   // Admin overlay — renders over everything else
   if (showAdmin) {
