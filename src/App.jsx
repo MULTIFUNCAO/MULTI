@@ -4178,11 +4178,11 @@ function maskCep(v) {
 
 /* ───────────────────────── AUTH: REGISTER SCREEN ──────────────────────────────── */
 function ForgotPasswordScreen({ onBack, onComplete }) {
-  const [step, setStep] = React.useState(1);
-  const [email, setEmail] = React.useState("");
-  const [code, setCode] = React.useState("");
-  const [password, setPassword] = React.useState("");
-  const [loading, setLoading] = React.useState(false);
+  const [step, setStep] = useState(1);
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const API = "https://web-production-e103b.up.railway.app";
   const box = { minHeight:"100vh", background:"#F5F6FA", display:"flex", alignItems:"center", justifyContent:"center", padding:24 };
   const card = { width:"100%", maxWidth:420, background:"white", borderRadius:20, padding:"32px 24px", boxShadow:"0 4px 24px rgba(0,0,0,.08)" };
