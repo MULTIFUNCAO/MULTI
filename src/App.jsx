@@ -5421,6 +5421,10 @@ export default function App() {
     const hash = window.location.hash;
     if (hash.includes("access_token")) {
       setAuthScreen("reset-password");
+    } else if (hash.includes("otp_expired") || hash.includes("error=access_denied")) {
+      window.location.hash = "";
+      alert("Link expirado. Solicite um novo link.");
+      setAuthScreen("login");
     }
   }, []);
   const [pendingIntent, setPendingIntent] = useState(null);
