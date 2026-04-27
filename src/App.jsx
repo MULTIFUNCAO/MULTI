@@ -5836,13 +5836,16 @@ export default function App() {
   }
   if (authScreen === "login") {
     return wrapper(
+  if (authScreen === "login") {
+    return wrapper(
       <LoginScreen
         onBack={() => setAuthScreen("welcome")}
-          onRegister={() => setAuthScreen("register")}
-          onForgot={() => setAuthScreen("forgot-password")}
+        onComplete={handleLoginComplete}
+        onRegister={() => setAuthScreen("register")}
+        onForgot={() => setAuthScreen("forgot-password")}
+      />
+    );
   }
-
-  // ── MAIN APP ─────────────────────────────────────────────────────────────────
   // Admin overlay — renders over everything else
   if (showAdmin) {
     return wrapper(<AdminDashboard onExit={() => setShowAdmin(false)} />);
