@@ -4178,35 +4178,34 @@ function maskCep(v) {
 
 /* ───────────────────────── AUTH: REGISTER SCREEN ──────────────────────────────── */
 function ForgotPasswordScreen({ onBack, onComplete }) {
-  const [step, setStep] = useState(1);
-  const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [step, setStep] = React.useState(1);
+  const [email, setEmail] = React.useState("");
+  const [code, setCode] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
   const API = "https://web-production-e103b.up.railway.app";
+  const box = { minHeight:"100vh", background:"#F5F6FA", display:"flex", alignItems:"center", justifyContent:"center", padding:24 };
+  const card = { width:"100%", maxWidth:420, background:"white", borderRadius:20, padding:"32px 24px", boxShadow:"0 4px 24px rgba(0,0,0,.08)" };
   const inp = { width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:15, marginTop:6, marginBottom:16, boxSizing:"border-box" };
   const btn = { width:"100%", padding:14, background:"#007BFF", color:"white", border:"none", borderRadius:12, fontSize:16, fontWeight:700, cursor:"pointer" };
-  const box = { minHeight:"100vh", background:"#F5F6FA", display:"flex", alignItems:"center", justifyContent:"center", padding:24 };
-  const card = { width:"100%", maxWidth:420, background:"white", borderRadius:20, padding:"32px 24px" };
   if (step === 1) return <div style={box}><div style={card}>
-    <button onClick={onBack} style={{ background:"none", border:"none", color:"#007BFF", cursor:"pointer", marginBottom:16 }}>← Voltar</button>
-    <h2 style={{ margin:"0 0 8px" }}>Recuperar Senha</h2>
-    <p style={{ color:"#6B7280", fontSize:14, marginBottom:24 }}>Vamos enviar um c༽igo de 6 dígitos para seu e-mail.</p>
+    <button onClick={onBack} style={{ background:"none", border:"none", color:"#007BFF", cursor:"pointer", marginBottom:16 }}>&larr; Voltar</button>
+    <h2 style={{ margin:"0 0 8px", fontSize:22, fontWeight:800 }}>Recuperar Senha</h2>
+    <p style={{ color:"#6B7280", fontSize:14, marginBottom:24 }}>Vamos enviar um codigo de 6 digitos para seu e-mail.</p>
     <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>E-MAIL</label>
     <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" style={inp} />
-    <button disabled={loading} style={btn} onClick={async () => { if (!email) return alert("Digite seu e-mail"); setLoading(true); const r = await fetch(API+"/api/auth/solicitar-codigo", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email}) }); setLoading(false); if (r.ok) setStep(2); else alert("Erro ao enviar"); }}>{loading ? "Enviando..." : "Enviar C༽igo"}</button>
+    <button disabled={loading} style={btn} onClick={async () => { if (!email) return alert("Digite seu e-mail"); setLoading(true); const r = await fetch(API+"/api/auth/solicitar-codigo", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email}) }); setLoading(false); if (r.ok) setStep(2); else alert("Erro ao enviar"); }}>{loading ? "Enviando..." : "Enviar Codigo"}</button>
   </div></div>;
   return <div style={box}><div style={card}>
-    <h2 style={{ margin:"0 0 8px" }}>Digite o C༽igo</h2>
-    <p style={{ color:"#6B7280", fontSize:14, marginBottom:24 }}>C༽igo enviado para {email}</p>
-    <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>CഽIGO</label>
+    <h2 style={{ margin:"0 0 8px", fontSize:22, fontWeight:800 }}>Digite o Codigo</h2>
+    <p style={{ color:"#6B7280", fontSize:14, marginBottom:24 }}>Codigo enviado para {email}</p>
+    <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>CODIGO</label>
     <input type="text" value={code} onChange={e => setCode(e.target.value)} placeholder="000000" maxLength={6} style={{ ...inp, fontSize:24, letterSpacing:8, textAlign:"center" }} />
     <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>NOVA SENHA</label>
-    <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" style={inp} />
-    <button disabled={loading} style={btn} onClick={async () => { if (!code||code.length<6) return alert("C༽igo incompleto"); if (!password||password.length<6) return alert("Senha muito curta"); setLoading(true); const r = await fetch(API+"/api/auth/verificar-codigo", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email,code,newPassword:password}) }); const d = await r.json(); if (r.ok) { onComplete(); } else { alert(d.error); setLoading(false); } }}>{loading ? "Verificando..." : "Confirmar"}</button>
+    <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Minimo 6 caracteres" style={inp} />
+    <button disabled={loading} style={btn} onClick={async () => { if (!code||code.length<6) return alert("Codigo incompleto"); if (!password||password.length<6) return alert("Senha muito curta"); setLoading(true); const r = await fetch(API+"/api/auth/verificar-codigo", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email,code,newPassword:password}) }); const d = await r.json(); if (r.ok) { onComplete(); } else { alert(d.error); setLoading(false); } }}>{loading ? "Verificando..." : "Confirmar"}</button>
   </div></div>;
 }
-
 function ResetPasswordScreen({ onComplete }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
