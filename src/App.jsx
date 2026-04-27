@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef, useEffect } from "react";
 import {
   Search, MapPin, Bell, Star, Plus, ChevronRight,
   Hammer, Wrench, Paintbrush, Scissors, Zap, Square,
@@ -12,61 +12,61 @@ import {
   Activity, BarChart2, Package, ChevronUp, Eye, EyeOff,
 } from "lucide-react";
 
-/* ───────────────────────── DESIGN TOKENS ──────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ DESIGN TOKENS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const B  = "#007BFF";
 const O  = "#FF5722";
 const BG = "#F5F6FA";
 const G  = "#22c55e";
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   EMAIL CONFIG — SendGrid
-   ⚠️  NUNCA coloque a chave real aqui. Configure no backend:
-       Variável de ambiente:  SENDGRID_API_KEY=SG.xxxxxx
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   EMAIL CONFIG â€” SendGrid
+   âš ï¸  NUNCA coloque a chave real aqui. Configure no backend:
+       VariÃ¡vel de ambiente:  SENDGRID_API_KEY=SG.xxxxxx
        From:                  contato@multifuncao.com.br
-   Em produção, substitua a função sendWelcomeEmail() abaixo por uma
+   Em produÃ§Ã£o, substitua a funÃ§Ã£o sendWelcomeEmail() abaixo por uma
    chamada ao seu backend:  POST /api/send-welcome  { name, email, role }
-   O backend então usa:  sgMail.send({ to, from, subject, text })
-───────────────────────────────────────────────────────────────────────────── */
+   O backend entÃ£o usa:  sgMail.send({ to, from, subject, text })
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-/* ───────────────────────── STATIC DATA ───────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ STATIC DATA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const CATS = [
-  { id:"pedreiro",    label:"Pedreiro",          emoji:"👷", star:4.8, bg:"#FFF0EE", dot:"#E53935" },
-  { id:"encanador",   label:"Encanador",          emoji:"🔧", star:4.6, bg:"#E8F4FF", dot:"#0070F3" },
-  { id:"jardineiro",  label:"Jardineiro",         emoji:"🌿", star:4.9, bg:"#E8F8EE", dot:"#2E7D32" },
-  { id:"eletricista", label:"Eletricista",        emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825" },
-  { id:"pintor",      label:"Pintor",             emoji:"🖌️", star:4.5, bg:"#F3E5F5", dot:"#7B1FA2" },
-  { id:"vidraceiro",  label:"Vidraceiro",         emoji:"🪟", star:4.4, bg:"#E0F7FA", dot:"#00838F" },
-  { id:"chaveiro",    label:"Chaveiro 24h",       emoji:"🔑", star:4.7, bg:"#FFF8E1", dot:"#F57F17" },
-  { id:"desentupidor",label:"Desentupimento",     emoji:"💧", star:4.5, bg:"#E3F2FD", dot:"#1565C0" },
-  { id:"redes",       label:"Redes de Proteção",  emoji:"🕸️", star:4.6, bg:"#E8F5E9", dot:"#2E7D32" },
-  { id:"lavanderia",  label:"Téc. Máq. de Lavar", emoji:"🫧", star:4.4, bg:"#EDE7F6", dot:"#6A1B9A" },
-  { id:"tv",          label:"Instal. TV/Suporte", emoji:"📺", star:4.6, bg:"#E1F5FE", dot:"#0277BD" },
-  { id:"montador",    label:"Montador de Móveis", emoji:"🪛", star:4.7, bg:"#FBE9E7", dot:"#BF360C" },
-  { id:"estofados",   label:"Higien. Estofados",  emoji:"🛋️", star:4.8, bg:"#F3E5F5", dot:"#6A1B9A" },
+  { id:"pedreiro",    label:"Pedreiro",          emoji:"ðŸ‘·", star:4.8, bg:"#FFF0EE", dot:"#E53935" },
+  { id:"encanador",   label:"Encanador",          emoji:"ðŸ”§", star:4.6, bg:"#E8F4FF", dot:"#0070F3" },
+  { id:"jardineiro",  label:"Jardineiro",         emoji:"ðŸŒ¿", star:4.9, bg:"#E8F8EE", dot:"#2E7D32" },
+  { id:"eletricista", label:"Eletricista",        emoji:"âš¡", star:4.7, bg:"#FFFCE8", dot:"#F9A825" },
+  { id:"pintor",      label:"Pintor",             emoji:"ðŸ–Œï¸", star:4.5, bg:"#F3E5F5", dot:"#7B1FA2" },
+  { id:"vidraceiro",  label:"Vidraceiro",         emoji:"ðŸªŸ", star:4.4, bg:"#E0F7FA", dot:"#00838F" },
+  { id:"chaveiro",    label:"Chaveiro 24h",       emoji:"ðŸ”‘", star:4.7, bg:"#FFF8E1", dot:"#F57F17" },
+  { id:"desentupidor",label:"Desentupimento",     emoji:"ðŸ’§", star:4.5, bg:"#E3F2FD", dot:"#1565C0" },
+  { id:"redes",       label:"Redes de ProteÃ§Ã£o",  emoji:"ðŸ•¸ï¸", star:4.6, bg:"#E8F5E9", dot:"#2E7D32" },
+  { id:"lavanderia",  label:"TÃ©c. MÃ¡q. de Lavar", emoji:"ðŸ«§", star:4.4, bg:"#EDE7F6", dot:"#6A1B9A" },
+  { id:"tv",          label:"Instal. TV/Suporte", emoji:"ðŸ“º", star:4.6, bg:"#E1F5FE", dot:"#0277BD" },
+  { id:"montador",    label:"Montador de MÃ³veis", emoji:"ðŸª›", star:4.7, bg:"#FBE9E7", dot:"#BF360C" },
+  { id:"estofados",   label:"Higien. Estofados",  emoji:"ðŸ›‹ï¸", star:4.8, bg:"#F3E5F5", dot:"#6A1B9A" },
 ];
 
 const NEARBY = [
-  { id:"n1", title:"Pintar parede sala",    cat:"pintor",     rating:4.4, price:380, dist:"0,8 km", emoji:"🖌️", bg:"#F3E5F5" },
-  { id:"n2", title:"Conserto de encanação", cat:"encanador",  rating:4.8, price:220, dist:"1,1 km", emoji:"🔧", bg:"#E8F4FF" },
-  { id:"n3", title:"Poda e jardinagem",     cat:"jardineiro", rating:4.9, price:250, dist:"1,9 km", emoji:"🌿", bg:"#E8F8EE" },
-  { id:"n4", title:"Instalação elétrica",   cat:"eletricista",rating:4.7, price:310, dist:"2,3 km", emoji:"⚡", bg:"#FFFCE8" },
+  { id:"n1", title:"Pintar parede sala",    cat:"pintor",     rating:4.4, price:380, dist:"0,8 km", emoji:"ðŸ–Œï¸", bg:"#F3E5F5" },
+  { id:"n2", title:"Conserto de encanaÃ§Ã£o", cat:"encanador",  rating:4.8, price:220, dist:"1,1 km", emoji:"ðŸ”§", bg:"#E8F4FF" },
+  { id:"n3", title:"Poda e jardinagem",     cat:"jardineiro", rating:4.9, price:250, dist:"1,9 km", emoji:"ðŸŒ¿", bg:"#E8F8EE" },
+  { id:"n4", title:"InstalaÃ§Ã£o elÃ©trica",   cat:"eletricista",rating:4.7, price:310, dist:"2,3 km", emoji:"âš¡", bg:"#FFFCE8" },
 ];
 
 const SEED_FEED = [
-  { id:101, cat:"encanador",    title:"Vazamento na cozinha",      desc:"Cano embaixo da pia vazando há 2 dias.", value:150,  loc:"Vila Madalena, SP",  time:"Há 30min", client:"Ana S.",      rating:4.8, urgent:true  },
-  { id:102, cat:"pedreiro",     title:"Reforma do banheiro",        desc:"Trocar azulejos e rebocar uma parede.",  value:800,  loc:"Pinheiros, SP",      time:"Há 1h",    client:"Carlos M.",   rating:4.5, urgent:false },
-  { id:103, cat:"pintor",       title:"Pintura sala e quartos",     desc:"Apartamento 70m². Tinta por conta.",     value:1200, loc:"Moema, SP",           time:"Há 2h",    client:"Fernanda L.", rating:5.0, urgent:false },
-  { id:104, cat:"jardineiro",   title:"Poda e limpeza jardim",      desc:"Jardim 200m², árvores e grama.",         value:250,  loc:"Alto Pinheiros, SP",  time:"Há 3h",    client:"Roberto K.",  rating:4.2, urgent:false },
-  { id:105, cat:"chaveiro",     title:"Porta travada urgente",      desc:"Fui trancado do lado de fora de casa.",  value:180,  loc:"Santana, SP",         time:"Há 15min", client:"Paula R.",    rating:4.9, urgent:true  },
-  { id:106, cat:"desentupidor", title:"Ralo do banheiro entupido",  desc:"Água acumulando no box há 3 dias.",      value:120,  loc:"Tatuapé, SP",         time:"Há 45min", client:"Marcos T.",   rating:4.6, urgent:true  },
-  { id:107, cat:"redes",        title:"Rede de proteção varanda",   desc:"Varanda 8m², apartamento 4º andar.",     value:450,  loc:"Mooca, SP",           time:"Há 2h",    client:"Silvia B.",   rating:4.7, urgent:false },
-  { id:108, cat:"lavanderia",   title:"Máquina de lavar com defeito",desc:"Não centrifuga e faz barulho estranho.", value:200,  loc:"Ipiranga, SP",        time:"Há 3h",    client:"Jorge F.",    rating:4.4, urgent:false },
-  { id:109, cat:"tv",           title:"Instalar TV 65\" na parede", desc:"TV nova, precisa de suporte articulado.", value:160,  loc:"Vila Olímpia, SP",    time:"Há 1h",    client:"Daniela M.",  rating:4.8, urgent:false },
-  { id:110, cat:"montador",     title:"Montar guarda-roupas 6 portas",desc:"Comprei na Tok&Stok, preciso montar.", value:220,  loc:"Lapa, SP",            time:"Há 4h",    client:"André C.",    rating:4.5, urgent:false },
-  { id:111, cat:"estofados",    title:"Higienizar sofá e poltrona", desc:"Sofá 3 lugares + 1 poltrona, tecido.",   value:350,  loc:"Perdizes, SP",        time:"Há 5h",    client:"Beatriz N.",  rating:4.9, urgent:false },
+  { id:101, cat:"encanador",    title:"Vazamento na cozinha",      desc:"Cano embaixo da pia vazando hÃ¡ 2 dias.", value:150,  loc:"Vila Madalena, SP",  time:"HÃ¡ 30min", client:"Ana S.",      rating:4.8, urgent:true  },
+  { id:102, cat:"pedreiro",     title:"Reforma do banheiro",        desc:"Trocar azulejos e rebocar uma parede.",  value:800,  loc:"Pinheiros, SP",      time:"HÃ¡ 1h",    client:"Carlos M.",   rating:4.5, urgent:false },
+  { id:103, cat:"pintor",       title:"Pintura sala e quartos",     desc:"Apartamento 70mÂ². Tinta por conta.",     value:1200, loc:"Moema, SP",           time:"HÃ¡ 2h",    client:"Fernanda L.", rating:5.0, urgent:false },
+  { id:104, cat:"jardineiro",   title:"Poda e limpeza jardim",      desc:"Jardim 200mÂ², Ã¡rvores e grama.",         value:250,  loc:"Alto Pinheiros, SP",  time:"HÃ¡ 3h",    client:"Roberto K.",  rating:4.2, urgent:false },
+  { id:105, cat:"chaveiro",     title:"Porta travada urgente",      desc:"Fui trancado do lado de fora de casa.",  value:180,  loc:"Santana, SP",         time:"HÃ¡ 15min", client:"Paula R.",    rating:4.9, urgent:true  },
+  { id:106, cat:"desentupidor", title:"Ralo do banheiro entupido",  desc:"Ãgua acumulando no box hÃ¡ 3 dias.",      value:120,  loc:"TatuapÃ©, SP",         time:"HÃ¡ 45min", client:"Marcos T.",   rating:4.6, urgent:true  },
+  { id:107, cat:"redes",        title:"Rede de proteÃ§Ã£o varanda",   desc:"Varanda 8mÂ², apartamento 4Âº andar.",     value:450,  loc:"Mooca, SP",           time:"HÃ¡ 2h",    client:"Silvia B.",   rating:4.7, urgent:false },
+  { id:108, cat:"lavanderia",   title:"MÃ¡quina de lavar com defeito",desc:"NÃ£o centrifuga e faz barulho estranho.", value:200,  loc:"Ipiranga, SP",        time:"HÃ¡ 3h",    client:"Jorge F.",    rating:4.4, urgent:false },
+  { id:109, cat:"tv",           title:"Instalar TV 65\" na parede", desc:"TV nova, precisa de suporte articulado.", value:160,  loc:"Vila OlÃ­mpia, SP",    time:"HÃ¡ 1h",    client:"Daniela M.",  rating:4.8, urgent:false },
+  { id:110, cat:"montador",     title:"Montar guarda-roupas 6 portas",desc:"Comprei na Tok&Stok, preciso montar.", value:220,  loc:"Lapa, SP",            time:"HÃ¡ 4h",    client:"AndrÃ© C.",    rating:4.5, urgent:false },
+  { id:111, cat:"estofados",    title:"Higienizar sofÃ¡ e poltrona", desc:"SofÃ¡ 3 lugares + 1 poltrona, tecido.",   value:350,  loc:"Perdizes, SP",        time:"HÃ¡ 5h",    client:"Beatriz N.",  rating:4.9, urgent:false },
 ];
 
-/* ───────────────────────── MICRO COMPONENTS ──────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ MICRO COMPONENTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function MiniStars({ v, size = 10 }) {
   return (
     <span style={{ display:"flex", gap:1 }}>
@@ -160,7 +160,7 @@ function NearbyCard({ s }) {
   );
 }
 
-/* ───────────────────────── LOGO ───────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ LOGO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function Logo({ size = 28, white = false }) {
   const stroke = white ? "white" : B;
   return (
@@ -174,13 +174,13 @@ function Logo({ size = 28, white = false }) {
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   HEADER — two completely separate render paths, zero shared toggle logic.
-   isLoggedIn=false  → GuestHeader (shows toggle)
-   isLoggedIn=true   → AuthHeader  (NO toggle, ever, for any reason)
-───────────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   HEADER â€” two completely separate render paths, zero shared toggle logic.
+   isLoggedIn=false  â†’ GuestHeader (shows toggle)
+   isLoggedIn=true   â†’ AuthHeader  (NO toggle, ever, for any reason)
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua localização" }) {
+function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua localizaÃ§Ã£o" }) {
   const isProfessional = userRole === "professional";
   return (
     <div style={{
@@ -196,7 +196,7 @@ function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua
         <div style={{ display:"flex", alignItems:"center", gap:6 }}>
           <MapPin size={13} color="rgba(255,255,255,.7)" />
           <div>
-            <p style={{ fontSize:9, color:"rgba(255,255,255,.5)", fontWeight:700, margin:0 }}>Sua Localização</p>
+            <p style={{ fontSize:9, color:"rgba(255,255,255,.5)", fontWeight:700, margin:0 }}>Sua LocalizaÃ§Ã£o</p>
             <p style={{ fontSize:12, color:"white", fontWeight:800, margin:0 }}>{userLocation}</p>
           </div>
         </div>
@@ -209,7 +209,7 @@ function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua
           )}
           <div style={{ position:"relative" }}>
             <div style={{ width:34, height:34, borderRadius:"50%", background:"rgba(255,255,255,.2)", border:"2px solid rgba(255,255,255,.4)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:17 }}>
-              {isProfessional ? "👨‍🔧" : "👩"}
+              {isProfessional ? "ðŸ‘¨â€ðŸ”§" : "ðŸ‘©"}
             </div>
             {!isProfessional && (
               <div style={{ position:"absolute", bottom:-4, right:-4, background:"linear-gradient(135deg,#F9A825,#E65100)", borderRadius:99, padding:"1px 5px", boxShadow:"0 2px 6px rgba(0,0,0,.22)" }}>
@@ -239,7 +239,7 @@ function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua
             )}
           </div>
           <p style={{ fontSize:9, color:"rgba(255,255,255,.5)", margin:0, lineHeight:1.2 }}>
-            {isProfessional ? "mural de serviços" : "serviços em um toque"}
+            {isProfessional ? "mural de serviÃ§os" : "serviÃ§os em um toque"}
           </p>
         </div>
       </div>
@@ -258,7 +258,7 @@ function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua
             <span style={{ fontSize:11, color:"rgba(255,255,255,.9)", fontWeight:800 }}>Modo Profissional Ativo</span>
           </div>
           <span style={{ fontSize:10, fontWeight:800, color:O, background:"rgba(255,87,34,.25)", borderRadius:99, padding:"2px 8px" }}>
-            {isPro ? "PRO ✓" : "Free"}
+            {isPro ? "PRO âœ“" : "Free"}
           </span>
         </div>
       )}
@@ -275,21 +275,21 @@ function GuestHeader({ onToggleRole, activeRole = "client" }) {
         <div style={{ display:"flex", alignItems:"center", gap:6 }}>
           <MapPin size={13} color="rgba(255,255,255,.7)" />
           <div>
-            <p style={{ fontSize:9, color:"rgba(255,255,255,.5)", fontWeight:700, margin:0 }}>Sua Localização</p>
-            <p style={{ fontSize:12, color:"white", fontWeight:800, margin:0 }}>Sua localização</p>
+            <p style={{ fontSize:9, color:"rgba(255,255,255,.5)", fontWeight:700, margin:0 }}>Sua LocalizaÃ§Ã£o</p>
+            <p style={{ fontSize:12, color:"white", fontWeight:800, margin:0 }}>Sua localizaÃ§Ã£o</p>
           </div>
         </div>
-        <div style={{ width:34, height:34, borderRadius:"50%", background:"rgba(255,255,255,.2)", border:"2px solid rgba(255,255,255,.4)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:17 }}>👤</div>
+        <div style={{ width:34, height:34, borderRadius:"50%", background:"rgba(255,255,255,.2)", border:"2px solid rgba(255,255,255,.4)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:17 }}>ðŸ‘¤</div>
       </div>
       {/* row 2: logo */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"center", padding:"2px 18px 10px", gap:8 }}>
         <Logo size={26} white />
         <div>
           <span style={{ fontSize:19, fontWeight:900, color:"white", letterSpacing:-0.5, lineHeight:1 }}>multi</span>
-          <p style={{ fontSize:9, color:"rgba(255,255,255,.5)", margin:0, lineHeight:1.2 }}>serviços em um toque</p>
+          <p style={{ fontSize:9, color:"rgba(255,255,255,.5)", margin:0, lineHeight:1.2 }}>serviÃ§os em um toque</p>
         </div>
       </div>
-      {/* row 3: toggle — now drives App role state */}
+      {/* row 3: toggle â€” now drives App role state */}
       <div style={{ display:"flex", margin:"0 16px 14px", background:"rgba(255,255,255,.15)", borderRadius:14, padding:3 }}>
         {[{ id:"client", label:"Cliente", Icon:User }, { id:"professional", label:"Profissional", Icon:Briefcase }].map(({ id, label, Icon }) => (
           <button key={id} onClick={() => onToggleRole?.(id)} style={{
@@ -308,7 +308,7 @@ function GuestHeader({ onToggleRole, activeRole = "client" }) {
   );
 }
 
-/* Public façade — picks the right header, nothing shared between them */
+/* Public faÃ§ade â€” picks the right header, nothing shared between them */
 function Header({ isPro, notifCount, isLoggedIn, userRole, onAlerts, userLocation, onToggleRole, activeRole }) {
   if (isLoggedIn) {
     return <AuthHeader isPro={isPro} notifCount={notifCount} userRole={userRole} onAlerts={onAlerts} userLocation={userLocation} />;
@@ -316,16 +316,16 @@ function Header({ isPro, notifCount, isLoggedIn, userRole, onAlerts, userLocatio
   return <GuestHeader onToggleRole={onToggleRole} activeRole={activeRole} />;
 }
 
-/* ───────────────────────── BOTTOM NAV ─────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ BOTTOM NAV â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function BottomNav({ role, screen, setScreen, notifCount }) {
   const clientTabs = [
-    { id:"home",    label:"Início",       Icon:Home },
+    { id:"home",    label:"InÃ­cio",       Icon:Home },
     { id:"orders",  label:"Meus Pedidos", Icon:ClipboardList },
     { id:"chat",    label:"Mensagens",    Icon:MessageCircle },
     { id:"profile", label:"Perfil",       Icon:User },
   ];
   const proTabs = [
-    { id:"home",    label:"Início",    Icon:Home },
+    { id:"home",    label:"InÃ­cio",    Icon:Home },
     { id:"orders",  label:"Pedidos",   Icon:ClipboardList },
     { id:"upgrade", label:"Seja PRO",  Icon:Crown },
     { id:"profile", label:"Perfil",    Icon:User },
@@ -347,7 +347,7 @@ function BottomNav({ role, screen, setScreen, notifCount }) {
   );
 }
 
-/* ───────────────────────── PROPOSAL MODAL ──────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ PROPOSAL MODAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function ProposalModal({ service, onClose, onSend }) {
   const [proposal, setProposal] = useState("");
   const [value, setValue] = useState(String(service.value));
@@ -355,7 +355,7 @@ function ProposalModal({ service, onClose, onSend }) {
 
   const handleSend = () => {
     if (!proposal.trim()) return;
-    onSend({ serviceId: service.id, serviceTitle: service.title, proposal, value: Number(value), proName: "João Silva (Profissional)" });
+    onSend({ serviceId: service.id, serviceTitle: service.title, proposal, value: Number(value), proName: "JoÃ£o Silva (Profissional)" });
     onClose();
   };
 
@@ -376,7 +376,7 @@ function ProposalModal({ service, onClose, onSend }) {
           <label style={{ display:"block", fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.2, marginBottom:6 }}>Sua proposta</label>
           <textarea
             rows={3}
-            placeholder="Descreva brevemente como você pode resolver o problema..."
+            placeholder="Descreva brevemente como vocÃª pode resolver o problema..."
             value={proposal}
             onChange={e => setProposal(e.target.value)}
             style={{ width:"100%", border:"1.5px solid #EBEBEB", borderRadius:12, padding:"12px 14px", fontSize:13, color:"#1a1a2e", outline:"none", resize:"none", fontFamily:"inherit", boxSizing:"border-box", lineHeight:1.5 }}
@@ -384,7 +384,7 @@ function ProposalModal({ service, onClose, onSend }) {
         </div>
 
         <div style={{ marginBottom:20 }}>
-          <label style={{ display:"block", fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.2, marginBottom:6 }}>Valor que você cobra (R$)</label>
+          <label style={{ display:"block", fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.2, marginBottom:6 }}>Valor que vocÃª cobra (R$)</label>
           <div style={{ position:"relative" }}>
             <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", fontWeight:800, color:"#999", fontSize:13 }}>R$</span>
             <input
@@ -409,7 +409,7 @@ function ProposalModal({ service, onClose, onSend }) {
   );
 }
 
-/* ───────────────────────── ALERTS SCREEN ────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ ALERTS SCREEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function AlertsScreen({ notifications, onAccept, onOpenChat }) {
   if (notifications.length === 0) {
     return (
@@ -417,8 +417,8 @@ function AlertsScreen({ notifications, onAccept, onOpenChat }) {
         <div style={{ width:64, height:64, borderRadius:"50%", background:B+"12", display:"flex", alignItems:"center", justifyContent:"center" }}>
           <Bell size={28} color={B} />
         </div>
-        <p style={{ fontWeight:800, fontSize:16, color:"#1a1a2e" }}>Nenhuma notificação</p>
-        <p style={{ fontSize:13, color:"#aaa", lineHeight:1.5 }}>Quando um profissional enviar uma proposta, ela aparecerá aqui.</p>
+        <p style={{ fontWeight:800, fontSize:16, color:"#1a1a2e" }}>Nenhuma notificaÃ§Ã£o</p>
+        <p style={{ fontSize:13, color:"#aaa", lineHeight:1.5 }}>Quando um profissional enviar uma proposta, ela aparecerÃ¡ aqui.</p>
       </div>
     );
   }
@@ -429,11 +429,11 @@ function AlertsScreen({ notifications, onAccept, onOpenChat }) {
       {notifications.map(n => (
         <Card key={n.id}>
           <div style={{ display:"flex", alignItems:"flex-start", gap:12, marginBottom:10 }}>
-            <div style={{ width:40, height:40, borderRadius:12, background:O+"18", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>💼</div>
+            <div style={{ width:40, height:40, borderRadius:12, background:O+"18", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>ðŸ’¼</div>
             <div style={{ flex:1 }}>
               <p style={{ fontWeight:800, fontSize:13, color:"#1a1a2e", marginBottom:2 }}>Nova proposta recebida!</p>
               <p style={{ fontSize:12, color:"#aaa", marginBottom:4 }}>
-                <strong style={{ color:"#555" }}>{n.proName}</strong> quer atender seu serviço
+                <strong style={{ color:"#555" }}>{n.proName}</strong> quer atender seu serviÃ§o
               </p>
               <p style={{ fontSize:12, color:"#555", fontStyle:"italic", lineHeight:1.4, background:BG, borderRadius:8, padding:"8px 10px" }}>"{n.proposal}"</p>
             </div>
@@ -441,7 +441,7 @@ function AlertsScreen({ notifications, onAccept, onOpenChat }) {
 
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
             <div>
-              <p style={{ fontSize:11, color:"#aaa", marginBottom:2 }}>Serviço</p>
+              <p style={{ fontSize:11, color:"#aaa", marginBottom:2 }}>ServiÃ§o</p>
               <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e" }}>{n.serviceTitle}</p>
             </div>
             <div style={{ textAlign:"right" }}>
@@ -470,13 +470,13 @@ function AlertsScreen({ notifications, onAccept, onOpenChat }) {
   );
 }
 
-/* ───────────────────────── CHAT SCREEN ─────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ CHAT SCREEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function ChatScreen({ chat, onBack, onFinish }) {
   const [text, setText] = useState("");
   const [messages, setMessages] = useState(chat.messages || [
-    { id:1, from:"pro",    text:"Olá! Recebi seu serviço. Posso ir amanhã às 9h, tudo bem?", time:"10:01" },
-    { id:2, from:"client", text:"Ótimo! Estarei em casa. Por favor confirme antes de vir.", time:"10:03" },
-    { id:3, from:"pro",    text:"Confirmado! Trarei todos os materiais necessários 🔧",       time:"10:04" },
+    { id:1, from:"pro",    text:"OlÃ¡! Recebi seu serviÃ§o. Posso ir amanhÃ£ Ã s 9h, tudo bem?", time:"10:01" },
+    { id:2, from:"client", text:"Ã“timo! Estarei em casa. Por favor confirme antes de vir.", time:"10:03" },
+    { id:3, from:"pro",    text:"Confirmado! Trarei todos os materiais necessÃ¡rios ðŸ”§",       time:"10:04" },
   ]);
   const [finished, setFinished] = useState(false);
   const endRef = useRef(null);
@@ -490,23 +490,23 @@ function ChatScreen({ chat, onBack, onFinish }) {
     setMessages(m => [...m, { id: Date.now(), from:"client", text: msg, time }]);
     setText("");
     // simulate pro reply with quick actions
-    if (msg.includes("Localização")) {
-      setTimeout(() => setMessages(m => [...m, { id: Date.now()+1, from:"pro", text:"📍 Localização recebida! Estou a caminho.", time }]), 800);
+    if (msg.includes("LocalizaÃ§Ã£o")) {
+      setTimeout(() => setMessages(m => [...m, { id: Date.now()+1, from:"pro", text:"ðŸ“ LocalizaÃ§Ã£o recebida! Estou a caminho.", time }]), 800);
     } else if (msg.includes("Foto")) {
-      setTimeout(() => setMessages(m => [...m, { id: Date.now()+1, from:"pro", text:"📸 Pode enviar! Vou verificar o problema antes de chegar.", time }]), 800);
+      setTimeout(() => setMessages(m => [...m, { id: Date.now()+1, from:"pro", text:"ðŸ“¸ Pode enviar! Vou verificar o problema antes de chegar.", time }]), 800);
     }
   };
 
   const handleFinish = () => {
     setFinished(true);
-    setMessages(m => [...m, { id: Date.now(), from:"system", text:"✅ Serviço finalizado! Obrigado por usar o Multi.", time:"" }]);
+    setMessages(m => [...m, { id: Date.now(), from:"system", text:"âœ… ServiÃ§o finalizado! Obrigado por usar o Multi.", time:"" }]);
     setTimeout(onFinish, 2000);
   };
 
   const quickActions = [
-    { label:"📍 Enviar Localização", msg:"📍 Localização enviada — Rua das Flores, 123, sua região" },
-    { label:"📸 Solicitar Foto",    msg:"📸 Solicitar Foto do problema" },
-    { label:"✅ Finalizar Serviço", action: handleFinish },
+    { label:"ðŸ“ Enviar LocalizaÃ§Ã£o", msg:"ðŸ“ LocalizaÃ§Ã£o enviada â€” Rua das Flores, 123, sua regiÃ£o" },
+    { label:"ðŸ“¸ Solicitar Foto",    msg:"ðŸ“¸ Solicitar Foto do problema" },
+    { label:"âœ… Finalizar ServiÃ§o", action: handleFinish },
   ];
 
   return (
@@ -514,7 +514,7 @@ function ChatScreen({ chat, onBack, onFinish }) {
       {/* chat header */}
       <div style={{ padding:"14px 16px 12px", background:"white", borderBottom:"1px solid #F0F0F0", display:"flex", alignItems:"center", gap:12 }}>
         <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", padding:0 }}><ArrowLeft size={20} color="#aaa" /></button>
-        <div style={{ width:38, height:38, borderRadius:12, background:O+"18", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>💼</div>
+        <div style={{ width:38, height:38, borderRadius:12, background:O+"18", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>ðŸ’¼</div>
         <div style={{ flex:1 }}>
           <p style={{ fontWeight:900, fontSize:14, color:"#1a1a2e" }}>{chat.proName}</p>
           <div style={{ display:"flex", alignItems:"center", gap:4 }}>
@@ -523,7 +523,7 @@ function ChatScreen({ chat, onBack, onFinish }) {
           </div>
         </div>
         <div>
-          <p style={{ fontSize:10, color:"#aaa", textAlign:"right" }}>Serviço</p>
+          <p style={{ fontSize:10, color:"#aaa", textAlign:"right" }}>ServiÃ§o</p>
           <p style={{ fontSize:12, fontWeight:800, color:B }}>{chat.serviceTitle}</p>
         </div>
       </div>
@@ -587,33 +587,33 @@ function ChatScreen({ chat, onBack, onFinish }) {
   );
 }
 
-/* ───────────────────────── CATEGORY GRID CARDS ──────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ CATEGORY GRID CARDS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const CAT_GRID = [
   {
     id:"repairs", label:"REPAROS GERAIS", star:"5.0", bg:"#EBF4FF", accent:"#1E6FD9",
-    icons:["🔨","🔧"], desc:"Elétrica, hidráulica e mais",
+    icons:["ðŸ”¨","ðŸ”§"], desc:"ElÃ©trica, hidrÃ¡ulica e mais",
   },
   {
     id:"garden", label:"JARDIM & PISCINA", star:"4.9", bg:"#EAFAF1", accent:"#1A8A4A",
-    icons:["🌿","🏊"], desc:"Jardinagem e piscinas",
+    icons:["ðŸŒ¿","ðŸŠ"], desc:"Jardinagem e piscinas",
   },
   {
     id:"paint", label:"PINTURA & ACABAMENTO", star:"4.8", bg:"#FDF0FF", accent:"#8B2FC9",
-    icons:["🖌️","🎨"], desc:"Pintura residencial e comercial",
+    icons:["ðŸ–Œï¸","ðŸŽ¨"], desc:"Pintura residencial e comercial",
   },
   {
     id:"clean", label:"LIMPEZA ESPECIAL", star:"4.7", bg:"#FFF8E7", accent:"#C77B0A",
-    icons:["✨","🧹"], desc:"Fachadas, janelas e geral",
+    icons:["âœ¨","ðŸ§¹"], desc:"Fachadas, janelas e geral",
   },
 ];
 
 const MOCK_PROS = [
-  { id:1, name:"Ricardo Alves",  cat:"Encanador",  rating:5.0, jobs:127, value:180, verified:true,  avatar:"👨‍🔧", tag:"Mais rápido"  },
-  { id:2, name:"Miguel Santos",  cat:"Encanador",  rating:4.9, jobs:89,  value:220, verified:true,  avatar:"👷",   tag:"Melhor avaliado" },
-  { id:3, name:"Carla Freitas",  cat:"Encanadora", rating:4.8, jobs:54,  value:160, verified:false, avatar:"👩‍🔧", tag:"Mais barato" },
+  { id:1, name:"Ricardo Alves",  cat:"Encanador",  rating:5.0, jobs:127, value:180, verified:true,  avatar:"ðŸ‘¨â€ðŸ”§", tag:"Mais rÃ¡pido"  },
+  { id:2, name:"Miguel Santos",  cat:"Encanador",  rating:4.9, jobs:89,  value:220, verified:true,  avatar:"ðŸ‘·",   tag:"Melhor avaliado" },
+  { id:3, name:"Carla Freitas",  cat:"Encanadora", rating:4.8, jobs:54,  value:160, verified:false, avatar:"ðŸ‘©â€ðŸ”§", tag:"Mais barato" },
 ];
 
-/* ───────────────────────── RADAR SCREEN ────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ RADAR SCREEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function RadarSearchScreen({ service, onFound }) {
   const [phase, setPhase] = useState(0); // 0=searching, 1=found
 
@@ -633,15 +633,15 @@ function RadarSearchScreen({ service, onFound }) {
             <div style={{ width:40, height:40, borderRadius:12, background:cat?.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>{cat?.emoji}</div>
             <div>
               <p style={{ fontSize:12, color:"#aaa", margin:0 }}>{service.title}</p>
-              <p style={{ fontSize:14, fontWeight:900, color:"#1a1a2e", margin:0 }}>R$ {service.value} · {service.loc || "sua região"}</p>
+              <p style={{ fontSize:14, fontWeight:900, color:"#1a1a2e", margin:0 }}>R$ {service.value} Â· {service.loc || "sua regiÃ£o"}</p>
             </div>
           </div>
           {/* interest banner */}
           <div style={{ marginTop:12, padding:"10px 14px", borderRadius:14, background:G+"12", border:`1px solid ${G}40`, display:"flex", alignItems:"center", gap:8 }}>
-            <span style={{ fontSize:18 }}>🎉</span>
+            <span style={{ fontSize:18 }}>ðŸŽ‰</span>
             <div>
               <p style={{ fontSize:13, fontWeight:900, color:"#166534", margin:0 }}>3 Profissionais Interessados!</p>
-              <p style={{ fontSize:11, color:"#4ade80", margin:0 }}>Selecione o melhor para você</p>
+              <p style={{ fontSize:11, color:"#4ade80", margin:0 }}>Selecione o melhor para vocÃª</p>
             </div>
           </div>
         </div>
@@ -674,7 +674,7 @@ function RadarSearchScreen({ service, onFound }) {
                         </span>
                       )}
                     </div>
-                    <p style={{ fontSize:12, color:"#aaa", margin:0 }}>{pro.cat} · {pro.jobs} serviços</p>
+                    <p style={{ fontSize:12, color:"#aaa", margin:0 }}>{pro.cat} Â· {pro.jobs} serviÃ§os</p>
                   </div>
                 </div>
 
@@ -707,7 +707,7 @@ function RadarSearchScreen({ service, onFound }) {
     );
   }
 
-  // Phase 0 — radar animation
+  // Phase 0 â€” radar animation
   return (
     <>
       <style>{`
@@ -732,9 +732,9 @@ function RadarSearchScreen({ service, onFound }) {
             </div>
           </div>
         </div>
-        <h3 style={{ fontSize:20, fontWeight:900, color:"#1a1a2e", marginBottom:8 }}>Buscando Profissionais…</h3>
+        <h3 style={{ fontSize:20, fontWeight:900, color:"#1a1a2e", marginBottom:8 }}>Buscando Profissionaisâ€¦</h3>
         <p style={{ fontSize:13, color:"#aaa", lineHeight:1.6, marginBottom:6 }}>
-          Enviando para profissionais verificados<br/>na sua região
+          Enviando para profissionais verificados<br/>na sua regiÃ£o
         </p>
         <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:16 }}>
           {[0,1,2].map(i => (
@@ -750,51 +750,51 @@ function RadarSearchScreen({ service, onFound }) {
   );
 }
 
-/* ───────────────────────── CLIENT HOME (FOCUSED PREMIUM) ────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ CLIENT HOME (FOCUSED PREMIUM) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 const HOME_CATS = [
-  { id:"pedreiro",     label:"Pedreiro",          emoji:"👷", star:"4.8", bg:"#EBF4FF", accent:"#1565C0", grad:"linear-gradient(135deg,#1565C0,#1976D2)", desc:"Obras e reparos"    },
-  { id:"encanador",    label:"Encanador",          emoji:"🔧", star:"4.6", bg:"#E8F8EE", accent:"#1B5E20", grad:"linear-gradient(135deg,#1B5E20,#2E7D32)", desc:"Água e gás"          },
-  { id:"jardineiro",   label:"Jardineiro",         emoji:"🌿", star:"4.9", bg:"#FFF8E1", accent:"#E65100", grad:"linear-gradient(135deg,#E65100,#F57C00)", desc:"Jardim e poda"       },
-  { id:"pintor",       label:"Pintor",             emoji:"🖌️", star:"4.5", bg:"#F3E5F5", accent:"#6A1B9A", grad:"linear-gradient(135deg,#6A1B9A,#7B1FA2)", desc:"Pintura geral"       },
-  { id:"eletricista",  label:"Eletricista",        emoji:"⚡", star:"4.7", bg:"#FFFCE8", accent:"#F57F17", grad:"linear-gradient(135deg,#F57F17,#F9A825)", desc:"Instalações"         },
-  { id:"vidraceiro",   label:"Vidraceiro",         emoji:"🪟", star:"4.4", bg:"#E0F7FA", accent:"#00838F", grad:"linear-gradient(135deg,#00838F,#00ACC1)", desc:"Vidros e janelas"    },
-  { id:"chaveiro",     label:"Chaveiro 24h",       emoji:"🔑", star:"4.7", bg:"#FFF8E1", accent:"#F57F17", grad:"linear-gradient(135deg,#F9A825,#FFB300)", desc:"Urgência 24 horas"   },
-  { id:"desentupidor", label:"Desentupimento",     emoji:"💧", star:"4.5", bg:"#E3F2FD", accent:"#0277BD", grad:"linear-gradient(135deg,#0277BD,#039BE5)", desc:"Pias, ralos e tubos" },
-  { id:"redes",        label:"Redes de Proteção",  emoji:"🕸️", star:"4.6", bg:"#E8F5E9", accent:"#2E7D32", grad:"linear-gradient(135deg,#1B5E20,#388E3C)", desc:"Varanda e janelas"   },
-  { id:"lavanderia",   label:"Téc. Máq. de Lavar", emoji:"🫧", star:"4.4", bg:"#EDE7F6", accent:"#6A1B9A", grad:"linear-gradient(135deg,#4A148C,#7B1FA2)", desc:"Conserto e manutenção"},
-  { id:"tv",           label:"Instal. TV/Suporte", emoji:"📺", star:"4.6", bg:"#E1F5FE", accent:"#0277BD", grad:"linear-gradient(135deg,#01579B,#0288D1)", desc:"TVs e suportes"       },
-  { id:"montador",     label:"Montador de Móveis", emoji:"🪛", star:"4.7", bg:"#FBE9E7", accent:"#BF360C", grad:"linear-gradient(135deg,#BF360C,#E64A19)", desc:"Montagem e desmontagem"},
-  { id:"estofados",    label:"Higien. Estofados",  emoji:"🛋️", star:"4.8", bg:"#F3E5F5", accent:"#6A1B9A", grad:"linear-gradient(135deg,#880E4F,#C2185B)", desc:"Sofás e colchões"    },
+  { id:"pedreiro",     label:"Pedreiro",          emoji:"ðŸ‘·", star:"4.8", bg:"#EBF4FF", accent:"#1565C0", grad:"linear-gradient(135deg,#1565C0,#1976D2)", desc:"Obras e reparos"    },
+  { id:"encanador",    label:"Encanador",          emoji:"ðŸ”§", star:"4.6", bg:"#E8F8EE", accent:"#1B5E20", grad:"linear-gradient(135deg,#1B5E20,#2E7D32)", desc:"Ãgua e gÃ¡s"          },
+  { id:"jardineiro",   label:"Jardineiro",         emoji:"ðŸŒ¿", star:"4.9", bg:"#FFF8E1", accent:"#E65100", grad:"linear-gradient(135deg,#E65100,#F57C00)", desc:"Jardim e poda"       },
+  { id:"pintor",       label:"Pintor",             emoji:"ðŸ–Œï¸", star:"4.5", bg:"#F3E5F5", accent:"#6A1B9A", grad:"linear-gradient(135deg,#6A1B9A,#7B1FA2)", desc:"Pintura geral"       },
+  { id:"eletricista",  label:"Eletricista",        emoji:"âš¡", star:"4.7", bg:"#FFFCE8", accent:"#F57F17", grad:"linear-gradient(135deg,#F57F17,#F9A825)", desc:"InstalaÃ§Ãµes"         },
+  { id:"vidraceiro",   label:"Vidraceiro",         emoji:"ðŸªŸ", star:"4.4", bg:"#E0F7FA", accent:"#00838F", grad:"linear-gradient(135deg,#00838F,#00ACC1)", desc:"Vidros e janelas"    },
+  { id:"chaveiro",     label:"Chaveiro 24h",       emoji:"ðŸ”‘", star:"4.7", bg:"#FFF8E1", accent:"#F57F17", grad:"linear-gradient(135deg,#F9A825,#FFB300)", desc:"UrgÃªncia 24 horas"   },
+  { id:"desentupidor", label:"Desentupimento",     emoji:"ðŸ’§", star:"4.5", bg:"#E3F2FD", accent:"#0277BD", grad:"linear-gradient(135deg,#0277BD,#039BE5)", desc:"Pias, ralos e tubos" },
+  { id:"redes",        label:"Redes de ProteÃ§Ã£o",  emoji:"ðŸ•¸ï¸", star:"4.6", bg:"#E8F5E9", accent:"#2E7D32", grad:"linear-gradient(135deg,#1B5E20,#388E3C)", desc:"Varanda e janelas"   },
+  { id:"lavanderia",   label:"TÃ©c. MÃ¡q. de Lavar", emoji:"ðŸ«§", star:"4.4", bg:"#EDE7F6", accent:"#6A1B9A", grad:"linear-gradient(135deg,#4A148C,#7B1FA2)", desc:"Conserto e manutenÃ§Ã£o"},
+  { id:"tv",           label:"Instal. TV/Suporte", emoji:"ðŸ“º", star:"4.6", bg:"#E1F5FE", accent:"#0277BD", grad:"linear-gradient(135deg,#01579B,#0288D1)", desc:"TVs e suportes"       },
+  { id:"montador",     label:"Montador de MÃ³veis", emoji:"ðŸª›", star:"4.7", bg:"#FBE9E7", accent:"#BF360C", grad:"linear-gradient(135deg,#BF360C,#E64A19)", desc:"Montagem e desmontagem"},
+  { id:"estofados",    label:"Higien. Estofados",  emoji:"ðŸ›‹ï¸", star:"4.8", bg:"#F3E5F5", accent:"#6A1B9A", grad:"linear-gradient(135deg,#880E4F,#C2185B)", desc:"SofÃ¡s e colchÃµes"    },
 ];
 
 function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName }) {
-  const greeting     = userName ? `Olá, ${userName}! 👋` : "Olá! Seja bem-vindo 👋";
+  const greeting     = userName ? `OlÃ¡, ${userName}! ðŸ‘‹` : "OlÃ¡! Seja bem-vindo ðŸ‘‹";
   const subgreeting  = userName ? "O que vamos resolver hoje?" : "Vamos resolver algo hoje?";
 
   return (
     <div style={{ display:"flex", flexDirection:"column", background:"#F8F9FA", minHeight:"100vh", paddingBottom:120 }}>
 
-      {/* ── WARM GREETING ROW ── */}
+      {/* â”€â”€ WARM GREETING ROW â”€â”€ */}
       <div style={{ padding:"22px 20px 0" }}>
         <p style={{ fontSize:13, color:"#888", fontWeight:600, margin:"0 0 3px" }}>{greeting}</p>
         <h2 style={{ fontSize:22, fontWeight:900, color:"#1a1a2e", lineHeight:1.3, margin:0 }}>{subgreeting}</h2>
       </div>
 
-      {/* ── HERO BANNER ── */}
+      {/* â”€â”€ HERO BANNER â”€â”€ */}
       <div style={{ margin:"20px 20px 0", borderRadius:28, overflow:"hidden", height:176, position:"relative", boxShadow:"0 12px 36px rgba(0,0,0,.18)" }}>
         {/* layered illustrated background */}
         <div style={{ position:"absolute", inset:0, background:"linear-gradient(140deg,#0d2d6e 0%,#1a56c4 55%,#6c3fc2 100%)" }} />
         {/* decorative circles */}
         <div style={{ position:"absolute", top:-30, right:-30, width:160, height:160, borderRadius:"50%", background:"rgba(255,255,255,.06)" }} />
         <div style={{ position:"absolute", bottom:-40, right:40, width:120, height:120, borderRadius:"50%", background:"rgba(255,255,255,.05)" }} />
-        <div style={{ position:"absolute", top:16, right:16, opacity:.28, fontSize:56, lineHeight:1 }}>🏠</div>
-        <div style={{ position:"absolute", bottom:14, right:22, opacity:.40, fontSize:34 }}>✨</div>
-        <div style={{ position:"absolute", bottom:20, right:70, opacity:.35, fontSize:28 }}>🖌️</div>
+        <div style={{ position:"absolute", top:16, right:16, opacity:.28, fontSize:56, lineHeight:1 }}>ðŸ </div>
+        <div style={{ position:"absolute", bottom:14, right:22, opacity:.40, fontSize:34 }}>âœ¨</div>
+        <div style={{ position:"absolute", bottom:20, right:70, opacity:.35, fontSize:28 }}>ðŸ–Œï¸</div>
         {/* content */}
         <div style={{ position:"relative", zIndex:1, padding:"26px 24px", height:"100%", display:"flex", flexDirection:"column", justifyContent:"center" }}>
-          <p style={{ fontSize:10, fontWeight:800, color:"rgba(255,255,255,.65)", textTransform:"uppercase", letterSpacing:2, margin:"0 0 8px" }}>Multi · Serviços Premium</p>
-          <h3 style={{ fontSize:21, fontWeight:900, color:"white", lineHeight:1.35, margin:"0 0 16px" }}>Sua casa em boas<br/>mãos, num toque.</h3>
+          <p style={{ fontSize:10, fontWeight:800, color:"rgba(255,255,255,.65)", textTransform:"uppercase", letterSpacing:2, margin:"0 0 8px" }}>Multi Â· ServiÃ§os Premium</p>
+          <h3 style={{ fontSize:21, fontWeight:900, color:"white", lineHeight:1.35, margin:"0 0 16px" }}>Sua casa em boas<br/>mÃ£os, num toque.</h3>
           <button onClick={onPost} style={{
             alignSelf:"flex-start", padding:"10px 20px", borderRadius:99,
             background:"rgba(255,255,255,.95)", border:"none", cursor:"pointer",
@@ -807,14 +807,14 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName }
         </div>
       </div>
 
-      {/* ── CATEGORIES SECTION ── */}
+      {/* â”€â”€ CATEGORIES SECTION â”€â”€ */}
       <div style={{ padding:"30px 0 0" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16, padding:"0 20px" }}>
           <h3 style={{ fontSize:17, fontWeight:900, color:"#1a1a2e", margin:0 }}>Categorias</h3>
-          <span style={{ fontSize:11, color:"#aaa", fontWeight:700 }}>{HOME_CATS.length} serviços</span>
+          <span style={{ fontSize:11, color:"#aaa", fontWeight:700 }}>{HOME_CATS.length} serviÃ§os</span>
         </div>
 
-        {/* ── First 4 as featured 2x2 grid ── */}
+        {/* â”€â”€ First 4 as featured 2x2 grid â”€â”€ */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, padding:"0 20px", marginBottom:16 }}>
           {HOME_CATS.slice(0, 4).map(cat => (
             <button key={cat.id} onClick={onPost} style={{
@@ -837,9 +837,9 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName }
           ))}
         </div>
 
-        {/* ── Remaining 9 as horizontal scroll chips ── */}
+        {/* â”€â”€ Remaining 9 as horizontal scroll chips â”€â”€ */}
         <div>
-          <p style={{ fontSize:12, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.2, margin:"0 0 12px", padding:"0 20px" }}>Mais serviços</p>
+          <p style={{ fontSize:12, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.2, margin:"0 0 12px", padding:"0 20px" }}>Mais serviÃ§os</p>
           <div style={{ display:"flex", gap:10, overflowX:"auto", padding:"4px 20px 12px", scrollbarWidth:"none" }}>
             {HOME_CATS.slice(4).map(cat => (
               <button key={cat.id} onClick={onPost} style={{
@@ -862,7 +862,7 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName }
         </div>
       </div>
 
-      {/* ── ACTIVE ORDERS ── */}
+      {/* â”€â”€ ACTIVE ORDERS â”€â”€ */}
       {myServices.length > 0 && (
         <div style={{ padding:"30px 20px 0" }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
@@ -875,7 +875,7 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName }
             {myServices.slice(0, 3).map(s => {
               const cat = CATS.find(c => c.id === s.cat);
               const statusColor = s.status === "open" ? B : s.status === "inprogress" ? O : G;
-              const statusLabel = s.status === "open" ? "Aguardando" : s.status === "inprogress" ? "Em andamento" : "Concluído";
+              const statusLabel = s.status === "open" ? "Aguardando" : s.status === "inprogress" ? "Em andamento" : "ConcluÃ­do";
               return (
                 <div key={s.id} onClick={() => onViewService(s)} style={{
                   background:"white", borderRadius:20, padding:"14px 16px",
@@ -904,13 +904,13 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName }
         </div>
       )}
 
-      {/* ── TRUST STRIP ── */}
+      {/* â”€â”€ TRUST STRIP â”€â”€ */}
       <div style={{ margin:"28px 20px 0", borderRadius:20, background:"white", padding:"16px 20px", boxShadow:"0 2px 10px rgba(0,0,0,.05)", border:"1px solid #F0F2F5" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-around" }}>
           {[
             { val:"12k+", lbl:"Profissionais" },
-            { val:"98%",  lbl:"Satisfação" },
-            { val:"4,9★", lbl:"Avaliação" },
+            { val:"98%",  lbl:"SatisfaÃ§Ã£o" },
+            { val:"4,9â˜…", lbl:"AvaliaÃ§Ã£o" },
           ].map((item, i) => (
             <div key={i} style={{ textAlign:"center", flex:1, borderRight: i < 2 ? "1px solid #F0F2F5" : "none" }}>
               <p style={{ fontSize:18, fontWeight:900, color:B, margin:0 }}>{item.val}</p>
@@ -924,7 +924,7 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName }
   );
 }
 
-/* ───────────────────────── POST SERVICE SCREEN ──────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ POST SERVICE SCREEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function PostServiceScreen({ onBack, onSuccess }) {
   const [form,       setForm]       = useState({ cat:"", desc:"", value:"", cep:"", material: false });
   const [photos,     setPhotos]     = useState([]);
@@ -955,7 +955,7 @@ function PostServiceScreen({ onBack, onSuccess }) {
       try {
         const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
         const d = await r.json();
-        if (d.erro) { setCepError("CEP não encontrado"); }
+        if (d.erro) { setCepError("CEP nÃ£o encontrado"); }
         else { setCepInfo({ bairro: d.bairro, cidade: d.localidade, uf: d.uf, logradouro: d.logradouro }); }
       } catch { setCepError("Erro ao buscar CEP"); }
       finally { setCepLoading(false); }
@@ -971,7 +971,7 @@ function PostServiceScreen({ onBack, onSuccess }) {
     <div style={{ display:"flex", flexDirection:"column", gap:18, padding:"18px 16px 40px" }}>
       <input ref={inputRef} type="file" accept="image/*" multiple style={{ display:"none" }} onChange={handleFiles} />
       <BackBtn onClick={onBack} />
-      <h2 style={{ fontSize:20, fontWeight:900, color:"#1a1a2e", margin:0 }}>Novo Serviço</h2>
+      <h2 style={{ fontSize:20, fontWeight:900, color:"#1a1a2e", margin:0 }}>Novo ServiÃ§o</h2>
 
       {/* Categoria */}
       <div>
@@ -985,15 +985,15 @@ function PostServiceScreen({ onBack, onSuccess }) {
         </div>
       </div>
 
-      {/* Descrição */}
+      {/* DescriÃ§Ã£o */}
       <div>
-        <label style={L}>Descrição do problema</label>
-        <textarea rows={4} placeholder="Seja detalhado sobre o que precisa…" style={{ ...F, resize:"none", lineHeight:1.6 }} value={form.desc} onChange={e => setForm({ ...form, desc:e.target.value })} />
+        <label style={L}>DescriÃ§Ã£o do problema</label>
+        <textarea rows={4} placeholder="Seja detalhado sobre o que precisaâ€¦" style={{ ...F, resize:"none", lineHeight:1.6 }} value={form.desc} onChange={e => setForm({ ...form, desc:e.target.value })} />
       </div>
 
       {/* CEP */}
       <div>
-        <label style={L}>CEP do local do serviço</label>
+        <label style={L}>CEP do local do serviÃ§o</label>
         <div style={{ position:"relative" }}>
           <input
             type="tel"
@@ -1008,16 +1008,16 @@ function PostServiceScreen({ onBack, onSuccess }) {
           )}
         </div>
 
-        {/* CEP info — mostra bairro/cidade mas NÃO endereço completo */}
+        {/* CEP info â€” mostra bairro/cidade mas NÃƒO endereÃ§o completo */}
         {cepInfo && (
           <div style={{ marginTop:8, padding:"10px 14px", borderRadius:12, background:"#F0FDF4", border:"1px solid #BBF7D0", display:"flex", alignItems:"center", gap:10 }}>
             <MapPin size={14} color={G} style={{ flexShrink:0 }} />
             <div>
               <p style={{ fontSize:13, fontWeight:800, color:"#166534", margin:"0 0 2px" }}>
-                {cepInfo.bairro ? `${cepInfo.bairro} — ` : ""}{cepInfo.cidade}/{cepInfo.uf}
+                {cepInfo.bairro ? `${cepInfo.bairro} â€” ` : ""}{cepInfo.cidade}/{cepInfo.uf}
               </p>
               <p style={{ fontSize:11, color:"#16a34a", margin:0 }}>
-                🔒 Endereço completo só liberado após acordo com profissional
+                ðŸ”’ EndereÃ§o completo sÃ³ liberado apÃ³s acordo com profissional
               </p>
             </div>
           </div>
@@ -1045,11 +1045,11 @@ function PostServiceScreen({ onBack, onSuccess }) {
 
       {/* Material */}
       <div>
-        <label style={L}>Material necessário</label>
+        <label style={L}>Material necessÃ¡rio</label>
         <div style={{ background:"white", border:"1.5px solid #EBEBEB", borderRadius:14, overflow:"hidden" }}>
           {[
-            { val: false, icon:"🧰", label:"Não precisa de material",   sub:"O profissional só precisa trazer ferramentas" },
-            { val: true,  icon:"🪣", label:"Profissional traz material", sub:"Ex: tinta, cano, cimento, peças de reposição" },
+            { val: false, icon:"ðŸ§°", label:"NÃ£o precisa de material",   sub:"O profissional sÃ³ precisa trazer ferramentas" },
+            { val: true,  icon:"ðŸª£", label:"Profissional traz material", sub:"Ex: tinta, cano, cimento, peÃ§as de reposiÃ§Ã£o" },
           ].map((opt, i) => (
             <div
               key={i}
@@ -1079,23 +1079,23 @@ function PostServiceScreen({ onBack, onSuccess }) {
 
       {/* Aviso de privacidade */}
       <div style={{ background:"#FFFBEB", border:"1px solid #FDE68A", borderRadius:12, padding:"10px 14px", display:"flex", gap:10 }}>
-        <span style={{ fontSize:16, flexShrink:0 }}>🔒</span>
+        <span style={{ fontSize:16, flexShrink:0 }}>ðŸ”’</span>
         <p style={{ fontSize:12, color:"#92400E", fontWeight:700, margin:0, lineHeight:1.6 }}>
-          No mural, os profissionais verão apenas o <strong>bairro e cidade</strong>. O endereço completo só é liberado após ambos confirmarem o serviço.
+          No mural, os profissionais verÃ£o apenas o <strong>bairro e cidade</strong>. O endereÃ§o completo sÃ³ Ã© liberado apÃ³s ambos confirmarem o serviÃ§o.
         </p>
       </div>
 
       <button
         onClick={() => { if (canPublish) onSuccess({ cat:form.cat, desc:form.desc, value:Number(form.value), cep:form.cep, cepInfo, material:form.material }); }}
         style={{ padding:"15px 0", borderRadius:14, border:"none", cursor: canPublish ? "pointer" : "not-allowed", background: canPublish ? `linear-gradient(135deg,${O},#E64A19)` : "#E5E7EB", color: canPublish ? "white" : "#9CA3AF", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow: canPublish ? "0 5px 18px rgba(255,87,34,.30)" : "none", transition:"all .2s" }}>
-        <Send size={15} /> Publicar Serviço
+        <Send size={15} /> Publicar ServiÃ§o
       </button>
     </div>
   );
 }
 
-/* ───────────────────────── SERVICE DETAIL CLIENT ──────────────────────────── */
-/* ───────────────────────── SERVICE STATUS STEPPER ──────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ SERVICE DETAIL CLIENT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ SERVICE STATUS STEPPER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 // Map service.status to a phase number 0-3
 function statusToPhase(status) {
@@ -1113,10 +1113,10 @@ function generatePin(serviceId) {
 }
 
 const PHASES = [
-  { icon:"🔍", label:"Buscando",        sub:"Aguardando profissional",   color:"#6366F1" },
-  { icon:"🤝", label:"Acordo Fechado",  sub:"Profissional confirmado",    color:B         },
-  { icon:"🛠️", label:"Em Execução",     sub:"Profissional no local",      color:O         },
-  { icon:"✅", label:"Concluído & Pago", sub:"Serviço finalizado",         color:G         },
+  { icon:"ðŸ”", label:"Buscando",        sub:"Aguardando profissional",   color:"#6366F1" },
+  { icon:"ðŸ¤", label:"Acordo Fechado",  sub:"Profissional confirmado",    color:B         },
+  { icon:"ðŸ› ï¸", label:"Em ExecuÃ§Ã£o",     sub:"Profissional no local",      color:O         },
+  { icon:"âœ…", label:"ConcluÃ­do & Pago", sub:"ServiÃ§o finalizado",         color:G         },
 ];
 
 function ServiceStatusStepper({ phase }) {
@@ -1157,7 +1157,7 @@ function ServiceStatusStepper({ phase }) {
   );
 }
 
-/* ───────────────────────── SERVICE DETAIL — CLIENT VIEW ─────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ SERVICE DETAIL â€” CLIENT VIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
   const [phase,      setPhase]      = useState(statusToPhase(service.status));
   const [rating,     setRating]     = useState(0);
@@ -1173,14 +1173,14 @@ function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
   // Simulate pro arriving (demo button)
   const simulateProArrival = () => {
     setPhase(2);
-    showToast?.("🛠️ Status atualizado: O profissional está no local!", O);
+    showToast?.("ðŸ› ï¸ Status atualizado: O profissional estÃ¡ no local!", O);
     onStatusChange?.(service.id, "executing");
   };
 
   const releasePayment = () => {
     setReleased(true);
     setPhase(3);
-    showToast?.("✅ Pagamento liberado! Serviço concluído com sucesso.", G);
+    showToast?.("âœ… Pagamento liberado! ServiÃ§o concluÃ­do com sucesso.", G);
     onStatusChange?.(service.id, "done");
   };
 
@@ -1188,7 +1188,7 @@ function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
     <div style={{ display:"flex", flexDirection:"column", gap:14, padding:"18px 16px 60px", background:"#F8F9FA", minHeight:"100vh" }}>
       <BackBtn onClick={onBack} />
 
-      {/* ── SERVICE HEADER ── */}
+      {/* â”€â”€ SERVICE HEADER â”€â”€ */}
       <div style={{ background:"white", borderRadius:20, padding:"16px", boxShadow:"0 2px 12px rgba(0,0,0,.07)" }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
           <div style={{ width:46, height:46, borderRadius:14, background:cat?.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, flexShrink:0 }}>{cat?.emoji}</div>
@@ -1205,13 +1205,13 @@ function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
         <p style={{ fontSize:12, color:"#888", lineHeight:1.5, margin:0 }}>{service.desc}</p>
       </div>
 
-      {/* ── STEPPER ── */}
+      {/* â”€â”€ STEPPER â”€â”€ */}
       <div style={{ background:"white", borderRadius:20, padding:"16px 12px", boxShadow:"0 2px 12px rgba(0,0,0,.07)" }}>
-        <p style={{ fontSize:12, fontWeight:800, color:"#1a1a2e", margin:"0 0 14px" }}>Progresso do Serviço</p>
+        <p style={{ fontSize:12, fontWeight:800, color:"#1a1a2e", margin:"0 0 14px" }}>Progresso do ServiÃ§o</p>
         <ServiceStatusStepper phase={phase} />
       </div>
 
-      {/* ── CUSTODY CARD (phases 1–3) ── */}
+      {/* â”€â”€ CUSTODY CARD (phases 1â€“3) â”€â”€ */}
       {phase >= 1 && !released && (
         <div style={{ borderRadius:20, overflow:"hidden", boxShadow:"0 4px 18px rgba(0,0,0,.10)" }}>
           {/* header */}
@@ -1220,7 +1220,7 @@ function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
               <Shield size={18} color="#4ade80" />
             </div>
             <div>
-              <p style={{ fontSize:13, fontWeight:900, color:"white", margin:0 }}>Pagamento em Custódia</p>
+              <p style={{ fontSize:13, fontWeight:900, color:"white", margin:0 }}>Pagamento em CustÃ³dia</p>
               <p style={{ fontSize:11, color:"rgba(255,255,255,.55)", margin:0 }}>Garantia Multi</p>
             </div>
             <span style={{ marginLeft:"auto", fontSize:16, fontWeight:900, color:"#4ade80" }}>R$ {service.proposalValue || service.value}</span>
@@ -1229,17 +1229,17 @@ function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
           {/* body */}
           <div style={{ background:"white", padding:"14px 16px" }}>
             <p style={{ fontSize:12, color:"#555", lineHeight:1.6, margin:"0 0 14px" }}>
-              💡 Seu pagamento está <strong style={{ color:"#1a1a2e" }}>seguro com o Multi</strong>. Só libere o código após o término do serviço.
+              ðŸ’¡ Seu pagamento estÃ¡ <strong style={{ color:"#1a1a2e" }}>seguro com o Multi</strong>. SÃ³ libere o cÃ³digo apÃ³s o tÃ©rmino do serviÃ§o.
             </p>
 
             {/* PIN display */}
             <div style={{ background:"#F8F9FA", borderRadius:14, padding:"12px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", border:"1.5px dashed #E5E7EB" }}>
               <div>
-                <p style={{ fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1, margin:"0 0 4px" }}>Código de Liberação</p>
+                <p style={{ fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1, margin:"0 0 4px" }}>CÃ³digo de LiberaÃ§Ã£o</p>
                 <div style={{ display:"flex", gap:8 }}>
                   {pin.split("").map((d, i) => (
                     <div key={i} style={{ width:36, height:44, borderRadius:10, background:"white", border:`2px solid ${G}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, fontWeight:900, color:"#1a1a2e", boxShadow:"0 2px 8px rgba(0,0,0,.08)" }}>
-                      {phase >= 2 ? d : "•"}
+                      {phase >= 2 ? d : "â€¢"}
                     </div>
                   ))}
                 </div>
@@ -1253,7 +1253,7 @@ function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
               )}
             </div>
 
-            {/* Release button — only when executing */}
+            {/* Release button â€” only when executing */}
             {phase === 2 && (
               <button onClick={releasePayment} style={{ marginTop:14, width:"100%", padding:"14px 0", borderRadius:14, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${G},#16a34a)`, color:"white", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:`0 5px 18px ${G}44` }}>
                 <Check size={17} /> Liberar Pagamento & Finalizar
@@ -1263,12 +1263,12 @@ function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
         </div>
       )}
 
-      {/* ── PROFESSIONAL INFO (phase 1+) ── */}
+      {/* â”€â”€ PROFESSIONAL INFO (phase 1+) â”€â”€ */}
       {phase >= 1 && service.pro && (
         <div style={{ background:"white", borderRadius:20, padding:"14px 16px", boxShadow:"0 2px 12px rgba(0,0,0,.07)" }}>
           <p style={{ fontSize:11, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1, margin:"0 0 10px" }}>Profissional Contratado</p>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <div style={{ width:46, height:46, borderRadius:14, background:O+"18", display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, flexShrink:0 }}>👨‍🔧</div>
+            <div style={{ width:46, height:46, borderRadius:14, background:O+"18", display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, flexShrink:0 }}>ðŸ‘¨â€ðŸ”§</div>
             <div style={{ flex:1 }}>
               <p style={{ fontWeight:900, fontSize:14, color:"#1a1a2e", margin:"0 0 3px" }}>{service.pro}</p>
               <div style={{ display:"flex", alignItems:"center", gap:5 }}>
@@ -1280,42 +1280,42 @@ function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
             {phase >= 2 && (
               <div style={{ background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:10, padding:"6px 10px", textAlign:"right" }}>
                 <p style={{ fontSize:9, color:G, fontWeight:700, margin:0 }}>Contato</p>
-                <p style={{ fontSize:12, fontWeight:900, color:"#166534", margin:0 }}>📱 (11) 9 8765</p>
+                <p style={{ fontSize:12, fontWeight:900, color:"#166534", margin:0 }}>ðŸ“± (11) 9 8765</p>
               </div>
             )}
           </div>
 
-          {/* simulate arrival button — demo only, phase 1 */}
+          {/* simulate arrival button â€” demo only, phase 1 */}
           {phase === 1 && (
             <button onClick={simulateProArrival} style={{ marginTop:12, width:"100%", padding:"11px 0", borderRadius:12, border:`1.5px solid ${O}`, background:"white", color:O, fontWeight:800, fontSize:13, cursor:"pointer" }}>
-              🛠️ Simular: Profissional chegou
+              ðŸ› ï¸ Simular: Profissional chegou
             </button>
           )}
         </div>
       )}
 
-      {/* ── SOS BUTTON (phase 2 only) ── */}
+      {/* â”€â”€ SOS BUTTON (phase 2 only) â”€â”€ */}
       {phase === 2 && (
         <div>
           {!showSOS ? (
             <button onClick={() => setShowSOS(true)} style={{ width:"100%", padding:"12px 0", borderRadius:14, border:"1.5px solid #FECACA", background:"#FFF5F5", color:"#DC2626", fontWeight:800, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-              <AlertCircle size={16} /> Suporte / Ajuda de Emergência
+              <AlertCircle size={16} /> Suporte / Ajuda de EmergÃªncia
             </button>
           ) : (
             <div style={{ background:"white", borderRadius:20, padding:"16px", boxShadow:"0 2px 12px rgba(0,0,0,.07)", border:"1.5px solid #FECACA" }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
                 <AlertCircle size={20} color="#DC2626" />
-                <p style={{ fontSize:14, fontWeight:900, color:"#DC2626", margin:0 }}>Central de Emergência Multi</p>
+                <p style={{ fontSize:14, fontWeight:900, color:"#DC2626", margin:0 }}>Central de EmergÃªncia Multi</p>
               </div>
               <p style={{ fontSize:12, color:"#555", lineHeight:1.6, margin:"0 0 14px" }}>
-                Nossa equipe está de sobreaviso. Se sentir qualquer insegurança, acione o suporte imediatamente.
+                Nossa equipe estÃ¡ de sobreaviso. Se sentir qualquer inseguranÃ§a, acione o suporte imediatamente.
               </p>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                 <button style={{ padding:"12px 0", borderRadius:12, border:"none", background:"#DC2626", color:"white", fontWeight:900, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
-                  📞 Ligar Suporte
+                  ðŸ“ž Ligar Suporte
                 </button>
                 <button style={{ padding:"12px 0", borderRadius:12, border:"none", background:"#1a1a2e", color:"white", fontWeight:900, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
-                  💬 Chat Urgente
+                  ðŸ’¬ Chat Urgente
                 </button>
               </div>
               <button onClick={() => setShowSOS(false)} style={{ marginTop:10, width:"100%", padding:"10px", borderRadius:12, border:"1.5px solid #E5E7EB", background:"white", color:"#888", fontWeight:700, fontSize:12, cursor:"pointer" }}>
@@ -1326,22 +1326,22 @@ function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
         </div>
       )}
 
-      {/* ── RATING (done) ── */}
+      {/* â”€â”€ RATING (done) â”€â”€ */}
       {phase === 3 && (
         <div style={{ background:"white", borderRadius:20, padding:"16px", boxShadow:"0 2px 12px rgba(0,0,0,.07)" }}>
-          <h3 style={{ fontWeight:900, color:"#1a1a2e", marginBottom:10, fontSize:14 }}>Avalie o Serviço</h3>
+          <h3 style={{ fontWeight:900, color:"#1a1a2e", marginBottom:10, fontSize:14 }}>Avalie o ServiÃ§o</h3>
           {!rated ? (
             <>
               <p style={{ fontSize:12, color:"#aaa", marginBottom:12 }}>Como foi o atendimento?</p>
               <div style={{ display:"flex", gap:6, marginBottom:14 }}>
                 {[1,2,3,4,5].map(s => <Star key={s} size={32} fill={rating >= s ? O : "none"} stroke={rating >= s ? O : "#ddd"} style={{ cursor:"pointer" }} onClick={() => setRating(s)} />)}
               </div>
-              {rating > 0 && <button onClick={() => setRated(true)} style={{ width:"100%", padding:"13px 0", borderRadius:12, fontWeight:900, color:"white", fontSize:13, background:`linear-gradient(135deg,${O},#E64A19)`, border:"none", cursor:"pointer" }}>Enviar Avaliação ⭐</button>}
+              {rating > 0 && <button onClick={() => setRated(true)} style={{ width:"100%", padding:"13px 0", borderRadius:12, fontWeight:900, color:"white", fontSize:13, background:`linear-gradient(135deg,${O},#E64A19)`, border:"none", cursor:"pointer" }}>Enviar AvaliaÃ§Ã£o â­</button>}
             </>
           ) : (
             <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8, padding:"8px 0" }}>
               <div style={{ width:50, height:50, borderRadius:"50%", background:"#DCFCE7", display:"flex", alignItems:"center", justifyContent:"center" }}><Check size={24} color="#16a34a" /></div>
-              <p style={{ fontWeight:800, color:"#1a1a2e" }}>Avaliação enviada!</p>
+              <p style={{ fontWeight:800, color:"#1a1a2e" }}>AvaliaÃ§Ã£o enviada!</p>
               <MiniStars v={rating} size={18} />
             </div>
           )}
@@ -1351,7 +1351,7 @@ function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
   );
 }
 
-/* ───────────────────────── SERVICE DETAIL — PROFESSIONAL PIN ENTRY ──────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ SERVICE DETAIL â€” PROFESSIONAL PIN ENTRY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function ServiceDetailPinEntry({ service, onBack, onStatusChange, showToast }) {
   const [enteredPin, setEnteredPin] = useState("");
   const [pinError,   setPinError]   = useState(false);
@@ -1368,7 +1368,7 @@ function ServiceDetailPinEntry({ service, onBack, onStatusChange, showToast }) {
       setTimeout(() => {
         if (next === pin) {
           setConfirmed(true);
-          showToast?.("✅ PIN correto! Serviço finalizado. Pagamento liberado!", G);
+          showToast?.("âœ… PIN correto! ServiÃ§o finalizado. Pagamento liberado!", G);
           onStatusChange?.(service.id, "done");
         } else {
           setPinError(true);
@@ -1389,7 +1389,7 @@ function ServiceDetailPinEntry({ service, onBack, onStatusChange, showToast }) {
         <div style={{ width:46, height:46, borderRadius:14, background:cat?.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, flexShrink:0 }}>{cat?.emoji}</div>
         <div>
           <p style={{ fontWeight:900, fontSize:14, color:"#1a1a2e", margin:"0 0 3px" }}>{service.title}</p>
-          <p style={{ fontSize:12, color:"#aaa", margin:0 }}>R$ {service.proposalValue || service.value} · {service.loc || "Sua região"}</p>
+          <p style={{ fontSize:12, color:"#aaa", margin:0 }}>R$ {service.proposalValue || service.value} Â· {service.loc || "Sua regiÃ£o"}</p>
         </div>
       </div>
 
@@ -1403,8 +1403,8 @@ function ServiceDetailPinEntry({ service, onBack, onStatusChange, showToast }) {
           <div style={{ background:"linear-gradient(135deg,#1a1a2e,#2d2d44)", padding:"16px", display:"flex", alignItems:"center", gap:10 }}>
             <KeyRound size={20} color={O} />
             <div>
-              <p style={{ fontSize:14, fontWeight:900, color:"white", margin:0 }}>Inserir Código do Cliente</p>
-              <p style={{ fontSize:11, color:"rgba(255,255,255,.55)", margin:0 }}>Digite o PIN de 4 dígitos para liberar o pagamento</p>
+              <p style={{ fontSize:14, fontWeight:900, color:"white", margin:0 }}>Inserir CÃ³digo do Cliente</p>
+              <p style={{ fontSize:11, color:"rgba(255,255,255,.55)", margin:0 }}>Digite o PIN de 4 dÃ­gitos para liberar o pagamento</p>
             </div>
           </div>
           <div style={{ padding:"20px 16px" }}>
@@ -1412,7 +1412,7 @@ function ServiceDetailPinEntry({ service, onBack, onStatusChange, showToast }) {
             <div style={{ display:"flex", gap:10, justifyContent:"center", marginBottom:24 }}>
               {[0,1,2,3].map(i => (
                 <div key={i} style={{ width:52, height:60, borderRadius:14, border:`2px solid ${pinError ? "#EF4444" : i < enteredPin.length ? G : "#E5E7EB"}`, background: i < enteredPin.length ? G+"12" : "#F8F9FA", display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, fontWeight:900, color: pinError ? "#EF4444" : "#1a1a2e", transition:"all .15s" }}>
-                  {i < enteredPin.length ? "●" : ""}
+                  {i < enteredPin.length ? "â—" : ""}
                 </div>
               ))}
             </div>
@@ -1420,8 +1420,8 @@ function ServiceDetailPinEntry({ service, onBack, onStatusChange, showToast }) {
 
             {/* numpad */}
             <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10 }}>
-              {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((d, i) => (
-                <button key={i} onClick={() => { if (d === "⌫") { setEnteredPin(p => p.slice(0,-1)); setPinError(false); } else if (d) handleDigit(d); }} style={{ padding:"16px 0", borderRadius:14, border:"1.5px solid #E5E7EB", background: d === "⌫" ? "#FFF5F5" : "white", color: d === "⌫" ? "#EF4444" : "#1a1a2e", fontWeight:900, fontSize:20, cursor: d ? "pointer" : "default", boxShadow:"0 1px 4px rgba(0,0,0,.06)", transition:"transform .1s", visibility: d === "" ? "hidden" : "visible" }} >
+              {["1","2","3","4","5","6","7","8","9","","0","âŒ«"].map((d, i) => (
+                <button key={i} onClick={() => { if (d === "âŒ«") { setEnteredPin(p => p.slice(0,-1)); setPinError(false); } else if (d) handleDigit(d); }} style={{ padding:"16px 0", borderRadius:14, border:"1.5px solid #E5E7EB", background: d === "âŒ«" ? "#FFF5F5" : "white", color: d === "âŒ«" ? "#EF4444" : "#1a1a2e", fontWeight:900, fontSize:20, cursor: d ? "pointer" : "default", boxShadow:"0 1px 4px rgba(0,0,0,.06)", transition:"transform .1s", visibility: d === "" ? "hidden" : "visible" }} >
                   {d}
                 </button>
               ))}
@@ -1433,7 +1433,7 @@ function ServiceDetailPinEntry({ service, onBack, onStatusChange, showToast }) {
           <div style={{ width:72, height:72, borderRadius:"50%", background:`linear-gradient(135deg,${G},#16a34a)`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", boxShadow:`0 6px 20px ${G}44` }}>
             <Check size={36} color="white" strokeWidth={3} />
           </div>
-          <h3 style={{ fontSize:20, fontWeight:900, color:"#1a1a2e", margin:"0 0 8px" }}>Serviço Finalizado!</h3>
+          <h3 style={{ fontSize:20, fontWeight:900, color:"#1a1a2e", margin:"0 0 8px" }}>ServiÃ§o Finalizado!</h3>
           <p style={{ fontSize:14, color:"#6B7280", lineHeight:1.6, margin:"0 0 20px" }}>
             Pagamento de <strong style={{ color:G }}>R$ {service.proposalValue || service.value}</strong><br/>liberado e em processamento.
           </p>
@@ -1446,7 +1446,7 @@ function ServiceDetailPinEntry({ service, onBack, onStatusChange, showToast }) {
   );
 }
 
-/* ───────────────────────── PROFESSIONAL FEED ────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ PROFESSIONAL FEED â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function ProfessionalFeed({ onViewService, isPro, feedServices, embedded = false }) {
   const [applied,  setApplied]  = useState([]);
   const [filter,   setFilter]   = useState("all");
@@ -1506,7 +1506,7 @@ function ProfessionalFeed({ onViewService, isPro, feedServices, embedded = false
                 display:"flex", flexDirection:"column", gap:10,
               }}>
 
-                {/* ROW 1 — icon + title + urgent badge */}
+                {/* ROW 1 â€” icon + title + urgent badge */}
                 <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:8 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:10, flex:1, minWidth:0 }}>
                     <div style={{ width:40, height:40, borderRadius:11, background:cat?.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>
@@ -1514,24 +1514,24 @@ function ProfessionalFeed({ onViewService, isPro, feedServices, embedded = false
                     </div>
                     <span style={{ fontWeight:800, fontSize:14, color:"#1a1a2e", lineHeight:1.35 }}>{s.title}</span>
                   </div>
-                  {s.urgent && <Pill color="#E53935" sm>🔥 Urgente</Pill>}
+                  {s.urgent && <Pill color="#E53935" sm>ðŸ”¥ Urgente</Pill>}
                 </div>
 
-                {/* ROW 2 — description */}
+                {/* ROW 2 â€” description */}
                 <p style={{ fontSize:13, color:"#888", lineHeight:1.6, margin:0 }}>{s.desc}</p>
 
-                {/* ROW 3 — location + time */}
+                {/* ROW 3 â€” location + time */}
                 <div style={{ display:"flex", alignItems:"center", gap:14, fontSize:11, color:"#bbb" }}>
                   <span style={{ display:"flex", alignItems:"center", gap:4 }}><MapPin size={11} />{s.loc}</span>
                   <span style={{ display:"flex", alignItems:"center", gap:4 }}><Clock size={11} />{s.time}</span>
                 </div>
 
-                {/* ROW 4 — value */}
+                {/* ROW 4 â€” value */}
                 <div style={{ borderTop:"1px solid #F4F4F6", paddingTop:10 }}>
                   <span style={{ fontSize:22, fontWeight:900, color:B }}>R$ {s.value}</span>
                 </div>
 
-                {/* ROW 5 — action button (always visible, right-aligned) */}
+                {/* ROW 5 â€” action button (always visible, right-aligned) */}
                 <div style={{ display:"flex", justifyContent:"flex-end" }}>
                   <button
                     onClick={e => handleInterest(e, s)}
@@ -1549,7 +1549,7 @@ function ProfessionalFeed({ onViewService, isPro, feedServices, embedded = false
                   </button>
                 </div>
 
-                {/* ROW 6 — subtle pro lock notice (only for non-pro, below everything) */}
+                {/* ROW 6 â€” subtle pro lock notice (only for non-pro, below everything) */}
                 {!isPro && (
                   <div
                     onClick={() => onViewService({ _upgrade:true })}
@@ -1576,7 +1576,7 @@ function ProfessionalFeed({ onViewService, isPro, feedServices, embedded = false
   );
 }
 
-/* ───────────────────────── SERVICE DETAIL PRO ───────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ SERVICE DETAIL PRO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry }) {
   const cat   = CATS.find(c => c.id === service.cat);
   const phase = statusToPhase(service.status);
@@ -1597,12 +1597,12 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry })
         </div>
       )}
 
-      <Card><p style={{ fontWeight:800, color:"#1a1a2e", marginBottom:8, fontSize:13 }}>Descrição</p><p style={{ fontSize:13, color:"#aaa", lineHeight:1.5 }}>{service.desc}</p></Card>
+      <Card><p style={{ fontWeight:800, color:"#1a1a2e", marginBottom:8, fontSize:13 }}>DescriÃ§Ã£o</p><p style={{ fontSize:13, color:"#aaa", lineHeight:1.5 }}>{service.desc}</p></Card>
 
       <Card>
         <p style={{ fontWeight:800, color:"#1a1a2e", marginBottom:12, fontSize:13 }}>Cliente</p>
         <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:14 }}>
-          <div style={{ width:40, height:40, borderRadius:12, background:B+"18", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>👤</div>
+          <div style={{ width:40, height:40, borderRadius:12, background:B+"18", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>ðŸ‘¤</div>
           <div>
             <p style={{ fontWeight:800, color:"#1a1a2e", marginBottom:3, fontSize:14 }}>{service.client}</p>
             <div style={{ display:"flex", alignItems:"center", gap:5 }}><MiniStars v={Math.floor(service.rating)} /><span style={{ fontSize:11, color:"#aaa" }}>{service.rating}</span></div>
@@ -1610,8 +1610,8 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry })
         </div>
         {isPro ? (
           <div style={{ background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:12, padding:12 }}>
-            <p style={{ fontSize:11, fontWeight:800, color:"#166534", marginBottom:5 }}>✅ Contato desbloqueado (PRO)</p>
-            <p style={{ fontSize:14, fontWeight:900, color:"#1a1a2e", marginBottom:2 }}>📱 (11) 9 8765-4321</p>
+            <p style={{ fontSize:11, fontWeight:800, color:"#166534", marginBottom:5 }}>âœ… Contato desbloqueado (PRO)</p>
+            <p style={{ fontSize:14, fontWeight:900, color:"#1a1a2e", marginBottom:2 }}>ðŸ“± (11) 9 8765-4321</p>
             <p style={{ fontSize:13, color:"#666" }}>cliente@email.com</p>
           </div>
         ) : (
@@ -1620,7 +1620,7 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry })
             <div style={{ position:"relative", zIndex:1 }}>
               <Lock size={20} color="white" style={{ margin:"0 auto 6px", display:"block" }} />
               <p style={{ fontWeight:900, fontSize:13, color:"white", marginBottom:2 }}>Assine o Multi Pro para liberar este contato</p>
-              <p style={{ fontSize:11, color:"rgba(255,255,255,.7)" }}>A partir de R$ 29,90/mês</p>
+              <p style={{ fontSize:11, color:"rgba(255,255,255,.7)" }}>A partir de R$ 29,90/mÃªs</p>
             </div>
           </div>
         )}
@@ -1629,14 +1629,14 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry })
       {/* PIN entry CTA for executing/in-progress jobs */}
       {phase >= 1 && (
         <button onClick={onOpenPinEntry} style={{ width:"100%", padding:"15px 0", borderRadius:16, border:"none", cursor:"pointer", background:"linear-gradient(135deg,#1a1a2e,#2d2d44)", color:"white", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:10, boxShadow:"0 5px 18px rgba(0,0,0,.2)" }}>
-          <KeyRound size={18} /> Inserir Código do Cliente (Finalizar)
+          <KeyRound size={18} /> Inserir CÃ³digo do Cliente (Finalizar)
         </button>
       )}
     </div>
   );
 }
 
-/* ───────────────────────── PRO UPGRADE ──────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ PRO UPGRADE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function ProUpgrade({ onBack, onSubscribe }) {
   const [sel,          setSel]          = useState("monthly");
   const [step,         setStep]         = useState("plans"); // "plans" | "pix" | "done"
@@ -1657,9 +1657,9 @@ function ProUpgrade({ onBack, onSubscribe }) {
     : "https://web-production-e103b.up.railway.app";
 
   const plans = [
-    { id:"monthly",   label:"Mensal",     price:"29,90", period:"/mês",     badge:null,            value:29.90  },
+    { id:"monthly",   label:"Mensal",     price:"29,90", period:"/mÃªs",     badge:null,            value:29.90  },
     { id:"quarterly", label:"Trimestral", price:"79,90", period:"/3 meses", badge:"Economize 11%",  value:79.90  },
-    { id:"annual",    label:"Anual",      price:"249,90",period:"/ano",     badge:"🏆 Melhor valor!", value:249.90 },
+    { id:"annual",    label:"Anual",      price:"249,90",period:"/ano",     badge:"ðŸ† Melhor valor!", value:249.90 },
   ];
   const chosen = plans.find(p => p.id === sel);
 
@@ -1727,7 +1727,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  /* ── DONE SCREEN ── */
+  /* â”€â”€ DONE SCREEN â”€â”€ */
   if (step === "done") {
     return (
       <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#0F3460,#7C3AED)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:32, textAlign:"center" }}>
@@ -1735,24 +1735,24 @@ function ProUpgrade({ onBack, onSubscribe }) {
         <div className="pop" style={{ width:96, height:96, borderRadius:"50%", background:"linear-gradient(135deg,#F9A825,#E65100)", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:24, boxShadow:"0 8px 32px rgba(249,168,37,.5)" }}>
           <Crown size={48} color="white" />
         </div>
-        <h2 style={{ fontSize:28, fontWeight:900, color:"white", margin:"0 0 10px" }}>Você é Multi PRO!</h2>
+        <h2 style={{ fontSize:28, fontWeight:900, color:"white", margin:"0 0 10px" }}>VocÃª Ã© Multi PRO!</h2>
         <p style={{ fontSize:15, color:"rgba(255,255,255,.75)", lineHeight:1.7, margin:"0 0 28px" }}>
-          Pagamento confirmado. 🎉<br/>Todos os contatos foram desbloqueados.
+          Pagamento confirmado. ðŸŽ‰<br/>Todos os contatos foram desbloqueados.
         </p>
         <div style={{ display:"flex", gap:10, flexWrap:"wrap", justifyContent:"center", marginBottom:28 }}>
-          {["✅ Contatos liberados","✅ Chat ilimitado","✅ Selo PRO","✅ Prioridade no mural"].map((b, i) => (
+          {["âœ… Contatos liberados","âœ… Chat ilimitado","âœ… Selo PRO","âœ… Prioridade no mural"].map((b, i) => (
             <span key={i} style={{ fontSize:12, fontWeight:700, color:"white", background:"rgba(255,255,255,.15)", borderRadius:99, padding:"6px 14px" }}>{b}</span>
           ))}
         </div>
         <div style={{ display:"flex", gap:8 }}>
           {[O, G, B, "#F9A825"].map((c, i) => <div key={i} style={{ width:10, height:10, borderRadius:"50%", background:c }} />)}
         </div>
-        <p style={{ fontSize:12, color:"rgba(255,255,255,.45)", marginTop:20 }}>Redirecionando para o mural…</p>
+        <p style={{ fontSize:12, color:"rgba(255,255,255,.45)", marginTop:20 }}>Redirecionando para o muralâ€¦</p>
       </div>
     );
   }
 
-  /* ── PIX SCREEN ── */
+  /* â”€â”€ PIX SCREEN â”€â”€ */
   if (step === "pix") {
     const expired = seconds <= 0;
     return (
@@ -1791,7 +1791,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
             </div>
           ) : (
             <>
-              {/* QR Code — real from Asaas */}
+              {/* QR Code â€” real from Asaas */}
               <div style={{ background:"white", borderRadius:20, padding:20, textAlign:"center", boxShadow:"0 3px 16px rgba(0,0,0,.09)" }}>
                 <p style={{ fontSize:12, color:"#888", fontWeight:700, margin:"0 0 14px" }}>Escaneie o QR Code com o app do seu banco</p>
 
@@ -1816,20 +1816,20 @@ function ProUpgrade({ onBack, onSubscribe }) {
               {/* Pix copy-paste code */}
               <div style={{ background:"white", borderRadius:18, padding:16, boxShadow:"0 2px 10px rgba(0,0,0,.06)" }}>
                 <p style={{ fontSize:11, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1, margin:"0 0 10px" }}>
-                  Ou copie o código PIX
+                  Ou copie o cÃ³digo PIX
                 </p>
                 <div style={{ background:"#F8F9FA", borderRadius:12, padding:"12px 14px", marginBottom:12, wordBreak:"break-all", fontSize:11, color:"#555", lineHeight:1.6, fontFamily:"monospace", border:"1px dashed #E5E7EB" }}>
-                  {pixCode.slice(0, 60)}…
+                  {pixCode.slice(0, 60)}â€¦
                 </div>
                 <button onClick={handleCopy} style={{ width:"100%", padding:"12px 0", borderRadius:12, border:"none", cursor:"pointer", background: copied ? G : B, color:"white", fontWeight:900, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:8, transition:"background .2s" }}>
-                  {copied ? <><Check size={15} /> Copiado!</> : <><FileText size={15} /> Copiar código PIX</>}
+                  {copied ? <><Check size={15} /> Copiado!</> : <><FileText size={15} /> Copiar cÃ³digo PIX</>}
                 </button>
               </div>
 
               {/* Benefits reminder */}
               <div style={{ background:"linear-gradient(135deg,#7C3AED15,#4F46E515)", borderRadius:16, padding:"14px 16px", border:"1px solid #DDD6FE" }}>
-                <p style={{ fontSize:12, fontWeight:900, color:"#5B21B6", margin:"0 0 8px" }}>Você está assinando:</p>
-                {["Contatos desbloqueados", "Chat direto com clientes", "Selo PRO verificado", "Prioridade no mural de serviços"].map((b, i) => (
+                <p style={{ fontSize:12, fontWeight:900, color:"#5B21B6", margin:"0 0 8px" }}>VocÃª estÃ¡ assinando:</p>
+                {["Contatos desbloqueados", "Chat direto com clientes", "Selo PRO verificado", "Prioridade no mural de serviÃ§os"].map((b, i) => (
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:7, marginBottom: i < 3 ? 6 : 0 }}>
                     <Check size={13} color="#7C3AED" />
                     <span style={{ fontSize:12, color:"#4C1D95", fontWeight:600 }}>{b}</span>
@@ -1839,11 +1839,11 @@ function ProUpgrade({ onBack, onSubscribe }) {
 
               {/* Simulate payment confirmed (demo button) */}
               <button onClick={handleConfirmPayment} style={{ padding:"14px 0", borderRadius:16, border:"none", cursor:"pointer", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", color:"white", fontWeight:900, fontSize:14, boxShadow:"0 5px 18px rgba(124,58,237,.4)", display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
-                <CheckCircle2 size={18} /> Já paguei — Ativar PRO
+                <CheckCircle2 size={18} /> JÃ¡ paguei â€” Ativar PRO
               </button>
 
               <p style={{ textAlign:"center", fontSize:11, color:"#aaa" }}>
-                Pagamento processado em até 5 segundos após o PIX.
+                Pagamento processado em atÃ© 5 segundos apÃ³s o PIX.
               </p>
             </>
           )}
@@ -1852,7 +1852,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
     );
   }
 
-  /* ── CHECKOUT SCREEN ── */
+  /* â”€â”€ CHECKOUT SCREEN â”€â”€ */
   const PIX_KEY = "contato@multifuncao.com.br";
 
   const handleCopyKey = () => {
@@ -1864,7 +1864,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
   return (
     <div style={{ minHeight:"100vh", background:"#F5F6FA", display:"flex", flexDirection:"column" }}>
 
-      {/* ── HEADER ── */}
+      {/* â”€â”€ HEADER â”€â”€ */}
       <div style={{ background:"white", padding:"14px 20px", display:"flex", alignItems:"center", gap:12, borderBottom:"1px solid #EEEEF2", boxShadow:"0 1px 6px rgba(0,0,0,.06)" }}>
         <button onClick={onBack} style={{ background:"#F5F6FA", border:"none", borderRadius:"50%", width:36, height:36, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}>
           <ArrowLeft size={18} color="#555" />
@@ -1877,7 +1877,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
             </svg>
             <p style={{ fontSize:16, fontWeight:900, color:"#1a1a2e", margin:0 }}>Finalizar Pagamento</p>
           </div>
-          <p style={{ fontSize:11, color:"#22c55e", fontWeight:700, margin:0 }}>Conexão segura · SSL 256-bit</p>
+          <p style={{ fontSize:11, color:"#22c55e", fontWeight:700, margin:0 }}>ConexÃ£o segura Â· SSL 256-bit</p>
         </div>
         {/* Multi logo mark */}
         <div style={{ width:34, height:34, borderRadius:10, background:B, display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -1887,16 +1887,16 @@ function ProUpgrade({ onBack, onSubscribe }) {
 
       <div style={{ flex:1, padding:"18px 16px 40px", display:"flex", flexDirection:"column", gap:14, overflowY:"auto" }}>
 
-        {/* ── ORDER SUMMARY ── */}
+        {/* â”€â”€ ORDER SUMMARY â”€â”€ */}
         <div style={{ background:"white", borderRadius:18, padding:"14px 16px", boxShadow:"0 2px 10px rgba(0,0,0,.06)", border:"1px solid #EEEEF2" }}>
           <p style={{ fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.5, margin:"0 0 10px" }}>Resumo do Pedido</p>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <div style={{ width:46, height:46, borderRadius:14, background:"#EBF4FF", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, flexShrink:0 }}>
-              👑
+              ðŸ‘‘
             </div>
             <div style={{ flex:1 }}>
-              <p style={{ fontSize:14, fontWeight:900, color:"#1a1a2e", margin:"0 0 2px" }}>Multi PRO — {chosen?.label}</p>
-              <p style={{ fontSize:12, color:"#aaa", margin:0 }}>Acesso completo à plataforma{chosen?.id !== "monthly" ? " · Melhor custo-benefício" : ""}</p>
+              <p style={{ fontSize:14, fontWeight:900, color:"#1a1a2e", margin:"0 0 2px" }}>Multi PRO â€” {chosen?.label}</p>
+              <p style={{ fontSize:12, color:"#aaa", margin:0 }}>Acesso completo Ã  plataforma{chosen?.id !== "monthly" ? " Â· Melhor custo-benefÃ­cio" : ""}</p>
             </div>
             <div style={{ textAlign:"right" }}>
               <p style={{ fontSize:20, fontWeight:900, color:B, margin:0 }}>R$ {chosen?.price}</p>
@@ -1915,23 +1915,23 @@ function ProUpgrade({ onBack, onSubscribe }) {
           </div>
         </div>
 
-        {/* ── DIVIDER ── */}
+        {/* â”€â”€ DIVIDER â”€â”€ */}
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <div style={{ flex:1, height:1, background:"#E5E7EB" }} />
           <span style={{ fontSize:11, color:"#9CA3AF", fontWeight:700 }}>Como deseja pagar?</span>
           <div style={{ flex:1, height:1, background:"#E5E7EB" }} />
         </div>
 
-        {/* ── PIX CARD ── */}
+        {/* â”€â”€ PIX CARD â”€â”€ */}
         <div style={{ background:"white", borderRadius:20, overflow:"hidden", boxShadow:"0 4px 18px rgba(0,122,255,.12)", border:`2px solid ${B}` }}>
 
           {/* recommended ribbon */}
           <div style={{ background:`linear-gradient(135deg,${B},#0055d4)`, padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-              <span style={{ fontSize:13 }}>⚡</span>
+              <span style={{ fontSize:13 }}>âš¡</span>
               <span style={{ fontSize:12, fontWeight:900, color:"white" }}>RECOMENDADO</span>
             </div>
-            <span style={{ fontSize:11, color:"rgba(255,255,255,.8)", fontWeight:700 }}>Ativação imediata · Sem taxas</span>
+            <span style={{ fontSize:11, color:"rgba(255,255,255,.8)", fontWeight:700 }}>AtivaÃ§Ã£o imediata Â· Sem taxas</span>
           </div>
 
           <div style={{ padding:"18px 16px" }}>
@@ -1945,13 +1945,13 @@ function ProUpgrade({ onBack, onSubscribe }) {
               </div>
               <div style={{ flex:1 }}>
                 <p style={{ fontSize:16, fontWeight:900, color:"#1a1a2e", margin:"0 0 3px" }}>Pagar com PIX</p>
-                <p style={{ fontSize:12, color:"#6B7280", margin:0, lineHeight:1.5 }}>Aprovação imediata e sem taxas extras. QR Code válido por 30 minutos.</p>
+                <p style={{ fontSize:12, color:"#6B7280", margin:0, lineHeight:1.5 }}>AprovaÃ§Ã£o imediata e sem taxas extras. QR Code vÃ¡lido por 30 minutos.</p>
               </div>
             </div>
 
             {/* PIX benefits chips */}
             <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:16 }}>
-              {["✓ Sem taxas","✓ Instantâneo","✓ Qualquer banco","✓ 24h por dia"].map((t,i) => (
+              {["âœ“ Sem taxas","âœ“ InstantÃ¢neo","âœ“ Qualquer banco","âœ“ 24h por dia"].map((t,i) => (
                 <span key={i} style={{ fontSize:11, fontWeight:700, color:"#32BCAD", background:"#F0FDFB", border:"1px solid #CCFBF1", borderRadius:99, padding:"3px 10px" }}>{t}</span>
               ))}
             </div>
@@ -1982,7 +1982,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
           </div>
         </div>
 
-        {/* ── CARD PAYMENT CARD ── */}
+        {/* â”€â”€ CARD PAYMENT CARD â”€â”€ */}
         <div style={{ background:"white", borderRadius:20, boxShadow:"0 2px 12px rgba(0,0,0,.07)", border:"1.5px solid #E5E7EB", overflow:"hidden" }}>
           <div style={{ padding:"16px 16px 0" }}>
             <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:14 }}>
@@ -1991,8 +1991,8 @@ function ProUpgrade({ onBack, onSubscribe }) {
                 <CreditCard size={22} color="#6B7280" />
               </div>
               <div style={{ flex:1 }}>
-                <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:"0 0 2px" }}>Pagar com Cartão de Crédito</p>
-                <p style={{ fontSize:12, color:"#6B7280", margin:0 }}>Parcele em até 12x sem juros</p>
+                <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:"0 0 2px" }}>Pagar com CartÃ£o de CrÃ©dito</p>
+                <p style={{ fontSize:12, color:"#6B7280", margin:0 }}>Parcele em atÃ© 12x sem juros</p>
               </div>
             </div>
 
@@ -2024,20 +2024,20 @@ function ProUpgrade({ onBack, onSubscribe }) {
             <button
               onClick={() => setShowCardForm(v => !v)}
               style={{ padding:"13px 0", border:"none", borderRight:"1px solid #F0F0F0", background:"white", color:B, fontWeight:800, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
-              <CreditCard size={15} /> Cartão Salvo
+              <CreditCard size={15} /> CartÃ£o Salvo
             </button>
             <button
               onClick={() => setShowCardForm(v => !v)}
               style={{ padding:"13px 0", border:"none", background:"white", color:"#555", fontWeight:700, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
-              <span style={{ fontSize:16, lineHeight:1 }}>+</span> Novo Cartão
+              <span style={{ fontSize:16, lineHeight:1 }}>+</span> Novo CartÃ£o
             </button>
           </div>
 
           {/* inline card form (expandable) */}
           {showCardForm && (
             <div style={{ padding:"14px 16px 16px", borderTop:"1px solid #F0F0F0", display:"flex", flexDirection:"column", gap:10 }}>
-              <input placeholder="Número do cartão" type="tel" style={{ padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", fontFamily:"monospace" }} />
-              <input placeholder="Nome como no cartão" type="text" style={{ padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
+              <input placeholder="NÃºmero do cartÃ£o" type="tel" style={{ padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", fontFamily:"monospace" }} />
+              <input placeholder="Nome como no cartÃ£o" type="text" style={{ padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                 <input placeholder="MM/AA" type="tel" style={{ padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
                 <input placeholder="CVV" type="tel" style={{ padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
@@ -2052,7 +2052,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
           )}
         </div>
 
-        {/* ── SECURITY FOOTER ── */}
+        {/* â”€â”€ SECURITY FOOTER â”€â”€ */}
         <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:6, padding:"8px 0" }}>
           <div style={{ display:"flex", alignItems:"center", gap:6 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round">
@@ -2061,11 +2061,11 @@ function ProUpgrade({ onBack, onSubscribe }) {
             <span style={{ fontSize:12, fontWeight:700, color:"#22c55e" }}>Pagamento 100% Seguro</span>
           </div>
           <p style={{ fontSize:11, color:"#9CA3AF", textAlign:"center", margin:0, lineHeight:1.6 }}>
-            Processado por <strong style={{ color:"#555" }}>Asaas</strong> · Criptografia SSL 256-bit<br/>
-            Seus dados financeiros nunca são armazenados pelo Multi
+            Processado por <strong style={{ color:"#555" }}>Asaas</strong> Â· Criptografia SSL 256-bit<br/>
+            Seus dados financeiros nunca sÃ£o armazenados pelo Multi
           </p>
           <div style={{ display:"flex", gap:16, marginTop:4 }}>
-            {["🔒 Seguro","✅ Verificado","🛡️ Protegido"].map((t,i) => (
+            {["ðŸ”’ Seguro","âœ… Verificado","ðŸ›¡ï¸ Protegido"].map((t,i) => (
               <span key={i} style={{ fontSize:10, color:"#aaa", fontWeight:700 }}>{t}</span>
             ))}
           </div>
@@ -2076,18 +2076,18 @@ function ProUpgrade({ onBack, onSubscribe }) {
   );
 }
 
-/* ───────────────────────── PROFILE SCREEN ──────────────────────────────────── */
-/* ───────────────────────── WALLET SCREEN ────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ PROFILE SCREEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ WALLET SCREEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const WALLET_HISTORY = [
   { id:1, date:"02/07/2026", service:"Pintura do quarto",       value:320,  status:"received" },
-  { id:2, date:"28/06/2026", service:"Reforma calçada",          value:600,  status:"received" },
-  { id:3, date:"20/06/2026", service:"Instalação elétrica",      value:280,  status:"received" },
-  { id:4, date:"15/06/2026", service:"Reparo de encanação",      value:150,  status:"received" },
+  { id:2, date:"28/06/2026", service:"Reforma calÃ§ada",          value:600,  status:"received" },
+  { id:3, date:"20/06/2026", service:"InstalaÃ§Ã£o elÃ©trica",      value:280,  status:"received" },
+  { id:4, date:"15/06/2026", service:"Reparo de encanaÃ§Ã£o",      value:150,  status:"received" },
   { id:5, date:"10/06/2026", service:"Pintura sala e quartos",   value:1200, status:"received" },
 ];
 const PENDING_SERVICES = [
-  { id:"p1", service:"Instalação de chuveiro", value:200 },
-  { id:"p2", service:"Jardim — poda e limpeza", value:250 },
+  { id:"p1", service:"InstalaÃ§Ã£o de chuveiro", value:200 },
+  { id:"p2", service:"Jardim â€” poda e limpeza", value:250 },
 ];
 
 function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
@@ -2107,7 +2107,7 @@ function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
     if (!pixKey.trim() || !pixAmount) return;
     const amount = parseFloat(pixAmount.replace(",", "."));
     if (isNaN(amount) || amount <= 0 || amount > balance) {
-      showToast("❌ Valor inválido para saque.", "#DC2626");
+      showToast("âŒ Valor invÃ¡lido para saque.", "#DC2626");
       return;
     }
     setProcessing(true);
@@ -2116,7 +2116,7 @@ function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
       setWithdrawn(true);
       setWalletBalance?.(b => b - amount);
       setHistory(h => [{ id:Date.now(), date: new Date().toLocaleDateString("pt-BR"), service:"Saque via PIX", value:-amount, status:"withdrawn" }, ...h]);
-      showToast(`💸 Saque de R$ ${amount.toFixed(2).replace(".",",")} enviado via PIX!`, G);
+      showToast(`ðŸ’¸ Saque de R$ ${amount.toFixed(2).replace(".",",")} enviado via PIX!`, G);
       setTimeout(() => { setShowPix(false); setWithdrawn(false); setPixKey(""); setPixAmount(""); }, 2000);
     }, 2200);
   };
@@ -2124,7 +2124,7 @@ function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
   return (
     <div style={{ display:"flex", flexDirection:"column", background:"#F8F9FA", minHeight:"100vh", paddingBottom:60 }}>
 
-      {/* ── HEADER ── */}
+      {/* â”€â”€ HEADER â”€â”€ */}
       <div style={{ background:"linear-gradient(160deg,#0F3460 0%,#1a4a7a 100%)", padding:"16px 18px 32px", borderRadius:"0 0 28px 28px" }}>
         <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20 }}>
           <button onClick={onBack} style={{ background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:34, height:34, display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -2135,19 +2135,19 @@ function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
 
         {/* balance hero */}
         <div style={{ textAlign:"center", marginBottom:20 }}>
-          <p style={{ fontSize:11, fontWeight:800, color:"rgba(255,255,255,.55)", textTransform:"uppercase", letterSpacing:1.5, margin:"0 0 6px" }}>Saldo Disponível</p>
+          <p style={{ fontSize:11, fontWeight:800, color:"rgba(255,255,255,.55)", textTransform:"uppercase", letterSpacing:1.5, margin:"0 0 6px" }}>Saldo DisponÃ­vel</p>
           <p style={{ fontSize:42, fontWeight:900, color:"white", margin:"0 0 4px", lineHeight:1 }}>
             R$ <span style={{ color:"#4ade80" }}>{balance.toLocaleString("pt-BR", { minimumFractionDigits:2, maximumFractionDigits:2 })}</span>
           </p>
-          <p style={{ fontSize:12, color:"rgba(255,255,255,.5)", margin:0 }}>Disponível para saque agora</p>
+          <p style={{ fontSize:12, color:"rgba(255,255,255,.5)", margin:0 }}>DisponÃ­vel para saque agora</p>
         </div>
 
         {/* stats row */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
           {[
             { label:"Pendente", value:`R$ ${pending}`, color:O },
-            { label:"Este mês", value:`R$ ${totalMonth.toLocaleString("pt-BR")}`, color:"#4ade80" },
-            { label:"Serviços", value:history.filter(h=>h.status==="received").length, color:"white" },
+            { label:"Este mÃªs", value:`R$ ${totalMonth.toLocaleString("pt-BR")}`, color:"#4ade80" },
+            { label:"ServiÃ§os", value:history.filter(h=>h.status==="received").length, color:"white" },
           ].map((s, i) => (
             <div key={i} style={{ background:"rgba(255,255,255,.08)", borderRadius:12, padding:"10px 8px", textAlign:"center" }}>
               <p style={{ fontSize:15, fontWeight:900, color:s.color, margin:0 }}>{s.value}</p>
@@ -2157,50 +2157,50 @@ function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
         </div>
       </div>
 
-      {/* ── ACTION BUTTONS ── */}
+      {/* â”€â”€ ACTION BUTTONS â”€â”€ */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, padding:"20px 16px 0" }}>
         <button onClick={() => setShowPix(true)} style={{ padding:"14px 0", borderRadius:16, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${G},#16a34a)`, color:"white", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:`0 5px 16px ${G}44` }}>
           <Banknote size={17} /> Sacar via PIX
         </button>
-        <button onClick={() => showToast("📊 Relatório em PDF disponível em breve!")} style={{ padding:"14px 0", borderRadius:16, border:`1.5px solid ${B}`, background:"white", color:B, fontWeight:900, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-          <TrendingUp size={17} /> Relatório
+        <button onClick={() => showToast("ðŸ“Š RelatÃ³rio em PDF disponÃ­vel em breve!")} style={{ padding:"14px 0", borderRadius:16, border:`1.5px solid ${B}`, background:"white", color:B, fontWeight:900, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+          <TrendingUp size={17} /> RelatÃ³rio
         </button>
       </div>
 
-      {/* ── PENDING SERVICES ── */}
+      {/* â”€â”€ PENDING SERVICES â”€â”€ */}
       {PENDING_SERVICES.length > 0 && (
         <div style={{ margin:"20px 16px 0", background:"white", borderRadius:18, overflow:"hidden", boxShadow:"0 2px 10px rgba(0,0,0,.06)" }}>
           <div style={{ padding:"12px 16px 8px", borderBottom:"1px solid #F0F0F0", display:"flex", alignItems:"center", gap:8 }}>
             <Lock size={14} color={O} />
-            <p style={{ fontSize:12, fontWeight:900, color:"#1a1a2e", margin:0 }}>Em Custódia Multi</p>
+            <p style={{ fontSize:12, fontWeight:900, color:"#1a1a2e", margin:0 }}>Em CustÃ³dia Multi</p>
             <span style={{ marginLeft:"auto", fontSize:12, fontWeight:900, color:O }}>R$ {pending}</span>
           </div>
           {PENDING_SERVICES.map((s, i) => (
             <div key={s.id} style={{ padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom: i < PENDING_SERVICES.length-1 ? "1px solid #F8F8F8" : "none" }}>
               <div>
                 <p style={{ fontSize:13, fontWeight:700, color:"#1a1a2e", margin:0 }}>{s.service}</p>
-                <p style={{ fontSize:11, color:"#aaa", margin:0 }}>Aguardando finalização</p>
+                <p style={{ fontSize:11, color:"#aaa", margin:0 }}>Aguardando finalizaÃ§Ã£o</p>
               </div>
               <span style={{ fontSize:13, fontWeight:900, color:O }}>R$ {s.value}</span>
             </div>
           ))}
           <div style={{ padding:"10px 16px", background:"#FFF8F5" }}>
             <p style={{ fontSize:11, color:"#C44B00", fontWeight:700, margin:0, display:"flex", alignItems:"center", gap:5 }}>
-              <Shield size={12} color={O} /> Liberado pelo cliente ao concluir o serviço
+              <Shield size={12} color={O} /> Liberado pelo cliente ao concluir o serviÃ§o
             </p>
           </div>
         </div>
       )}
 
-      {/* ── PAYMENT RULES ── */}
+      {/* â”€â”€ PAYMENT RULES â”€â”€ */}
       <div style={{ margin:"16px 16px 0", background:"white", borderRadius:18, overflow:"hidden", boxShadow:"0 2px 10px rgba(0,0,0,.06)" }}>
         <div style={{ padding:"12px 16px 10px", borderBottom:"1px solid #F0F0F0" }}>
-          <p style={{ fontSize:13, fontWeight:900, color:"#1a1a2e", margin:0 }}>⏱️ Prazo de Recebimento</p>
+          <p style={{ fontSize:13, fontWeight:900, color:"#1a1a2e", margin:0 }}>â±ï¸ Prazo de Recebimento</p>
         </div>
         {[
-          { icon:"⚡", method:"PIX",              prazo:"D+1 após confirmação", taxa:"Sem taxas",         col:G,        bg:"#F0FDF4", border:"#BBF7D0" },
-          { icon:"💳", method:"Cartão de Débito",  prazo:"D+1 após confirmação", taxa:"Sem taxas",         col:G,        bg:"#F0FDF4", border:"#BBF7D0" },
-          { icon:"💜", method:"Cartão de Crédito", prazo:"D+2 após confirmação", taxa:"3% descontado",    col:"#F59E0B", bg:"#FFFBEB", border:"#FDE68A" },
+          { icon:"âš¡", method:"PIX",              prazo:"D+1 apÃ³s confirmaÃ§Ã£o", taxa:"Sem taxas",         col:G,        bg:"#F0FDF4", border:"#BBF7D0" },
+          { icon:"ðŸ’³", method:"CartÃ£o de DÃ©bito",  prazo:"D+1 apÃ³s confirmaÃ§Ã£o", taxa:"Sem taxas",         col:G,        bg:"#F0FDF4", border:"#BBF7D0" },
+          { icon:"ðŸ’œ", method:"CartÃ£o de CrÃ©dito", prazo:"D+2 apÃ³s confirmaÃ§Ã£o", taxa:"3% descontado",    col:"#F59E0B", bg:"#FFFBEB", border:"#FDE68A" },
         ].map((r, i) => (
           <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 16px", borderBottom: i < 2 ? "1px solid #F8F8F8" : "none" }}>
             <span style={{ fontSize:20, flexShrink:0 }}>{r.icon}</span>
@@ -2215,10 +2215,10 @@ function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
         ))}
       </div>
 
-      {/* ── HISTORY ── */}
+      {/* â”€â”€ HISTORY â”€â”€ */}
       <div style={{ margin:"20px 16px 0", background:"white", borderRadius:18, overflow:"hidden", boxShadow:"0 2px 10px rgba(0,0,0,.06)" }}>
         <div style={{ padding:"12px 16px 8px", borderBottom:"1px solid #F0F0F0" }}>
-          <p style={{ fontSize:13, fontWeight:900, color:"#1a1a2e", margin:0 }}>Histórico de Ganhos</p>
+          <p style={{ fontSize:13, fontWeight:900, color:"#1a1a2e", margin:0 }}>HistÃ³rico de Ganhos</p>
         </div>
         {history.map((h, i) => {
           const isWithdrawn = h.status === "withdrawn";
@@ -2239,7 +2239,7 @@ function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
         })}
       </div>
 
-      {/* ── PIX WITHDRAWAL MODAL ── */}
+      {/* â”€â”€ PIX WITHDRAWAL MODAL â”€â”€ */}
       {showPix && (
         <div style={{ position:"fixed", inset:0, zIndex:300, background:"rgba(0,0,0,.5)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
           <div style={{ width:"100%", maxWidth:400, background:"white", borderRadius:"24px 24px 0 0", padding:"24px 20px 40px" }}>
@@ -2253,13 +2253,13 @@ function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
                   </div>
                   <div>
                     <p style={{ fontSize:16, fontWeight:900, color:"#1a1a2e", margin:0 }}>Sacar via PIX</p>
-                    <p style={{ fontSize:12, color:"#aaa", margin:0 }}>Disponível: R$ {balance.toLocaleString("pt-BR", { minimumFractionDigits:2 })}</p>
+                    <p style={{ fontSize:12, color:"#aaa", margin:0 }}>DisponÃ­vel: R$ {balance.toLocaleString("pt-BR", { minimumFractionDigits:2 })}</p>
                   </div>
                 </div>
 
                 <div style={{ marginBottom:14 }}>
                   <label style={{ display:"block", fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.2, marginBottom:7 }}>Chave PIX</label>
-                  <input type="text" placeholder="CPF, e-mail, telefone ou chave aleatória" value={pixKey} onChange={e => setPixKey(e.target.value)}
+                  <input type="text" placeholder="CPF, e-mail, telefone ou chave aleatÃ³ria" value={pixKey} onChange={e => setPixKey(e.target.value)}
                     style={{ width:"100%", border:"1.5px solid #E5E7EB", borderRadius:12, padding:"12px 14px", fontSize:13, outline:"none", fontFamily:"inherit", boxSizing:"border-box" }} />
                 </div>
 
@@ -2282,7 +2282,7 @@ function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                   <button onClick={() => { setShowPix(false); setPixKey(""); setPixAmount(""); }} style={{ padding:"13px 0", borderRadius:12, border:"1.5px solid #E5E7EB", background:"white", color:"#888", fontWeight:800, fontSize:13, cursor:"pointer" }}>Cancelar</button>
                   <button onClick={handleWithdraw} disabled={processing || !pixKey.trim() || !pixAmount} style={{ padding:"13px 0", borderRadius:12, border:"none", background: pixKey.trim() && pixAmount ? `linear-gradient(135deg,${G},#16a34a)` : "#E5E7EB", color: pixKey.trim() && pixAmount ? "white" : "#aaa", fontWeight:900, fontSize:13, cursor: pixKey.trim() && pixAmount ? "pointer" : "default", display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow: pixKey.trim() && pixAmount ? `0 4px 12px ${G}44` : "none" }}>
-                    {processing ? <><span style={{ width:16, height:16, border:"2px solid white", borderTopColor:"transparent", borderRadius:"50%", display:"inline-block", animation:"spin .7s linear infinite" }} /> Enviando…</> : <><Check size={15} /> Confirmar</>}
+                    {processing ? <><span style={{ width:16, height:16, border:"2px solid white", borderTopColor:"transparent", borderRadius:"50%", display:"inline-block", animation:"spin .7s linear infinite" }} /> Enviandoâ€¦</> : <><Check size={15} /> Confirmar</>}
                   </button>
                 </div>
               </>
@@ -2292,7 +2292,7 @@ function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
                   <CheckCircle2 size={36} color="white" />
                 </div>
                 <h3 style={{ fontSize:20, fontWeight:900, color:"#1a1a2e", margin:"0 0 8px" }}>Saque enviado!</h3>
-                <p style={{ fontSize:14, color:"#6B7280" }}>O valor chegará em até 60 segundos.</p>
+                <p style={{ fontSize:14, color:"#6B7280" }}>O valor chegarÃ¡ em atÃ© 60 segundos.</p>
               </div>
             )}
           </div>
@@ -2302,8 +2302,8 @@ function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────── */
-/* ── Autonomy term card for professional profile ── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â”€â”€ Autonomy term card for professional profile â”€â”€ */
 function AutonomyTermCard({ showToast }) {
   const [accepted,   setAccepted]   = useState(true); // pre-accepted at registration
   const [showTerms,  setShowTerms]  = useState(false);
@@ -2316,16 +2316,16 @@ function AutonomyTermCard({ showToast }) {
             <Shield size={17} color={O} />
           </span>
           <div style={{ flex:1 }}>
-            <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e", margin:"0 0 3px" }}>Declaração de Autonomia</p>
+            <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e", margin:"0 0 3px" }}>DeclaraÃ§Ã£o de Autonomia</p>
             <p style={{ fontSize:11, color:"#aaa", lineHeight:1.5, margin:"0 0 10px" }}>
-              Declaro que presto serviços de forma autônoma e independente, sem vínculo empregatício com a Plataforma Multi.
+              Declaro que presto serviÃ§os de forma autÃ´noma e independente, sem vÃ­nculo empregatÃ­cio com a Plataforma Multi.
             </p>
             <div style={{ display:"flex", gap:8 }}>
               <button onClick={() => setShowTerms(true)} style={{ flex:1, padding:"8px 0", borderRadius:10, border:`1.5px solid ${O}`, background:"white", color:O, fontWeight:800, fontSize:11, cursor:"pointer" }}>
                 Ler Termo Completo
               </button>
               {!accepted ? (
-                <button onClick={() => { setAccepted(true); showToast("✅ Termo de autonomia aceito!"); }} style={{ flex:1, padding:"8px 0", borderRadius:10, border:"none", background:`linear-gradient(135deg,${O},#E64A19)`, color:"white", fontWeight:900, fontSize:11, cursor:"pointer" }}>
+                <button onClick={() => { setAccepted(true); showToast("âœ… Termo de autonomia aceito!"); }} style={{ flex:1, padding:"8px 0", borderRadius:10, border:"none", background:`linear-gradient(135deg,${O},#E64A19)`, color:"white", fontWeight:900, fontSize:11, cursor:"pointer" }}>
                   Aceitar Termo
                 </button>
               ) : (
@@ -2342,24 +2342,24 @@ function AutonomyTermCard({ showToast }) {
   );
 }
 
-/* ───────────────────────── DOCUMENTAÇÃO DO PROFISSIONAL ────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ DOCUMENTAÃ‡ÃƒO DO PROFISSIONAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const DOC_TYPES = [
-  { id:"rg",      label:"RG / CNH",             icon:"🪪", hint:"Frente e verso legível" },
-  { id:"crim",    label:"Antecedentes Crim.",    icon:"📋", hint:"Certidão emitida há menos de 90 dias" },
-  { id:"address", label:"Comprovante Endereço",  icon:"🏠", hint:"Conta de luz, água ou telefone" },
+  { id:"rg",      label:"RG / CNH",             icon:"ðŸªª", hint:"Frente e verso legÃ­vel" },
+  { id:"crim",    label:"Antecedentes Crim.",    icon:"ðŸ“‹", hint:"CertidÃ£o emitida hÃ¡ menos de 90 dias" },
+  { id:"address", label:"Comprovante EndereÃ§o",  icon:"ðŸ ", hint:"Conta de luz, Ã¡gua ou telefone" },
 ];
 
-// Status possíveis: "pending" | "uploading" | "analysis" | "verified" | "rejected"
+// Status possÃ­veis: "pending" | "uploading" | "analysis" | "verified" | "rejected"
 const STATUS_CONFIG = {
   pending:   { label:"Pendente",    color:"#9CA3AF", bg:"#F5F5F5",  icon:null,            border:"#E5E7EB" },
-  uploading: { label:"Enviando…",   color:"#3B82F6", bg:"#EBF4FF",  icon:null,            border:"#93C5FD" },
-  analysis:  { label:"Em análise",  color:"#F59E0B", bg:"#FFFBEB",  icon:"clock",         border:"#FDE68A" },
+  uploading: { label:"Enviandoâ€¦",   color:"#3B82F6", bg:"#EBF4FF",  icon:null,            border:"#93C5FD" },
+  analysis:  { label:"Em anÃ¡lise",  color:"#F59E0B", bg:"#FFFBEB",  icon:"clock",         border:"#FDE68A" },
   verified:  { label:"Verificado",  color:"#16a34a", bg:"#F0FDF4",  icon:"badge",         border:"#BBF7D0" },
   rejected:  { label:"Reprovado",   color:"#DC2626", bg:"#FFF5F5",  icon:"x",             border:"#FECACA" },
 };
 
 function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocStatusChange }) {
-  // Internal file/preview/progress state (stays local — not needed globally)
+  // Internal file/preview/progress state (stays local â€” not needed globally)
   const [localDocs, setLocalDocs] = useState({
     rg:      { file:null, preview:null, progress:0 },
     crim:    { file:null, preview:null, progress:0 },
@@ -2400,7 +2400,7 @@ function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocSta
           setTimeout(() => {
             setLocalDocs(d => ({ ...d, [docId]: { ...d[docId], progress:100 } }));
             onDocStatusChange?.(docId, "analysis");
-            showToast?.("📋 Documento enviado! Status: Em análise.", "#F59E0B");
+            showToast?.("ðŸ“‹ Documento enviado! Status: Em anÃ¡lise.", "#F59E0B");
           }, 300);
         }
         setLocalDocs(d => ({ ...d, [docId]: { ...d[docId], progress: Math.min(prog, 100) } }));
@@ -2418,7 +2418,7 @@ function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocSta
     onDocStatusChange?.(docId, approve ? "verified" : "rejected");
     setShowAdmin(null);
     setAdminKey("");
-    showToast?.(approve ? "✅ Documento verificado!" : "❌ Documento reprovado.", approve ? "#22c55e" : "#DC2626");
+    showToast?.(approve ? "âœ… Documento verificado!" : "âŒ Documento reprovado.", approve ? "#22c55e" : "#DC2626");
   };
 
   return (
@@ -2432,7 +2432,7 @@ function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocSta
 
         return (
           <div key={doc.id}>
-            {/* hidden file input — accepts images + PDF */}
+            {/* hidden file input â€” accepts images + PDF */}
             <input
               ref={fileRefs[doc.id]}
               type="file"
@@ -2442,7 +2442,7 @@ function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocSta
               onChange={e => handleFileSelect(doc.id, e)}
             />
 
-            {/* ── ROW ── */}
+            {/* â”€â”€ ROW â”€â”€ */}
             <div
               style={{ padding:"13px 16px", borderBottom: isLast ? "none" : "1px solid #F8F8F8", cursor: state.status === "uploading" ? "default" : "pointer" }}
               onClick={() => { if (state.status !== "uploading") setExpandedDoc(expandedDoc === doc.id ? null : doc.id); }}
@@ -2458,13 +2458,13 @@ function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocSta
                 <div style={{ flex:1, minWidth:0 }}>
                   <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e", margin:"0 0 2px" }}>{doc.label}</p>
 
-                  {/* progress bar — only during upload */}
+                  {/* progress bar â€” only during upload */}
                   {state.status === "uploading" ? (
                     <div>
                       <div style={{ height:4, borderRadius:99, background:"#E5E7EB", overflow:"hidden", marginBottom:3 }}>
                         <div style={{ height:"100%", borderRadius:99, background:"linear-gradient(90deg,#3B82F6,#60A5FA)", width:`${state.progress}%`, transition:"width .12s" }} />
                       </div>
-                      <p style={{ fontSize:10, color:"#3B82F6", fontWeight:700, margin:0 }}>Enviando… {Math.round(state.progress)}%</p>
+                      <p style={{ fontSize:10, color:"#3B82F6", fontWeight:700, margin:0 }}>Enviandoâ€¦ {Math.round(state.progress)}%</p>
                     </div>
                   ) : (
                     <p style={{ fontSize:11, color:"#aaa", margin:0 }}>{doc.hint}</p>
@@ -2487,7 +2487,7 @@ function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocSta
               </div>
             </div>
 
-            {/* ── EXPANDED PANEL ── */}
+            {/* â”€â”€ EXPANDED PANEL â”€â”€ */}
             {expandedDoc === doc.id && state.status !== "uploading" && (
               <div style={{ padding:"0 16px 14px", borderBottom: isLast ? "none" : "1px solid #F0F0F0" }}>
 
@@ -2522,7 +2522,7 @@ function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocSta
                   <div style={{ background:"#FFFBEB", border:"1px solid #FDE68A", borderRadius:10, padding:"10px 12px", display:"flex", gap:8 }}>
                     <Clock size={15} color="#F59E0B" style={{ flexShrink:0, marginTop:1 }} />
                     <p style={{ fontSize:12, color:"#92400E", fontWeight:700, margin:0, lineHeight:1.5 }}>
-                      Documento recebido! A administradora irá analisar em até 24h úteis.
+                      Documento recebido! A administradora irÃ¡ analisar em atÃ© 24h Ãºteis.
                     </p>
                   </div>
                 )}
@@ -2532,19 +2532,19 @@ function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocSta
                   <div style={{ background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:10, padding:"10px 12px", display:"flex", gap:8 }}>
                     <BadgeCheck size={15} color="#16a34a" style={{ flexShrink:0, marginTop:1 }} />
                     <p style={{ fontSize:12, color:"#166534", fontWeight:700, margin:0 }}>
-                      Documento verificado e aprovado pela administradora. ✅
+                      Documento verificado e aprovado pela administradora. âœ…
                     </p>
                   </div>
                 )}
 
-                {/* Admin panel — approve/reject (shown when analysis status) */}
+                {/* Admin panel â€” approve/reject (shown when analysis status) */}
                 {state.status === "analysis" && (
                   <div style={{ marginTop:10 }}>
                     {showAdmin !== doc.id ? (
                       <button
                         onClick={e => { e.stopPropagation(); setShowAdmin(doc.id); }}
                         style={{ width:"100%", padding:"9px 0", borderRadius:10, border:"1.5px solid #334155", background:"#0F172A", color:"#6366F1", fontWeight:800, fontSize:12, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
-                        <ShieldCheck size={14} /> Acesso Admin — Verificar
+                        <ShieldCheck size={14} /> Acesso Admin â€” Verificar
                       </button>
                     ) : (
                       <div style={{ background:"#0F172A", borderRadius:14, padding:14 }}>
@@ -2582,14 +2582,14 @@ function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocSta
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function AdminAccessTrigger({ onOpenAdmin }) {
   const [taps, setTaps] = useState(0);
   const tap = () => { setTaps(n => n >= 5 ? 5 : n + 1); };
   return (
     <div style={{ textAlign:"center", padding:"16px 0 24px" }}>
       <p onClick={tap} style={{ fontSize:11, color:"#ccc", margin:"0 0 8px", cursor:"default", userSelect:"none" }}>
-        Multi v2.0.0 · Plataforma Nacional {taps > 0 && taps < 5 && `(${5-taps} toques)`}
+        Multi v2.0.0 Â· Plataforma Nacional {taps > 0 && taps < 5 && `(${5-taps} toques)`}
       </p>
       {taps >= 5 && (
         <button onClick={onOpenAdmin} style={{ padding:"8px 20px", borderRadius:99, border:"1.5px solid #334155", background:"#0F172A", color:"#6366F1", fontWeight:800, fontSize:12, cursor:"pointer", display:"inline-flex", alignItems:"center", gap:7 }}>
@@ -2600,7 +2600,7 @@ function AdminAccessTrigger({ onOpenAdmin }) {
   );
 }
 
-/* ───────────────────────── ENDEREÇOS DO CLIENTE ────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ ENDEREÃ‡OS DO CLIENTE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const API_BASE = "https://web-production-e103b.up.railway.app";
 
 function safeGetUser() {
@@ -2639,9 +2639,9 @@ function AddressSection({ showToast }) {
         setAddresses(prev => [...prev, d.address]);
         setShowModal(false);
         setForm({ label:"", street:"", city:"", cep:"" });
-        showToast?.("✅ Endereço salvo com sucesso!");
+        showToast?.("âœ… EndereÃ§o salvo com sucesso!");
       }
-    } catch { showToast?.("❌ Erro ao salvar endereço", "#EF4444"); }
+    } catch { showToast?.("âŒ Erro ao salvar endereÃ§o", "#EF4444"); }
     finally { setSaving(false); }
   };
 
@@ -2649,25 +2649,25 @@ function AddressSection({ showToast }) {
     try {
       await fetch(`${API_BASE}/api/enderecos/${id}`, { method:"DELETE" });
       setAddresses(prev => prev.filter(a => a.id !== id));
-      showToast?.("🗑️ Endereço removido");
+      showToast?.("ðŸ—‘ï¸ EndereÃ§o removido");
     } catch {}
   };
 
   return (
     <>
-      <SectionLabelStandalone label="Meus Endereços" />
+      <SectionLabelStandalone label="Meus EndereÃ§os" />
       <div style={{ background:"white" }}>
         {addresses.length === 0 && (
           <p style={{ fontSize:12, color:"#bbb", textAlign:"center", padding:"16px 0", fontWeight:700 }}>
-            Nenhum endereço cadastrado
+            Nenhum endereÃ§o cadastrado
           </p>
         )}
         {addresses.map((addr, i) => (
           <div key={addr.id} style={{ display:"flex", alignItems:"center", gap:13, padding:"13px 16px", borderBottom:"1px solid #F8F8F8" }}>
-            <span style={{ width:36, height:36, borderRadius:11, background:B+"12", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>🏠</span>
+            <span style={{ width:36, height:36, borderRadius:11, background:B+"12", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>ðŸ </span>
             <div style={{ flex:1 }}>
               <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e", marginBottom:1 }}>{addr.label}</p>
-              <p style={{ fontSize:11, color:"#bbb" }}>{addr.street}{addr.city ? ` — ${addr.city}` : ""}</p>
+              <p style={{ fontSize:11, color:"#bbb" }}>{addr.street}{addr.city ? ` â€” ${addr.city}` : ""}</p>
             </div>
             <button onClick={() => handleDelete(addr.id)} style={{ background:"none", border:"none", cursor:"pointer", padding:4 }}>
               <X size={14} color="#DDD" />
@@ -2675,7 +2675,7 @@ function AddressSection({ showToast }) {
           </div>
         ))}
         <button onClick={() => setShowModal(true)} style={{ width:"100%", padding:"12px 0", border:"none", background:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:7, color:B, fontWeight:800, fontSize:13, cursor:"pointer" }}>
-          <Plus size={14} /> Adicionar endereço
+          <Plus size={14} /> Adicionar endereÃ§o
         </button>
       </div>
 
@@ -2684,14 +2684,14 @@ function AddressSection({ showToast }) {
         <div onClick={() => setShowModal(false)} style={{ position:"fixed", inset:0, zIndex:600, background:"rgba(0,0,0,.5)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
           <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:440, background:"white", borderRadius:"24px 24px 0 0", padding:"24px 20px 40px" }}>
             <div style={{ width:40, height:4, background:"#E5E7EB", borderRadius:99, margin:"0 auto 20px" }} />
-            <h3 style={{ fontSize:17, fontWeight:900, color:"#1a1a2e", margin:"0 0 18px" }}>Novo Endereço</h3>
+            <h3 style={{ fontSize:17, fontWeight:900, color:"#1a1a2e", margin:"0 0 18px" }}>Novo EndereÃ§o</h3>
             <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
               <input placeholder="Nome (ex: Minha Casa, Trabalho)" value={form.label} onChange={e => setForm(f => ({...f, label:e.target.value}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
-              <input placeholder="Rua e número" value={form.street} onChange={e => setForm(f => ({...f, street:e.target.value}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
+              <input placeholder="Rua e nÃºmero" value={form.street} onChange={e => setForm(f => ({...f, street:e.target.value}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
               <input placeholder="Cidade" value={form.city} onChange={e => setForm(f => ({...f, city:e.target.value}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
               <input placeholder="CEP" value={form.cep} onChange={e => setForm(f => ({...f, cep:e.target.value}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
               <button onClick={handleSave} disabled={saving} style={{ padding:"14px 0", borderRadius:14, border:"none", background:`linear-gradient(135deg,${B},#0055d4)`, color:"white", fontWeight:900, fontSize:14, cursor:"pointer" }}>
-                {saving ? "Salvando..." : "Salvar Endereço"}
+                {saving ? "Salvando..." : "Salvar EndereÃ§o"}
               </button>
             </div>
           </div>
@@ -2701,7 +2701,7 @@ function AddressSection({ showToast }) {
   );
 }
 
-/* ───────────────────────── CARTÕES DO CLIENTE ───────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ CARTÃ•ES DO CLIENTE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function CardSection({ showToast }) {
   const [cards,     setCards]     = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -2729,9 +2729,9 @@ function CardSection({ showToast }) {
         setCards(prev => [...prev, d.card]);
         setShowModal(false);
         setForm({ label:"", number:"", brand:"Visa", type:"credit" });
-        showToast?.("✅ Cartão salvo com sucesso!");
+        showToast?.("âœ… CartÃ£o salvo com sucesso!");
       }
-    } catch { showToast?.("❌ Erro ao salvar cartão", "#EF4444"); }
+    } catch { showToast?.("âŒ Erro ao salvar cartÃ£o", "#EF4444"); }
     finally { setSaving(false); }
   };
 
@@ -2739,7 +2739,7 @@ function CardSection({ showToast }) {
     try {
       await fetch(`${API_BASE}/api/cartoes/${id}`, { method:"DELETE" });
       setCards(prev => prev.filter(c => c.id !== id));
-      showToast?.("🗑️ Cartão removido");
+      showToast?.("ðŸ—‘ï¸ CartÃ£o removido");
     } catch {}
   };
 
@@ -2748,11 +2748,11 @@ function CardSection({ showToast }) {
 
   return (
     <>
-      <SectionLabelStandalone label="Cartões de Pagamento" />
+      <SectionLabelStandalone label="CartÃµes de Pagamento" />
       <div style={{ background:"white" }}>
         {cards.length === 0 && (
           <p style={{ fontSize:12, color:"#bbb", textAlign:"center", padding:"16px 0", fontWeight:700 }}>
-            Nenhum cartão cadastrado
+            Nenhum cartÃ£o cadastrado
           </p>
         )}
         {cards.map((card, i) => (
@@ -2761,8 +2761,8 @@ function CardSection({ showToast }) {
               <span style={{ fontSize:9, fontWeight:900, color: brandColor[card.brand] || "#1a1a2e" }}>{card.brand}</span>
             </div>
             <div style={{ flex:1 }}>
-              <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e", marginBottom:1 }}>{card.label} •••• {card.last4}</p>
-              <p style={{ fontSize:11, color:"#bbb" }}>{card.type === "credit" ? "Crédito" : "Débito"}{card.is_main ? " — Principal" : ""}</p>
+              <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e", marginBottom:1 }}>{card.label} â€¢â€¢â€¢â€¢ {card.last4}</p>
+              <p style={{ fontSize:11, color:"#bbb" }}>{card.type === "credit" ? "CrÃ©dito" : "DÃ©bito"}{card.is_main ? " â€” Principal" : ""}</p>
             </div>
             <button onClick={() => handleDelete(card.id)} style={{ background:"none", border:"none", cursor:"pointer", padding:4 }}>
               <X size={14} color="#DDD" />
@@ -2770,7 +2770,7 @@ function CardSection({ showToast }) {
           </div>
         ))}
         <button onClick={() => setShowModal(true)} style={{ width:"100%", padding:"12px 0", border:"none", background:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:7, color:B, fontWeight:800, fontSize:13, cursor:"pointer" }}>
-          <Plus size={14} /> Adicionar cartão
+          <Plus size={14} /> Adicionar cartÃ£o
         </button>
       </div>
 
@@ -2779,21 +2779,21 @@ function CardSection({ showToast }) {
         <div onClick={() => setShowModal(false)} style={{ position:"fixed", inset:0, zIndex:600, background:"rgba(0,0,0,.5)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
           <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:440, background:"white", borderRadius:"24px 24px 0 0", padding:"24px 20px 40px" }}>
             <div style={{ width:40, height:4, background:"#E5E7EB", borderRadius:99, margin:"0 auto 20px" }} />
-            <h3 style={{ fontSize:17, fontWeight:900, color:"#1a1a2e", margin:"0 0 18px" }}>Novo Cartão</h3>
+            <h3 style={{ fontSize:17, fontWeight:900, color:"#1a1a2e", margin:"0 0 18px" }}>Novo CartÃ£o</h3>
             <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-              <input placeholder="Nome do cartão (ex: Meu Nubank)" value={form.label} onChange={e => setForm(f => ({...f, label:e.target.value}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
-              <input placeholder="Número do cartão" type="tel" maxLength={19} value={form.number} onChange={e => setForm(f => ({...f, number:e.target.value.replace(/(\d{4})/g,"$1 ").trim()}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", fontFamily:"monospace" }} />
+              <input placeholder="Nome do cartÃ£o (ex: Meu Nubank)" value={form.label} onChange={e => setForm(f => ({...f, label:e.target.value}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
+              <input placeholder="NÃºmero do cartÃ£o" type="tel" maxLength={19} value={form.number} onChange={e => setForm(f => ({...f, number:e.target.value.replace(/(\d{4})/g,"$1 ").trim()}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", fontFamily:"monospace" }} />
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                 <select value={form.brand} onChange={e => setForm(f => ({...f, brand:e.target.value}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", background:"white" }}>
                   {["Visa","Mastercard","Elo","Amex"].map(b => <option key={b}>{b}</option>)}
                 </select>
                 <select value={form.type} onChange={e => setForm(f => ({...f, type:e.target.value}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", background:"white" }}>
-                  <option value="credit">Crédito</option>
-                  <option value="debit">Débito</option>
+                  <option value="credit">CrÃ©dito</option>
+                  <option value="debit">DÃ©bito</option>
                 </select>
               </div>
               <button onClick={handleSave} disabled={saving} style={{ padding:"14px 0", borderRadius:14, border:"none", background:`linear-gradient(135deg,${B},#0055d4)`, color:"white", fontWeight:900, fontSize:14, cursor:"pointer" }}>
-                {saving ? "Salvando..." : "Salvar Cartão"}
+                {saving ? "Salvando..." : "Salvar CartÃ£o"}
               </button>
             </div>
           </div>
@@ -2803,7 +2803,7 @@ function CardSection({ showToast }) {
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange }) {
   const [avatarUrl, setAvatarUrl] = useState(() => sessionStorage.getItem("multiAvatar") || null);
   const [editMode,  setEditMode]  = useState(false);
@@ -2834,10 +2834,10 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
   };
 
   const stats = role === "client"
-    ? { rating: 4.9, count: 12, label: "contratações" }
-    : { rating: 4.8, count: 47, label: "serviços feitos" };
+    ? { rating: 4.9, count: 12, label: "contrataÃ§Ãµes" }
+    : { rating: 4.8, count: 47, label: "serviÃ§os feitos" };
 
-  // ── shared menu row
+  // â”€â”€ shared menu row
   const MenuRow = ({ Icon, iconBg, iconColor, label, sub, right, danger, onClick }) => (
     <div onClick={onClick} style={{ display:"flex", alignItems:"center", gap:13, padding:"13px 16px", cursor:"pointer", background:"white", borderBottom:"1px solid #F8F8F8" }}>
       <span style={{ width:36, height:36, borderRadius:11, background: danger ? "#FFF0F0" : iconBg, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
@@ -2851,7 +2851,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
     </div>
   );
 
-  // ── section header inside profile card list
+  // â”€â”€ section header inside profile card list
   const SectionLabel = ({ label }) => (
     <div style={{ padding:"14px 16px 6px", background:BG }}>
       <p style={{ fontSize:10, fontWeight:900, color:"#aaa", textTransform:"uppercase", letterSpacing:1.5 }}>{label}</p>
@@ -2861,11 +2861,11 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
   return (
     <div style={{ display:"flex", flexDirection:"column", paddingBottom:40 }}>
 
-      {/* ── HERO ── */}
+      {/* â”€â”€ HERO â”€â”€ */}
       <div style={{ background:`linear-gradient(160deg,${B} 0%,#0056c7 100%)`, padding:"28px 20px 36px", position:"relative" }}>
         {/* edit toggle */}
         <button
-          onClick={() => { if (editMode) showToast("✅ Perfil salvo!"); setEditMode(e => !e); }}
+          onClick={() => { if (editMode) showToast("âœ… Perfil salvo!"); setEditMode(e => !e); }}
           style={{ position:"absolute", top:16, right:16, background:"rgba(255,255,255,.2)", border:"none", borderRadius:99, padding:"6px 14px", color:"white", fontSize:12, fontWeight:800, cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
           <Pencil size={12} /> {editMode ? "Salvar" : "Editar"}
         </button>
@@ -2878,7 +2878,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
               onClick={() => editMode && avatarRef.current?.click()}>
               {avatarUrl
                 ? <img src={avatarUrl} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt="avatar" />
-                : <span style={{ fontSize:40 }}>{role === "client" ? "👩" : "👨‍🔧"}</span>}
+                : <span style={{ fontSize:40 }}>{role === "client" ? "ðŸ‘©" : "ðŸ‘¨â€ðŸ”§"}</span>}
             </div>
             {editMode && (
               <div onClick={() => avatarRef.current?.click()} style={{ position:"absolute", bottom:0, right:0, width:26, height:26, background:O, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", border:"2px solid white", cursor:"pointer" }}>
@@ -2901,13 +2901,13 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
 
           <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:8 }}>
             <MapPin size={12} color="rgba(255,255,255,.65)" />
-            <span style={{ fontSize:12, color:"rgba(255,255,255,.65)", fontWeight:600 }}>Sua localização</span>
+            <span style={{ fontSize:12, color:"rgba(255,255,255,.65)", fontWeight:600 }}>Sua localizaÃ§Ã£o</span>
           </div>
 
           {/* stats row */}
           <div style={{ display:"flex", gap:0, background:"rgba(255,255,255,.12)", borderRadius:14, overflow:"hidden", marginTop:4 }}>
             {[
-              { val: `⭐ ${stats.rating}`, lbl:"Avaliação" },
+              { val: `â­ ${stats.rating}`, lbl:"AvaliaÃ§Ã£o" },
               { val: stats.count,          lbl: stats.label },
               { val: role === "client" ? "2 anos" : "3 anos",  lbl:"No Multi" },
             ].map((st, i) => (
@@ -2920,10 +2920,10 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
         </div>
       </div>
 
-      {/* ── PROFESSIONAL SECTIONS ── */}
+      {/* â”€â”€ PROFESSIONAL SECTIONS â”€â”€ */}
       {role === "professional" && (
         <>
-          {/* Wallet card — links to full WalletScreen */}
+          {/* Wallet card â€” links to full WalletScreen */}
           <div style={{ padding:"0 16px", marginTop:-20, position:"relative", zIndex:2 }}>
             <div onClick={onOpenWallet} style={{ background:"white", borderRadius:20, padding:18, boxShadow:"0 4px 20px rgba(0,0,0,.10)", border:"1px solid #F0F0F0", cursor:"pointer" }}>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
@@ -2932,7 +2932,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
                     <Wallet size={20} color="white" />
                   </div>
                   <div>
-                    <p style={{ fontSize:11, color:"#aaa", fontWeight:700, margin:0 }}>Saldo disponível</p>
+                    <p style={{ fontSize:11, color:"#aaa", fontWeight:700, margin:0 }}>Saldo disponÃ­vel</p>
                     <p style={{ fontSize:24, fontWeight:900, color:G, margin:0 }}>R$ 1.240,00</p>
                   </div>
                 </div>
@@ -2959,7 +2959,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
                 <span style={{ width:36, height:36, borderRadius:11, background:O+"18", display:"flex", alignItems:"center", justifyContent:"center" }}><Crown size={17} color={O} /></span>
                 <div>
                   <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e" }}>Plano Multi PRO</p>
-                  <p style={{ fontSize:11, color: isPro ? G : "#bbb" }}>{isPro ? "✅ Ativo — renova em 15/07/2026" : "❌ Inativo"}</p>
+                  <p style={{ fontSize:11, color: isPro ? G : "#bbb" }}>{isPro ? "âœ… Ativo â€” renova em 15/07/2026" : "âŒ Inativo"}</p>
                 </div>
               </div>
               {isPro
@@ -2969,7 +2969,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
           </div>
 
           {/* Portfolio */}
-          <SectionLabel label="Portfólio — Antes e Depois" />
+          <SectionLabel label="PortfÃ³lio â€” Antes e Depois" />
           <div style={{ background:"white", padding:"14px 16px" }}>
             <input ref={portfolioRef} type="file" accept="image/*" multiple style={{ display:"none" }} onChange={handlePortfolio} />
             <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
@@ -2989,18 +2989,18 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
           </div>
 
           {/* Verification */}
-          <SectionLabel label="Documentação" />
+          <SectionLabel label="DocumentaÃ§Ã£o" />
           <DocumentacaoSection showToast={showToast} docStatus={docStatus} onDocStatusChange={onDocStatusChange} />
         </>
       )}
 
-      {/* ── CLIENT SECTIONS ── */}
+      {/* â”€â”€ CLIENT SECTIONS â”€â”€ */}
       {role === "client" && (
         <>
           <div style={{ padding:"0 16px", marginTop:-20, position:"relative", zIndex:2 }}>
             <div style={{ background:"white", borderRadius:20, padding:"14px 18px", boxShadow:"0 4px 20px rgba(0,0,0,.10)", border:"1px solid #F0F0F0", display:"flex", alignItems:"center", gap:14 }}>
               <div style={{ flex:1 }}>
-                <p style={{ fontSize:11, color:"#aaa", fontWeight:700, marginBottom:3 }}>Serviços contratados</p>
+                <p style={{ fontSize:11, color:"#aaa", fontWeight:700, marginBottom:3 }}>ServiÃ§os contratados</p>
                 <p style={{ fontSize:22, fontWeight:900, color:"#1a1a2e" }}>12 <span style={{ fontSize:13, color:"#aaa", fontWeight:600 }}>no total</span></p>
               </div>
               <div style={{ width:1, height:38, background:"#F0F0F0" }} />
@@ -3011,19 +3011,19 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
             </div>
           </div>
 
-          {/* Addresses — functional */}
+          {/* Addresses â€” functional */}
           <AddressSection showToast={showToast} />
 
-          {/* Payment cards — functional */}
+          {/* Payment cards â€” functional */}
           <CardSection showToast={showToast} />
 
           {/* Favorites */}
           <SectionLabel label="Profissionais Favoritos" />
           <div style={{ background:"white" }}>
             {[
-              { emoji:"👨‍🔧", name:"Carlos Encanador", cat:"Encanador", rating:4.9 },
-              { emoji:"👷",   name:"Pedro Mestre",     cat:"Pedreiro",  rating:4.8 },
-              { emoji:"🎨",   name:"Ana Pintora",      cat:"Pintora",   rating:5.0 },
+              { emoji:"ðŸ‘¨â€ðŸ”§", name:"Carlos Encanador", cat:"Encanador", rating:4.9 },
+              { emoji:"ðŸ‘·",   name:"Pedro Mestre",     cat:"Pedreiro",  rating:4.8 },
+              { emoji:"ðŸŽ¨",   name:"Ana Pintora",      cat:"Pintora",   rating:5.0 },
             ].map((fav, i) => (
               <div key={i} style={{ display:"flex", alignItems:"center", gap:13, padding:"13px 16px", borderBottom:"1px solid #F8F8F8" }}>
                 <div style={{ width:40, height:40, borderRadius:12, background:"#E8F4FF", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>{fav.emoji}</div>
@@ -3031,7 +3031,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
                   <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e", marginBottom:2 }}>{fav.name}</p>
                   <div style={{ display:"flex", alignItems:"center", gap:5 }}>
                     <span style={{ fontSize:11, color:"#aaa" }}>{fav.cat}</span>
-                    <span style={{ color:"#E0E0E0" }}>•</span>
+                    <span style={{ color:"#E0E0E0" }}>â€¢</span>
                     <Star size={10} fill="#F9A825" stroke="none" />
                     <span style={{ fontSize:11, fontWeight:700, color:"#888" }}>{fav.rating}</span>
                   </div>
@@ -3043,21 +3043,21 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
         </>
       )}
 
-      {/* ── GENERAL SETTINGS ── */}
-      <SectionLabel label="Configurações" />
+      {/* â”€â”€ GENERAL SETTINGS â”€â”€ */}
+      <SectionLabel label="ConfiguraÃ§Ãµes" />
       <div style={{ background:"white", borderRadius:"0", overflow:"hidden" }}>
-        <MenuRow Icon={BellRing}   iconBg="#E8F4FF" iconColor={B}        label="Notificações"      sub="Push e WhatsApp ativos"     onClick={() => showToast("🔔 Configurações de notificação")} />
-        <MenuRow Icon={KeyRound}   iconBg="#F3E5F5" iconColor="#7B1FA2"  label="Segurança e Senha" sub="Última alteração há 3 meses"  onClick={() => showToast("🔐 Segurança — em breve")} />
-        <MenuRow Icon={HelpCircle} iconBg="#E8F8EE" iconColor="#2E7D32"  label="Suporte e Ajuda"   sub="Fale com nossa equipe"        onClick={() => showToast("💬 Suporte: (11) 4002-8922")} />
-        <MenuRow Icon={Shield}     iconBg="#FFF0EE" iconColor={O}        label="Botão de Pânico"   sub="Emergência — acionar segurança"
+        <MenuRow Icon={BellRing}   iconBg="#E8F4FF" iconColor={B}        label="NotificaÃ§Ãµes"      sub="Push e WhatsApp ativos"     onClick={() => showToast("ðŸ”” ConfiguraÃ§Ãµes de notificaÃ§Ã£o")} />
+        <MenuRow Icon={KeyRound}   iconBg="#F3E5F5" iconColor="#7B1FA2"  label="SeguranÃ§a e Senha" sub="Ãšltima alteraÃ§Ã£o hÃ¡ 3 meses"  onClick={() => showToast("ðŸ” SeguranÃ§a â€” em breve")} />
+        <MenuRow Icon={HelpCircle} iconBg="#E8F8EE" iconColor="#2E7D32"  label="Suporte e Ajuda"   sub="Fale com nossa equipe"        onClick={() => showToast("ðŸ’¬ Suporte: (11) 4002-8922")} />
+        <MenuRow Icon={Shield}     iconBg="#FFF0EE" iconColor={O}        label="BotÃ£o de PÃ¢nico"   sub="EmergÃªncia â€” acionar seguranÃ§a"
           right={<span style={{ background:"#FFF0EE", color:O, fontWeight:800, fontSize:11, padding:"4px 10px", borderRadius:99, border:`1px solid ${O}40` }}>SOS</span>}
-          onClick={() => showToast("🆘 Suporte de emergência acionado!", "#E53935")} />
+          onClick={() => showToast("ðŸ†˜ Suporte de emergÃªncia acionado!", "#E53935")} />
       </div>
 
       {/* Logout */}
       <SectionLabel label="" />
       <div style={{ background:"white" }}>
-        <MenuRow Icon={LogOut} iconBg="#FFF0F0" iconColor="#E53935" label="Sair da Conta" danger onClick={() => { showToast("👋 Até logo!"); setTimeout(onLogout, 1200); }} />
+        <MenuRow Icon={LogOut} iconBg="#FFF0F0" iconColor="#E53935" label="Sair da Conta" danger onClick={() => { showToast("ðŸ‘‹ AtÃ© logo!"); setTimeout(onLogout, 1200); }} />
       </div>
 
       <AdminAccessTrigger onOpenAdmin={onOpenAdmin} />
@@ -3065,14 +3065,14 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
   );
 }
 
-/* ───────────────────────── MY SERVICES SCREEN ───────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ MY SERVICES SCREEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function MyServicesScreen({ myServices, onOpenService, onOpenChat, isPro }) {
   const [tab, setTab] = useState("open");
 
   const tabs = [
     { id:"open",       label:"Aguardando",  color:"#0070F3" },
     { id:"inprogress", label:"Em Andamento", color:O },
-    { id:"done",       label:"Concluído",   color:G },
+    { id:"done",       label:"ConcluÃ­do",   color:G },
   ];
 
   const filtered = myServices.filter(s => s.status === tab);
@@ -3101,14 +3101,14 @@ function MyServicesScreen({ myServices, onOpenService, onOpenChat, isPro }) {
         {filtered.length === 0 && (
           <div style={{ textAlign:"center", padding:"48px 24px", color:"#ccc" }}>
             <ClipboardList size={36} color="#E0E0E0" style={{ margin:"0 auto 12px", display:"block" }} />
-            <p style={{ fontSize:14, fontWeight:700 }}>Nenhum serviço aqui</p>
-            <p style={{ fontSize:12, marginTop:4 }}>Poste um novo serviço para começar</p>
+            <p style={{ fontSize:14, fontWeight:700 }}>Nenhum serviÃ§o aqui</p>
+            <p style={{ fontSize:12, marginTop:4 }}>Poste um novo serviÃ§o para comeÃ§ar</p>
           </div>
         )}
         {filtered.map(s => {
           const cat = CATS.find(c => c.id === s.cat);
           const statusColor = s.status === "open" ? B : s.status === "inprogress" ? O : G;
-          const statusLabel = s.status === "open" ? "Aguardando propostas" : s.status === "inprogress" ? "Em andamento" : "Concluído";
+          const statusLabel = s.status === "open" ? "Aguardando propostas" : s.status === "inprogress" ? "Em andamento" : "ConcluÃ­do";
           return (
             <div key={s.id} style={{ background:"white", borderRadius:16, padding:16, boxShadow:"0 2px 10px rgba(0,0,0,.06)", border:"1px solid #F0F0F0" }}>
               <div style={{ display:"flex", alignItems:"flex-start", gap:10, marginBottom:10 }}>
@@ -3124,7 +3124,7 @@ function MyServicesScreen({ myServices, onOpenService, onOpenChat, isPro }) {
 
               {s.status === "open" && (
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                  <span style={{ fontSize:12, color:"#aaa" }}>👥 {s.candidates} candidatos</span>
+                  <span style={{ fontSize:12, color:"#aaa" }}>ðŸ‘¥ {s.candidates} candidatos</span>
                   <button onClick={() => onOpenService(s)} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${B}`, background:"white", color:B, fontSize:12, fontWeight:800, cursor:"pointer" }}>Ver Propostas</button>
                 </div>
               )}
@@ -3132,7 +3132,7 @@ function MyServicesScreen({ myServices, onOpenService, onOpenChat, isPro }) {
               {s.status === "inprogress" && (
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                   <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                    <div style={{ width:30, height:30, borderRadius:9, background:O+"18", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>👨‍🔧</div>
+                    <div style={{ width:30, height:30, borderRadius:9, background:O+"18", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>ðŸ‘¨â€ðŸ”§</div>
                     <div>
                       <p style={{ fontSize:12, fontWeight:800, color:"#1a1a2e" }}>{s.pro}</p>
                       <p style={{ fontSize:11, color:"#aaa" }}>Profissional ativo</p>
@@ -3148,9 +3148,9 @@ function MyServicesScreen({ myServices, onOpenService, onOpenChat, isPro }) {
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                   <div style={{ display:"flex", alignItems:"center", gap:4 }}>
                     <MiniStars v={s.clientRating || 0} size={14} />
-                    <span style={{ fontSize:11, color:"#aaa" }}>{s.clientRating ? `${s.clientRating}.0` : "Não avaliado"}</span>
+                    <span style={{ fontSize:11, color:"#aaa" }}>{s.clientRating ? `${s.clientRating}.0` : "NÃ£o avaliado"}</span>
                   </div>
-                  <span style={{ fontSize:12, fontWeight:700, color:G }}>✅ Serviço concluído</span>
+                  <span style={{ fontSize:12, fontWeight:700, color:G }}>âœ… ServiÃ§o concluÃ­do</span>
                 </div>
               )}
             </div>
@@ -3161,14 +3161,14 @@ function MyServicesScreen({ myServices, onOpenService, onOpenChat, isPro }) {
   );
 }
 
-/* ───────────────────────── RATING MODAL ─────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ RATING MODAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function RatingModal({ service, onRate, onClose }) {
   const [rating, setRating] = useState(0);
   const [hover,  setHover]  = useState(0);
   const [comment, setComment] = useState("");
   const cat = CATS.find(c => c.id === service.cat);
 
-  const labels = ["", "Ruim", "Regular", "Bom", "Ótimo", "Excelente!"];
+  const labels = ["", "Ruim", "Regular", "Bom", "Ã“timo", "Excelente!"];
 
   return (
     <div style={{ position:"fixed", inset:0, zIndex:300, background:"rgba(0,0,0,.5)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
@@ -3177,7 +3177,7 @@ function RatingModal({ service, onRate, onClose }) {
 
         <div style={{ textAlign:"center", marginBottom:20 }}>
           <div style={{ width:56, height:56, borderRadius:16, background:cat?.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, margin:"0 auto 10px" }}>{cat?.emoji}</div>
-          <h3 style={{ fontSize:17, fontWeight:900, color:"#1a1a2e", marginBottom:4 }}>Como foi o serviço?</h3>
+          <h3 style={{ fontSize:17, fontWeight:900, color:"#1a1a2e", marginBottom:4 }}>Como foi o serviÃ§o?</h3>
           <p style={{ fontSize:13, color:"#aaa" }}>Avalie <strong style={{ color:"#1a1a2e" }}>{service.pro}</strong> pelo trabalho em "{service.title}"</p>
         </div>
 
@@ -3200,7 +3200,7 @@ function RatingModal({ service, onRate, onClose }) {
 
         <textarea
           rows={3}
-          placeholder="Deixe um comentário (opcional)…"
+          placeholder="Deixe um comentÃ¡rio (opcional)â€¦"
           value={comment}
           onChange={e => setComment(e.target.value)}
           style={{ width:"100%", border:"1.5px solid #EBEBEB", borderRadius:12, padding:"12px 14px", fontSize:13, color:"#1a1a2e", outline:"none", resize:"none", fontFamily:"inherit", boxSizing:"border-box", lineHeight:1.5, marginBottom:14 }}
@@ -3208,10 +3208,10 @@ function RatingModal({ service, onRate, onClose }) {
 
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
           <button onClick={onClose} style={{ padding:"13px 0", borderRadius:12, border:"1.5px solid #E8E8E8", background:"white", color:"#888", fontWeight:800, fontSize:13, cursor:"pointer" }}>
-            Agora não
+            Agora nÃ£o
           </button>
           <button onClick={() => rating > 0 && onRate(rating, comment)} style={{ padding:"13px 0", borderRadius:12, border:"none", background: rating > 0 ? `linear-gradient(135deg,#F9A825,#E65100)` : "#F0F0F0", color: rating > 0 ? "white" : "#ccc", fontWeight:800, fontSize:13, cursor: rating > 0 ? "pointer" : "default", boxShadow: rating > 0 ? "0 4px 14px rgba(249,168,37,.35)" : "none" }}>
-            Enviar Avaliação
+            Enviar AvaliaÃ§Ã£o
           </button>
         </div>
       </div>
@@ -3219,7 +3219,7 @@ function RatingModal({ service, onRate, onClose }) {
   );
 }
 
-/* ───────────────────────── CHAT INBOX ──────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ CHAT INBOX â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function ChatInbox({ myServices, onOpenChat }) {
   const active = myServices.filter(s => s.status === "inprogress" || s.status === "done");
   return (
@@ -3232,7 +3232,7 @@ function ChatInbox({ myServices, onOpenChat }) {
         <div style={{ textAlign:"center", padding:"60px 24px", color:"#ccc" }}>
           <MessageCircle size={40} color="#E0E0E0" style={{ margin:"0 auto 14px", display:"block" }} />
           <p style={{ fontSize:14, fontWeight:700 }}>Nenhuma conversa ainda</p>
-          <p style={{ fontSize:12, marginTop:4 }}>As conversas aparecem quando você aceitar uma proposta.</p>
+          <p style={{ fontSize:12, marginTop:4 }}>As conversas aparecem quando vocÃª aceitar uma proposta.</p>
         </div>
       )}
       {active.map(s => {
@@ -3261,7 +3261,7 @@ function ChatInbox({ myServices, onOpenChat }) {
                 <span style={{ fontSize:11, color:"#bbb" }}>Agora</span>
               </div>
               <p style={{ fontSize:12, color: unread ? "#555" : "#aaa", fontWeight: unread ? 700 : 400, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                {s.status === "inprogress" ? `Orçamento R$ ${s.proposalValue || s.value} confirmado 👍` : "✅ Serviço concluído"}
+                {s.status === "inprogress" ? `OrÃ§amento R$ ${s.proposalValue || s.value} confirmado ðŸ‘` : "âœ… ServiÃ§o concluÃ­do"}
               </p>
               <p style={{ fontSize:11, color:"#bbb", marginTop:2 }}>{s.title}</p>
             </div>
@@ -3275,12 +3275,12 @@ function ChatInbox({ myServices, onOpenChat }) {
   );
 }
 
-/* ───────────────────────── FULL CHAT SCREEN ─────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ FULL CHAT SCREEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnlocked }) {
   const initMsgs = [
-    { id:1, from:"pro",    text:"Olá! Vi seu serviço e posso ajudar. Tenho 8 anos de experiência na área.", time:"10:01", read:true  },
-    { id:2, from:"client", text:"Ótimo! Qual seria o prazo e o valor para o serviço?",                      time:"10:03", read:true  },
-    { id:3, from:"pro",    text:`Consigo fazer por R$ ${chat.proposalValue || "250"}. Posso ir amanhã às 9h, se preferir.`, time:"10:04", read:true },
+    { id:1, from:"pro",    text:"OlÃ¡! Vi seu serviÃ§o e posso ajudar. Tenho 8 anos de experiÃªncia na Ã¡rea.", time:"10:01", read:true  },
+    { id:2, from:"client", text:"Ã“timo! Qual seria o prazo e o valor para o serviÃ§o?",                      time:"10:03", read:true  },
+    { id:3, from:"pro",    text:`Consigo fazer por R$ ${chat.proposalValue || "250"}. Posso ir amanhÃ£ Ã s 9h, se preferir.`, time:"10:04", read:true },
   ];
 
   const [messages,        setMessages]        = useState(chat.messages?.length ? chat.messages : initMsgs);
@@ -3326,10 +3326,10 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
     if (!text.trim()) return;
     pushClient(text.trim());
     setText("");
-    proRespond("Entendido! Fico à disposição. 👍");
+    proRespond("Entendido! Fico Ã  disposiÃ§Ã£o. ðŸ‘");
   };
 
-  // ── SEND FINAL DEAL (pro action) ──
+  // â”€â”€ SEND FINAL DEAL (pro action) â”€â”€
   const handleSendDeal = () => {
     if (!dealValue || !dealDate || !dealDesc) return;
     setShowDealForm(false);
@@ -3340,41 +3340,41 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
     }]);
   };
 
-  // ── CLIENT CONFIRMS THE DEAL ──
+  // â”€â”€ CLIENT CONFIRMS THE DEAL â”€â”€
   const handleConfirmDeal = () => {
     setDealAccepted(true);
     setMessages(m => m.map(x => x.type === "deal" ? { ...x, deal: { ...x.deal, accepted:true } } : x));
-    pushClient("✅ Acordo confirmado! Serviço garantido pelo Multi.");
-    proRespond("Perfeito! Acordo fechado. Estarei no local no horário combinado. Até logo! 🤝", 1000);
+    pushClient("âœ… Acordo confirmado! ServiÃ§o garantido pelo Multi.");
+    proRespond("Perfeito! Acordo fechado. Estarei no local no horÃ¡rio combinado. AtÃ© logo! ðŸ¤", 1000);
   };
 
   const smartReplies = dealAccepted
-    ? ["Pode vir agora?", "Traga os materiais", "Até amanhã!"]
+    ? ["Pode vir agora?", "Traga os materiais", "AtÃ© amanhÃ£!"]
     : ["Qual o valor total?", "Aceito!", "Pode vir agora?"];
 
   const handleSmartReply = (reply) => {
     pushClient(reply);
     if (reply === "Aceito!") {
-      proRespond(`Perfeito! Combinado por R$ ${chat.proposalValue || "250"}. Nos vemos em breve! 🤝`, 900);
+      proRespond(`Perfeito! Combinado por R$ ${chat.proposalValue || "250"}. Nos vemos em breve! ðŸ¤`, 900);
     } else if (reply === "Qual o valor total?") {
-      proRespond(`O valor total é R$ ${chat.proposalValue || "250"}, incluindo mão de obra e materiais básicos.`);
+      proRespond(`O valor total Ã© R$ ${chat.proposalValue || "250"}, incluindo mÃ£o de obra e materiais bÃ¡sicos.`);
     } else if (reply === "Pode vir agora?") {
-      proRespond("Sim! Consigo chegar em aproximadamente 30 minutos. 🚗");
+      proRespond("Sim! Consigo chegar em aproximadamente 30 minutos. ðŸš—");
     } else {
-      proRespond("Ótimo! Combinado então. 👍");
+      proRespond("Ã“timo! Combinado entÃ£o. ðŸ‘");
     }
   };
 
   const handleToolbar = (action) => {
     if (action === "photo") {
-      pushClient("📷 Foto enviada — [imagem do problema]");
-      proRespond("Recebi a foto! Já consigo avaliar. Pode deixar que resolvo.");
+      pushClient("ðŸ“· Foto enviada â€” [imagem do problema]");
+      proRespond("Recebi a foto! JÃ¡ consigo avaliar. Pode deixar que resolvo.");
     } else if (action === "location") {
-      pushClient("📍 Localização: Rua das Flores, 123 — sua região");
-      proRespond("Já conheço essa região. Estarei aí no horário combinado! 🗺️");
+      pushClient("ðŸ“ LocalizaÃ§Ã£o: Rua das Flores, 123 â€” sua regiÃ£o");
+      proRespond("JÃ¡ conheÃ§o essa regiÃ£o. Estarei aÃ­ no horÃ¡rio combinado! ðŸ—ºï¸");
     } else if (action === "budget") {
-      pushClient(`💳 Solicitando resumo do orçamento — R$ ${chat.proposalValue || "250"}`);
-      proRespond(`Orçamento: R$ ${chat.proposalValue || "250"}\nServiço: ${chat.serviceTitle}\nPrazo: 2-3 horas\nInclui: mão de obra + materiais básicos`);
+      pushClient(`ðŸ’³ Solicitando resumo do orÃ§amento â€” R$ ${chat.proposalValue || "250"}`);
+      proRespond(`OrÃ§amento: R$ ${chat.proposalValue || "250"}\nServiÃ§o: ${chat.serviceTitle}\nPrazo: 2-3 horas\nInclui: mÃ£o de obra + materiais bÃ¡sicos`);
     } else if (action === "deal") {
       setShowDealForm(true);
     }
@@ -3383,31 +3383,31 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
   const handleFinish = () => {
     setFinished(true);
     setShowFinishConfirm(false);
-    pushClient("🏁 Serviço marcado como concluído!");
-    proRespond("Foi um prazer! Obrigado pela confiança. 🙏", 600);
+    pushClient("ðŸ ServiÃ§o marcado como concluÃ­do!");
+    proRespond("Foi um prazer! Obrigado pela confianÃ§a. ðŸ™", 600);
     setTimeout(() => onFinishService(), 1800);
   };
 
-  // ─── FINISH CONFIRM OVERLAY ───
+  // â”€â”€â”€ FINISH CONFIRM OVERLAY â”€â”€â”€
   if (showFinishConfirm) {
     return (
       <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", height:"calc(100vh - 130px)", padding:24, textAlign:"center" }}>
         <div style={{ width:72, height:72, borderRadius:"50%", background:G+"18", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:16 }}>
           <Check size={36} color={G} />
         </div>
-        <h3 style={{ fontSize:18, fontWeight:900, color:"#1a1a2e", marginBottom:8 }}>Serviço concluído!</h3>
+        <h3 style={{ fontSize:18, fontWeight:900, color:"#1a1a2e", marginBottom:8 }}>ServiÃ§o concluÃ­do!</h3>
         <p style={{ fontSize:14, color:"#888", lineHeight:1.6, marginBottom:28 }}>
-          Deseja avaliar <strong style={{ color:"#1a1a2e" }}>{chat.proName}</strong> agora?<br/>Sua avaliação ajuda outros clientes.
+          Deseja avaliar <strong style={{ color:"#1a1a2e" }}>{chat.proName}</strong> agora?<br/>Sua avaliaÃ§Ã£o ajuda outros clientes.
         </p>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, width:"100%" }}>
-          <button onClick={() => { setShowFinishConfirm(false); onFinishService(); }} style={{ padding:"14px 0", borderRadius:14, border:"1.5px solid #E8E8E8", background:"white", color:"#888", fontWeight:800, fontSize:14, cursor:"pointer" }}>Agora não</button>
-          <button onClick={handleFinish} style={{ padding:"14px 0", borderRadius:14, border:"none", background:"linear-gradient(135deg,#F9A825,#E65100)", color:"white", fontWeight:800, fontSize:14, cursor:"pointer", boxShadow:"0 4px 14px rgba(249,168,37,.3)" }}>⭐ Avaliar</button>
+          <button onClick={() => { setShowFinishConfirm(false); onFinishService(); }} style={{ padding:"14px 0", borderRadius:14, border:"1.5px solid #E8E8E8", background:"white", color:"#888", fontWeight:800, fontSize:14, cursor:"pointer" }}>Agora nÃ£o</button>
+          <button onClick={handleFinish} style={{ padding:"14px 0", borderRadius:14, border:"none", background:"linear-gradient(135deg,#F9A825,#E65100)", color:"white", fontWeight:800, fontSize:14, cursor:"pointer", boxShadow:"0 4px 14px rgba(249,168,37,.3)" }}>â­ Avaliar</button>
         </div>
       </div>
     );
   }
 
-  // ── PAYMENT MODAL ────────────────────────────────────────────────────────
+  // â”€â”€ PAYMENT MODAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (showPaymentModal) {
     const serviceValue = chat.serviceValue || chat.proposalValue || "150,00";
 
@@ -3421,18 +3421,18 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
           <div style={{ flex:1 }}>
             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              <p style={{ fontSize:16, fontWeight:900, color:"#1a1a2e", margin:0 }}>Pagamento em Custódia</p>
+              <p style={{ fontSize:16, fontWeight:900, color:"#1a1a2e", margin:0 }}>Pagamento em CustÃ³dia</p>
             </div>
-            <p style={{ fontSize:11, color:"#22c55e", fontWeight:700, margin:0 }}>Dinheiro liberado só após conclusão</p>
+            <p style={{ fontSize:11, color:"#22c55e", fontWeight:700, margin:0 }}>Dinheiro liberado sÃ³ apÃ³s conclusÃ£o</p>
           </div>
         </div>
 
         <div style={{ padding:"20px 16px", display:"flex", flexDirection:"column", gap:14 }}>
           {/* Order summary */}
           <div style={{ background:"white", borderRadius:18, padding:"14px 16px", boxShadow:"0 2px 10px rgba(0,0,0,.06)", border:"1px solid #EEEEF2" }}>
-            <p style={{ fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.5, margin:"0 0 10px" }}>Resumo do Serviço</p>
+            <p style={{ fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.5, margin:"0 0 10px" }}>Resumo do ServiÃ§o</p>
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-              <div style={{ width:46, height:46, borderRadius:14, background:"#EBF4FF", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>🔧</div>
+              <div style={{ width:46, height:46, borderRadius:14, background:"#EBF4FF", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>ðŸ”§</div>
               <div style={{ flex:1 }}>
                 <p style={{ fontSize:14, fontWeight:900, color:"#1a1a2e", margin:"0 0 2px" }}>{chat.serviceTitle}</p>
                 <p style={{ fontSize:12, color:"#aaa", margin:0 }}>com {chat.proName}</p>
@@ -3445,7 +3445,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
           <div style={{ background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:14, padding:"12px 14px", display:"flex", gap:10 }}>
             <Shield size={18} color={G} style={{ flexShrink:0 }} />
             <p style={{ fontSize:12, color:"#166534", fontWeight:700, margin:0, lineHeight:1.6 }}>
-              O valor fica <strong>retido com segurança</strong> até você confirmar a conclusão do serviço. Só então o profissional recebe.
+              O valor fica <strong>retido com seguranÃ§a</strong> atÃ© vocÃª confirmar a conclusÃ£o do serviÃ§o. SÃ³ entÃ£o o profissional recebe.
             </p>
           </div>
 
@@ -3455,10 +3455,10 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
           <div onClick={() => setPaymentStep("pix")} style={{ background:"white", borderRadius:20, overflow:"hidden", boxShadow:"0 4px 18px rgba(0,122,255,.12)", border:`2px solid ${B}`, cursor:"pointer" }}>
             <div style={{ background:`linear-gradient(135deg,${B},#0055d4)`, padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
               <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                <span style={{ fontSize:13 }}>⚡</span>
+                <span style={{ fontSize:13 }}>âš¡</span>
                 <span style={{ fontSize:12, fontWeight:900, color:"white" }}>RECOMENDADO</span>
               </div>
-              <span style={{ fontSize:11, color:"rgba(255,255,255,.8)", fontWeight:700 }}>Sem taxas · Imediato</span>
+              <span style={{ fontSize:11, color:"rgba(255,255,255,.8)", fontWeight:700 }}>Sem taxas Â· Imediato</span>
             </div>
             <div style={{ padding:"16px", display:"flex", alignItems:"center", gap:14 }}>
               <div style={{ width:48, height:48, borderRadius:14, background:"linear-gradient(135deg,#32BCAD,#1BA79B)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
@@ -3468,8 +3468,8 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
               </div>
               <div style={{ flex:1 }}>
                 <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:"0 0 3px" }}>Pagar com PIX</p>
-                <p style={{ fontSize:12, color:"#6B7280", margin:"0 0 4px" }}>QR Code gerado na hora · Prof. recebe em D+1</p>
-                <span style={{ fontSize:10, fontWeight:800, color:"#22c55e", background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:99, padding:"2px 8px" }}>Sem taxas ✅</span>
+                <p style={{ fontSize:12, color:"#6B7280", margin:"0 0 4px" }}>QR Code gerado na hora Â· Prof. recebe em D+1</p>
+                <span style={{ fontSize:10, fontWeight:800, color:"#22c55e", background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:99, padding:"2px 8px" }}>Sem taxas âœ…</span>
               </div>
               <ChevronRight size={18} color="#aaa" />
             </div>
@@ -3482,8 +3482,8 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
                 <CreditCard size={24} color="#7C3AED" />
               </div>
               <div style={{ flex:1 }}>
-                <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:"0 0 3px" }}>Cartão de Crédito</p>
-                <p style={{ fontSize:12, color:"#6B7280", margin:"0 0 4px" }}>Parcele em até 12x · Prof. recebe em D+2</p>
+                <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:"0 0 3px" }}>CartÃ£o de CrÃ©dito</p>
+                <p style={{ fontSize:12, color:"#6B7280", margin:"0 0 4px" }}>Parcele em atÃ© 12x Â· Prof. recebe em D+2</p>
                 <span style={{ fontSize:10, fontWeight:800, color:"#F59E0B", background:"#FFFBEB", border:"1px solid #FDE68A", borderRadius:99, padding:"2px 8px" }}>Taxa 3% descontada do profissional</span>
               </div>
               <div style={{ display:"flex", gap:5, alignItems:"center" }}>
@@ -3501,9 +3501,9 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
                 <CreditCard size={24} color="#0277BD" />
               </div>
               <div style={{ flex:1 }}>
-                <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:"0 0 3px" }}>Cartão de Débito</p>
-                <p style={{ fontSize:12, color:"#6B7280", margin:"0 0 4px" }}>Débito direto na conta · Prof. recebe em D+1</p>
-                <span style={{ fontSize:10, fontWeight:800, color:"#22c55e", background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:99, padding:"2px 8px" }}>Sem taxas adicionais ✅</span>
+                <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:"0 0 3px" }}>CartÃ£o de DÃ©bito</p>
+                <p style={{ fontSize:12, color:"#6B7280", margin:"0 0 4px" }}>DÃ©bito direto na conta Â· Prof. recebe em D+1</p>
+                <span style={{ fontSize:10, fontWeight:800, color:"#22c55e", background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:99, padding:"2px 8px" }}>Sem taxas adicionais âœ…</span>
               </div>
               <div style={{ display:"flex", gap:5, alignItems:"center" }}>
                 <div style={{ background:"#FFD200", borderRadius:4, padding:"2px 6px" }}><span style={{ fontSize:9, fontWeight:900, color:"#1a1a2e" }}>elo</span></div>
@@ -3518,7 +3518,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
               <span style={{ fontSize:12, fontWeight:700, color:"#22c55e" }}>Pagamento 100% Seguro</span>
             </div>
-            <p style={{ fontSize:11, color:"#9CA3AF", textAlign:"center", margin:0 }}>Processado pelo Asaas · SSL 256-bit</p>
+            <p style={{ fontSize:11, color:"#9CA3AF", textAlign:"center", margin:0 }}>Processado pelo Asaas Â· SSL 256-bit</p>
           </div>
         </div>
       </div>
@@ -3542,7 +3542,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
             </div>
             <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:99, padding:"5px 14px", marginBottom:16 }}>
               <div style={{ width:8, height:8, borderRadius:"50%", background:G }} />
-              <span style={{ fontSize:11, fontWeight:800, color:"#166534" }}>Aguardando pagamento — R$ {serviceValue}</span>
+              <span style={{ fontSize:11, fontWeight:800, color:"#166534" }}>Aguardando pagamento â€” R$ {serviceValue}</span>
             </div>
             <div style={{ background:"#F8FAFF", border:"1px solid #DBEAFE", borderRadius:12, padding:"10px 12px", display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
               <div style={{ flex:1, minWidth:0, textAlign:"left" }}>
@@ -3554,7 +3554,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
             <button
               onClick={() => { setPaymentDone(true); setPaymentStep("done"); setShowPaymentModal(false); }}
               style={{ width:"100%", padding:"14px 0", borderRadius:14, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${G},#16a34a)`, color:"white", fontWeight:900, fontSize:14, boxShadow:`0 5px 18px ${G}44` }}>
-              ✅ Já fiz o pagamento
+              âœ… JÃ¡ fiz o pagamento
             </button>
           </div>
         </div>
@@ -3570,14 +3570,14 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
             <button onClick={() => setPaymentStep("choose")} style={{ background:"#F5F6FA", border:"none", borderRadius:"50%", width:36, height:36, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
               <ArrowLeft size={18} color="#555" />
             </button>
-            <p style={{ fontSize:16, fontWeight:900, color:"#1a1a2e", margin:0 }}>Cartão de {isCredit ? "Crédito" : "Débito"}</p>
+            <p style={{ fontSize:16, fontWeight:900, color:"#1a1a2e", margin:0 }}>CartÃ£o de {isCredit ? "CrÃ©dito" : "DÃ©bito"}</p>
           </div>
           <div style={{ padding:"20px 16px", display:"flex", flexDirection:"column", gap:14 }}>
             <div style={{ background:"white", borderRadius:18, padding:"16px", boxShadow:"0 2px 10px rgba(0,0,0,.06)" }}>
-              <p style={{ fontSize:13, fontWeight:900, color:"#1a1a2e", margin:"0 0 16px" }}>Dados do Cartão</p>
+              <p style={{ fontSize:13, fontWeight:900, color:"#1a1a2e", margin:"0 0 16px" }}>Dados do CartÃ£o</p>
               <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-                <input placeholder="Número do cartão" type="tel" maxLength={19} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", fontFamily:"monospace" }} />
-                <input placeholder="Nome como no cartão" style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
+                <input placeholder="NÃºmero do cartÃ£o" type="tel" maxLength={19} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", fontFamily:"monospace" }} />
+                <input placeholder="Nome como no cartÃ£o" style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                   <input placeholder="MM/AA" type="tel" maxLength={5} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
                   <input placeholder="CVV" type="tel" maxLength={4} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
@@ -3596,16 +3596,16 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
               <Shield size={16} color="#F59E0B" style={{ flexShrink:0 }} />
               <div>
                 <p style={{ fontSize:12, color:"#92400E", fontWeight:700, margin:"0 0 4px", lineHeight:1.6 }}>
-                  R$ {serviceValue} ficará em <strong>custódia</strong> até você confirmar o PIN.
+                  R$ {serviceValue} ficarÃ¡ em <strong>custÃ³dia</strong> atÃ© vocÃª confirmar o PIN.
                 </p>
                 {isCredit && (
                   <p style={{ fontSize:11, color:"#92400E", margin:0, lineHeight:1.5 }}>
-                    ⚠️ Taxa de antecipação de <strong>3%</strong> será descontada do valor recebido pelo profissional. Ele receberá em <strong>D+2</strong> após confirmação.
+                    âš ï¸ Taxa de antecipaÃ§Ã£o de <strong>3%</strong> serÃ¡ descontada do valor recebido pelo profissional. Ele receberÃ¡ em <strong>D+2</strong> apÃ³s confirmaÃ§Ã£o.
                   </p>
                 )}
                 {!isCredit && (
                   <p style={{ fontSize:11, color:"#166534", margin:0 }}>
-                    ✅ Sem taxas adicionais. Profissional recebe em <strong>D+1</strong>.
+                    âœ… Sem taxas adicionais. Profissional recebe em <strong>D+1</strong>.
                   </p>
                 )}
               </div>
@@ -3614,19 +3614,19 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
             <button
               onClick={() => { setPaymentDone(true); setPaymentStep("done"); setShowPaymentModal(false); }}
               style={{ padding:"15px 0", borderRadius:16, border:"none", cursor:"pointer", background:`linear-gradient(135deg,#1a1a2e,#2d2d44)`, color:"white", fontWeight:900, fontSize:15, boxShadow:"0 5px 18px rgba(0,0,0,.25)" }}>
-              Confirmar Pagamento · R$ {serviceValue}
+              Confirmar Pagamento Â· R$ {serviceValue}
             </button>
           </div>
         </div>
       );
     }
   }
-  // ── END PAYMENT MODAL ─────────────────────────────────────────────────────
+  // â”€â”€ END PAYMENT MODAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   return (
     <>
 
-      {/* ── DEAL FORM MODAL (PRO sends proposal) ── */}
+      {/* â”€â”€ DEAL FORM MODAL (PRO sends proposal) â”€â”€ */}
       {showDealForm && (
         <div style={{ position:"fixed", inset:0, zIndex:300, background:"rgba(0,0,0,.45)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
           <div style={{ width:"100%", maxWidth:400, background:"white", borderRadius:"24px 24px 0 0", padding:"24px 20px 36px" }}>
@@ -3653,15 +3653,15 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
 
             {/* Date/time */}
             <div style={{ marginBottom:14 }}>
-              <label style={{ display:"block", fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.2, marginBottom:6 }}>Data e Horário</label>
+              <label style={{ display:"block", fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.2, marginBottom:6 }}>Data e HorÃ¡rio</label>
               <input type="datetime-local" value={dealDate} onChange={e => setDealDate(e.target.value)}
                 style={{ width:"100%", border:"1.5px solid #EBEBEB", borderRadius:12, padding:"12px 14px", fontSize:13, outline:"none", fontFamily:"inherit", boxSizing:"border-box" }} />
             </div>
 
             {/* What will be done */}
             <div style={{ marginBottom:20 }}>
-              <label style={{ display:"block", fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.2, marginBottom:6 }}>O que será feito</label>
-              <textarea rows={3} placeholder="Ex: Trocar sifão e vedação do cano, limpar entupimento..." value={dealDesc} onChange={e => setDealDesc(e.target.value)}
+              <label style={{ display:"block", fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.2, marginBottom:6 }}>O que serÃ¡ feito</label>
+              <textarea rows={3} placeholder="Ex: Trocar sifÃ£o e vedaÃ§Ã£o do cano, limpar entupimento..." value={dealDesc} onChange={e => setDealDesc(e.target.value)}
                 style={{ width:"100%", border:"1.5px solid #EBEBEB", borderRadius:12, padding:"12px 14px", fontSize:13, outline:"none", fontFamily:"inherit", resize:"none", lineHeight:1.55, boxSizing:"border-box" }} />
             </div>
 
@@ -3677,21 +3677,21 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
 
       <div style={{ display:"flex", flexDirection:"column", height:"calc(100vh - 130px)" }}>
 
-        {/* ── HEADER ── */}
+        {/* â”€â”€ HEADER â”€â”€ */}
         <div style={{ padding:"10px 16px", background:"white", borderBottom:"1px solid #F0F0F0", flexShrink:0 }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", padding:0, display:"flex", flexShrink:0 }}>
               <ArrowLeft size={20} color="#aaa" />
             </button>
             <div style={{ position:"relative", flexShrink:0 }}>
-              <div style={{ width:40, height:40, borderRadius:12, background:O+"18", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>👨‍🔧</div>
+              <div style={{ width:40, height:40, borderRadius:12, background:O+"18", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>ðŸ‘¨â€ðŸ”§</div>
               <span className="pulse-green" style={{ position:"absolute", bottom:0, right:0, width:11, height:11, borderRadius:"50%", background:G, border:"2px solid white" }} />
             </div>
             <div style={{ flex:1, minWidth:0 }}>
               <p style={{ fontWeight:900, fontSize:14, color:"#1a1a2e", lineHeight:1.2 }}>{chat.proName}</p>
               <div style={{ display:"flex", alignItems:"center", gap:5 }}>
                 <span style={{ fontSize:11, color:G, fontWeight:700 }}>Online agora</span>
-                <span style={{ fontSize:11, color:"#ccc" }}>·</span>
+                <span style={{ fontSize:11, color:"#ccc" }}>Â·</span>
                 <span style={{ fontSize:11, color:"#aaa" }}>resp. &lt; 5 min</span>
               </div>
             </div>
@@ -3706,22 +3706,22 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:8, paddingTop:8, borderTop:"1px solid #F4F4F6" }}>
             <span style={{ fontSize:11, color:"#888" }}>Conversa: <strong style={{ color:"#1a1a2e" }}>{chat.serviceTitle}</strong></span>
             {(isPro || dealAccepted || contactUnlocked) ? (
-              <span style={{ fontSize:11, fontWeight:800, color:"#166534", background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:8, padding:"3px 8px" }}>📱 (11) 9 8765-4321</span>
+              <span style={{ fontSize:11, fontWeight:800, color:"#166534", background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:8, padding:"3px 8px" }}>ðŸ“± (11) 9 8765-4321</span>
             ) : (
-              <span style={{ fontSize:10, color:"#C44B00", background:"#FFF6F2", border:"1px solid #FFD8C8", borderRadius:8, padding:"3px 8px" }}>🔒 Feche o acordo para liberar</span>
+              <span style={{ fontSize:10, color:"#C44B00", background:"#FFF6F2", border:"1px solid #FFD8C8", borderRadius:8, padding:"3px 8px" }}>ðŸ”’ Feche o acordo para liberar</span>
             )}
           </div>
         </div>
 
-        {/* ── MESSAGES ── */}
+        {/* â”€â”€ MESSAGES â”€â”€ */}
         <div style={{ flex:1, overflowY:"auto", padding:"14px 14px 8px", display:"flex", flexDirection:"column", gap:8, background:BG }}>
           {messages.map((m) => {
 
-            // ── DEAL CARD ──
+            // â”€â”€ DEAL CARD â”€â”€
             if (m.type === "deal") {
               const d = m.deal;
               const accepted = d.accepted;
-              const fmtDate  = d.date ? new Date(d.date).toLocaleString("pt-BR", { day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit" }) : "—";
+              const fmtDate  = d.date ? new Date(d.date).toLocaleString("pt-BR", { day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit" }) : "â€”";
               return (
                 <div key={m.id} className="deal-card" style={{ margin:"8px 0" }}>
                   <div style={{
@@ -3736,7 +3736,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
                         <FileText size={18} color="white" />
                       </div>
                       <div>
-                        <p style={{ fontWeight:900, fontSize:14, color:"white", margin:0 }}>{accepted ? "✅ Acordo Fechado!" : "📋 Proposta Final"}</p>
+                        <p style={{ fontWeight:900, fontSize:14, color:"white", margin:0 }}>{accepted ? "âœ… Acordo Fechado!" : "ðŸ“‹ Proposta Final"}</p>
                         <p style={{ fontSize:11, color:"rgba(255,255,255,.75)", margin:0 }}>Contrato Digital Multi</p>
                       </div>
                       {accepted && <CheckCircle2 size={22} color="white" style={{ marginLeft:"auto" }} />}
@@ -3746,8 +3746,8 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
                     <div style={{ padding:"14px 16px" }}>
                       {[
                         { icon:DollarSign, label:"Valor Total", value:`R$ ${d.value}`, highlight:true },
-                        { icon:Clock,      label:"Data e Horário", value: fmtDate },
-                        { icon:FileText,   label:"O que será feito", value: d.desc },
+                        { icon:Clock,      label:"Data e HorÃ¡rio", value: fmtDate },
+                        { icon:FileText,   label:"O que serÃ¡ feito", value: d.desc },
                       ].map(({ icon:Icon, label, value, highlight }, i) => (
                         <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:10, padding:"9px 0", borderBottom: i < 2 ? `1px solid ${accepted ? G+"30" : O+"20"}` : "none" }}>
                           <span style={{ width:30, height:30, borderRadius:9, background: accepted ? G+"18" : O+"15", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:1 }}>
@@ -3773,28 +3773,28 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
                         }}>
                           <Check size={18} /> CONFIRMAR E AGENDAR
                         </button>
-                        <p style={{ textAlign:"center", fontSize:11, color:"#aaa", marginTop:8 }}>Ao confirmar, o acordo é garantido pelo Multi</p>
+                        <p style={{ textAlign:"center", fontSize:11, color:"#aaa", marginTop:8 }}>Ao confirmar, o acordo Ã© garantido pelo Multi</p>
                       </div>
                     ) : (
                       /* POST-DEAL ACTION BUTTONS */
                       <div style={{ padding:"0 16px 16px", display:"flex", flexDirection:"column", gap:8 }}>
-                        <p style={{ fontSize:11, fontWeight:800, color:G, textAlign:"center", marginBottom:4 }}>🎉 Acordo fechado com sucesso!</p>
+                        <p style={{ fontSize:11, fontWeight:800, color:G, textAlign:"center", marginBottom:4 }}>ðŸŽ‰ Acordo fechado com sucesso!</p>
                         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-                          {/* Client sees: Ver Endereço / Pagar */}
+                          {/* Client sees: Ver EndereÃ§o / Pagar */}
                           <button style={{ padding:"11px 0", borderRadius:12, border:`1.5px solid ${B}`, background:"white", color:B, fontWeight:800, fontSize:11, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}>
-                            <MapPin size={13} /> Ver Endereço
+                            <MapPin size={13} /> Ver EndereÃ§o
                           </button>
                           <button onClick={() => setShowPaymentModal(true)} style={{ padding:"11px 0", borderRadius:12, border:"none", background:`linear-gradient(135deg,${G},#16a34a)`, color:"white", fontWeight:800, fontSize:11, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}>
-                            <DollarSign size={13} /> Pagar PIX/Cartão
+                            <DollarSign size={13} /> Pagar PIX/CartÃ£o
                           </button>
                         </div>
                         {isPro && (
                           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:4 }}>
                             <button style={{ padding:"11px 0", borderRadius:12, border:`1.5px solid ${G}`, background:"white", color:G, fontWeight:800, fontSize:11, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}>
-                              <MapPin size={13} /> Endereço Completo
+                              <MapPin size={13} /> EndereÃ§o Completo
                             </button>
                             <button style={{ padding:"11px 0", borderRadius:12, border:"none", background:`linear-gradient(135deg,${B},#0056c7)`, color:"white", fontWeight:800, fontSize:11, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}>
-                              📞 Ligar Agora
+                              ðŸ“ž Ligar Agora
                             </button>
                           </div>
                         )}
@@ -3806,7 +3806,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
               );
             }
 
-            // ── REGULAR MESSAGE ──
+            // â”€â”€ REGULAR MESSAGE â”€â”€
             if (m.from === "system") return (
               <div key={m.id} style={{ textAlign:"center", padding:"4px 0" }}>
                 <span style={{ background:G+"18", color:G, fontSize:11, fontWeight:800, padding:"5px 14px", borderRadius:99 }}>{m.text}</span>
@@ -3816,7 +3816,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
             const isClient = m.from === "client";
             return (
               <div key={m.id} style={{ display:"flex", justifyContent: isClient ? "flex-end" : "flex-start", alignItems:"flex-end", gap:6 }}>
-                {!isClient && <div style={{ width:28, height:28, borderRadius:8, background:O+"18", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, flexShrink:0 }}>👨‍🔧</div>}
+                {!isClient && <div style={{ width:28, height:28, borderRadius:8, background:O+"18", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, flexShrink:0 }}>ðŸ‘¨â€ðŸ”§</div>}
                 <div style={{ maxWidth:"76%", padding:"10px 13px", borderRadius: isClient ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: isClient ? B : "white", color: isClient ? "white" : "#1a1a2e", fontSize:13, lineHeight:1.55, boxShadow: isClient ? "0 2px 8px rgba(0,112,255,.20)" : "0 1px 6px rgba(0,0,0,.07)" }}>
                   <p style={{ margin:0, whiteSpace:"pre-wrap" }}>{m.text}</p>
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:4, marginTop:5 }}>
@@ -3835,11 +3835,11 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
 
           {isTyping && (
             <div style={{ display:"flex", alignItems:"flex-end", gap:6 }}>
-              <div style={{ width:28, height:28, borderRadius:8, background:O+"18", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, flexShrink:0 }}>👨‍🔧</div>
+              <div style={{ width:28, height:28, borderRadius:8, background:O+"18", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, flexShrink:0 }}>ðŸ‘¨â€ðŸ”§</div>
               <div style={{ background:"white", borderRadius:"18px 18px 18px 4px", padding:"10px 14px", boxShadow:"0 1px 6px rgba(0,0,0,.07)" }}>
                 <div style={{ display:"flex", gap:4, alignItems:"center" }}>
                   <span className="tdot" /><span className="tdot" /><span className="tdot" />
-                  <span style={{ fontSize:10, color:"#aaa", marginLeft:4 }}>{chat.proName} está digitando…</span>
+                  <span style={{ fontSize:10, color:"#aaa", marginLeft:4 }}>{chat.proName} estÃ¡ digitandoâ€¦</span>
                 </div>
               </div>
             </div>
@@ -3847,30 +3847,30 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
           <div ref={endRef} />
         </div>
 
-        {/* ── SAFETY WARNING ── */}
+        {/* â”€â”€ SAFETY WARNING â”€â”€ */}
         <div style={{ padding:"8px 12px 0", background:"white", borderTop:"1px solid #F0F0F0", flexShrink:0 }}>
           <div style={{ display:"flex", alignItems:"flex-start", gap:8, background:"#FFFBEB", border:"1px solid #FDE68A", borderRadius:10, padding:"8px 10px" }}>
-            <span style={{ fontSize:15, flexShrink:0, lineHeight:1.4 }}>⚠️</span>
+            <span style={{ fontSize:15, flexShrink:0, lineHeight:1.4 }}>âš ï¸</span>
             <p style={{ fontSize:10, fontWeight:700, color:"#92400E", lineHeight:1.5, margin:0 }}>
-              Por sua segurança, <strong>não realize pagamentos antecipados</strong>. Exija a conclusão do serviço antes de passar o PIN de liberação. O Multi nunca pede pagamento por fora da plataforma.
+              Por sua seguranÃ§a, <strong>nÃ£o realize pagamentos antecipados</strong>. Exija a conclusÃ£o do serviÃ§o antes de passar o PIN de liberaÃ§Ã£o. O Multi nunca pede pagamento por fora da plataforma.
             </p>
           </div>
         </div>
 
-        {/* ── STICKY PAYMENT BUTTON — shown after deal accepted ── */}
+        {/* â”€â”€ STICKY PAYMENT BUTTON â€” shown after deal accepted â”€â”€ */}
         {dealAccepted && !paymentDone && !isPro && (
           <div style={{ padding:"10px 16px", background:"white", borderTop:"1px solid #F0F0F0", display:"flex", gap:8 }}>
             <button
               onClick={() => setShowPaymentModal(true)}
               style={{ flex:1, padding:"13px 0", borderRadius:14, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${G},#16a34a)`, color:"white", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:`0 4px 14px ${G}44` }}>
-              <DollarSign size={16} /> Pagar Serviço com Custódia
+              <DollarSign size={16} /> Pagar ServiÃ§o com CustÃ³dia
             </button>
           </div>
         )}
         {dealAccepted && paymentDone && !isPro && (
           <div style={{ padding:"10px 16px", background:"#F0FDF4", borderTop:`1px solid #BBF7D0` }}>
             <p style={{ fontSize:13, fontWeight:800, color:"#166534", textAlign:"center", margin:0, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
-              <Shield size={15} color={G} /> Pagamento em custódia · Libere após o serviço
+              <Shield size={15} color={G} /> Pagamento em custÃ³dia Â· Libere apÃ³s o serviÃ§o
             </p>
           </div>
         )}
@@ -3882,12 +3882,12 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
           ))}
         </div>
 
-        {/* ── TOOLBAR ── */}
+        {/* â”€â”€ TOOLBAR â”€â”€ */}
         <div style={{ padding:"4px 12px 2px", background:"white", display:"flex", gap:6, overflowX:"auto", scrollbarWidth:"none", flexShrink:0 }}>
           {[
             { id:"photo",    Icon:Camera,     label:"Foto"        },
-            { id:"location", Icon:MapPin,     label:"Localização" },
-            { id:"budget",   Icon:DollarSign, label:"Orçamento"   },
+            { id:"location", Icon:MapPin,     label:"LocalizaÃ§Ã£o" },
+            { id:"budget",   Icon:DollarSign, label:"OrÃ§amento"   },
             { id:"deal",     Icon:FileText,   label:"Proposta Final", highlight:true },
           ].map(({ id, Icon, label, highlight }) => (
             <button key={id} onClick={() => handleToolbar(id)} style={{
@@ -3902,7 +3902,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
           ))}
         </div>
 
-        {/* ── INPUT ── */}
+        {/* â”€â”€ INPUT â”€â”€ */}
         <div style={{ padding:"8px 12px 16px", background:"white", display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
           <input ref={inputRef} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && sendText()} placeholder="Digite uma mensagem..."
             style={{ flex:1, border:"1.5px solid #EBEBEB", borderRadius:14, padding:"11px 14px", fontSize:13, outline:"none", fontFamily:"inherit", background:"#FAFAFA" }} />
@@ -3915,7 +3915,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
   );
 }
 
-/* ───────────────────────── AUTH: WELCOME SCREEN ──────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ AUTH: WELCOME SCREEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function WelcomeScreen({ onGoogle, onEmail, onBack }) {
   return (
     <div style={{ minHeight:"100vh", background:"#F8F9FA", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"space-between", padding:"0 0 48px" }}>
@@ -3937,7 +3937,7 @@ function WelcomeScreen({ onGoogle, onEmail, onBack }) {
           </div>
           <div style={{ textAlign:"center" }}>
             <p style={{ fontSize:32, fontWeight:900, color:"white", letterSpacing:-1, lineHeight:1, margin:0 }}>multi</p>
-            <p style={{ fontSize:12, color:"rgba(255,255,255,.65)", fontWeight:600, marginTop:4, letterSpacing:.5 }}>serviços gerais em um toque</p>
+            <p style={{ fontSize:12, color:"rgba(255,255,255,.65)", fontWeight:600, marginTop:4, letterSpacing:.5 }}>serviÃ§os gerais em um toque</p>
           </div>
         </div>
       </div>
@@ -3946,18 +3946,18 @@ function WelcomeScreen({ onGoogle, onEmail, onBack }) {
       <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"40px 28px 0", width:"100%", maxWidth:400 }}>
         {/* tagline */}
         <h2 style={{ fontSize:24, fontWeight:900, color:"#1a1a2e", textAlign:"center", lineHeight:1.35, margin:"0 0 8px" }}>
-          Sua casa em boas mãos,<br/>num toque.
+          Sua casa em boas mÃ£os,<br/>num toque.
         </h2>
         <p style={{ fontSize:14, color:"#9CA3AF", textAlign:"center", lineHeight:1.6, margin:"0 0 36px" }}>
-          Conectamos você aos melhores profissionais<br/>verificados da sua região.
+          Conectamos vocÃª aos melhores profissionais<br/>verificados da sua regiÃ£o.
         </p>
 
         {/* trust badges */}
         <div style={{ display:"flex", gap:20, marginBottom:36, justifyContent:"center" }}>
           {[
             { val:"12k+", lbl:"Profissionais" },
-            { val:"98%",  lbl:"Satisfação"    },
-            { val:"4,9★", lbl:"Avaliação"     },
+            { val:"98%",  lbl:"SatisfaÃ§Ã£o"    },
+            { val:"4,9â˜…", lbl:"AvaliaÃ§Ã£o"     },
           ].map((b, i) => (
             <div key={i} style={{ textAlign:"center" }}>
               <p style={{ fontSize:17, fontWeight:900, color:B, margin:0 }}>{b.val}</p>
@@ -3968,7 +3968,7 @@ function WelcomeScreen({ onGoogle, onEmail, onBack }) {
 
         {/* free seal */}
         <div style={{ display:"flex", alignItems:"center", gap:7, background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:12, padding:"8px 16px", marginBottom:28 }}>
-          <span style={{ fontSize:16 }}>✨</span>
+          <span style={{ fontSize:16 }}>âœ¨</span>
           <p style={{ fontSize:13, fontWeight:800, color:"#166534", margin:0 }}>Cadastro 100% gratuito para clientes</p>
         </div>
 
@@ -4006,14 +4006,14 @@ function WelcomeScreen({ onGoogle, onEmail, onBack }) {
         </div>
 
         <p style={{ fontSize:12, color:"#9CA3AF", marginTop:20, textAlign:"center" }}>
-          Já tem conta? <button onClick={onEmail} style={{ color:B, fontWeight:800, background:"none", border:"none", cursor:"pointer", fontSize:12 }}>Entrar</button>
+          JÃ¡ tem conta? <button onClick={onEmail} style={{ color:B, fontWeight:800, background:"none", border:"none", cursor:"pointer", fontSize:12 }}>Entrar</button>
         </p>
       </div>
     </div>
   );
 }
 
-/* ───────────────────────── TERMS OF USE MODAL ──────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ TERMS OF USE MODAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function TermsOfUseModal({ onClose, variant = "general" }) {
   // variant: "general" | "autonomy"
   return (
@@ -4030,7 +4030,7 @@ function TermsOfUseModal({ onClose, variant = "general" }) {
               <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:0 }}>
                 {variant === "autonomy" ? "Termo de Autonomia Profissional" : "Termos de Uso e Privacidade"}
               </p>
-              <p style={{ fontSize:11, color:"#aaa", margin:0 }}>Multi Serviços Gerais · v2.0</p>
+              <p style={{ fontSize:11, color:"#aaa", margin:0 }}>Multi ServiÃ§os Gerais Â· v2.0</p>
             </div>
           </div>
         </div>
@@ -4039,20 +4039,20 @@ function TermsOfUseModal({ onClose, variant = "general" }) {
         <div style={{ flex:1, overflowY:"auto", padding:"0 20px 20px" }}>
           {variant === "autonomy" ? (
             <>
-              <Section title="1. Natureza da Relação">
-                O profissional cadastrado na plataforma Multi declara, sob sua total responsabilidade, que presta serviços de forma autônoma e independente, não existindo qualquer vínculo empregatício, subordinação jurídica ou relação trabalhista com a Multi Serviços Gerais Ltda. ("Plataforma").
+              <Section title="1. Natureza da RelaÃ§Ã£o">
+                O profissional cadastrado na plataforma Multi declara, sob sua total responsabilidade, que presta serviÃ§os de forma autÃ´noma e independente, nÃ£o existindo qualquer vÃ­nculo empregatÃ­cio, subordinaÃ§Ã£o jurÃ­dica ou relaÃ§Ã£o trabalhista com a Multi ServiÃ§os Gerais Ltda. ("Plataforma").
               </Section>
-              <Section title="2. Ausência de Exclusividade">
-                O profissional é livre para atender clientes por outros meios, plataformas ou diretamente, sem qualquer restrição imposta pela Plataforma.
+              <Section title="2. AusÃªncia de Exclusividade">
+                O profissional Ã© livre para atender clientes por outros meios, plataformas ou diretamente, sem qualquer restriÃ§Ã£o imposta pela Plataforma.
               </Section>
-              <Section title="3. Responsabilidade pelo Serviço">
-                O profissional é inteiramente responsável pela qualidade, segurança e conclusão dos serviços que contratar através da Plataforma. A Multi atua exclusivamente como intermediadora digital.
+              <Section title="3. Responsabilidade pelo ServiÃ§o">
+                O profissional Ã© inteiramente responsÃ¡vel pela qualidade, seguranÃ§a e conclusÃ£o dos serviÃ§os que contratar atravÃ©s da Plataforma. A Multi atua exclusivamente como intermediadora digital.
               </Section>
-              <Section title="4. Obrigações Fiscais">
-                O profissional é responsável pelo recolhimento de seus próprios impostos e contribuições previdenciárias, devendo estar regularizado como MEI, autônomo ou pessoa jurídica.
+              <Section title="4. ObrigaÃ§Ãµes Fiscais">
+                O profissional Ã© responsÃ¡vel pelo recolhimento de seus prÃ³prios impostos e contribuiÃ§Ãµes previdenciÃ¡rias, devendo estar regularizado como MEI, autÃ´nomo ou pessoa jurÃ­dica.
               </Section>
-              <Section title="5. Isenção de Vínculo">
-                A Plataforma não é empregadora, não recolhe FGTS, INSS ou qualquer encargo trabalhista em nome do profissional. O uso da Plataforma não gera qualquer direito trabalhista.
+              <Section title="5. IsenÃ§Ã£o de VÃ­nculo">
+                A Plataforma nÃ£o Ã© empregadora, nÃ£o recolhe FGTS, INSS ou qualquer encargo trabalhista em nome do profissional. O uso da Plataforma nÃ£o gera qualquer direito trabalhista.
               </Section>
               <p style={{ fontSize:10, color:"#bbb", lineHeight:1.6, marginTop:12 }}>
                 Ao marcar a caixa de aceite no cadastro, o profissional confirma que leu, compreendeu e concorda integralmente com este Termo de Autonomia.
@@ -4061,25 +4061,25 @@ function TermsOfUseModal({ onClose, variant = "general" }) {
           ) : (
             <>
               <Section title="1. Natureza da Plataforma">
-                O Multi é um marketplace digital que conecta clientes a prestadores de serviços autônomos. A Plataforma atua exclusivamente como intermediadora, não sendo responsável pela execução, qualidade ou resultado dos serviços contratados entre as partes.
+                O Multi Ã© um marketplace digital que conecta clientes a prestadores de serviÃ§os autÃ´nomos. A Plataforma atua exclusivamente como intermediadora, nÃ£o sendo responsÃ¡vel pela execuÃ§Ã£o, qualidade ou resultado dos serviÃ§os contratados entre as partes.
               </Section>
-              <Section title="2. Isenção de Responsabilidade">
-                A Multi Serviços Gerais Ltda. não é parte nos contratos celebrados entre clientes e profissionais. Eventuais litígios, danos materiais, morais ou físicos decorrentes da prestação de serviços são de responsabilidade exclusiva das partes contratantes.
+              <Section title="2. IsenÃ§Ã£o de Responsabilidade">
+                A Multi ServiÃ§os Gerais Ltda. nÃ£o Ã© parte nos contratos celebrados entre clientes e profissionais. Eventuais litÃ­gios, danos materiais, morais ou fÃ­sicos decorrentes da prestaÃ§Ã£o de serviÃ§os sÃ£o de responsabilidade exclusiva das partes contratantes.
               </Section>
-              <Section title="3. Pagamentos e Custódia">
-                Os pagamentos realizados via Plataforma ficam em custódia até a confirmação do término do serviço mediante PIN de liberação. A Multi não se responsabiliza por pagamentos realizados fora da Plataforma, em espécie ou por meios não autorizados.
+              <Section title="3. Pagamentos e CustÃ³dia">
+                Os pagamentos realizados via Plataforma ficam em custÃ³dia atÃ© a confirmaÃ§Ã£o do tÃ©rmino do serviÃ§o mediante PIN de liberaÃ§Ã£o. A Multi nÃ£o se responsabiliza por pagamentos realizados fora da Plataforma, em espÃ©cie ou por meios nÃ£o autorizados.
               </Section>
-              <Section title="4. Segurança">
-                Recomendamos que clientes nunca realizem pagamentos antecipados antes da conclusão do serviço. O PIN de liberação deve ser fornecido ao profissional apenas após a entrega satisfatória do serviço.
+              <Section title="4. SeguranÃ§a">
+                Recomendamos que clientes nunca realizem pagamentos antecipados antes da conclusÃ£o do serviÃ§o. O PIN de liberaÃ§Ã£o deve ser fornecido ao profissional apenas apÃ³s a entrega satisfatÃ³ria do serviÃ§o.
               </Section>
               <Section title="5. Dados Pessoais (LGPD)">
-                Os dados coletados são utilizados exclusivamente para operação da Plataforma, intermediação de serviços e comunicações relacionadas. Não compartilhamos dados com terceiros para fins publicitários. O usuário pode solicitar exclusão de seus dados a qualquer momento pelo Perfil.
+                Os dados coletados sÃ£o utilizados exclusivamente para operaÃ§Ã£o da Plataforma, intermediaÃ§Ã£o de serviÃ§os e comunicaÃ§Ãµes relacionadas. NÃ£o compartilhamos dados com terceiros para fins publicitÃ¡rios. O usuÃ¡rio pode solicitar exclusÃ£o de seus dados a qualquer momento pelo Perfil.
               </Section>
               <Section title="6. Foro">
-                Fica eleito o foro da comarca de São Paulo/SP para dirimir quaisquer controvérsias decorrentes do uso da Plataforma, com renúncia expressa a qualquer outro, por mais privilegiado que seja.
+                Fica eleito o foro da comarca de SÃ£o Paulo/SP para dirimir quaisquer controvÃ©rsias decorrentes do uso da Plataforma, com renÃºncia expressa a qualquer outro, por mais privilegiado que seja.
               </Section>
               <p style={{ fontSize:10, color:"#bbb", lineHeight:1.6, marginTop:12 }}>
-                Versão 2.0 · Última atualização: 09/07/2026 · Multi Serviços Gerais Ltda. · CNPJ 00.000.000/0001-00
+                VersÃ£o 2.0 Â· Ãšltima atualizaÃ§Ã£o: 09/07/2026 Â· Multi ServiÃ§os Gerais Ltda. Â· CNPJ 00.000.000/0001-00
               </p>
             </>
           )}
@@ -4095,7 +4095,7 @@ function TermsOfUseModal({ onClose, variant = "general" }) {
   );
 }
 
-/* Stable checkbox — hoisted at module scope so RegisterScreen never remounts it */
+/* Stable checkbox â€” hoisted at module scope so RegisterScreen never remounts it */
 function TermsCheckbox({ errors, setErrors }) {
   const [checked,   setChecked]   = useState(false);
   const [showTerms, setShowTerms] = useState(false);
@@ -4114,24 +4114,24 @@ function TermsCheckbox({ errors, setErrors }) {
             Li e aceito os{" "}
             <span onClick={e => { e.stopPropagation(); setShowTerms(true); }} style={{ color:B, fontWeight:800, textDecoration:"underline", cursor:"pointer" }}>Termos de Uso</span>
             {" "}e a{" "}
-            <span onClick={e => { e.stopPropagation(); setShowTerms(true); }} style={{ color:B, fontWeight:800, textDecoration:"underline", cursor:"pointer" }}>Política de Privacidade</span>
-            . Compreendo que o Multi atua como intermediador e não se responsabiliza pelos serviços prestados.
+            <span onClick={e => { e.stopPropagation(); setShowTerms(true); }} style={{ color:B, fontWeight:800, textDecoration:"underline", cursor:"pointer" }}>PolÃ­tica de Privacidade</span>
+            . Compreendo que o Multi atua como intermediador e nÃ£o se responsabiliza pelos serviÃ§os prestados.
           </p>
         </div>
-        {errors?.terms && <p style={{ fontSize:11, color:"#EF4444", fontWeight:700, margin:"5px 0 0" }}>Você precisa aceitar os termos para continuar.</p>}
+        {errors?.terms && <p style={{ fontSize:11, color:"#EF4444", fontWeight:700, margin:"5px 0 0" }}>VocÃª precisa aceitar os termos para continuar.</p>}
       </div>
     </>
   );
 }
 
-/* ───────────────────────── AUTH: REGISTER SCREEN ──────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ AUTH: REGISTER SCREEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const WA_ICON = ({ size, color }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={color} style={{ display:"block", flexShrink:0 }}>
     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
   </svg>
 );
 
-/* Stable field wrapper — defined at module scope, never recreated */
+/* Stable field wrapper â€” defined at module scope, never recreated */
 function FormField({ IconComp, label, error, hint, children }) {
   return (
     <div style={{ marginBottom: error ? 6 : 18 }}>
@@ -4154,7 +4154,7 @@ function FormField({ IconComp, label, error, hint, children }) {
   );
 }
 
-/* Stable base style — object defined once at module level */
+/* Stable base style â€” object defined once at module level */
 const REG_INPUT = {
   width:"100%", border:"1.5px solid #E5E7EB",
   borderRadius:14, padding:"13px 14px 13px 42px",
@@ -4163,7 +4163,7 @@ const REG_INPUT = {
   background:"white", transition:"border-color .15s",
 };
 
-/* Mask helpers — pure functions, never change reference */
+/* Mask helpers â€” pure functions, never change reference */
 function maskPhone(v) {
   const d = v.replace(/\D/g, "").slice(0, 11);
   if (d.length === 0) return "";
@@ -4176,7 +4176,7 @@ function maskCep(v) {
   return d.length > 5 ? `${d.slice(0,5)}-${d.slice(5)}` : d;
 }
 
-/* ───────────────────────── AUTH: REGISTER SCREEN ──────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ AUTH: REGISTER SCREEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function ForgotPasswordScreen({ onBack, onComplete }) {
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState("");
@@ -4189,21 +4189,21 @@ function ForgotPasswordScreen({ onBack, onComplete }) {
   const box = { minHeight:"100vh", background:"#F5F6FA", display:"flex", alignItems:"center", justifyContent:"center", padding:24 };
   const card = { width:"100%", maxWidth:420, background:"white", borderRadius:20, padding:"32px 24px" };
   if (step === 1) return <div style={box}><div style={card}>
-    <button onClick={onBack} style={{ background:"none", border:"none", color:"#007BFF", cursor:"pointer", marginBottom:16 }}>← Voltar</button>
+    <button onClick={onBack} style={{ background:"none", border:"none", color:"#007BFF", cursor:"pointer", marginBottom:16 }}>â† Voltar</button>
     <h2 style={{ margin:"0 0 8px" }}>Recuperar Senha</h2>
-    <p style={{ color:"#6B7280", fontSize:14, marginBottom:24 }}>Vamos enviar um c༽igo de 6 dígitos para seu e-mail.</p>
+    <p style={{ color:"#6B7280", fontSize:14, marginBottom:24 }}>Vamos enviar um cà¼½igo de 6 dÃ­gitos para seu e-mail.</p>
     <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>E-MAIL</label>
     <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" style={inp} />
-    <button disabled={loading} style={btn} onClick={async () => { if (!email) return alert("Digite seu e-mail"); setLoading(true); const r = await fetch(API+"/api/auth/solicitar-codigo", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email}) }); setLoading(false); if (r.ok) setStep(2); else alert("Erro ao enviar"); }}>{loading ? "Enviando..." : "Enviar C༽igo"}</button>
+    <button disabled={loading} style={btn} onClick={async () => { if (!email) return alert("Digite seu e-mail"); setLoading(true); const r = await fetch(API+"/api/auth/solicitar-codigo", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email}) }); setLoading(false); if (r.ok) setStep(2); else alert("Erro ao enviar"); }}>{loading ? "Enviando..." : "Enviar Cà¼½igo"}</button>
   </div></div>;
   return <div style={box}><div style={card}>
-    <h2 style={{ margin:"0 0 8px" }}>Digite o C༽igo</h2>
-    <p style={{ color:"#6B7280", fontSize:14, marginBottom:24 }}>C༽igo enviado para {email}</p>
-    <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>CഽIGO</label>
+    <h2 style={{ margin:"0 0 8px" }}>Digite o Cà¼½igo</h2>
+    <p style={{ color:"#6B7280", fontSize:14, marginBottom:24 }}>Cà¼½igo enviado para {email}</p>
+    <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>Cà´½IGO</label>
     <input type="text" value={code} onChange={e => setCode(e.target.value)} placeholder="000000" maxLength={6} style={{ ...inp, fontSize:24, letterSpacing:8, textAlign:"center" }} />
     <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>NOVA SENHA</label>
-    <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" style={inp} />
-    <button disabled={loading} style={btn} onClick={async () => { if (!code||code.length<6) return alert("C༽igo incompleto"); if (!password||password.length<6) return alert("Senha muito curta"); setLoading(true); const r = await fetch(API+"/api/auth/verificar-codigo", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email,code,newPassword:password}) }); const d = await r.json(); if (r.ok) { onComplete(); } else { alert(d.error); setLoading(false); } }}>{loading ? "Verificando..." : "Confirmar"}</button>
+    <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="MÃ­nimo 6 caracteres" style={inp} />
+    <button disabled={loading} style={btn} onClick={async () => { if (!code||code.length<6) return alert("Cà¼½igo incompleto"); if (!password||password.length<6) return alert("Senha muito curta"); setLoading(true); const r = await fetch(API+"/api/auth/verificar-codigo", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email,code,newPassword:password}) }); const d = await r.json(); if (r.ok) { onComplete(); } else { alert(d.error); setLoading(false); } }}>{loading ? "Verificando..." : "Confirmar"}</button>
   </div></div>;
 }
 
@@ -4215,7 +4215,7 @@ function ResetPasswordScreen({ onComplete }) {
 
   const handleReset = async () => {
     if (!password || password.length < 6) return alert("Senha deve ter pelo menos 6 caracteres");
-    if (password !== confirm) return alert("As senhas não coincidem");
+    if (password !== confirm) return alert("As senhas nÃ£o coincidem");
     setLoading(true);
     try {
       const hash = window.location.hash;
@@ -4239,7 +4239,7 @@ function ResetPasswordScreen({ onComplete }) {
         <p style={{ color:"#6B7280", fontSize:14, marginBottom:24 }}>Digite sua nova senha abaixo.</p>
         <div style={{ marginBottom:16 }}>
           <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>NOVA SENHA</label>
-          <input type="password" placeholder="Mínimo 6 caracteres" value={password} onChange={e => setPassword(e.target.value)}
+          <input type="password" placeholder="MÃ­nimo 6 caracteres" value={password} onChange={e => setPassword(e.target.value)}
             style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:15, marginTop:6, boxSizing:"border-box", outline:"none" }} />
         </div>
         <div style={{ marginBottom:24 }}>
@@ -4285,7 +4285,7 @@ function LoginScreen({ onBack, onComplete, onRegister, onForgot }) {
   return (
     <div style={{ minHeight:"100vh", background:"#F5F6FA", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px" }}>
       <div style={{ width:"100%", maxWidth:420, background:"white", borderRadius:20, padding:"32px 24px", boxShadow:"0 4px 24px rgba(0,0,0,.08)" }}>
-        <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", marginBottom:16, color:"#007BFF", fontSize:14 }}>← Voltar</button>
+        <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", marginBottom:16, color:"#007BFF", fontSize:14 }}>â† Voltar</button>
         <h2 style={{ margin:"0 0 8px", fontSize:24, fontWeight:800, color:"#1a1a2e" }}>Entrar na sua conta</h2>
         <p style={{ color:"#6B7280", fontSize:14, marginBottom:24 }}>Bem-vindo de volta!</p>
         <div style={{ marginBottom:16 }}>
@@ -4306,7 +4306,7 @@ function LoginScreen({ onBack, onComplete, onRegister, onForgot }) {
         <p style={{ textAlign:"center", marginTop:12, fontSize:13, color:"#6B7280" }}>Esqueceu a senha?
           <button onClick={() => onForgot()} style={{ background:"none", border:"none", color:"#007BFF", fontWeight:700, cursor:"pointer", marginLeft:4 }}>Recuperar</button>
         </p>
-        <p style={{ textAlign:"center", marginTop:16, fontSize:14, color:"#6B7280" }}>Não tem conta?
+        <p style={{ textAlign:"center", marginTop:16, fontSize:14, color:"#6B7280" }}>NÃ£o tem conta?
           <button onClick={onRegister} style={{ background:"none", border:"none", color:"#007BFF", fontWeight:700, cursor:"pointer", marginLeft:4 }}>Cadastre-se</button>
         </p>
       </div>
@@ -4330,14 +4330,14 @@ function RegisterScreen({ onBack, onComplete }) {
     if (!name.trim() || name.trim().split(/\s+/).filter(Boolean).length < 2)
       e.name = "Informe nome e sobrenome";
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
-      e.email = "E-mail inválido (ex: nome@email.com)";
+      e.email = "E-mail invÃ¡lido (ex: nome@email.com)";
     if (phone.replace(/\D/g,"").length < 11)
       e.phone = "WhatsApp incompleto";
     if (cep.replace(/\D/g,"").length < 8)
-      e.cep = "CEP inválido";
+      e.cep = "CEP invÃ¡lido";
     const wrapper = document.getElementById("terms-checkbox-wrapper");
     if (!wrapper || wrapper.dataset.checked !== "1")
-      e.terms = "Aceite obrigatório";
+      e.terms = "Aceite obrigatÃ³rio";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -4364,7 +4364,7 @@ function RegisterScreen({ onBack, onComplete }) {
   const cepFound = cep.replace(/\D/g,"").length === 8;
   const isProfessional = role === "professional";
 
-  /* ── SUCCESS ── */
+  /* â”€â”€ SUCCESS â”€â”€ */
   if (step === "success") {
     return (
       <div style={{ minHeight:"100vh", background:"#F8F9FA", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:32, textAlign:"center" }}>
@@ -4378,17 +4378,17 @@ function RegisterScreen({ onBack, onComplete }) {
           {isProfessional ? "Bem-vindo ao Multi PRO!" : "Bem-vindo ao Multi!"}
         </h2>
         <p style={{ fontSize:14, color:"#6B7280", lineHeight:1.7, margin:"0 0 20px" }}>
-          Olá, <strong style={{ color:"#1a1a2e" }}>{name.trim().split(/\s+/)[0]}</strong>! 🎉<br/>
+          OlÃ¡, <strong style={{ color:"#1a1a2e" }}>{name.trim().split(/\s+/)[0]}</strong>! ðŸŽ‰<br/>
           {isProfessional
-            ? "Seu perfil profissional está ativo. Explore o mural de serviços."
-            : "Agora você tem os melhores profissionais na palma da mão."}
+            ? "Seu perfil profissional estÃ¡ ativo. Explore o mural de serviÃ§os."
+            : "Agora vocÃª tem os melhores profissionais na palma da mÃ£o."}
         </p>
 
         {/* 7-day trial badge for professionals */}
         {isProfessional && (
           <div style={{ background:"linear-gradient(135deg,#7C3AED,#4F46E5)", borderRadius:16, padding:"14px 20px", marginBottom:20, width:"100%" }}>
-            <p style={{ fontSize:14, fontWeight:900, color:"white", margin:"0 0 4px" }}>🎁 7 dias de Multi PRO grátis!</p>
-            <p style={{ fontSize:12, color:"rgba(255,255,255,.75)", margin:0 }}>Contatos desbloqueados · Chat ilimitado · Sem cartão agora</p>
+            <p style={{ fontSize:14, fontWeight:900, color:"white", margin:"0 0 4px" }}>ðŸŽ 7 dias de Multi PRO grÃ¡tis!</p>
+            <p style={{ fontSize:12, color:"rgba(255,255,255,.75)", margin:0 }}>Contatos desbloqueados Â· Chat ilimitado Â· Sem cartÃ£o agora</p>
           </div>
         )}
 
@@ -4399,7 +4399,7 @@ function RegisterScreen({ onBack, onComplete }) {
         </div>
 
         <button
-          onClick={() => onComplete(name, email.trim(), true, cepFound ? "Sua cidade" : "sua região", role, phone)}
+          onClick={() => onComplete(name, email.trim(), true, cepFound ? "Sua cidade" : "sua regiÃ£o", role, phone)}
           style={{ width:"100%", padding:"16px 0", borderRadius:18, border:"none", color:"white", fontWeight:900, fontSize:15, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:10, boxShadow:`0 6px 24px ${isProfessional ? O : B}44`, background: isProfessional ? `linear-gradient(135deg,${O},#E64A19)` : `linear-gradient(135deg,${B},#0055d4)` }}>
           {isProfessional ? <><Briefcase size={17} /> Ir para o Mural</> : <><Home size={17} /> Ir para a Tela Inicial</>}
         </button>
@@ -4407,7 +4407,7 @@ function RegisterScreen({ onBack, onComplete }) {
     );
   }
 
-  /* ── FAST FORM ── */
+  /* â”€â”€ FAST FORM â”€â”€ */
   return (
     <div style={{ minHeight:"100vh", background:"#F8F9FA", display:"flex", flexDirection:"column" }}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
@@ -4421,20 +4421,20 @@ function RegisterScreen({ onBack, onComplete }) {
           <Logo size={30} white />
           <div>
             <p style={{ fontSize:20, fontWeight:900, color:"white", margin:0, lineHeight:1 }}>Criar conta</p>
-            <p style={{ fontSize:12, color:"rgba(255,255,255,.65)", margin:"2px 0 0" }}>Menos de 60 segundos ⚡</p>
+            <p style={{ fontSize:12, color:"rgba(255,255,255,.65)", margin:"2px 0 0" }}>Menos de 60 segundos âš¡</p>
           </div>
         </div>
       </div>
 
       <div style={{ flex:1, padding:"24px 24px 48px", overflowY:"auto" }}>
 
-        {/* ── ROLE SELECTOR ── */}
+        {/* â”€â”€ ROLE SELECTOR â”€â”€ */}
         <div style={{ marginBottom:22 }}>
-          <p style={{ fontSize:11, fontWeight:800, color:"#6B7280", textTransform:"uppercase", letterSpacing:1.2, margin:"0 0 10px" }}>Você é:</p>
+          <p style={{ fontSize:11, fontWeight:800, color:"#6B7280", textTransform:"uppercase", letterSpacing:1.2, margin:"0 0 10px" }}>VocÃª Ã©:</p>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
             {[
-              { id:"client",       label:"Cliente",       emoji:"🏠", sub:"Preciso de serviços" },
-              { id:"professional", label:"Profissional",  emoji:"🔧", sub:"7 dias PRO grátis!"  },
+              { id:"client",       label:"Cliente",       emoji:"ðŸ ", sub:"Preciso de serviÃ§os" },
+              { id:"professional", label:"Profissional",  emoji:"ðŸ”§", sub:"7 dias PRO grÃ¡tis!"  },
             ].map(r => (
               <button key={r.id} onClick={() => setRole(r.id)} style={{
                 padding:"14px 10px", borderRadius:16, cursor:"pointer", textAlign:"center",
@@ -4452,9 +4452,9 @@ function RegisterScreen({ onBack, onComplete }) {
 
         {/* free / trial badge */}
         <div style={{ display:"flex", alignItems:"center", gap:8, background: isProfessional ? "#F5F3FF" : "#F0FDF4", border:`1px solid ${isProfessional ? "#DDD6FE" : "#BBF7D0"}`, borderRadius:14, padding:"10px 16px", marginBottom:22 }}>
-          <span style={{ fontSize:18 }}>{isProfessional ? "🎁" : "✨"}</span>
+          <span style={{ fontSize:18 }}>{isProfessional ? "ðŸŽ" : "âœ¨"}</span>
           <p style={{ fontSize:13, fontWeight:800, color: isProfessional ? "#5B21B6" : "#166534", margin:0 }}>
-            {isProfessional ? "7 dias de Multi PRO grátis — sem cartão!" : "Cadastro 100% gratuito para clientes"}
+            {isProfessional ? "7 dias de Multi PRO grÃ¡tis â€” sem cartÃ£o!" : "Cadastro 100% gratuito para clientes"}
           </p>
         </div>
 
@@ -4479,7 +4479,7 @@ function RegisterScreen({ onBack, onComplete }) {
 
         {/* SENHA */}
         <FormField IconComp={KeyRound} label="Senha" error={errors.password}>
-          <input autoComplete="new-password" type="password" placeholder="Mínimo 6 caracteres" value={password}
+          <input autoComplete="new-password" type="password" placeholder="MÃ­nimo 6 caracteres" value={password}
             onChange={e => { setPassword(e.target.value); if (errors.password) setErrors(p => ({ ...p, password:undefined })); }}
             style={{ ...REG_INPUT, borderColor: errors.password ? "#E53935" : undefined }} />
         </FormField>
@@ -4491,7 +4491,7 @@ function RegisterScreen({ onBack, onComplete }) {
         </FormField>
 
         {/* CEP */}
-        <FormField IconComp={MapPin} label="CEP" error={errors.cep} hint={cepFound ? "📍 Localização encontrada!" : undefined}>
+        <FormField IconComp={MapPin} label="CEP" error={errors.cep} hint={cepFound ? "ðŸ“ LocalizaÃ§Ã£o encontrada!" : undefined}>
           <input autoComplete="postal-code" type="tel" placeholder="00000-000" value={cep}
             onChange={e => { setCep(maskCep(e.target.value)); if (errors.cep) setErrors(p => ({ ...p, cep:undefined })); }}
             style={{ ...REG_INPUT, borderColor: errors.cep ? "#E53935" : cepFound ? G : undefined }} />
@@ -4511,7 +4511,7 @@ function RegisterScreen({ onBack, onComplete }) {
           transition:"background .2s",
         }}>
           {loading ? (
-            <><span style={{ width:18, height:18, border:"2.5px solid white", borderTopColor:"transparent", borderRadius:"50%", display:"inline-block", animation:"spin .7s linear infinite" }} /> Criando conta…</>
+            <><span style={{ width:18, height:18, border:"2.5px solid white", borderTopColor:"transparent", borderRadius:"50%", display:"inline-block", animation:"spin .7s linear infinite" }} /> Criando contaâ€¦</>
           ) : (
             <><Check size={17} /> {isProfessional ? "Criar conta e ganhar PRO" : "Finalizar Cadastro"}</>
           )}
@@ -4522,24 +4522,24 @@ function RegisterScreen({ onBack, onComplete }) {
 }
 
 
-/* ───────────────────────── GUEST MURAL (professional preview) ───────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ GUEST MURAL (professional preview) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function GuestMural({ onSignup, allDocsVerified }) {
   const [filter, setFilter] = useState("all");
 
   const MURAL_SEED = [
-    { id:"g1", cat:"encanador",   emoji:"🔧", title:"Vazamento na cozinha",    bairro:"Vila Madalena, SP", value:150, urgent:true,  time:"Há 12min" },
-    { id:"g2", cat:"pintor",      emoji:"🖌️", title:"Pintura sala e quartos",  bairro:"Moema, SP",         value:1200,urgent:false, time:"Há 45min" },
-    { id:"g3", cat:"eletricista", emoji:"⚡", title:"Instalação de tomadas",   bairro:"Pinheiros, SP",     value:280, urgent:false, time:"Há 1h"    },
-    { id:"g4", cat:"pedreiro",    emoji:"👷", title:"Reforma do banheiro",      bairro:"Lapa, SP",          value:800, urgent:false, time:"Há 2h"    },
-    { id:"g5", cat:"jardineiro",  emoji:"🌿", title:"Poda e limpeza jardim",   bairro:"Alto Pinheiros, SP",value:250, urgent:false, time:"Há 3h"    },
-    { id:"g6", cat:"encanador",   emoji:"🔧", title:"Entupimento de pia",       bairro:"Santana, SP",       value:120, urgent:true,  time:"Há 4h"    },
+    { id:"g1", cat:"encanador",   emoji:"ðŸ”§", title:"Vazamento na cozinha",    bairro:"Vila Madalena, SP", value:150, urgent:true,  time:"HÃ¡ 12min" },
+    { id:"g2", cat:"pintor",      emoji:"ðŸ–Œï¸", title:"Pintura sala e quartos",  bairro:"Moema, SP",         value:1200,urgent:false, time:"HÃ¡ 45min" },
+    { id:"g3", cat:"eletricista", emoji:"âš¡", title:"InstalaÃ§Ã£o de tomadas",   bairro:"Pinheiros, SP",     value:280, urgent:false, time:"HÃ¡ 1h"    },
+    { id:"g4", cat:"pedreiro",    emoji:"ðŸ‘·", title:"Reforma do banheiro",      bairro:"Lapa, SP",          value:800, urgent:false, time:"HÃ¡ 2h"    },
+    { id:"g5", cat:"jardineiro",  emoji:"ðŸŒ¿", title:"Poda e limpeza jardim",   bairro:"Alto Pinheiros, SP",value:250, urgent:false, time:"HÃ¡ 3h"    },
+    { id:"g6", cat:"encanador",   emoji:"ðŸ”§", title:"Entupimento de pia",       bairro:"Santana, SP",       value:120, urgent:true,  time:"HÃ¡ 4h"    },
   ];
 
   const CATS_FILTER = [
     { id:"all",        label:"Todos"      },
     { id:"encanador",  label:"Encanador"  },
     { id:"pintor",     label:"Pintor"     },
-    { id:"eletricista",label:"Elétrica"   },
+    { id:"eletricista",label:"ElÃ©trica"   },
     { id:"pedreiro",   label:"Pedreiro"   },
     { id:"jardineiro", label:"Jardineiro" },
   ];
@@ -4550,10 +4550,10 @@ function GuestMural({ onSignup, allDocsVerified }) {
   if (allDocsVerified === false) {
     return (
       <div style={{ padding:"32px 20px", textAlign:"center" }}>
-        <div style={{ width:64, height:64, borderRadius:"50%", background:"#FFF5F5", border:"2px solid #FECACA", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", fontSize:28 }}>🔒</div>
+        <div style={{ width:64, height:64, borderRadius:"50%", background:"#FFF5F5", border:"2px solid #FECACA", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", fontSize:28 }}>ðŸ”’</div>
         <h3 style={{ fontSize:17, fontWeight:900, color:"#1a1a2e", margin:"0 0 8px" }}>Mural bloqueado</h3>
         <p style={{ fontSize:13, color:"#6B7280", lineHeight:1.7, margin:"0 0 20px" }}>
-          Verifique seus documentos no Perfil para visualizar serviços disponíveis.
+          Verifique seus documentos no Perfil para visualizar serviÃ§os disponÃ­veis.
         </p>
         <button onClick={onSignup} style={{ padding:"13px 28px", borderRadius:14, border:"none", background:`linear-gradient(135deg,${B},#0055d4)`, color:"white", fontWeight:900, fontSize:14, cursor:"pointer" }}>
           Ir para Perfil
@@ -4565,12 +4565,12 @@ function GuestMural({ onSignup, allDocsVerified }) {
   return (
     <div style={{ paddingBottom:100 }}>
 
-      {/* ── MURAL HEADER ── */}
+      {/* â”€â”€ MURAL HEADER â”€â”€ */}
       <div style={{ padding:"18px 16px 0" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
           <div>
-            <h2 style={{ fontSize:19, fontWeight:900, color:"#1a1a2e", margin:"0 0 2px" }}>Mural de Serviços</h2>
-            <p style={{ fontSize:12, color:"#888", margin:0 }}>{list.length} serviços disponíveis perto de você</p>
+            <h2 style={{ fontSize:19, fontWeight:900, color:"#1a1a2e", margin:"0 0 2px" }}>Mural de ServiÃ§os</h2>
+            <p style={{ fontSize:12, color:"#888", margin:0 }}>{list.length} serviÃ§os disponÃ­veis perto de vocÃª</p>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:5, background:O+"15", borderRadius:99, padding:"5px 12px" }}>
             <div style={{ width:7, height:7, borderRadius:"50%", background:O }} />
@@ -4592,7 +4592,7 @@ function GuestMural({ onSignup, allDocsVerified }) {
         </div>
       </div>
 
-      {/* ── SERVICE CARDS ── */}
+      {/* â”€â”€ SERVICE CARDS â”€â”€ */}
       <div style={{ padding:"0 16px", display:"flex", flexDirection:"column", gap:14 }}>
         {list.map((s, idx) => {
           const isBlurred = idx > 1; // first 2 fully visible, rest blurred to entice signup
@@ -4613,7 +4613,7 @@ function GuestMural({ onSignup, allDocsVerified }) {
                     </div>
                   </div>
                   {s.urgent && (
-                    <span style={{ background:"#FFF0EE", color:"#E53935", fontSize:10, fontWeight:800, padding:"3px 8px", borderRadius:99, border:"1px solid #FECACA", flexShrink:0 }}>🔥 Urgente</span>
+                    <span style={{ background:"#FFF0EE", color:"#E53935", fontSize:10, fontWeight:800, padding:"3px 8px", borderRadius:99, border:"1px solid #FECACA", flexShrink:0 }}>ðŸ”¥ Urgente</span>
                   )}
                 </div>
 
@@ -4633,15 +4633,15 @@ function GuestMural({ onSignup, allDocsVerified }) {
                 </div>
               </div>
 
-              {/* blur overlay — cards 3+ require signup */}
+              {/* blur overlay â€” cards 3+ require signup */}
               {isBlurred && (
                 <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:10, background:"rgba(15,23,42,.5)", backdropFilter:"blur(1px)" }}>
                   <div style={{ textAlign:"center" }}>
                     <p style={{ fontSize:13, fontWeight:900, color:"white", margin:"0 0 2px" }}>Cadastre-se para ver</p>
-                    <p style={{ fontSize:11, color:"rgba(255,255,255,.65)", margin:0 }}>mais serviços disponíveis</p>
+                    <p style={{ fontSize:11, color:"rgba(255,255,255,.65)", margin:0 }}>mais serviÃ§os disponÃ­veis</p>
                   </div>
                   <button onClick={onSignup} style={{ padding:"9px 22px", borderRadius:99, border:"none", background:"white", color:"#1a1a2e", fontWeight:900, fontSize:13, cursor:"pointer" }}>
-                    Criar conta grátis
+                    Criar conta grÃ¡tis
                   </button>
                 </div>
               )}
@@ -4650,32 +4650,32 @@ function GuestMural({ onSignup, allDocsVerified }) {
         })}
       </div>
 
-      {/* ── SIGNUP CTA (below cards) ── */}
+      {/* â”€â”€ SIGNUP CTA (below cards) â”€â”€ */}
       <div style={{ margin:"24px 16px 0", background:`linear-gradient(135deg,${B},#0055d4)`, borderRadius:20, padding:"22px 20px", textAlign:"center", boxShadow:`0 6px 20px ${B}44` }}>
         <Crown size={28} color="#FDE68A" style={{ display:"block", margin:"0 auto 10px" }} />
         <p style={{ fontSize:15, fontWeight:900, color:"white", margin:"0 0 5px" }}>Seja um Profissional Multi</p>
         <p style={{ fontSize:12, color:"rgba(255,255,255,.7)", margin:"0 0 16px", lineHeight:1.6 }}>
-          7 dias de PRO grátis · Sem cartão · Acesso imediato ao mural completo
+          7 dias de PRO grÃ¡tis Â· Sem cartÃ£o Â· Acesso imediato ao mural completo
         </p>
         <button onClick={onSignup} style={{ padding:"13px 32px", borderRadius:14, border:"none", background:"white", color:B, fontWeight:900, fontSize:14, cursor:"pointer" }}>
-          Criar conta e acessar →
+          Criar conta e acessar â†’
         </button>
       </div>
     </div>
   );
 }
 
-/* ───────────────────────── PROFESSIONAL HOME ────────────────────────────────── */
-function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs }) {
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ PROFESSIONAL HOME â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgrade, userLocation = "sua regiÃ£o", allDocsVerified, docStatus, onGoToDocs }) {
   const [online,       setOnline]       = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
   const [showDocBlock, setShowDocBlock] = useState(false); // pop-up modal
 
   const filters = [
-    { id:"all",    label:"Todos",           emoji:"📋" },
-    { id:"urgent", label:"Urgentes",         emoji:"🔥" },
-    { id:"nearby", label:"Perto de Mim",     emoji:"📍" },
-    { id:"topPay", label:"Melhor Pagamento", emoji:"💰" },
+    { id:"all",    label:"Todos",           emoji:"ðŸ“‹" },
+    { id:"urgent", label:"Urgentes",         emoji:"ðŸ”¥" },
+    { id:"nearby", label:"Perto de Mim",     emoji:"ðŸ“" },
+    { id:"topPay", label:"Melhor Pagamento", emoji:"ðŸ’°" },
   ];
 
   const filtered = feedServices.filter(s => {
@@ -4704,12 +4704,12 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
         .pulse-offline { animation: radar-pulse-off 2.4s ease-out infinite; }
       `}</style>
 
-      {/* ── BUSINESS CARD BANNER ── */}
+      {/* â”€â”€ BUSINESS CARD BANNER â”€â”€ */}
       <div style={{ margin:"18px 16px 0", borderRadius:24, overflow:"hidden", position:"relative", boxShadow:"0 10px 32px rgba(0,0,0,.22)" }}>
         <div style={{ position:"absolute", inset:0, background:"linear-gradient(140deg,#1a1a2e 0%,#2d2d44 55%,#3a2418 100%)" }} />
         <div style={{ position:"absolute", top:-24, right:-24, width:140, height:140, borderRadius:"50%", background:"rgba(255,87,34,.12)" }} />
-        <div style={{ position:"absolute", top:14, right:18, fontSize:44, opacity:.18 }}>🏗️</div>
-        <div style={{ position:"absolute", bottom:14, right:22, fontSize:26, opacity:.25 }}>🔧</div>
+        <div style={{ position:"absolute", top:14, right:18, fontSize:44, opacity:.18 }}>ðŸ—ï¸</div>
+        <div style={{ position:"absolute", bottom:14, right:22, fontSize:26, opacity:.25 }}>ðŸ”§</div>
 
         <div style={{ position:"relative", zIndex:1, padding:"22px 22px 18px" }}>
           {/* header row */}
@@ -4718,11 +4718,11 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
                 <div style={{ width:7, height:7, borderRadius:"50%", background: online ? G : "#6B7280" }} />
                 <span style={{ fontSize:10, fontWeight:800, color: online ? G : "#9CA3AF", textTransform:"uppercase", letterSpacing:1.5 }}>
-                  {online ? "Online — Recebendo pedidos" : "Offline"}
+                  {online ? "Online â€” Recebendo pedidos" : "Offline"}
                 </span>
               </div>
               <h3 style={{ fontSize:19, fontWeight:900, color:"white", lineHeight:1.3, margin:0 }}>
-                {userName ? `Olá, ${userName}!` : "Bem-vindo,"}<br/>
+                {userName ? `OlÃ¡, ${userName}!` : "Bem-vindo,"}<br/>
                 <span style={{ color: online ? G : "#94A3B8" }}>Novas Oportunidades Esperam</span>
               </h3>
             </div>
@@ -4731,8 +4731,8 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
           {/* stats */}
           <div style={{ display:"flex", gap:8, marginBottom:16 }}>
             {[
-              { label:"Serviços em aberto", val:filtered.length,                     color:"white" },
-              { label:"Volume disponível",  val:`R$ ${(totalValue/1000).toFixed(1)}k`, color:O      },
+              { label:"ServiÃ§os em aberto", val:filtered.length,                     color:"white" },
+              { label:"Volume disponÃ­vel",  val:`R$ ${(totalValue/1000).toFixed(1)}k`, color:O      },
               { label:"Urgentes",           val:feedServices.filter(s=>s.urgent).length, color:"#EF4444" },
             ].map((s, i) => (
               <div key={i} style={{ flex:1, background:"rgba(255,255,255,.08)", borderRadius:12, padding:"9px 10px" }}>
@@ -4762,28 +4762,28 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
               <path d="M20.49 3.51a12 12 0 0 1 0 16.97"/>
               <path d="M3.51 3.51a12 12 0 0 0 0 16.97"/>
             </svg>
-            {online ? "✓  Online — Clique para pausar" : "Ficar Online"}
+            {online ? "âœ“  Online â€” Clique para pausar" : "Ficar Online"}
           </button>
         </div>
       </div>
 
-      {/* ── PRO TRIAL BANNER (free users) ── */}
+      {/* â”€â”€ PRO TRIAL BANNER (free users) â”€â”€ */}
       {!isPro && (
         <div onClick={onUpgrade} style={{ margin:"14px 16px 0", borderRadius:16, padding:"13px 16px", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", display:"flex", alignItems:"center", gap:12, cursor:"pointer", boxShadow:"0 4px 16px rgba(124,58,237,.35)" }}>
           <Crown size={20} color="#FDE68A" style={{ flexShrink:0 }} />
           <div style={{ flex:1 }}>
-            <p style={{ fontSize:13, fontWeight:900, color:"white", margin:0 }}>🎁 {proTrialDays} dias de Multi PRO grátis!</p>
-            <p style={{ fontSize:11, color:"rgba(255,255,255,.7)", margin:0 }}>Libere contatos, chat e acesso total. Sem cartão.</p>
+            <p style={{ fontSize:13, fontWeight:900, color:"white", margin:0 }}>ðŸŽ {proTrialDays} dias de Multi PRO grÃ¡tis!</p>
+            <p style={{ fontSize:11, color:"rgba(255,255,255,.7)", margin:0 }}>Libere contatos, chat e acesso total. Sem cartÃ£o.</p>
           </div>
           <ChevronRight size={18} color="rgba(255,255,255,.7)" />
         </div>
       )}
 
-      {/* ── FILTERS ── */}
+      {/* â”€â”€ FILTERS â”€â”€ */}
       <div style={{ padding:"20px 16px 0" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
-          <h3 style={{ fontSize:16, fontWeight:900, color:"#1a1a2e", margin:0 }}>Mural de Serviços</h3>
-          <span style={{ fontSize:12, color:"#888" }}>{filtered.length} disponíveis</span>
+          <h3 style={{ fontSize:16, fontWeight:900, color:"#1a1a2e", margin:0 }}>Mural de ServiÃ§os</h3>
+          <span style={{ fontSize:12, color:"#888" }}>{filtered.length} disponÃ­veis</span>
         </div>
         <div style={{ display:"flex", gap:8, overflowX:"auto", scrollbarWidth:"none", paddingBottom:4 }}>
           {filters.map(f => (
@@ -4801,11 +4801,11 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
         </div>
       </div>
 
-      {/* ── FEED WITH PRO LOCK OVERLAY ── */}
+      {/* â”€â”€ FEED WITH PRO LOCK OVERLAY â”€â”€ */}
       <div style={{ padding:"14px 16px 0", display:"flex", flexDirection:"column", gap:14 }}>
         {filtered.length === 0 ? (
           <div style={{ textAlign:"center", padding:"40px 24px", color:"#bbb" }}>
-            <p style={{ fontSize:15, fontWeight:700 }}>Nenhum serviço neste filtro</p>
+            <p style={{ fontSize:15, fontWeight:700 }}>Nenhum serviÃ§o neste filtro</p>
             <p style={{ fontSize:12, marginTop:4 }}>Tente outro filtro ou aguarde novos pedidos</p>
           </div>
         ) : filtered.map((s, idx) => {
@@ -4816,14 +4816,14 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
           return (
             <div key={s.id} style={{ position:"relative", borderRadius:20, overflow:"hidden", boxShadow:"0 3px 14px rgba(0,0,0,.09)" }}>
 
-              {/* ── Card content — ALWAYS fully visible ── */}
+              {/* â”€â”€ Card content â€” ALWAYS fully visible â”€â”€ */}
               <div style={{ background:"white", padding:"16px", display:"flex", flexDirection:"column", gap:10 }}>
                 <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:8 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:10, flex:1, minWidth:0 }}>
                     <div style={{ width:40, height:40, borderRadius:11, background:cat?.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>{cat?.emoji}</div>
                     <span style={{ fontWeight:800, fontSize:14, color:"#1a1a2e", lineHeight:1.35 }}>{s.title}</span>
                   </div>
-                  {s.urgent && <Pill color="#E53935" sm>🔥 Urgente</Pill>}
+                  {s.urgent && <Pill color="#E53935" sm>ðŸ”¥ Urgente</Pill>}
                 </div>
                 <p style={{ fontSize:13, color:"#888", lineHeight:1.6, margin:0 }}>{s.desc}</p>
                 <div style={{ display:"flex", alignItems:"center", gap:14, fontSize:11, color:"#bbb" }}>
@@ -4832,13 +4832,13 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
                 </div>
                 <div style={{ borderTop:"1px solid #F4F4F6", paddingTop:10, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                   <span style={{ fontSize:22, fontWeight:900, color:B }}>R$ {s.value}</span>
-                  {/* client name — hidden for non-PRO */}
+                  {/* client name â€” hidden for non-PRO */}
                   <span style={{ fontSize:12, color:"#aaa", filter: isLocked ? "blur(4px)" : "none" }}>
-                    👤 {isLocked ? "Cliente PRO" : (s.client || "Cliente")}
+                    ðŸ‘¤ {isLocked ? "Cliente PRO" : (s.client || "Cliente")}
                   </span>
                 </div>
 
-                {/* Action button — triggers doc-block popup if docs not verified */}
+                {/* Action button â€” triggers doc-block popup if docs not verified */}
                 <button
                   onClick={e => {
                     e.stopPropagation();
@@ -4870,7 +4870,7 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
         })}
       </div>
 
-      {/* ══════════════════════ DOC BLOCK POPUP — Premium ══════════════════════ */}
+      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• DOC BLOCK POPUP â€” Premium â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       {showDocBlock && (
         <div
           onClick={() => setShowDocBlock(false)}
@@ -4887,7 +4887,7 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
               .ripple-ring2 { animation: ripple 2s ease-out .7s infinite; }
             `}</style>
 
-            {/* ── HERO HEADER — gradient bg + floating avatar ── */}
+            {/* â”€â”€ HERO HEADER â€” gradient bg + floating avatar â”€â”€ */}
             <div style={{ background:"linear-gradient(180deg,#EBF4FF 0%,#F8FBFF 60%,white 100%)", padding:"28px 28px 0", textAlign:"center", position:"relative", overflow:"hidden" }}>
 
               {/* subtle decorative arcs */}
@@ -4928,23 +4928,23 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
               })()}
 
               <h2 style={{ fontSize:20, fontWeight:900, color:"#0F172A", margin:"0 0 10px", lineHeight:1.3, letterSpacing:"-.3px" }}>
-                Falta um pouco para você<br/>começar a faturar!
+                Falta um pouco para vocÃª<br/>comeÃ§ar a faturar!
               </h2>
               <p style={{ fontSize:13, color:"#6B7280", lineHeight:1.7, margin:"0 0 24px", maxWidth:300, marginLeft:"auto", marginRight:"auto" }}>
-                Valide seus documentos para aceitar serviços e transmitir confiança aos clientes.
+                Valide seus documentos para aceitar serviÃ§os e transmitir confianÃ§a aos clientes.
               </p>
             </div>
 
-            {/* ── DOCUMENT CARDS ── */}
+            {/* â”€â”€ DOCUMENT CARDS â”€â”€ */}
             <div style={{ padding:"0 20px 20px" }}>
               <p style={{ fontSize:11, fontWeight:800, color:"#94A3B8", textTransform:"uppercase", letterSpacing:1.5, margin:"0 0 12px" }}>
-                Documentos necessários
+                Documentos necessÃ¡rios
               </p>
               <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
                 {[
-                  { id:"rg",      label:"RG / CNH",              icon:"🆔", desc:"Documento de identidade",     hue:"#3B82F6", bg:"#EFF6FF" },
-                  { id:"crim",    label:"Antecedentes Criminais", icon:"📜", desc:"Certidão emitida recentemente", hue:"#8B5CF6", bg:"#F5F3FF" },
-                  { id:"address", label:"Comprovante de Endereço",icon:"🏠", desc:"Conta de luz, água ou telefone",hue:"#10B981", bg:"#ECFDF5" },
+                  { id:"rg",      label:"RG / CNH",              icon:"ðŸ†”", desc:"Documento de identidade",     hue:"#3B82F6", bg:"#EFF6FF" },
+                  { id:"crim",    label:"Antecedentes Criminais", icon:"ðŸ“œ", desc:"CertidÃ£o emitida recentemente", hue:"#8B5CF6", bg:"#F5F3FF" },
+                  { id:"address", label:"Comprovante de EndereÃ§o",icon:"ðŸ ", desc:"Conta de luz, Ã¡gua ou telefone",hue:"#10B981", bg:"#ECFDF5" },
                 ].map(doc => {
                   const st = docStatus?.[doc.id] || "pending";
                   const isOk  = st === "verified";
@@ -4965,7 +4965,7 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
                         background: isOk ? "#DCFCE7" : isMid ? "#FEF3C7" : "#F1F5F9",
                         color:      isOk ? "#166534" : isMid ? "#92400E" : "#94A3B8",
                       }}>
-                        {isOk ? "✓ Verificado" : isMid ? "⏳ Análise" : "Pendente"}
+                        {isOk ? "âœ“ Verificado" : isMid ? "â³ AnÃ¡lise" : "Pendente"}
                       </span>
                     </div>
                   );
@@ -4973,7 +4973,7 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
               </div>
             </div>
 
-            {/* ── PRO CARD — centre of attention ── */}
+            {/* â”€â”€ PRO CARD â€” centre of attention â”€â”€ */}
             <div style={{ margin:"0 20px 20px", borderRadius:20, overflow:"hidden", position:"relative" }}>
               {/* layered bg */}
               <div style={{ position:"absolute", inset:0, background:"linear-gradient(135deg,#0F172A 0%,#1E3A5F 50%,#78350F 100%)" }} />
@@ -4990,13 +4990,13 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
                 {/* scarcity tag */}
                 <div style={{ display:"inline-flex", alignItems:"center", gap:5, background:"rgba(251,191,36,.2)", border:"1px solid rgba(251,191,36,.4)", borderRadius:99, padding:"3px 11px", marginBottom:14 }}>
                   <div style={{ width:6, height:6, borderRadius:"50%", background:"#FBBF24" }} />
-                  <span style={{ fontSize:10, fontWeight:800, color:"#FDE68A", letterSpacing:.5 }}>Apenas 3 vagas na sua região hoje</span>
+                  <span style={{ fontSize:10, fontWeight:800, color:"#FDE68A", letterSpacing:.5 }}>Apenas 3 vagas na sua regiÃ£o hoje</span>
                 </div>
 
                 {/* rocket + headline row */}
                 <div style={{ display:"flex", alignItems:"flex-start", gap:13, marginBottom:14 }}>
                   <div style={{ width:52, height:52, borderRadius:16, background:"linear-gradient(135deg,#FBBF24,#F97316)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:26, flexShrink:0, boxShadow:"0 4px 16px rgba(251,191,36,.45)" }}>
-                    🚀
+                    ðŸš€
                   </div>
                   <div>
                     <p style={{ fontSize:16, fontWeight:900, color:"#FDE68A", margin:"0 0 4px", lineHeight:1.25 }}>
@@ -5011,9 +5011,9 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
                 {/* checkmark benefits */}
                 <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:18 }}>
                   {[
-                    { icon:"⚡", text:"Aprovação prioritária em 15 minutos" },
-                    { icon:"🏅", text:"Selo Ouro no Perfil — mais credibilidade" },
-                    { icon:"👑", text:"Prioridade no Mural de Serviços" },
+                    { icon:"âš¡", text:"AprovaÃ§Ã£o prioritÃ¡ria em 15 minutos" },
+                    { icon:"ðŸ…", text:"Selo Ouro no Perfil â€” mais credibilidade" },
+                    { icon:"ðŸ‘‘", text:"Prioridade no Mural de ServiÃ§os" },
                   ].map((b, i) => (
                     <div key={i} style={{ display:"flex", alignItems:"center", gap:10 }}>
                       <div style={{ width:26, height:26, borderRadius:8, background:"rgba(251,191,36,.2)", border:"1px solid rgba(251,191,36,.35)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:13 }}>
@@ -5032,17 +5032,17 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
                 </button>
 
                 <p style={{ fontSize:10, color:"rgba(255,255,255,.35)", textAlign:"center", margin:"9px 0 0" }}>
-                  A partir de R$ 29,90/mês · Cancele quando quiser · Sem fidelidade
+                  A partir de R$ 29,90/mÃªs Â· Cancele quando quiser Â· Sem fidelidade
                 </p>
               </div>
             </div>
 
-            {/* ── SECONDARY ACTIONS ── */}
+            {/* â”€â”€ SECONDARY ACTIONS â”€â”€ */}
             <div style={{ padding:"0 20px 44px", display:"flex", flexDirection:"column", gap:12, alignItems:"center" }}>
               <button
                 onClick={() => { setShowDocBlock(false); onGoToDocs?.(); }}
                 style={{ width:"100%", padding:"14px 0", borderRadius:16, border:"1.5px solid #007BFF", background:"white", color:"#007BFF", fontWeight:900, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-                <FileText size={16} /> Completar perfil grátis
+                <FileText size={16} /> Completar perfil grÃ¡tis
               </button>
               <button
                 onClick={() => setShowDocBlock(false)}
@@ -5058,13 +5058,13 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
   );
 }
 
-/* ───────────────────────── GUEST PROFILE TAB ──────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ GUEST PROFILE TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function GuestProfileTab({ onLogin }) {
   return (
     <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"60px 32px 40px", textAlign:"center", background:"#F8F9FA", minHeight:"60vh" }}>
       {/* avatar placeholder */}
-      <div style={{ width:88, height:88, borderRadius:"50%", background:"#E5E7EB", display:"flex", alignItems:"center", justifyContent:"center", fontSize:42, marginBottom:20 }}>👤</div>
-      <h2 style={{ fontSize:22, fontWeight:900, color:"#1a1a2e", margin:"0 0 8px" }}>Você não está logado</h2>
+      <div style={{ width:88, height:88, borderRadius:"50%", background:"#E5E7EB", display:"flex", alignItems:"center", justifyContent:"center", fontSize:42, marginBottom:20 }}>ðŸ‘¤</div>
+      <h2 style={{ fontSize:22, fontWeight:900, color:"#1a1a2e", margin:"0 0 8px" }}>VocÃª nÃ£o estÃ¡ logado</h2>
       <p style={{ fontSize:14, color:"#9CA3AF", lineHeight:1.6, margin:"0 0 36px" }}>
         Entre ou crie sua conta gratuita para<br/>acompanhar pedidos e falar com profissionais.
       </p>
@@ -5077,16 +5077,16 @@ function GuestProfileTab({ onLogin }) {
       }}>
         <User size={17} /> Entrar ou Criar Conta
       </button>
-      <p style={{ fontSize:12, color:"#9CA3AF" }}>✨ 100% gratuito para clientes</p>
+      <p style={{ fontSize:12, color:"#9CA3AF" }}>âœ¨ 100% gratuito para clientes</p>
     </div>
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   ADMIN DASHBOARD — Deep Blue dark mode, owner-only access (Thiago)
-═══════════════════════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   ADMIN DASHBOARD â€” Deep Blue dark mode, owner-only access (Thiago)
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-/* ── Static admin data ── */
+/* â”€â”€ Static admin data â”€â”€ */
 const ADMIN_PASSWORD = "multi2026";
 
 const REVENUE_7D = [
@@ -5095,15 +5095,15 @@ const REVENUE_7D = [
   { day:"Qua", val:1620 },
   { day:"Qui", val:2100 },
   { day:"Sex", val:1880 },
-  { day:"Sáb", val:2450 },
+  { day:"SÃ¡b", val:2450 },
   { day:"Dom", val:1730 },
 ];
 
 const PENDING_PROS = [
-  { id:1, name:"Carlos Eduardo",  cat:"Encanador",    rg:"✅ Enviado", background:"⏳ Pendente", joined:"08/07/2026" },
-  { id:2, name:"Fernanda Costa",  cat:"Eletricista",  rg:"✅ Enviado", background:"✅ Enviado",  joined:"07/07/2026" },
-  { id:3, name:"Ricardo Matos",   cat:"Pintor",       rg:"⏳ Pendente", background:"⏳ Pendente", joined:"06/07/2026" },
-  { id:4, name:"Juliana Teixeira",cat:"Jardineira",   rg:"✅ Enviado", background:"✅ Enviado",  joined:"05/07/2026" },
+  { id:1, name:"Carlos Eduardo",  cat:"Encanador",    rg:"âœ… Enviado", background:"â³ Pendente", joined:"08/07/2026" },
+  { id:2, name:"Fernanda Costa",  cat:"Eletricista",  rg:"âœ… Enviado", background:"âœ… Enviado",  joined:"07/07/2026" },
+  { id:3, name:"Ricardo Matos",   cat:"Pintor",       rg:"â³ Pendente", background:"â³ Pendente", joined:"06/07/2026" },
+  { id:4, name:"Juliana Teixeira",cat:"Jardineira",   rg:"âœ… Enviado", background:"âœ… Enviado",  joined:"05/07/2026" },
 ];
 
 const HOT_CATS = [
@@ -5112,7 +5112,7 @@ const HOT_CATS = [
   { rank:3, cat:"Eletricista", searches:241, trend:"+9%"  },
 ];
 
-/* ── Admin Login Gate ── */
+/* â”€â”€ Admin Login Gate â”€â”€ */
 function AdminLogin({ onSuccess }) {
   const [pass,  setPass]  = useState("");
   const [error, setError] = useState(false);
@@ -5132,7 +5132,7 @@ function AdminLogin({ onSuccess }) {
         <ShieldCheck size={36} color="white" />
       </div>
       <h2 style={{ fontSize:22, fontWeight:900, color:"white", margin:"0 0 6px" }}>Admin Panel</h2>
-      <p style={{ fontSize:13, color:"#64748B", margin:"0 0 36px" }}>Acesso restrito — Multi HQ</p>
+      <p style={{ fontSize:13, color:"#64748B", margin:"0 0 36px" }}>Acesso restrito â€” Multi HQ</p>
 
       <div style={{ width:"100%", maxWidth:320 }}>
         <div style={{ position:"relative", marginBottom:error ? 8 : 20, animation: error ? "shake .4s ease" : "none" }}>
@@ -5153,13 +5153,13 @@ function AdminLogin({ onSuccess }) {
         <button onClick={attempt} style={{ width:"100%", padding:"14px 0", borderRadius:14, border:"none", background:"linear-gradient(135deg,#1d4ed8,#7c3aed)", color:"white", fontWeight:900, fontSize:14, cursor:"pointer", boxShadow:"0 6px 20px rgba(29,78,216,.35)" }}>
           Acessar Painel
         </button>
-        <p style={{ fontSize:11, color:"#334155", textAlign:"center", marginTop:16 }}>Multi v2.0.0 · Plataforma Nacional · © 2026</p>
+        <p style={{ fontSize:11, color:"#334155", textAlign:"center", marginTop:16 }}>Multi v2.0.0 Â· Plataforma Nacional Â· Â© 2026</p>
       </div>
     </div>
   );
 }
 
-/* ── Main Admin Dashboard ── */
+/* â”€â”€ Main Admin Dashboard â”€â”€ */
 function AdminDashboard({ onExit }) {
   const [authed,      setAuthed]      = useState(false);
   const [verifs,      setVerifs]      = useState(PENDING_PROS);
@@ -5171,8 +5171,8 @@ function AdminDashboard({ onExit }) {
     setTimeout(() => setToastMsg(null), 2400);
   };
 
-  const approveVer  = (id) => { setVerifs(v => v.filter(p => p.id !== id)); adminToast("✅ Profissional aprovado e notificado!"); };
-  const rejectVer   = (id) => { setVerifs(v => v.filter(p => p.id !== id)); adminToast("❌ Profissional reprovado.", "#EF4444"); };
+  const approveVer  = (id) => { setVerifs(v => v.filter(p => p.id !== id)); adminToast("âœ… Profissional aprovado e notificado!"); };
+  const rejectVer   = (id) => { setVerifs(v => v.filter(p => p.id !== id)); adminToast("âŒ Profissional reprovado.", "#EF4444"); };
 
   if (!authed) return <AdminLogin onSuccess={() => setAuthed(true)} />;
 
@@ -5226,7 +5226,7 @@ function AdminDashboard({ onExit }) {
         </div>
       )}
 
-      {/* ── TOP BAR ── */}
+      {/* â”€â”€ TOP BAR â”€â”€ */}
       <div style={{ background:"#0A1628", borderBottom:`1px solid ${D2}`, padding:"14px 20px", display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:50 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <div style={{ width:34, height:34, borderRadius:10, background:"linear-gradient(135deg,#1d4ed8,#7c3aed)", display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -5249,7 +5249,7 @@ function AdminDashboard({ onExit }) {
 
       <div style={{ padding:"20px 16px", display:"flex", flexDirection:"column", gap:16 }}>
 
-        {/* ── DATE RANGE ── */}
+        {/* â”€â”€ DATE RANGE â”€â”€ */}
         <div style={{ display:"flex", gap:8 }}>
           {["hoje","7d","14d"].map(r => (
             <button key={r} onClick={() => setActiveRange(r)} style={{ padding:"6px 16px", borderRadius:99, fontSize:11, fontWeight:800, border:"none", cursor:"pointer", background: activeRange === r ? ACC : D2, color: activeRange === r ? "white" : T2, textTransform:"uppercase", letterSpacing:.5 }}>
@@ -5258,19 +5258,19 @@ function AdminDashboard({ onExit }) {
           ))}
         </div>
 
-        {/* ── KPI GRID ── */}
+        {/* â”€â”€ KPI GRID â”€â”€ */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
           <KPI icon={DollarSign} iconColor="#22c55e" iconBg="#14532d55" label="Receita Total" value={`R$ ${(totalRevenue/1000).toFixed(1)}k`} sub="Assinaturas + taxas" trend="+24%" />
           <KPI icon={Crown}      iconColor="#F9A825" iconBg="#78350f55" label="Assinaturas PRO" value={activeSubsCount} sub={`R$ ${(activeSubsCount * 29.9).toFixed(0)} MRR`} trend="+8%" />
-          <KPI icon={Lock}       iconColor="#6366F1" iconBg="#312e8155" label="Em Custódia" value={`R$ ${(custodyTotal/1000).toFixed(1)}k`} sub="Serviços em andamento" />
-          <KPI icon={Activity}   iconColor="#f43f5e" iconBg="#881337aa" label="Pedidos Hoje" value={ordersToday} sub="Últimas 24h" trend="+31%" />
+          <KPI icon={Lock}       iconColor="#6366F1" iconBg="#312e8155" label="Em CustÃ³dia" value={`R$ ${(custodyTotal/1000).toFixed(1)}k`} sub="ServiÃ§os em andamento" />
+          <KPI icon={Activity}   iconColor="#f43f5e" iconBg="#881337aa" label="Pedidos Hoje" value={ordersToday} sub="Ãšltimas 24h" trend="+31%" />
         </div>
 
-        {/* ── REVENUE CHART ── */}
+        {/* â”€â”€ REVENUE CHART â”€â”€ */}
         <Card>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
             <div>
-              <p style={{ fontSize:13, fontWeight:900, color:T, margin:"0 0 2px" }}>Faturamento — Últimos 7 Dias</p>
+              <p style={{ fontSize:13, fontWeight:900, color:T, margin:"0 0 2px" }}>Faturamento â€” Ãšltimos 7 Dias</p>
               <p style={{ fontSize:11, color:T2, margin:0 }}>Total: R$ {totalRevenue.toLocaleString("pt-BR")}</p>
             </div>
             <BarChart2 size={18} color={ACC} />
@@ -5292,7 +5292,7 @@ function AdminDashboard({ onExit }) {
           </div>
         </Card>
 
-        {/* ── NEW USERS + HOT CATS side by side ── */}
+        {/* â”€â”€ NEW USERS + HOT CATS side by side â”€â”€ */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
 
           {/* New users today */}
@@ -5315,14 +5315,14 @@ function AdminDashboard({ onExit }) {
                 </div>
               </div>
             ))}
-            <p style={{ fontSize:10, color:T2, margin:"10px 0 0" }}>Total acumulado: {12_400 + newUsersToday.clients + newUsersToday.pros} usuários</p>
+            <p style={{ fontSize:10, color:T2, margin:"10px 0 0" }}>Total acumulado: {12_400 + newUsersToday.clients + newUsersToday.pros} usuÃ¡rios</p>
           </Card>
 
           {/* Hot categories */}
           <Card>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
               <TrendingUp size={16} color="#f43f5e" />
-              <p style={{ fontSize:12, fontWeight:900, color:T, margin:0 }}>🔥 Mais Buscados</p>
+              <p style={{ fontSize:12, fontWeight:900, color:T, margin:0 }}>ðŸ”¥ Mais Buscados</p>
             </div>
             {HOT_CATS.map((h, i) => (
               <div key={i} style={{ display:"flex", alignItems:"center", gap:8, marginBottom: i < HOT_CATS.length-1 ? 10 : 0 }}>
@@ -5337,12 +5337,12 @@ function AdminDashboard({ onExit }) {
           </Card>
         </div>
 
-        {/* ── VERIFICATION QUEUE ── */}
+        {/* â”€â”€ VERIFICATION QUEUE â”€â”€ */}
         <Card>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8 }}>
               <ShieldCheck size={17} color={ACC} />
-              <p style={{ fontSize:13, fontWeight:900, color:T, margin:0 }}>Aguardando Verificação</p>
+              <p style={{ fontSize:13, fontWeight:900, color:T, margin:0 }}>Aguardando VerificaÃ§Ã£o</p>
             </div>
             <span style={{ background: verifs.length > 0 ? "#EF444430" : "#14532d55", color: verifs.length > 0 ? "#EF4444" : "#22c55e", fontSize:11, fontWeight:900, borderRadius:99, padding:"3px 10px" }}>
               {verifs.length} pendente{verifs.length !== 1 ? "s" : ""}
@@ -5359,10 +5359,10 @@ function AdminDashboard({ onExit }) {
               {verifs.map((p) => (
                 <div key={p.id} style={{ background:D2, borderRadius:14, padding:"14px", border:`1px solid #334155` }}>
                   <div style={{ display:"flex", alignItems:"flex-start", gap:10, marginBottom:10 }}>
-                    <div style={{ width:38, height:38, borderRadius:12, background:"#1d4ed820", border:`1px solid ${ACC}44`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>👨‍🔧</div>
+                    <div style={{ width:38, height:38, borderRadius:12, background:"#1d4ed820", border:`1px solid ${ACC}44`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>ðŸ‘¨â€ðŸ”§</div>
                     <div style={{ flex:1 }}>
                       <p style={{ fontSize:13, fontWeight:900, color:T, margin:"0 0 2px" }}>{p.name}</p>
-                      <p style={{ fontSize:11, color:T2, margin:0 }}>{p.cat} · Cadastrado {p.joined}</p>
+                      <p style={{ fontSize:11, color:T2, margin:0 }}>{p.cat} Â· Cadastrado {p.joined}</p>
                     </div>
                   </div>
                   {/* doc status */}
@@ -5370,7 +5370,7 @@ function AdminDashboard({ onExit }) {
                     {[{ label:"RG/CPF", status:p.rg }, { label:"Antecedentes", status:p.background }].map((doc, i) => (
                       <div key={i} style={{ flex:1, background:"#0F172A", borderRadius:10, padding:"8px 10px" }}>
                         <p style={{ fontSize:9, color:T2, fontWeight:700, textTransform:"uppercase", letterSpacing:.8, margin:"0 0 3px" }}>{doc.label}</p>
-                        <p style={{ fontSize:11, fontWeight:800, color: doc.status.includes("✅") ? "#22c55e" : "#F59E0B", margin:0 }}>{doc.status}</p>
+                        <p style={{ fontSize:11, fontWeight:800, color: doc.status.includes("âœ…") ? "#22c55e" : "#F59E0B", margin:0 }}>{doc.status}</p>
                       </div>
                     ))}
                   </div>
@@ -5389,11 +5389,11 @@ function AdminDashboard({ onExit }) {
           )}
         </Card>
 
-        {/* ── PLATFORM HEALTH ── */}
+        {/* â”€â”€ PLATFORM HEALTH â”€â”€ */}
         <Card>
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
             <Activity size={16} color={ACC} />
-            <p style={{ fontSize:13, fontWeight:900, color:T, margin:0 }}>Saúde da Plataforma</p>
+            <p style={{ fontSize:13, fontWeight:900, color:T, margin:0 }}>SaÃºde da Plataforma</p>
           </div>
           {[
             { label:"API Response",   val:"98ms",  ok:true  },
@@ -5411,13 +5411,13 @@ function AdminDashboard({ onExit }) {
           ))}
         </Card>
 
-        <p style={{ fontSize:11, color:"#334155", textAlign:"center" }}>Multi Admin Panel · Acesso: Thiago (Owner) · {new Date().toLocaleDateString("pt-BR")}</p>
+        <p style={{ fontSize:11, color:"#334155", textAlign:"center" }}>Multi Admin Panel Â· Acesso: Thiago (Owner) Â· {new Date().toLocaleDateString("pt-BR")}</p>
       </div>
     </div>
   );
 }
 
-/* ───────────────────────── ROOT APP ─────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ ROOT APP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export default function App() {
   const [role,      setRole]      = useState(() => {
     try { return JSON.parse(localStorage.getItem("multiSession") || "null")?.role || "client"; } catch { return "client"; }
@@ -5430,7 +5430,7 @@ export default function App() {
   const [ratingTarget, setRatingTarget] = useState(null);
   const [showAdmin, setShowAdmin] = useState(false);
 
-  // Document verification state — shared between ProfileScreen and ProfessionalHome
+  // Document verification state â€” shared between ProfileScreen and ProfessionalHome
   const [docStatus, setDocStatus] = useState({
     rg:      "pending",
     crim:    "pending",
@@ -5438,7 +5438,7 @@ export default function App() {
   });
   const allDocsVerified = Object.values(docStatus).every(s => s === "verified");
 
-  // ── RESTORE SESSION FROM LOCALSTORAGE ────────────────────────────────────
+  // â”€â”€ RESTORE SESSION FROM LOCALSTORAGE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const savedSession = (() => {
     if (window.location.hash.includes("access_token")) return null;
     try { return JSON.parse(localStorage.getItem("multiSession")) || null; } catch { return null; }
@@ -5463,14 +5463,14 @@ export default function App() {
 
   // SHARED STATE
   const [myServices, setMyServices] = useState([
-    { id:10, cat:"encanador", title:"Instalação de chuveiro",  desc:"Trocar chuveiro elétrico por a gás.", value:200, candidates:3, status:"open",       time:"Há 1h",  urgent:false, loc:"sua região", client:"Você", rating:5.0 },
-    { id:11, cat:"pintor",    title:"Pintura do quarto",       desc:"Quarto 12m² cor azul claro.",         value:350, candidates:7, status:"inprogress", time:"Ontem",  urgent:false, loc:"sua região", client:"Você", rating:5.0, pro:"Carlos Pintor",   proRating:4.7, proposalValue:320, contactUnlocked:true },
-    { id:12, cat:"pedreiro",  title:"Reforma calçada frente",  desc:"Calçada 20m² com pedras irregulares.",value:600, candidates:2, status:"done",       time:"Semana passada", urgent:false, loc:"sua região", client:"Você", rating:5.0, pro:"Pedro Mestre", proRating:4.9, clientRating:5 },
+    { id:10, cat:"encanador", title:"InstalaÃ§Ã£o de chuveiro",  desc:"Trocar chuveiro elÃ©trico por a gÃ¡s.", value:200, candidates:3, status:"open",       time:"HÃ¡ 1h",  urgent:false, loc:"sua regiÃ£o", client:"VocÃª", rating:5.0 },
+    { id:11, cat:"pintor",    title:"Pintura do quarto",       desc:"Quarto 12mÂ² cor azul claro.",         value:350, candidates:7, status:"inprogress", time:"Ontem",  urgent:false, loc:"sua regiÃ£o", client:"VocÃª", rating:5.0, pro:"Carlos Pintor",   proRating:4.7, proposalValue:320, contactUnlocked:true },
+    { id:12, cat:"pedreiro",  title:"Reforma calÃ§ada frente",  desc:"CalÃ§ada 20mÂ² com pedras irregulares.",value:600, candidates:2, status:"done",       time:"Semana passada", urgent:false, loc:"sua regiÃ£o", client:"VocÃª", rating:5.0, pro:"Pedro Mestre", proRating:4.9, clientRating:5 },
   ]);
   const [notifications, setNotifications] = useState([]);
   const [activeChat,    setActiveChat]    = useState(null);
   const [userEmail,     setUserEmail]     = useState(savedSession?.email    || "");
-  const [userLocation,  setUserLocation]  = useState(savedSession?.location || "sua região");
+  const [userLocation,  setUserLocation]  = useState(savedSession?.location || "sua regiÃ£o");
   const [walletBalance, setWalletBalance] = useState(1240);
 
   const feedServices = [...SEED_FEED, ...myServices.filter(s => s.status === "open")];
@@ -5480,32 +5480,32 @@ export default function App() {
     setTimeout(() => setToast(null), 2600);
   };
 
-  // ── WELCOME EMAIL SIMULATION ─────────────────────────────────────────────────
-  // URL do backend — troque para https://api.multifuncao.com.br em produção
+  // â”€â”€ WELCOME EMAIL SIMULATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // URL do backend â€” troque para https://api.multifuncao.com.br em produÃ§Ã£o
   const API_URL = typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL
     ? import.meta.env.VITE_API_URL
     : "https://web-production-e103b.up.railway.app";
 
   const sendWelcomeEmail = async ({ name, email, role }) => {
-    const firstName = name?.trim().split(/\s+/)[0] || "Usuário";
+    const firstName = name?.trim().split(/\s+/)[0] || "UsuÃ¡rio";
 
-    // ── LOG 1: o que chegou à função ──
-    console.group("📧 sendWelcomeEmail — iniciando");
+    // â”€â”€ LOG 1: o que chegou Ã  funÃ§Ã£o â”€â”€
+    console.group("ðŸ“§ sendWelcomeEmail â€” iniciando");
     console.log("name    :", name);
     console.log("email   :", email);
     console.log("role    :", role);
     console.log("API_URL :", API_URL);
 
-    // Guarda: sem e-mail não adianta tentar
+    // Guarda: sem e-mail nÃ£o adianta tentar
     if (!email || !email.includes("@")) {
-      console.warn("⚠️  E-mail inválido ou vazio — envio cancelado:", email);
+      console.warn("âš ï¸  E-mail invÃ¡lido ou vazio â€” envio cancelado:", email);
       console.groupEnd();
       return;
     }
 
     try {
-      // ── LOG 2: chamada ao backend ──
-      console.log("📡 Chamando:", `${API_URL}/api/email/boas-vindas`);
+      // â”€â”€ LOG 2: chamada ao backend â”€â”€
+      console.log("ðŸ“¡ Chamando:", `${API_URL}/api/email/boas-vindas`);
 
       const response = await fetch(`${API_URL}/api/email/boas-vindas`, {
         method:  "POST",
@@ -5513,35 +5513,35 @@ export default function App() {
         body:    JSON.stringify({ name, email, role }),
       });
 
-      // ── LOG 3: status HTTP ──
+      // â”€â”€ LOG 3: status HTTP â”€â”€
       console.log("HTTP status :", response.status, response.statusText);
 
       const data = await response.json();
 
-      // ── LOG 4: resposta do backend ──
+      // â”€â”€ LOG 4: resposta do backend â”€â”€
       console.log("Resposta    :", data);
 
       if (response.ok) {
-        console.log("✅ E-mail enviado com sucesso pelo SendGrid");
-        showToast(`📧 E-mail enviado para ${email}`, role === "client" ? B : O);
+        console.log("âœ… E-mail enviado com sucesso pelo SendGrid");
+        showToast(`ðŸ“§ E-mail enviado para ${email}`, role === "client" ? B : O);
       } else {
-        // Erro retornado pelo backend (ex: chave inválida, domínio não autenticado)
-        console.error("❌ Backend retornou erro:", data.error || data);
-        showToast("⚠️ E-mail não enviado. Verifique o terminal.", "#EF4444");
+        // Erro retornado pelo backend (ex: chave invÃ¡lida, domÃ­nio nÃ£o autenticado)
+        console.error("âŒ Backend retornou erro:", data.error || data);
+        showToast("âš ï¸ E-mail nÃ£o enviado. Verifique o terminal.", "#EF4444");
       }
 
     } catch (err) {
-      // ── LOG 5: erro de rede (backend offline, CORS, etc.) ──
-      console.error("❌ Erro de rede ao chamar o backend:");
+      // â”€â”€ LOG 5: erro de rede (backend offline, CORS, etc.) â”€â”€
+      console.error("âŒ Erro de rede ao chamar o backend:");
       console.error("   Mensagem  :", err.message);
-      console.error("   Dica      : O backend está rodando em", API_URL, "?");
-      console.error("   Dica      : VITE_API_URL está configurado no .env?");
+      console.error("   Dica      : O backend estÃ¡ rodando em", API_URL, "?");
+      console.error("   Dica      : VITE_API_URL estÃ¡ configurado no .env?");
     }
 
     console.groupEnd();
   };
 
-  // ── INTENT-BASED AUTH GATE ──────────────────────────────────────────────────
+  // â”€â”€ INTENT-BASED AUTH GATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const requireAuth = (intent, fn) => {
     if (isLoggedIn) { fn(); return; }
     setPendingIntent({ fn });
@@ -5559,7 +5559,7 @@ export default function App() {
     setUserRole(resolvedRole);
     setRole(resolvedRole);
 
-    // Save session to localStorage — persists across page reloads
+    // Save session to localStorage â€” persists across page reloads
     try {
       const session = { name: firstName, email, whatsapp, location, role: resolvedRole };
       localStorage.setItem("multiSession", JSON.stringify(session));
@@ -5570,7 +5570,7 @@ export default function App() {
     // 7-day PRO trial for new professional sign-ups
     if (isNewAccount && resolvedRole === "professional") {
       setIsPro(true);
-      setTimeout(() => showToast("🎁 7 dias de Multi PRO ativados! Explore tudo.", "#7C3AED"), 600);
+      setTimeout(() => showToast("ðŸŽ 7 dias de Multi PRO ativados! Explore tudo.", "#7C3AED"), 600);
     }
     if (isNewAccount) {
       setTimeout(() => sendWelcomeEmail({ name, email, role: resolvedRole }), 400);
@@ -5582,15 +5582,15 @@ export default function App() {
     }
   };
 
-  // ── SERVICE HANDLERS ────────────────────────────────────────────────────────
+  // â”€â”€ SERVICE HANDLERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handlePostService = ({ cat, desc, value }) => {
     const catDef = CATS.find(c => c.id === cat);
     const svc = {
       id: Date.now(), cat, desc, value,
-      title: `${catDef?.label ?? "Serviço"} — ${desc.slice(0, 28)}…`,
+      title: `${catDef?.label ?? "ServiÃ§o"} â€” ${desc.slice(0, 28)}â€¦`,
       candidates: 0, status:"open", time:"Agora", urgent:false,
-      loc: userLocation === "sua região" ? "Perto de você" : userLocation,
-      client:"Você", rating:5.0,
+      loc: userLocation === "sua regiÃ£o" ? "Perto de vocÃª" : userLocation,
+      client:"VocÃª", rating:5.0,
     };
     setMyServices(s => [svc, ...s]);
     setSelected(svc);
@@ -5600,7 +5600,7 @@ export default function App() {
   const handleProposalNotify = (proposal) => {
     setNotifications(n => [{ id:Date.now(), ...proposal, status:"pending", time:"Agora" }, ...n]);
     setMyServices(s => s.map(x => x.id === proposal.serviceId ? { ...x, candidates: (x.candidates||0)+1 } : x));
-    showToast("💼 Proposta enviada! Cliente será notificado.", B);
+    showToast("ðŸ’¼ Proposta enviada! Cliente serÃ¡ notificado.", B);
   };
 
   const handleAcceptProposal = (notifId) => {
@@ -5610,7 +5610,7 @@ export default function App() {
     setMyServices(s => s.map(x => x.id === notif.serviceId
       ? { ...x, status:"inprogress", pro: notif.proName, proRating:4.8, proposalValue: notif.value, contactUnlocked:true }
       : x));
-    showToast("🎉 Proposta aceita! Chat e contato liberados.");
+    showToast("ðŸŽ‰ Proposta aceita! Chat e contato liberados.");
   };
 
   const openChatFromNotif = (notif) => {
@@ -5635,7 +5635,7 @@ export default function App() {
   const handleRate = (svcId, stars) => {
     setMyServices(s => s.map(x => x.id === svcId ? { ...x, clientRating: stars } : x));
     setRatingTarget(null);
-    showToast(`⭐ Obrigada! Você avaliou com ${stars} estrelas.`);
+    showToast(`â­ Obrigada! VocÃª avaliou com ${stars} estrelas.`);
   };
 
   const handleProFeedAction = (payload) => {
@@ -5666,12 +5666,12 @@ export default function App() {
       localStorage.removeItem("multiSession");
       localStorage.removeItem("multiUser");
     } catch {}
-    showToast("👋 Até logo!");
+    showToast("ðŸ‘‹ AtÃ© logo!");
   };
 
   const notifCount = notifications.filter(n => n.status === "pending").length;
 
-  // ── SCREEN ROUTER ───────────────────────────────────────────────────────────
+  // â”€â”€ SCREEN ROUTER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const renderContent = () => {
     if (screen === "activechat" && activeChat) {
       return (
@@ -5702,12 +5702,12 @@ export default function App() {
       }
       if (screen === "service" && selected) return <ServiceDetailClient service={selected} onBack={() => setScreen("orders")} onStatusChange={(id, newStatus) => { setMyServices(s => s.map(x => x.id === id ? { ...x, status: newStatus } : x)); }} showToast={showToast} />;
 
-      // ── GUEST TOGGLE: show professional mural preview when guest selects "Profissional"
+      // â”€â”€ GUEST TOGGLE: show professional mural preview when guest selects "Profissional"
       if (!isLoggedIn && guestRole === "professional") {
         return <GuestMural onSignup={() => setAuthScreen("welcome")} allDocsVerified={null} />;
       }
 
-      // HOME — always visible, auth gates on action
+      // HOME â€” always visible, auth gates on action
       return (
         <div style={{ position:"relative" }}>
           <ClientHome
@@ -5757,7 +5757,7 @@ export default function App() {
     }
 
     // Professional screens
-    if (screen === "upgrade") return <ProUpgrade onBack={() => setScreen("home")} onSubscribe={() => { setIsPro(true); setScreen("home"); showToast("🎉 Você agora é Multi PRO! Contatos desbloqueados."); }} />;
+    if (screen === "upgrade") return <ProUpgrade onBack={() => setScreen("home")} onSubscribe={() => { setIsPro(true); setScreen("home"); showToast("ðŸŽ‰ VocÃª agora Ã© Multi PRO! Contatos desbloqueados."); }} />;
     if (screen === "wallet") return <WalletScreen onBack={() => setScreen("profile")} showToast={showToast} walletBalance={walletBalance} setWalletBalance={setWalletBalance} />;
     if (screen === "profile") {
       if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
@@ -5765,7 +5765,7 @@ export default function App() {
     }
     if (screen === "service" && selected) return <ServiceDetailPro service={selected} onBack={() => setScreen("home")} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onOpenPinEntry={() => setScreen("pinjob")} />;
     if (screen === "pinjob"  && selected) return <ServiceDetailPinEntry service={selected} onBack={() => setScreen("service")} onStatusChange={(id, ns) => setMyServices(s => s.map(x => x.id === id ? { ...x, status:ns } : x))} showToast={showToast} />;
-    // Pro home — shows professional-specific banner + filters + feed
+    // Pro home â€” shows professional-specific banner + filters + feed
     return (
       <ProfessionalHome
         userName={userName}
@@ -5781,7 +5781,7 @@ export default function App() {
     );
   };
 
-  // ── BOTTOM NAV with auth-gated tabs ─────────────────────────────────────────
+  // â”€â”€ BOTTOM NAV with auth-gated tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleNavTab = (id) => {
     // Client-only gated tabs
     if (["orders","chat","alerts"].includes(id) && !isLoggedIn) {
@@ -5795,7 +5795,7 @@ export default function App() {
     setScreen(id);
   };
 
-  // ── WRAPPER ─────────────────────────────────────────────────────────────────
+  // â”€â”€ WRAPPER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const wrapper = (children) => (
     <div style={{ background:BG, minHeight:"100vh", display:"flex", justifyContent:"center" }}>
       <style>{`
@@ -5809,11 +5809,11 @@ export default function App() {
     </div>
   );
 
-  // ── AUTH MODAL OVERLAYS (slide in over the app, never replace it) ────────────
+  // â”€â”€ AUTH MODAL OVERLAYS (slide in over the app, never replace it) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (authScreen === "welcome") {
     return wrapper(
       <WelcomeScreen
-        onGoogle={() => handleLoginComplete("Usuário Google")}
+        onGoogle={() => handleLoginComplete("UsuÃ¡rio Google")}
         onEmail={() => setAuthScreen("login")}
         onBack={() => { setAuthScreen(null); setPendingIntent(null); }}
       />
@@ -5826,15 +5826,15 @@ export default function App() {
     );
   }
   if (authScreen === "reset-password") {
-    return wrapper(<ResetPasswordScreen onComplete={() => { setAuthScreen(null); showToast("✅ Senha alterada! Faça login."); setAuthScreen("login"); }} />);
+    return wrapper(<ResetPasswordScreen onComplete={() => { setAuthScreen(null); showToast("âœ… Senha alterada! FaÃ§a login."); setAuthScreen("login"); }} />);
   }
   if (authScreen === "forgot-password") {
-    return wrapper(<ForgotPasswordScreen onBack={() => setAuthScreen("login")} onComplete={() => { setAuthScreen("login"); showToast("✅ Senha alterada com sucesso!"); }} />);
+    return wrapper(<ForgotPasswordScreen onBack={() => setAuthScreen("login")} onComplete={() => { setAuthScreen("login"); showToast("âœ… Senha alterada com sucesso!"); }} />);
   }
   if (authScreen === "login") {
     return wrapper(<LoginScreen onBack={() => setAuthScreen("welcome")} onComplete={handleLoginComplete} onRegister={() => setAuthScreen("register")} onForgot={() => setAuthScreen("forgot-password")} />);
   }
-  // Admin overlay — renders over everything else
+  // Admin overlay â€” renders over everything else
   if (showAdmin) {
     return wrapper(<AdminDashboard onExit={() => setShowAdmin(false)} />);
   }
@@ -5861,19 +5861,19 @@ export default function App() {
         {renderContent()}
       </div>
 
-      {/* Bottom nav — tabs driven by authenticated role, not the browse toggle */}
+      {/* Bottom nav â€” tabs driven by authenticated role, not the browse toggle */}
       <div style={{ position:"sticky", bottom:0, background:"white", borderTop:"1px solid #EBEBEB", boxShadow:"0 -3px 16px rgba(0,0,0,.06)", display:"flex", alignItems:"center", justifyContent:"space-around", padding:"8px 0 10px" }}>
         {(isLoggedIn && userRole === "professional"
-          // ── Professional tabs (no FAB, no + Novo Pedido) ──
+          // â”€â”€ Professional tabs (no FAB, no + Novo Pedido) â”€â”€
           ? [
               { id:"home",    label:"Mural",    Icon:Home },
               { id:"orders",  label:"Meus Jobs", Icon:ClipboardList },
               { id:"upgrade", label:"Seja PRO",  Icon:Crown },
               { id:"profile", label:"Perfil",    Icon:User },
             ]
-          // ── Client tabs (or guest browsing) ──
+          // â”€â”€ Client tabs (or guest browsing) â”€â”€
           : [
-              { id:"home",    label:"Início",       Icon:Home },
+              { id:"home",    label:"InÃ­cio",       Icon:Home },
               { id:"orders",  label:"Meus Pedidos", Icon:ClipboardList },
               { id:"chat",    label:"Mensagens",    Icon:MessageCircle },
               { id:"profile", label:"Perfil",       Icon:User },
@@ -5895,3 +5895,4 @@ export default function App() {
 }
 
 // deploy Sun Apr 26 23:30:18     2026
+
