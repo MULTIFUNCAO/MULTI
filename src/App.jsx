@@ -5836,8 +5836,6 @@ export default function App() {
   }
   if (authScreen === "login") {
     return wrapper(
-  if (authScreen === "login") {
-    return wrapper(
       <LoginScreen
         onBack={() => setAuthScreen("welcome")}
         onComplete={handleLoginComplete}
