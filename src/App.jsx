@@ -4257,7 +4257,7 @@ function ResetPasswordScreen({ onComplete }) {
   );
 }
 
-function LoginScreen({ onBack, onComplete, onRegister }) {
+function LoginScreen({ onBack, onComplete, onRegister, onForgot }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -4304,7 +4304,7 @@ function LoginScreen({ onBack, onComplete, onRegister }) {
           {loading ? "Entrando..." : "Entrar"}
         </button>
         <p style={{ textAlign:"center", marginTop:12, fontSize:13, color:"#6B7280" }}>Esqueceu a senha?
-          <button onClick={() => setAuthScreen("forgot-password")} style={{ background:"none", border:"none", color:"#007BFF", fontWeight:700, cursor:"pointer", marginLeft:4 }}>Recuperar</button>
+          <button onClick={() => onForgot()} style={{ background:"none", border:"none", color:"#007BFF", fontWeight:700, cursor:"pointer", marginLeft:4 }}>Recuperar</button>
         </p>
         <p style={{ textAlign:"center", marginTop:16, fontSize:14, color:"#6B7280" }}>Não tem conta?
           <button onClick={onRegister} style={{ background:"none", border:"none", color:"#007BFF", fontWeight:700, cursor:"pointer", marginLeft:4 }}>Cadastre-se</button>
@@ -5838,10 +5838,8 @@ export default function App() {
     return wrapper(
       <LoginScreen
         onBack={() => setAuthScreen("welcome")}
-        onComplete={handleLoginComplete}
-        onRegister={() => setAuthScreen("register")}
-      />
-    );
+          onRegister={() => setAuthScreen("register")}
+          onForgot={() => setAuthScreen("forgot-password")}
   }
 
   // ── MAIN APP ─────────────────────────────────────────────────────────────────
