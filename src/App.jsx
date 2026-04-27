@@ -1229,13 +1229,13 @@ function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
           {/* body */}
           <div style={{ background:"white", padding:"14px 16px" }}>
             <p style={{ fontSize:12, color:"#555", lineHeight:1.6, margin:"0 0 14px" }}>
-              💡 Seu pagamento está <strong style={{ color:"#1a1a2e" }}>seguro com o Multi</strong>. Só libere o código após o término do serviço.
+              💡 Seu pagamento está <strong style={{ color:"#1a1a2e" }}>seguro com o Multi</strong>. Só libere o codigo após o término do serviço.
             </p>
 
             {/* PIN display */}
             <div style={{ background:"#F8F9FA", borderRadius:14, padding:"12px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", border:"1.5px dashed #E5E7EB" }}>
               <div>
-                <p style={{ fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1, margin:"0 0 4px" }}>Código de Liberação</p>
+                <p style={{ fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1, margin:"0 0 4px" }}>Codigo de Liberação</p>
                 <div style={{ display:"flex", gap:8 }}>
                   {pin.split("").map((d, i) => (
                     <div key={i} style={{ width:36, height:44, borderRadius:10, background:"white", border:`2px solid ${G}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, fontWeight:900, color:"#1a1a2e", boxShadow:"0 2px 8px rgba(0,0,0,.08)" }}>
@@ -1403,7 +1403,7 @@ function ServiceDetailPinEntry({ service, onBack, onStatusChange, showToast }) {
           <div style={{ background:"linear-gradient(135deg,#1a1a2e,#2d2d44)", padding:"16px", display:"flex", alignItems:"center", gap:10 }}>
             <KeyRound size={20} color={O} />
             <div>
-              <p style={{ fontSize:14, fontWeight:900, color:"white", margin:0 }}>Inserir Código do Cliente</p>
+              <p style={{ fontSize:14, fontWeight:900, color:"white", margin:0 }}>Inserir Codigo do Cliente</p>
               <p style={{ fontSize:11, color:"rgba(255,255,255,.55)", margin:0 }}>Digite o PIN de 4 dígitos para liberar o pagamento</p>
             </div>
           </div>
@@ -1629,7 +1629,7 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry })
       {/* PIN entry CTA for executing/in-progress jobs */}
       {phase >= 1 && (
         <button onClick={onOpenPinEntry} style={{ width:"100%", padding:"15px 0", borderRadius:16, border:"none", cursor:"pointer", background:"linear-gradient(135deg,#1a1a2e,#2d2d44)", color:"white", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:10, boxShadow:"0 5px 18px rgba(0,0,0,.2)" }}>
-          <KeyRound size={18} /> Inserir Código do Cliente (Finalizar)
+          <KeyRound size={18} /> Inserir Codigo do Cliente (Finalizar)
         </button>
       )}
     </div>
@@ -1816,13 +1816,13 @@ function ProUpgrade({ onBack, onSubscribe }) {
               {/* Pix copy-paste code */}
               <div style={{ background:"white", borderRadius:18, padding:16, boxShadow:"0 2px 10px rgba(0,0,0,.06)" }}>
                 <p style={{ fontSize:11, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1, margin:"0 0 10px" }}>
-                  Ou copie o código PIX
+                  Ou copie o codigo PIX
                 </p>
                 <div style={{ background:"#F8F9FA", borderRadius:12, padding:"12px 14px", marginBottom:12, wordBreak:"break-all", fontSize:11, color:"#555", lineHeight:1.6, fontFamily:"monospace", border:"1px dashed #E5E7EB" }}>
                   {pixCode.slice(0, 60)}…
                 </div>
                 <button onClick={handleCopy} style={{ width:"100%", padding:"12px 0", borderRadius:12, border:"none", cursor:"pointer", background: copied ? G : B, color:"white", fontWeight:900, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:8, transition:"background .2s" }}>
-                  {copied ? <><Check size={15} /> Copiado!</> : <><FileText size={15} /> Copiar código PIX</>}
+                  {copied ? <><Check size={15} /> Copiado!</> : <><FileText size={15} /> Copiar codigo PIX</>}
                 </button>
               </div>
 
