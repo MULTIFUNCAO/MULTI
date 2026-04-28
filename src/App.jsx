@@ -2920,8 +2920,7 @@ function ProfileScreen({ role, isPro, onUpgrade, onLogout, showToast, onOpenWall
       </div>
 
       {/* ── PROFESSIONAL SECTIONS ── */}
-      {role === "professional" && (
-          {/* Wallet card — links to full WalletScreen */}
+      {role === "professional" && (<>
           <div style={{ padding:"0 16px", marginTop:-20, position:"relative", zIndex:2 }}>
             <div onClick={onOpenWallet} style={{ background:"white", borderRadius:20, padding:18, boxShadow:"0 4px 20px rgba(0,0,0,.10)", border:"1px solid #F0F0F0", cursor:"pointer" }}>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
