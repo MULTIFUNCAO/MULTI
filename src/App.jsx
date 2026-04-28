@@ -5983,7 +5983,7 @@ export default function App() {
       if (screen === "orders") return <MyServicesScreen myServices={myServices} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} isPro={isPro} />;
       if (screen === "profile") {
         if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
-        return <ProfileScreen role="client" userName={userName} isPro={false} showRankingGlobal={showRankingGlobal} onClearRankingGlobal={() => setShowRankingGlobal(false)} onSwitchMode={(m) => { localStorage.setItem("multiMode", m); window.dispatchEvent(new Event("modeChanged")); }} />;
+        return <ProfileScreen role="client" userName={userName} isPro={false} showRankingGlobal={showRankingGlobal} onClearRankingGlobal={() => setShowRankingGlobal(false)} onSwitchMode={(m) => { localStorage.setItem("multiMode", m); window.dispatchEvent(new Event("modeChanged")); setRole(m === "pro" ? "professional" : "client"); setScreen("home"); }} />;
       }
       if (screen === "service" && selected) return <ServiceDetailClient service={selected} onBack={() => setScreen("orders")} onStatusChange={(id, newStatus) => { setMyServices(s => s.map(x => x.id === id ? { ...x, status: newStatus } : x)); }} showToast={showToast} />;
 
@@ -6046,7 +6046,7 @@ export default function App() {
     if (screen === "wallet") return <WalletScreen onBack={() => setScreen("profile")} showToast={showToast} walletBalance={walletBalance} setWalletBalance={setWalletBalance} />;
     if (screen === "profile") {
       if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
-      return <ProfileScreen role="professional" userName={userName} onSwitchMode={(m) => { localStorage.setItem("multiMode", m); window.dispatchEvent(new Event("modeChanged")); }} />;
+      return <ProfileScreen role="professional" userName={userName} onSwitchMode={(m) => { localStorage.setItem("multiMode", m); window.dispatchEvent(new Event("modeChanged")); setRole(m === "pro" ? "professional" : "client"); setScreen("home"); }} />;
     }
     if (screen === "service" && selected) return <ServiceDetailPro service={selected} onBack={() => setScreen("home")} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onOpenPinEntry={() => setScreen("pinjob")} />;
     if (screen === "pinjob"  && selected) return <ServiceDetailPinEntry service={selected} onBack={() => setScreen("service")} onStatusChange={(id, ns) => setMyServices(s => s.map(x => x.id === id ? { ...x, status:ns } : x))} showToast={showToast} />;
