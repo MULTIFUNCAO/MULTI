@@ -3133,7 +3133,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, showRankingGlob
 
           <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:8 }}>
             <MapPin size={12} color="rgba(255,255,255,.65)" />
-            <span style={{ fontSize:12, color:"rgba(255,255,255,.65)", fontWeight:600 }}>Sua localização</span>
+                <span style={{ fontSize:12, color:"rgba(255,255,255,.65)", fontWeight:600 }}>{localStorage.getItem("multiLocation") || "Sua localização"}</span>
           </div>
 
           {/* stats row */}
