@@ -2635,8 +2635,8 @@ function AddressSection({ showToast }) {
         body: JSON.stringify({ phone, ...form }),
       });
       const d = await r.json();
-      if (d.address) {
-        setAddresses(prev => [...prev, d.address]);
+      if (d.id) {
+        setAddresses(prev => [...prev, d]);
         setShowModal(false);
         setForm({ label:"", street:"", city:"", cep:"" });
         showToast?.("✅ Endereço salvo com sucesso!");
