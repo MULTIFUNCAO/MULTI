@@ -5659,7 +5659,6 @@ export default function App() {
   const [role,      setRole]    = useState(() => {
     try { const m = localStorage.getItem("multiMode"); if (m === "pro") return "professional"; return JSON.parse(localStorage.getItem("multiSession") || "null")?.role || "client"; } catch { return "client"; }
   const [selected,  setSelected]  = useState(null);
-  });
   const [isPro,     setIsPro]     = useState(false);
   const [toast,     setToast]     = useState(null);
   const [ratingTarget, setRatingTarget] = useState(null);
