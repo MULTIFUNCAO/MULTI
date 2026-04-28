@@ -3140,7 +3140,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, showRankingGlob
         {/* mode toggle */}
         <div style={{ display:"flex", background:"rgba(255,255,255,.15)", borderRadius:99, padding:3, margin:"12px auto 0", width:"fit-content", gap:2 }}>
           <button onClick={() => { setActiveMode("client"); localStorage.setItem("multiMode","client"); onSwitchMode && onSwitchMode("client"); }} style={{ border:"none", borderRadius:99, padding:"7px 18px", fontSize:13, fontWeight:700, cursor:"pointer", background: activeMode==="client" ? "white" : "transparent", color: activeMode==="client" ? "#007BFF" : "rgba(255,255,255,.8)", transition:"all .2s" }}>👤 Cliente</button>
-          <button onClick={() => { setActiveMode("pro"); localStorage.setItem("multiMode","pro"); onSwitchMode && onSwitchMode("pro"); }} style={{ border:"none", borderRadius:99, padding:"7px 18px", fontSize:13, fontWeight:700, cursor:"pointer", background: activeMode==="pro" ? "white" : "transparent", color: activeMode==="pro" ? "#FF5722" : "rgba(255,255,255,.8)", transition:"all .2s" }}>👷 Profissional</button>
+          <button onClick={() => { setActiveMode("pro"); localStorage.setItem("multiMode","pro"); window.dispatchEvent(new CustomEvent("switchMode", {detail:"pro"})); }} style={{ border:"none", borderRadius:99, padding:"7px 18px", fontSize:13, fontWeight:700, cursor:"pointer", background: activeMode==="pro" ? "white" : "transparent", color: activeMode==="pro" ? "#FF5722" : "rgba(255,255,255,.8)", transition:"all .2s" }}>👷 Profissional</button>
         </div>
           {/* stats row */}
           <div style={{ display:"flex", gap:0, background:"rgba(255,255,255,.12)", borderRadius:14, overflow:"hidden", marginTop:4 }}>
@@ -5670,6 +5670,9 @@ export default function App() {
   useEffect(() => { setScreen("home"); }, [role]);
   useEffect(() => {
     const h = () => setModeKey(k => k+1);
+    const s = (e) => { setRole(e.detail === "pro" ? "professional" : "client"); };
+    window.addEventListener("switchMode", s);
+    return () => { window.removeEventListener("modeChanged", h); window.removeEventListener("switchMode", s); };
     window.addEventListener("modeChanged", h);
     return () => window.removeEventListener("modeChanged", h);
   }, []);
