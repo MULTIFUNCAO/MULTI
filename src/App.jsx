@@ -5707,7 +5707,7 @@ export default function App() {
   const [notifications, setNotifications] = useState([]);
   const [activeChat,    setActiveChat]    = useState(null);
   const [userEmail,     setUserEmail]     = useState(savedSession?.email    || "");
-  const [userLocation,  setUserLocation]  = useState(savedSession?.location || "sua região");
+  const [userLocation,  setUserLocation]  = useState(localStorage.getItem("multiLocation") || savedSession?.location || "sua região")(savedSession?.location || "sua região");
   const [walletBalance, setWalletBalance] = useState(1240);
   useEffect(() => {
     const sess = (() => { try { return JSON.parse(localStorage.getItem("multiUser")) || {}; } catch { return {}; } })();
