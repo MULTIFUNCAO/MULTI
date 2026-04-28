@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Search, MapPin, Bell, Star, Plus, ChevronRight,
   Hammer, Wrench, Paintbrush, Scissors, Zap, Square,
@@ -197,7 +197,7 @@ function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua
           <MapPin size={13} color="rgba(255,255,255,.7)" />
           <div>
             <p style={{ fontSize:9, color:"rgba(255,255,255,.5)", fontWeight:700, margin:0 }}>Sua Localização</p>
-                <p style={{ fontSize:12, color:"white", fontWeight:800, margin:0 }}>{localStorage.getItem("multiLocation") || userLocation}</p>
+            <p style={{ fontSize:12, color:"white", fontWeight:800, margin:0 }}>{userLocation}</p>
           </div>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
@@ -212,7 +212,7 @@ function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua
               {isProfessional ? "👨‍🔧" : "👩"}
             </div>
             {!isProfessional && (
-              <div style={{ position:"absolute", bottom:-4, right:-4, background:"linear-gradient(135deg,#F9A825,#E65100)", borderRadius:99, padding:"1px 5px", boxShadow:"0 2px 6px rgba(0,0,0,.22)", cursor:"pointer" }} onClick={() => window.dispatchEvent(new Event("openRanking"))}>
+              <div style={{ position:"absolute", bottom:-4, right:-4, background:"linear-gradient(135deg,#F9A825,#E65100)", borderRadius:99, padding:"1px 5px", boxShadow:"0 2px 6px rgba(0,0,0,.22)" }}>
                 <span style={{ fontSize:8, fontWeight:900, color:"white" }}>OURO</span>
               </div>
             )}
@@ -248,7 +248,7 @@ function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua
       {!isProfessional && (
         <div style={{ margin:"0 16px 12px", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
           <div style={{ width:7, height:7, borderRadius:"50%", background:"#4ade80" }} />
-          <span style={{ fontSize:11, color:"rgba(255,255,255,.7)", fontWeight:700 }}>{localStorage.getItem("multiMode")==="pro" ? "● Logado como Profissional" : "● Logado como Cliente"}</span>
+          <span style={{ fontSize:11, color:"rgba(255,255,255,.7)", fontWeight:700 }}>Logado como Cliente</span>
         </div>
       )}
       {isProfessional && (
@@ -276,7 +276,7 @@ function GuestHeader({ onToggleRole, activeRole = "client" }) {
           <MapPin size={13} color="rgba(255,255,255,.7)" />
           <div>
             <p style={{ fontSize:9, color:"rgba(255,255,255,.5)", fontWeight:700, margin:0 }}>Sua Localização</p>
-                <p style={{ fontSize:12, color:"white", fontWeight:800, margin:0 }}>{localStorage.getItem("multiLocation") || "Sua localização"}</p>
+            <p style={{ fontSize:12, color:"white", fontWeight:800, margin:0 }}>Sua localização</p>
           </div>
         </div>
         <div style={{ width:34, height:34, borderRadius:"50%", background:"rgba(255,255,255,.2)", border:"2px solid rgba(255,255,255,.4)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:17 }}>👤</div>
@@ -311,7 +311,7 @@ function GuestHeader({ onToggleRole, activeRole = "client" }) {
 /* Public façade — picks the right header, nothing shared between them */
 function Header({ isPro, notifCount, isLoggedIn, userRole, onAlerts, userLocation, onToggleRole, activeRole }) {
   if (isLoggedIn) {
-    return <AuthHeader isPro={isPro} notifCount={notifCount} userRole={userRole} onAlerts={onAlerts} userLocation={localStorage.getItem("multiLocation") || userLocation} />;
+    return <AuthHeader isPro={isPro} notifCount={notifCount} userRole={userRole} onAlerts={onAlerts} userLocation={userLocation} />;
   }
   return <GuestHeader onToggleRole={onToggleRole} activeRole={activeRole} />;
 }
@@ -1229,13 +1229,13 @@ function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
           {/* body */}
           <div style={{ background:"white", padding:"14px 16px" }}>
             <p style={{ fontSize:12, color:"#555", lineHeight:1.6, margin:"0 0 14px" }}>
-              💡 Seu pagamento está <strong style={{ color:"#1a1a2e" }}>seguro com o Multi</strong>. Só libere o codigo após o término do serviço.
+              💡 Seu pagamento está <strong style={{ color:"#1a1a2e" }}>seguro com o Multi</strong>. Só libere o código após o término do serviço.
             </p>
 
             {/* PIN display */}
             <div style={{ background:"#F8F9FA", borderRadius:14, padding:"12px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", border:"1.5px dashed #E5E7EB" }}>
               <div>
-                <p style={{ fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1, margin:"0 0 4px" }}>Codigo de Liberação</p>
+                <p style={{ fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1, margin:"0 0 4px" }}>Código de Liberação</p>
                 <div style={{ display:"flex", gap:8 }}>
                   {pin.split("").map((d, i) => (
                     <div key={i} style={{ width:36, height:44, borderRadius:10, background:"white", border:`2px solid ${G}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, fontWeight:900, color:"#1a1a2e", boxShadow:"0 2px 8px rgba(0,0,0,.08)" }}>
@@ -1403,7 +1403,7 @@ function ServiceDetailPinEntry({ service, onBack, onStatusChange, showToast }) {
           <div style={{ background:"linear-gradient(135deg,#1a1a2e,#2d2d44)", padding:"16px", display:"flex", alignItems:"center", gap:10 }}>
             <KeyRound size={20} color={O} />
             <div>
-              <p style={{ fontSize:14, fontWeight:900, color:"white", margin:0 }}>Inserir Codigo do Cliente</p>
+              <p style={{ fontSize:14, fontWeight:900, color:"white", margin:0 }}>Inserir Código do Cliente</p>
               <p style={{ fontSize:11, color:"rgba(255,255,255,.55)", margin:0 }}>Digite o PIN de 4 dígitos para liberar o pagamento</p>
             </div>
           </div>
@@ -1629,7 +1629,7 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry })
       {/* PIN entry CTA for executing/in-progress jobs */}
       {phase >= 1 && (
         <button onClick={onOpenPinEntry} style={{ width:"100%", padding:"15px 0", borderRadius:16, border:"none", cursor:"pointer", background:"linear-gradient(135deg,#1a1a2e,#2d2d44)", color:"white", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:10, boxShadow:"0 5px 18px rgba(0,0,0,.2)" }}>
-          <KeyRound size={18} /> Inserir Codigo do Cliente (Finalizar)
+          <KeyRound size={18} /> Inserir Código do Cliente (Finalizar)
         </button>
       )}
     </div>
@@ -1670,7 +1670,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
     setPixError("");
     try {
       // Step 1: create customer
-  const userData = (() => { try { return JSON.parse(localStorage.getItem("multiSession")) || null; } catch { return null; } })();
+      const userData = (() => { try { return JSON.parse(localStorage.getItem("multiUser") || "{}"); } catch { return {}; } })();
       const custRes  = await fetch(`${API_URL}/api/criar-cliente`, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ name: userData.name || "Cliente Multi", phone: userData.whatsapp || "11999999999", email: userData.email || "", role:"professional" }),
@@ -1816,13 +1816,13 @@ function ProUpgrade({ onBack, onSubscribe }) {
               {/* Pix copy-paste code */}
               <div style={{ background:"white", borderRadius:18, padding:16, boxShadow:"0 2px 10px rgba(0,0,0,.06)" }}>
                 <p style={{ fontSize:11, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1, margin:"0 0 10px" }}>
-                  Ou copie o codigo PIX
+                  Ou copie o código PIX
                 </p>
                 <div style={{ background:"#F8F9FA", borderRadius:12, padding:"12px 14px", marginBottom:12, wordBreak:"break-all", fontSize:11, color:"#555", lineHeight:1.6, fontFamily:"monospace", border:"1px dashed #E5E7EB" }}>
                   {pixCode.slice(0, 60)}…
                 </div>
                 <button onClick={handleCopy} style={{ width:"100%", padding:"12px 0", borderRadius:12, border:"none", cursor:"pointer", background: copied ? G : B, color:"white", fontWeight:900, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:8, transition:"background .2s" }}>
-                  {copied ? <><Check size={15} /> Copiado!</> : <><FileText size={15} /> Copiar codigo PIX</>}
+                  {copied ? <><Check size={15} /> Copiado!</> : <><FileText size={15} /> Copiar código PIX</>}
                 </button>
               </div>
 
@@ -1838,7 +1838,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
               </div>
 
               {/* Simulate payment confirmed (demo button) */}
-              <button onClick={() => { setStep("done"); setTimeout(() => onSubscribe(), 2000); }} style={{ padding:"14px 0", borderRadius:16, border:"none", cursor:"pointer", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", color:"white", fontWeight:900, fontSize:14, boxShadow:"0 5px 18px rgba(124,58,237,.4)", display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
+              <button onClick={handleConfirmPayment} style={{ padding:"14px 0", borderRadius:16, border:"none", cursor:"pointer", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", color:"white", fontWeight:900, fontSize:14, boxShadow:"0 5px 18px rgba(124,58,237,.4)", display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
                 <CheckCircle2 size={18} /> Já paguei — Ativar PRO
               </button>
 
@@ -2618,16 +2618,16 @@ function AddressSection({ showToast }) {
   const [showModal,   setShowModal]   = useState(false);
   const [saving,      setSaving]      = useState(false);
   const [form,        setForm]        = useState({ label:"", street:"", city:"", cep:"" });
-  const phone = safeGetUser().email || safeGetUser().whatsapp || "";
+  const phone = safeGetUser().whatsapp || "";
 
   useEffect(() => {
-    
+    if (!phone) return;
     fetch(`${API_BASE}/api/enderecos/${encodeURIComponent(phone)}`)
-      .then(r => r.json()).then(d => setAddresses(Array.isArray(d) ? d : [])).catch(() => {});
+      .then(r => r.json()).then(d => setAddresses(d.addresses || [])).catch(() => {});
   }, [phone]);
 
   const handleSave = async () => {
-    
+    if (!form.label.trim() || !form.street.trim()) return;
     setSaving(true);
     try {
       const r = await fetch(`${API_BASE}/api/enderecos`, {
@@ -2635,8 +2635,8 @@ function AddressSection({ showToast }) {
         body: JSON.stringify({ phone, ...form }),
       });
       const d = await r.json();
-      if (d.id) {
-        setAddresses(prev => [...prev, d]);
+      if (d.address) {
+        setAddresses(prev => [...prev, d.address]);
         setShowModal(false);
         setForm({ label:"", street:"", city:"", cep:"" });
         showToast?.("✅ Endereço salvo com sucesso!");
@@ -2707,17 +2707,17 @@ function CardSection({ showToast }) {
   const [showModal, setShowModal] = useState(false);
   const [saving,    setSaving]    = useState(false);
   const [form,      setForm]      = useState({ label:"", number:"", brand:"Visa", type:"credit" });
-  const phone = safeGetUser().email || safeGetUser().whatsapp || "";
+  const phone = safeGetUser().whatsapp || "";
 
   useEffect(() => {
-    
+    if (!phone) return;
     fetch(`${API_BASE}/api/cartoes/${encodeURIComponent(phone)}`)
-      .then(r => r.json()).then(d => setCards(Array.isArray(d) ? d : [])).catch(() => {});
+      .then(r => r.json()).then(d => setCards(d.cards || [])).catch(() => {});
   }, [phone]);
 
   const handleSave = async () => {
     const digits = form.number.replace(/\D/g, "");
-    
+    if (!form.label.trim() || digits.length < 4) return;
     setSaving(true);
     try {
       const r = await fetch(`${API_BASE}/api/cartoes`, {
@@ -2725,8 +2725,8 @@ function CardSection({ showToast }) {
         body: JSON.stringify({ phone, label:form.label, last4:digits.slice(-4), brand:form.brand, type:form.type }),
       });
       const d = await r.json();
-      if (d.id) {
-        setCards(prev => [...prev, d]);
+      if (d.card) {
+        setCards(prev => [...prev, d.card]);
         setShowModal(false);
         setForm({ label:"", number:"", brand:"Visa", type:"credit" });
         showToast?.("✅ Cartão salvo com sucesso!");
@@ -2804,240 +2804,11 @@ function CardSection({ showToast }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
-function SOSScreen({ onBack }) {
-  return (
-    <div style={{ minHeight:"100vh", background:"#fff" }}>
-      <div style={{ background:"#EF4444", padding:"20px 16px 16px", display:"flex", alignItems:"center", gap:12 }}>
-        <button onClick={onBack} style={{ background:"none", border:"none", color:"white", fontSize:22, cursor:"pointer" }}>&larr;</button>
-        <h2 style={{ margin:0, color:"white", fontSize:18, fontWeight:800 }}>Botao de Panico</h2>
-      </div>
-      <div style={{ padding:24, display:"flex", flexDirection:"column", alignItems:"center", gap:16 }}>
-        <p style={{ color:"#6B7280", fontSize:14, textAlign:"center", margin:0 }}>Em caso de emergencia, acione os servicos abaixo imediatamente.</p>
-        <a href="tel:192" style={{ width:"100%", textDecoration:"none" }}>
-          <div style={{ background:"#EF4444", borderRadius:20, padding:"24px 20px", display:"flex", alignItems:"center", gap:16, boxShadow:"0 4px 20px rgba(239,68,68,.4)" }}>
-            <span style={{ fontSize:40 }}>🚑</span>
-            <div><p style={{ margin:0, color:"white", fontWeight:900, fontSize:20 }}>SAMU</p><p style={{ margin:0, color:"rgba(255,255,255,.8)", fontSize:14 }}>Ligar para 192</p></div>
-          </div>
-        </a>
-        <a href="tel:190" style={{ width:"100%", textDecoration:"none" }}>
-          <div style={{ background:"#1D4ED8", borderRadius:20, padding:"24px 20px", display:"flex", alignItems:"center", gap:16, boxShadow:"0 4px 20px rgba(29,78,216,.4)" }}>
-            <span style={{ fontSize:40 }}>👮</span>
-            <div><p style={{ margin:0, color:"white", fontWeight:900, fontSize:20 }}>POLICIA</p><p style={{ margin:0, color:"rgba(255,255,255,.8)", fontSize:14 }}>Ligar para 190</p></div>
-          </div>
-        </a>
-        <a href="tel:193" style={{ width:"100%", textDecoration:"none" }}>
-          <div style={{ background:"#F97316", borderRadius:20, padding:"24px 20px", display:"flex", alignItems:"center", gap:16, boxShadow:"0 4px 20px rgba(249,115,22,.4)" }}>
-            <span style={{ fontSize:40 }}>🚒</span>
-            <div><p style={{ margin:0, color:"white", fontWeight:900, fontSize:20 }}>BOMBEIROS</p><p style={{ margin:0, color:"rgba(255,255,255,.8)", fontSize:14 }}>Ligar para 193</p></div>
-          </div>
-        </a>
-        <a href="https://wa.me/5511939437657?text=EMERGENCIA%20-%20Preciso%20de%20ajuda!" target="_blank" style={{ width:"100%", textDecoration:"none" }}>
-          <div style={{ background:"#22c55e", borderRadius:20, padding:"24px 20px", display:"flex", alignItems:"center", gap:16, boxShadow:"0 4px 20px rgba(34,197,94,.4)" }}>
-            <span style={{ fontSize:40 }}>💬</span>
-            <div><p style={{ margin:0, color:"white", fontWeight:900, fontSize:20 }}>SUPORTE MULTI</p><p style={{ margin:0, color:"rgba(255,255,255,.8)", fontSize:14 }}>Chamar no WhatsApp</p></div>
-          </div>
-        </a>
-      </div>
-    </div>
-  );
-}
-
-function SuporteScreen({ onBack }) {
-  const [faqOpen, setFaqOpen] = useState(null);
-  const faqs = [
-    { q: "Como contratar um profissional?", a: "Va em Inicio, escolha a categoria do servico, selecione um profissional e clique em Contratar." },
-    { q: "Como funciona o pagamento?", a: "O pagamento e feito via PIX apos a conclusao do servico. Voce so paga quando estiver satisfeito." },
-    { q: "Posso cancelar um servico?", a: "Sim, voce pode cancelar antes do profissional iniciar o servico sem custo algum." },
-    { q: "Como avaliar um profissional?", a: "Apos a conclusao do servico, voce recebe uma notificacao para avaliar o profissional com 1 a 5 estrelas." },
-    { q: "O que e o plano PRO?", a: "O plano PRO e para profissionais que querem aparecer em destaque e receber mais pedidos na plataforma." }
-  ];
-  return (
-    <div style={{ minHeight:"100vh", background:"#F5F6FA" }}>
-      <div style={{ background:"#007BFF", padding:"20px 16px 16px", display:"flex", alignItems:"center", gap:12 }}>
-        <button onClick={onBack} style={{ background:"none", border:"none", color:"white", fontSize:22, cursor:"pointer" }}>&larr;</button>
-        <h2 style={{ margin:0, color:"white", fontSize:18, fontWeight:800 }}>Suporte e Ajuda</h2>
-      </div>
-      <div style={{ padding:16 }}>
-        <div style={{ background:"white", borderRadius:16, padding:20, marginBottom:16, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
-          <h3 style={{ margin:"0 0 12px", fontSize:16, fontWeight:800 }}>Fale com a gente</h3>
-          <a href="https://wa.me/5511939437657" target="_blank" style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 0", borderBottom:"1px solid #F3F4F6", textDecoration:"none", color:"#111" }}>
-            <span style={{ fontSize:24 }}>💬</span>
-            <div><p style={{ margin:0, fontWeight:700, fontSize:15 }}>WhatsApp</p><p style={{ margin:0, fontSize:12, color:"#6B7280" }}>(11) 93943-7657</p></div>
-          </a>
-          <a href="mailto:suporte@multifuncao.com.br" style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 0", textDecoration:"none", color:"#111" }}>
-            <span style={{ fontSize:24 }}>📧</span>
-            <div><p style={{ margin:0, fontWeight:700, fontSize:15 }}>Email</p><p style={{ margin:0, fontSize:12, color:"#6B7280" }}>suporte@multifuncao.com.br</p></div>
-          </a>
-        </div>
-        <div style={{ background:"white", borderRadius:16, padding:20, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
-          <h3 style={{ margin:"0 0 12px", fontSize:16, fontWeight:800 }}>Perguntas Frequentes</h3>
-          {faqs.map((f, i) => (
-            <div key={i} style={{ borderBottom:"1px solid #F3F4F6" }}>
-              <div onClick={() => setFaqOpen(faqOpen===i?null:i)} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 0", cursor:"pointer" }}>
-                <p style={{ margin:0, fontWeight:600, fontSize:14 }}>{f.q}</p>
-                <span style={{ fontSize:18, color:"#007BFF" }}>{faqOpen===i?"−":"+"}</span>
-              </div>
-              {faqOpen===i && <p style={{ margin:"0 0 14px", fontSize:13, color:"#6B7280", lineHeight:1.5 }}>{f.a}</p>}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SegurancaScreen({ onBack }) {
-  const user = (() => { try { return JSON.parse(localStorage.getItem("multiUser")) || {}; } catch { return {}; } })();
-  const [step, setStep] = useState(1);
-  const [code, setCode] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const API = "https://web-production-e103b.up.railway.app";
-  const email = user.email || "";
-  const btn = { width:"100%", padding:14, background:"#007BFF", color:"white", border:"none", borderRadius:12, fontSize:16, fontWeight:700, cursor:"pointer", marginTop:8 };
-  const inp = { width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:15, marginTop:6, marginBottom:16, boxSizing:"border-box" };
-  const sendCode = async () => {
-    if (!email) return alert("Email nao encontrado");
-    setLoading(true);
-    await fetch(API+"/api/auth/solicitar-codigo", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email}) });
-    setLoading(false);
-    setStep(2);
-  };
-  const confirm = async () => {
-    if (!code || code.length < 6) return alert("Codigo incompleto");
-    if (!password || password.length < 6) return alert("Senha muito curta");
-    setLoading(true);
-    const r = await fetch(API+"/api/auth/verificar-codigo", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email,code,newPassword:password}) });
-    setLoading(false);
-    if (r.ok) { alert("Senha alterada com sucesso!"); onBack(); } else { alert("Codigo invalido"); }
-  };
-  return (
-    <div style={{ minHeight:"100vh", background:"#F5F6FA" }}>
-      <div style={{ background:"#007BFF", padding:"20px 16px 16px", display:"flex", alignItems:"center", gap:12 }}>
-        <button onClick={onBack} style={{ background:"none", border:"none", color:"white", fontSize:22, cursor:"pointer" }}>&larr;</button>
-        <h2 style={{ margin:0, color:"white", fontSize:18, fontWeight:800 }}>Seguranca e Senha</h2>
-      </div>
-      <div style={{ padding:16 }}>
-        <div style={{ background:"white", borderRadius:16, padding:20, marginBottom:16, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
-          <p style={{ margin:"0 0 4px", fontSize:12, color:"#6B7280", fontWeight:700, textTransform:"uppercase" }}>Email da conta</p>
-          <p style={{ margin:0, fontSize:15, fontWeight:600 }}>{email || "Nao informado"}</p>
-        </div>
-        <div style={{ background:"white", borderRadius:16, padding:20, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
-          <h3 style={{ margin:"0 0 16px", fontSize:16, fontWeight:800 }}>Alterar Senha</h3>
-          {step === 1 && <>
-            <p style={{ color:"#6B7280", fontSize:14, margin:"0 0 16px" }}>Enviaremos um codigo de verificacao para seu email.</p>
-            <button style={btn} onClick={sendCode} disabled={loading}>{loading ? "Enviando..." : "Enviar Codigo"}</button>
-          </>}
-          {step === 2 && <>
-            <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>CODIGO</label>
-            <input type="text" value={code} onChange={e => setCode(e.target.value)} placeholder="000000" maxLength={6} style={{ ...inp, fontSize:22, letterSpacing:6, textAlign:"center" }} />
-            <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>NOVA SENHA</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Minimo 6 caracteres" style={inp} />
-            <button style={btn} onClick={confirm} disabled={loading}>{loading ? "Verificando..." : "Confirmar"}</button>
-          </>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function NotificacoesScreen({ onBack }) {
-  const [prefs, setPrefs] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("multiNotif")) || { servicos: true, whatsapp: false, email: false }; } catch { return { servicos: true, whatsapp: false, email: false }; }
-  });
-  const toggle = (key) => {
-    const novo = { ...prefs, [key]: !prefs[key] };
-    setPrefs(novo);
-    localStorage.setItem("multiNotif", JSON.stringify(novo));
-  };
-  const Item = ({ icon, title, sub, k }) => (
-    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 0", borderBottom:"1px solid #F3F4F6" }}>
-      <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-        <span style={{ fontSize:22 }}>{icon}</span>
-        <div><p style={{ margin:0, fontWeight:700, fontSize:15 }}>{title}</p><p style={{ margin:0, fontSize:12, color:"#6B7280" }}>{sub}</p></div>
-      </div>
-      <div onClick={() => toggle(k)} style={{ width:48, height:26, borderRadius:13, background:prefs[k]?"#007BFF":"#D1D5DB", cursor:"pointer", position:"relative", transition:"background .2s" }}>
-        <div style={{ position:"absolute", top:3, left:prefs[k]?22:3, width:20, height:20, borderRadius:"50%", background:"white", transition:"left .2s", boxShadow:"0 1px 3px rgba(0,0,0,.2)" }} />
-      </div>
-    </div>
-  );
-  return (
-    <div style={{ minHeight:"100vh", background:"#F5F6FA" }}>
-      <div style={{ background:"#007BFF", padding:"20px 16px 16px", display:"flex", alignItems:"center", gap:12 }}>
-        <button onClick={onBack} style={{ background:"none", border:"none", color:"white", fontSize:22, cursor:"pointer" }}>&larr;</button>
-        <h2 style={{ margin:0, color:"white", fontSize:18, fontWeight:800 }}>Notificacoes</h2>
-      </div>
-      <div style={{ padding:"0 16px", background:"white", margin:16, borderRadius:16, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
-        <Item icon="🔔" title="Notificacoes de servicos" sub="Avisos quando um profissional aceitar seu pedido" k="servicos" />
-        <Item icon="📱" title="Notificacoes por WhatsApp" sub="Receber atualizacoes no WhatsApp" k="whatsapp" />
-        <Item icon="📧" title="Notificacoes por email" sub="Receber resumos por email" k="email" />
-      </div>
-    </div>
-  );
-}
-
-function RankingScreen({ onBack, contratacoes }) {
-  const niveis = [
-    { nome:"Bronze", icon:"🥉", min:0, max:3, cor:"#CD7F32", bg:"#FDF3E7", beneficios:["Acesso completo a plataforma","Suporte por chat"] },
-    { nome:"Prata", icon:"🥈", min:4, max:9, cor:"#9E9E9E", bg:"#F5F5F5", beneficios:["Badge especial no perfil","Prioridade no suporte","Profissionais veem voce como cliente ativo"] },
-    { nome:"Ouro", icon:"🥇", min:10, max:19, cor:"#FFC107", bg:"#FFFDE7", beneficios:["Badge dourado no perfil","Selo Cliente Verificado Multi","Acesso antecipado a novidades"] },
-    { nome:"Diamante", icon:"💎", min:20, max:49, cor:"#00BCD4", bg:"#E0F7FA", beneficios:["Badge Diamante exclusivo","Perfil em destaque para profissionais","Convite para grupo VIP no WhatsApp"] },
-    { nome:"VIP", icon:"👑", min:50, max:999, cor:"#9C27B0", bg:"#F3E5F5", beneficios:["Badge VIP exclusivo","Linha direta no WhatsApp com a equipe Multi","Acesso beta a funcionalidades novas"] }
-  ];
-  const atual = niveis.findIndex(n => contratacoes >= n.min && contratacoes <= n.max);
-  const nivel = niveis[atual] || niveis[0];
-  const proximo = niveis[atual + 1];
-  const progresso = proximo ? Math.round(((contratacoes - nivel.min) / (proximo.min - nivel.min)) * 100) : 100;
-  return (
-    <div style={{ minHeight:"100vh", background:"#F5F6FA" }}>
-      <div style={{ background:nivel.cor, padding:"20px 16px 16px", display:"flex", alignItems:"center", gap:12 }}>
-        <button onClick={onBack} style={{ background:"none", border:"none", color:"white", fontSize:22, cursor:"pointer" }}>&larr;</button>
-        <h2 style={{ margin:0, color:"white", fontSize:18, fontWeight:800 }}>Clube Multi</h2>
-      </div>
-      <div style={{ padding:16 }}>
-        <div style={{ background:nivel.bg, borderRadius:20, padding:24, textAlign:"center", marginBottom:16, border:"2px solid "+nivel.cor }}>
-          <div style={{ fontSize:64 }}>{nivel.icon}</div>
-          <h2 style={{ margin:"8px 0 4px", fontSize:28, fontWeight:900, color:nivel.cor }}>{nivel.nome}</h2>
-          <p style={{ margin:0, color:"#6B7280", fontSize:14 }}>{contratacoes} contratacoes realizadas</p>
-          {proximo && <>
-            <div style={{ margin:"16px 0 6px", background:"#E5E7EB", borderRadius:99, height:10, overflow:"hidden" }}>
-              <div style={{ width:progresso+"%", height:"100%", background:nivel.cor, borderRadius:99, transition:"width 1s" }} />
-            </div>
-            <p style={{ margin:0, fontSize:12, color:"#6B7280" }}>Faltam {proximo.min - contratacoes} contratacoes para {proximo.icon} {proximo.nome}</p>
-          </>}
-          {!proximo && <p style={{ margin:"12px 0 0", fontSize:13, fontWeight:700, color:nivel.cor }}>Voce atingiu o nivel maximo! 🎉</p>}
-        </div>
-        <div style={{ background:"white", borderRadius:16, padding:20, marginBottom:16, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
-          <h3 style={{ margin:"0 0 12px", fontSize:15, fontWeight:800 }}>Seus beneficios atuais</h3>
-          {nivel.beneficios.map((b,i) => <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 0", borderBottom:i<nivel.beneficios.length-1?"1px solid #F3F4F6":"none" }}><span style={{ color:nivel.cor, fontSize:18 }}>✓</span><p style={{ margin:0, fontSize:14, color:"#374151" }}>{b}</p></div>)}
-        </div>
-        <div style={{ background:"white", borderRadius:16, padding:20, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
-          <h3 style={{ margin:"0 0 12px", fontSize:15, fontWeight:800 }}>Todos os niveis</h3>
-          {niveis.map((n,i) => <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0", borderBottom:i<niveis.length-1?"1px solid #F3F4F6":"none", opacity:i>atual?0.4:1 }}><span style={{ fontSize:24 }}>{n.icon}</span><div style={{ flex:1 }}><p style={{ margin:0, fontWeight:700, fontSize:14, color:n.cor }}>{n.nome}</p><p style={{ margin:0, fontSize:12, color:"#6B7280" }}>{n.min === 50 ? "50+ contratacoes" : n.min+" - "+n.max+" contratacoes"}</p></div>{i<=atual && <span style={{ fontSize:18 }}>✅</span>}</div>)}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProfileScreen({ role, isPro, userName: initialUserName, showRankingGlobal, onClearRankingGlobal, onSwitchMode, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange }) {
-  const [avatarUrl, setAvatarUrl] = useState(() => sessionStorage.getItem("multiAvatar") || null);
+function ProfileScreen({ role, isPro, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange }) {
+  const [avatarUrl, setAvatarUrl] = useState(null);
   const [editMode,  setEditMode]  = useState(false);
-  const [name, setName] = useState(initialUserName || "");
-  useEffect(() => { if (initialUserName) setName(initialUserName); }, [initialUserName]);
+  const [name,      setName]      = useState(role === "client" ? "Maria Oliveira" : "João Silva");
   const [portfolioImgs, setPortfolioImgs] = useState([]);
-  const [showNotif, setShowNotif] = useState(false);
-  const [showSeguranca, setShowSeguranca] = useState(false);
-  const [showSuporte, setShowSuporte] = useState(false);
-  const [showSOS, setShowSOS] = useState(false);
-  const [showRanking, setShowRanking] = useState(false);
-  const [activeMode, setActiveMode] = useState(localStorage.getItem("multiMode") || "client");
-  useEffect(() => { if (showRankingGlobal) { setShowRanking(true); onClearRankingGlobal?.(); } }, [showRankingGlobal]);
-  useEffect(() => {
-    const h = () => setShowRanking(true);
-    window.addEventListener("openRanking", h);
-    return () => window.removeEventListener("openRanking", h);
-  }, []);
   const avatarRef = useRef(null);
   const portfolioRef = useRef(null);
 
@@ -3046,7 +2817,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, showRankingGlob
     const f = e.target.files[0];
     if (!f) return;
     const r = new FileReader();
-    r.onload = ev => { setAvatarUrl(ev.target.result); sessionStorage.setItem("multiAvatar", ev.target.result); };
+    r.onload = ev => setAvatarUrl(ev.target.result);
     r.readAsDataURL(f);
     e.target.value = "";
   };
@@ -3086,11 +2857,6 @@ function ProfileScreen({ role, isPro, userName: initialUserName, showRankingGlob
     </div>
   );
 
-  if (showNotif) return <NotificacoesScreen onBack={() => setShowNotif(false)} />;
-  if (showSeguranca) return <SegurancaScreen onBack={() => setShowSeguranca(false)} />;
-  if (showSuporte) return <SuporteScreen onBack={() => setShowSuporte(false)} />;
-  if (showSOS) return <SOSScreen onBack={() => setShowSOS(false)} />;
-  if (showRanking) return <RankingScreen onBack={() => setShowRanking(false)} contratacoes={stats.count || 0} />;
   return (
     <div style={{ display:"flex", flexDirection:"column", paddingBottom:40 }}>
 
@@ -3134,14 +2900,9 @@ function ProfileScreen({ role, isPro, userName: initialUserName, showRankingGlob
 
           <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:8 }}>
             <MapPin size={12} color="rgba(255,255,255,.65)" />
-                <span style={{ fontSize:12, color:"rgba(255,255,255,.65)", fontWeight:600 }}>{localStorage.getItem("multiLocation") || "Sua localização"}</span>
+            <span style={{ fontSize:12, color:"rgba(255,255,255,.65)", fontWeight:600 }}>Sua localização</span>
           </div>
 
-        {/* mode toggle */}
-        <div style={{ display:"flex", background:"rgba(255,255,255,.15)", borderRadius:99, padding:3, margin:"12px auto 0", width:"fit-content", gap:2 }}>
-          <button onClick={() => { setActiveMode("client"); localStorage.setItem("multiMode","client"); const s=JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role="client"; localStorage.setItem("multiSession",JSON.stringify(s)); setTimeout(() => window.location.reload(), 100); }} style={{ border:"none", borderRadius:99, padding:"7px 18px", fontSize:13, fontWeight:700, cursor:"pointer", background: activeMode==="client" ? "white" : "transparent", color: activeMode==="client" ? "#007BFF" : "rgba(255,255,255,.8)", transition:"all .2s" }}>👤 Cliente</button>
-          <button onClick={() => { setActiveMode("pro"); localStorage.setItem("multiMode","pro"); const s=JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role="professional"; localStorage.setItem("multiSession",JSON.stringify(s)); setTimeout(() => window.location.reload(), 100); }} style={{ border:"none", borderRadius:99, padding:"7px 18px", fontSize:13, fontWeight:700, cursor:"pointer", background: activeMode==="pro" ? "white" : "transparent", color: activeMode==="pro" ? "#FF5722" : "rgba(255,255,255,.8)", transition:"all .2s" }}>👷 Profissional</button>
-        </div>
           {/* stats row */}
           <div style={{ display:"flex", gap:0, background:"rgba(255,255,255,.12)", borderRadius:14, overflow:"hidden", marginTop:4 }}>
             {[
@@ -3284,12 +3045,12 @@ function ProfileScreen({ role, isPro, userName: initialUserName, showRankingGlob
       {/* ── GENERAL SETTINGS ── */}
       <SectionLabel label="Configurações" />
       <div style={{ background:"white", borderRadius:"0", overflow:"hidden" }}>
-        <MenuRow Icon={BellRing}   iconBg="#E8F4FF" iconColor={B}        label="Notificações"      sub="Push e WhatsApp ativos"     onClick={() => setShowNotif(true)} />
-        <MenuRow Icon={KeyRound}   iconBg="#F3E5F5" iconColor="#7B1FA2"  label="Segurança e Senha" sub="Última alteração há 3 meses"  onClick={() => setShowSeguranca(true)} />
-        <MenuRow Icon={HelpCircle} iconBg="#E8F8EE" iconColor="#2E7D32"  label="Suporte e Ajuda"  sub="Fale com nossa equipe"      onClick={() => setShowSuporte(true)} />
+        <MenuRow Icon={BellRing}   iconBg="#E8F4FF" iconColor={B}        label="Notificações"      sub="Push e WhatsApp ativos"     onClick={() => showToast("🔔 Configurações de notificação")} />
+        <MenuRow Icon={KeyRound}   iconBg="#F3E5F5" iconColor="#7B1FA2"  label="Segurança e Senha" sub="Última alteração há 3 meses"  onClick={() => showToast("🔐 Segurança — em breve")} />
+        <MenuRow Icon={HelpCircle} iconBg="#E8F8EE" iconColor="#2E7D32"  label="Suporte e Ajuda"   sub="Fale com nossa equipe"        onClick={() => showToast("💬 Suporte: (11) 4002-8922")} />
         <MenuRow Icon={Shield}     iconBg="#FFF0EE" iconColor={O}        label="Botão de Pânico"   sub="Emergência — acionar segurança"
           right={<span style={{ background:"#FFF0EE", color:O, fontWeight:800, fontSize:11, padding:"4px 10px", borderRadius:99, border:`1px solid ${O}40` }}>SOS</span>}
-          onClick={() => setShowSOS(true)} />
+          onClick={() => showToast("🆘 Suporte de emergência acionado!", "#E53935")} />
       </div>
 
       {/* Logout */}
@@ -3647,7 +3408,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
 
   // ── PAYMENT MODAL ────────────────────────────────────────────────────────
   if (showPaymentModal) {
-    const serviceValue = chat.serviceValue || chat.proposalValue || "150,00";
+    const serviceValue = chat.serviceValue || d?.value || "150,00";
 
     // Step: choose payment method
     if (paymentStep === "choose") return (
@@ -4227,7 +3988,7 @@ function WelcomeScreen({ onGoogle, onEmail, onBack }) {
               <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
               <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
             </svg>
-            Em breve
+            Entrar com Google
           </button>
 
           {/* Email register */}
@@ -4415,150 +4176,13 @@ function maskCep(v) {
 }
 
 /* ───────────────────────── AUTH: REGISTER SCREEN ──────────────────────────────── */
-function ForgotPasswordScreen({ onBack, onComplete }) {
-  const [step, setStep] = useState(1);
-  const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const API = "https://web-production-e103b.up.railway.app";
-  const box = { minHeight:"100vh", background:"#F5F6FA", display:"flex", alignItems:"center", justifyContent:"center", padding:24 };
-  const card = { width:"100%", maxWidth:420, background:"white", borderRadius:20, padding:"32px 24px", boxShadow:"0 4px 24px rgba(0,0,0,.08)" };
-  const inp = { width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:15, marginTop:6, marginBottom:16, boxSizing:"border-box" };
-  const btn = { width:"100%", padding:14, background:"#007BFF", color:"white", border:"none", borderRadius:12, fontSize:16, fontWeight:700, cursor:"pointer" };
-  if (step === 1) return <div style={box}><div style={card}>
-    <button onClick={onBack} style={{ background:"none", border:"none", color:"#007BFF", cursor:"pointer", marginBottom:16 }}>&larr; Voltar</button>
-    <h2 style={{ margin:"0 0 8px", fontSize:22, fontWeight:800 }}>Recuperar Senha</h2>
-    <p style={{ color:"#6B7280", fontSize:14, marginBottom:24 }}>Vamos enviar um codigo de 6 digitos para seu e-mail.</p>
-    <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>E-MAIL</label>
-    <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" style={inp} />
-    <button disabled={loading} style={btn} onClick={async () => { if (!email) return alert("Digite seu e-mail"); setLoading(true); const r = await fetch(API+"/api/auth/solicitar-codigo", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email}) }); setLoading(false); if (r.ok) setStep(2); else alert("Erro ao enviar"); }}>{loading ? "Enviando..." : "Enviar Codigo"}</button>
-  </div></div>;
-  return <div style={box}><div style={card}>
-    <h2 style={{ margin:"0 0 8px", fontSize:22, fontWeight:800 }}>Digite o Codigo</h2>
-    <p style={{ color:"#6B7280", fontSize:14, marginBottom:24 }}>Codigo enviado para {email}</p>
-    <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>CODIGO</label>
-    <input type="text" value={code} onChange={e => setCode(e.target.value)} placeholder="000000" maxLength={6} style={{ ...inp, fontSize:24, letterSpacing:8, textAlign:"center" }} />
-    <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>NOVA SENHA</label>
-    <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Minimo 6 caracteres" style={inp} />
-    <button disabled={loading} style={btn} onClick={async () => { if (!code||code.length<6) return alert("Codigo incompleto"); if (!password||password.length<6) return alert("Senha muito curta"); setLoading(true); const r = await fetch(API+"/api/auth/verificar-codigo", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email,code,newPassword:password}) }); const d = await r.json(); if (r.ok) { onComplete(); } else { alert(d.error); setLoading(false); } }}>{loading ? "Verificando..." : "Confirmar"}</button>
-  </div></div>;
-}
-function ResetPasswordScreen({ onComplete }) {
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [loading, setLoading] = useState(false);
-  const API = "https://web-production-e103b.up.railway.app";
-
-  const handleReset = async () => {
-    if (!password || password.length < 6) return alert("Senha deve ter pelo menos 6 caracteres");
-    if (password !== confirm) return alert("As senhas não coincidem");
-    setLoading(true);
-    try {
-      const hash = window.location.hash;
-      const params = new URLSearchParams(hash.slice(1));
-      const token = params.get("access_token");
-      const r = await fetch(`${API}/api/auth/redefinir-senha`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password }),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Erro ao redefinir senha");
-      window.location.hash = "";
-      onComplete();
-    } catch(e) { setLoading(false); alert(e.message); }
-  };
-
-  return (
-    <div style={{ minHeight:"100vh", background:"#F5F6FA", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px" }}>
-      <div style={{ width:"100%", maxWidth:420, background:"white", borderRadius:20, padding:"32px 24px", boxShadow:"0 4px 24px rgba(0,0,0,.08)" }}>
-        <h2 style={{ margin:"0 0 8px", fontSize:24, fontWeight:800, color:"#1a1a2e" }}>Nova Senha</h2>
-        <p style={{ color:"#6B7280", fontSize:14, marginBottom:24 }}>Digite sua nova senha abaixo.</p>
-        <div style={{ marginBottom:16 }}>
-          <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>NOVA SENHA</label>
-          <input type="password" placeholder="Mínimo 6 caracteres" value={password} onChange={e => setPassword(e.target.value)}
-            style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:15, marginTop:6, boxSizing:"border-box", outline:"none" }} />
-        </div>
-        <div style={{ marginBottom:24 }}>
-          <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>CONFIRMAR SENHA</label>
-          <input type="password" placeholder="Repita a senha" value={confirm} onChange={e => setConfirm(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleReset()}
-            style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:15, marginTop:6, boxSizing:"border-box", outline:"none" }} />
-        </div>
-        <button onClick={handleReset} disabled={loading}
-          style={{ width:"100%", padding:"14px", background:"#007BFF", color:"white", border:"none", borderRadius:12, fontSize:16, fontWeight:700, cursor:"pointer", opacity:loading?0.7:1 }}>
-          {loading ? "Salvando..." : "Salvar Nova Senha"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function LoginScreen({ onBack, onComplete, onRegister, onForgot }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const API = "https://web-production-e103b.up.railway.app";
-
-  const handleLogin = async () => {
-    if (!email || !password) return alert("Preencha email e senha");
-    setLoading(true);
-    try {
-      const r = await fetch(`${API}/api/auth/login`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Erro ao entrar");
-      const session = { name: d.user.name, email: d.user.email, role: d.user.role, isPro: d.user.isPro || false, token: d.token };
-      localStorage.setItem("multiSession", JSON.stringify(session));
-      onComplete(d.user.name, d.user.email, false, "", d.user.role, "");
-    } catch(e) {
-      setLoading(false);
-      alert(e.message);
-    }
-  };
-
-  return (
-    <div style={{ minHeight:"100vh", background:"#F5F6FA", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px" }}>
-      <div style={{ width:"100%", maxWidth:420, background:"white", borderRadius:20, padding:"32px 24px", boxShadow:"0 4px 24px rgba(0,0,0,.08)" }}>
-        <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", marginBottom:16, color:"#007BFF", fontSize:14 }}>← Voltar</button>
-        <h2 style={{ margin:"0 0 8px", fontSize:24, fontWeight:800, color:"#1a1a2e" }}>Entrar na sua conta</h2>
-        <p style={{ color:"#6B7280", fontSize:14, marginBottom:24 }}>Bem-vindo de volta!</p>
-        <div style={{ marginBottom:16 }}>
-          <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.05em" }}>E-MAIL</label>
-          <input type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)}
-            style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:15, marginTop:6, boxSizing:"border-box", outline:"none" }} />
-        </div>
-        <div style={{ marginBottom:24 }}>
-          <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.05em" }}>SENHA</label>
-          <input type="password" placeholder="Sua senha" value={password} onChange={e => setPassword(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleLogin()}
-            style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:15, marginTop:6, boxSizing:"border-box", outline:"none" }} />
-        </div>
-        <button onClick={handleLogin} disabled={loading}
-          style={{ width:"100%", padding:"14px", background:"#007BFF", color:"white", border:"none", borderRadius:12, fontSize:16, fontWeight:700, cursor:"pointer", opacity:loading?0.7:1 }}>
-          {loading ? "Entrando..." : "Entrar"}
-        </button>
-        <p style={{ textAlign:"center", marginTop:12, fontSize:13, color:"#6B7280" }}>Esqueceu a senha?
-          <button onClick={() => onForgot()} style={{ background:"none", border:"none", color:"#007BFF", fontWeight:700, cursor:"pointer", marginLeft:4 }}>Recuperar</button>
-        </p>
-        <p style={{ textAlign:"center", marginTop:16, fontSize:14, color:"#6B7280" }}>Não tem conta?
-          <button onClick={onRegister} style={{ background:"none", border:"none", color:"#007BFF", fontWeight:700, cursor:"pointer", marginLeft:4 }}>Cadastre-se</button>
-        </p>
-      </div>
-    </div>
-  );
-}
-
 function RegisterScreen({ onBack, onComplete }) {
   const [step,    setStep]    = useState("form");
   const [name,    setName]    = useState("");
   const [email,   setEmail]   = useState("");
   const [phone,   setPhone]   = useState("");
-  const [password, setPassword] = useState("");
   const [cep,     setCep]     = useState("");
-  const [role,    setRole]    = useState(localStorage.getItem("multiMode")==="pro" ? "professional" : "client");
+  const [role,    setRole]    = useState("client");
   const [errors,  setErrors]  = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -4579,23 +4203,10 @@ function RegisterScreen({ onBack, onComplete }) {
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!validate()) return;
     setLoading(true);
-    try {
-      const API = "https://web-production-e103b.up.railway.app";
-      const r = await fetch(`${API}/api/auth/cadastro`, {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ name, email: email.trim(), password, role }),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Erro ao criar conta");
-      setLoading(false);
-      setStep("success");
-    } catch(e) {
-      setLoading(false);
-      alert(e.message);
-    }
+    setTimeout(() => { setLoading(false); setStep("success"); }, 1200);
   };
 
   const cepFound = cep.replace(/\D/g,"").length === 8;
@@ -4714,12 +4325,6 @@ function RegisterScreen({ onBack, onComplete }) {
             style={{ ...REG_INPUT, borderColor: errors.email ? "#E53935" : undefined }} />
         </FormField>
 
-        {/* SENHA */}
-        <FormField IconComp={KeyRound} label="Senha" error={errors.password}>
-          <input autoComplete="new-password" type="password" placeholder="Mínimo 6 caracteres" value={password}
-            onChange={e => { setPassword(e.target.value); if (errors.password) setErrors(p => ({ ...p, password:undefined })); }}
-            style={{ ...REG_INPUT, borderColor: errors.password ? "#E53935" : undefined }} />
-        </FormField>
         {/* WHATSAPP */}
         <FormField IconComp={WA_ICON} label="WhatsApp" error={errors.phone}>
           <input autoComplete="tel" type="tel" placeholder="(00) 00000-0000" value={phone}
@@ -5656,29 +5261,15 @@ function AdminDashboard({ onExit }) {
 
 /* ───────────────────────── ROOT APP ─────────────────────────────────────────── */
 export default function App() {
-  const [role,      setRole]    = useState(() => {
-    try { const sess = JSON.parse(localStorage.getItem("multiSession") || localStorage.getItem("multiUser") || "null"); return sess?.role || "client"; } catch { return "client"; }
+  const [role,      setRole]      = useState(() => {
+    try { return JSON.parse(localStorage.getItem("multiSession") || "null")?.role || "client"; } catch { return "client"; }
+  });
+  const [guestRole, setGuestRole] = useState("client"); // drives the header toggle for guests
+  const [screen,    setScreen]    = useState("home");
   const [selected,  setSelected]  = useState(null);
   const [isPro,     setIsPro]     = useState(false);
   const [toast,     setToast]     = useState(null);
   const [ratingTarget, setRatingTarget] = useState(null);
-  const [showRankingGlobal, setShowRankingGlobal] = useState(false);
-  const [modeKey, setModeKey] = useState(0);
-  const [guestRole, setGuestRole] = useState(localStorage.getItem("multiMode") === "pro" ? "professional" : "client");
-  useEffect(() => { setScreen("home"); }, [role]);
-  useEffect(() => {
-    const h = () => setModeKey(k => k+1);
-    const s = (e) => { setRole(e.detail === "pro" ? "professional" : "client"); };
-    window.addEventListener("switchMode", s);
-    return () => { window.removeEventListener("modeChanged", h); window.removeEventListener("switchMode", s); };
-    window.addEventListener("modeChanged", h);
-    return () => window.removeEventListener("modeChanged", h);
-  }, []);
-  useEffect(() => {
-    const h = () => { setScreen("profile"); setShowRankingGlobal(true); };
-    window.addEventListener("openRanking", h);
-    return () => window.removeEventListener("openRanking", h);
-  }, []);
   const [showAdmin, setShowAdmin] = useState(false);
 
   // Document verification state — shared between ProfileScreen and ProfessionalHome
@@ -5691,23 +5282,12 @@ export default function App() {
 
   // ── RESTORE SESSION FROM LOCALSTORAGE ────────────────────────────────────
   const savedSession = (() => {
-    if (window.location.hash.includes("access_token")) return null;
-    try { return JSON.parse(localStorage.getItem("multiSession")) || null; } catch { return null; }
+    try { return JSON.parse(localStorage.getItem("multiSession") || "null"); } catch { return null; }
   })();
+
   // Auth: starts as guest, modal layers appear on demand
   const [isLoggedIn,    setIsLoggedIn]    = useState(!!savedSession);
   const [authScreen,    setAuthScreen]    = useState(null);
-  // Detect password reset link from email
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (hash.includes("access_token")) {
-      setAuthScreen("reset-password");
-    } else if (hash.includes("otp_expired") || hash.includes("error=access_denied")) {
-      window.location.hash = "";
-      alert("Link expirado. Solicite um novo link.");
-      setAuthScreen("login");
-    }
-  }, []);
   const [pendingIntent, setPendingIntent] = useState(null);
   const [userRole,      setUserRole]      = useState(savedSession?.role      || "client");
   const [userName,      setUserName]      = useState(savedSession?.name      || "");
@@ -5721,44 +5301,8 @@ export default function App() {
   const [notifications, setNotifications] = useState([]);
   const [activeChat,    setActiveChat]    = useState(null);
   const [userEmail,     setUserEmail]     = useState(savedSession?.email    || "");
-  const [userLocation,  setUserLocation]  = useState(localStorage.getItem("multiLocation") || savedSession?.location || "sua região");
+  const [userLocation,  setUserLocation]  = useState(savedSession?.location || "sua região");
   const [walletBalance, setWalletBalance] = useState(1240);
-  useEffect(() => {
-    const sess = (() => { try { return JSON.parse(localStorage.getItem("multiUser")) || {}; } catch { return {}; } })();
-    const email = sess.email || savedSession?.email || "";
-    console.log("LOCATION EMAIL:", email); if (!email) { console.log("EMAIL VAZIO - multiUser:", JSON.stringify(JSON.parse(localStorage.getItem("multiUser")||"{}"))); return; }
-    fetch("https://web-production-e103b.up.railway.app/api/enderecos/" + encodeURIComponent(email))
-      .then(r => r.json())
-      .then(data => { console.log("ENDERECOS DATA:", JSON.stringify(data));
-        if (Array.isArray(data) && data.length > 0) {
-          if (data[0].city) { setUserLocation(data[0].city + ", SP"); localStorage.setItem("multiLocation", data[0].city + ", SP"); }
-          const cep = data[0].cep.replace(/\D/g,"");
-          fetch("https://viacep.com.br/ws/" + cep + "/json/")
-            .then(r => r.json())
-            .then(d => { if (d.localidade) setUserLocation(d.localidade + ", " + d.uf); })
-            .catch(() => { if (data[0].city) setUserLocation(data[0].city); })
-            .catch(() => {});
-        }
-      }).catch(() => {});
-  }, []);
-  useEffect(() => {
-    const sess = (() => { try { return JSON.parse(localStorage.getItem("multiUser")) || {}; } catch { return {}; } })();
-    const email = sess.email || savedSession?.email || "";
-    console.log("LOCATION EMAIL:", email); if (!email) { console.log("EMAIL VAZIO - multiUser:", JSON.stringify(JSON.parse(localStorage.getItem("multiUser")||"{}"))); return; }
-    fetch("https://web-production-e103b.up.railway.app/api/enderecos/" + encodeURIComponent(email))
-      .then(r => r.json())
-      .then(data => { console.log("ENDERECOS DATA:", JSON.stringify(data));
-        if (Array.isArray(data) && data.length > 0) {
-          if (data[0].city) { setUserLocation(data[0].city + ", SP"); localStorage.setItem("multiLocation", data[0].city + ", SP"); }
-          const cep = data[0].cep.replace(/\D/g,"");
-          fetch("https://viacep.com.br/ws/" + cep + "/json/")
-            .then(r => r.json())
-            .then(d => { if (d.localidade) setUserLocation(d.localidade + ", " + d.uf); })
-            .catch(() => { if (data[0].city) setUserLocation(data[0].city); })
-            .catch(() => {});
-        }
-      }).catch(() => {});
-  }, []);
 
   const feedServices = [...SEED_FEED, ...myServices.filter(s => s.status === "open")];
 
@@ -5841,7 +5385,7 @@ export default function App() {
     const firstName = name.trim().split(/\s+/)[0];
     if (name)     setUserName(firstName);
     if (email)    setUserEmail(email);
-    if (location && location !== "sua região") setUserLocation(location);
+    if (location) setUserLocation(location);
     const resolvedRole = registeredRole || userRole;
     setUserRole(resolvedRole);
     setRole(resolvedRole);
@@ -5974,7 +5518,7 @@ export default function App() {
 
     if (localStorage.getItem("multiMode") !== "pro") {
       // Route guard: logged-in professionals must never see ClientHome
-      if (isLoggedIn && userRole === "professional" && role === "professional") {
+      if (isLoggedIn && userRole === "professional") {
         setTimeout(() => { setRole("professional"); setScreen("home"); }, 0);
         return <ProfessionalFeed isPro={isPro} feedServices={feedServices} onViewService={handleProFeedAction} />;
       }
@@ -5985,7 +5529,7 @@ export default function App() {
       if (screen === "orders") return <MyServicesScreen myServices={myServices} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} isPro={isPro} />;
       if (screen === "profile") {
         if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
-        return <ProfileScreen role="client" userName={userName} isPro={false} showRankingGlobal={showRankingGlobal} onClearRankingGlobal={() => setShowRankingGlobal(false)} onSwitchMode={(m) => { localStorage.setItem("multiMode", m); setUserRole(m === "pro" ? "professional" : "client"); setRole(m === "pro" ? "professional" : "client"); window.dispatchEvent(new Event("modeChanged")); setScreen("home"); }} />;
+        return <ProfileScreen role="client" isPro={false} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenAdmin={() => setShowAdmin(true)} />;
       }
       if (screen === "service" && selected) return <ServiceDetailClient service={selected} onBack={() => setScreen("orders")} onStatusChange={(id, newStatus) => { setMyServices(s => s.map(x => x.id === id ? { ...x, status: newStatus } : x)); }} showToast={showToast} />;
 
@@ -5994,8 +5538,7 @@ export default function App() {
         return <GuestMural onSignup={() => setAuthScreen("welcome")} allDocsVerified={null} />;
       }
 
-        // HOME — always visible, auth gates on action
-        if (role === "professional") return <ProfessionalHome userName={userName} isPro={isPro} feedServices={feedServices} onViewService={handleProFeedAction} onUpgrade={() => setScreen("upgrade")} />;
+      // HOME — always visible, auth gates on action
       return (
         <div style={{ position:"relative" }}>
           <ClientHome
@@ -6049,7 +5592,7 @@ export default function App() {
     if (screen === "wallet") return <WalletScreen onBack={() => setScreen("profile")} showToast={showToast} walletBalance={walletBalance} setWalletBalance={setWalletBalance} />;
     if (screen === "profile") {
       if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
-      return <ProfileScreen role="professional" userName={userName} onSwitchMode={(m) => { localStorage.setItem("multiMode", m); setUserRole(m === "pro" ? "professional" : "client"); setRole(m === "pro" ? "professional" : "client"); window.dispatchEvent(new Event("modeChanged")); setScreen("home"); }} />;
+      return <ProfileScreen role="professional" isPro={isPro} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenWallet={() => setScreen("wallet")} onOpenAdmin={() => setShowAdmin(true)} docStatus={docStatus} onDocStatusChange={(id, st) => setDocStatus(d => ({ ...d, [id]: st }))} />;
     }
     if (screen === "service" && selected) return <ServiceDetailPro service={selected} onBack={() => setScreen("home")} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onOpenPinEntry={() => setScreen("pinjob")} />;
     if (screen === "pinjob"  && selected) return <ServiceDetailPinEntry service={selected} onBack={() => setScreen("service")} onStatusChange={(id, ns) => setMyServices(s => s.map(x => x.id === id ? { ...x, status:ns } : x))} showToast={showToast} />;
@@ -6061,7 +5604,7 @@ export default function App() {
         feedServices={feedServices}
         onViewService={handleProFeedAction}
         onUpgrade={() => setScreen("upgrade")}
-        userLocation={localStorage.getItem("multiLocation") || userLocation}
+        userLocation={userLocation}
         allDocsVerified={allDocsVerified}
         docStatus={docStatus}
         onGoToDocs={() => setScreen("profile")}
@@ -6101,8 +5644,8 @@ export default function App() {
   if (authScreen === "welcome") {
     return wrapper(
       <WelcomeScreen
-        onGoogle={() => alert("Login com Google em breve! Use o cadastro por e-mail.")}
-        onEmail={() => setAuthScreen("login")}
+        onGoogle={() => handleLoginComplete("Usuário Google")}
+        onEmail={() => setAuthScreen("register")}
         onBack={() => { setAuthScreen(null); setPendingIntent(null); }}
       />
     );
@@ -6110,18 +5653,14 @@ export default function App() {
 
   if (authScreen === "register") {
     return wrapper(
-      <RegisterScreen onBack={() => setAuthScreen("welcome")} onComplete={handleLoginComplete} />
+      <RegisterScreen
+        onBack={() => setAuthScreen("welcome")}
+        onComplete={handleLoginComplete}
+      />
     );
   }
-  if (authScreen === "reset-password") {
-    return wrapper(<ResetPasswordScreen onComplete={() => { setAuthScreen(null); showToast("✅ Senha alterada! Faça login."); setAuthScreen("login"); }} />);
-  }
-  if (authScreen === "forgot-password") {
-    return wrapper(<ForgotPasswordScreen onBack={() => setAuthScreen("login")} onComplete={() => { setAuthScreen("login"); showToast("✅ Senha alterada com sucesso!"); }} />);
-  }
-  if (authScreen === "login") {
-    return wrapper(<LoginScreen onBack={() => setAuthScreen("welcome")} onComplete={handleLoginComplete} onRegister={() => setAuthScreen("register")} onForgot={() => setAuthScreen("forgot-password")} />);
-  }
+
+  // ── MAIN APP ─────────────────────────────────────────────────────────────────
   // Admin overlay — renders over everything else
   if (showAdmin) {
     return wrapper(<AdminDashboard onExit={() => setShowAdmin(false)} />);
@@ -6143,7 +5682,7 @@ export default function App() {
         </div>
       )}
 
-      <Header isPro={isPro} notifCount={notifCount} isLoggedIn={isLoggedIn} userRole={userRole} onAlerts={() => setScreen("alerts")} userLocation={localStorage.getItem("multiLocation") || userLocation} onToggleRole={setGuestRole} activeRole={guestRole} />
+      <Header isPro={isPro} notifCount={notifCount} isLoggedIn={isLoggedIn} userRole={userRole} onAlerts={() => setScreen("alerts")} userLocation={userLocation} onToggleRole={setGuestRole} activeRole={guestRole} />
 
       <div style={{ flex:1, overflowY:"auto" }}>
         {renderContent()}
@@ -6181,6 +5720,3 @@ export default function App() {
     </>
   );
 }
-
-// deploy Sun Apr 26 23:30:18     2026
-// utf8-fix
