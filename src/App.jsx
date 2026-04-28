@@ -2804,7 +2804,7 @@ function CardSection({ showToast }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
-function ProfileScreen({ role, isPro, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange }) {
+function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange }) {
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [editMode,  setEditMode]  = useState(false);
   const [name,      setName]      = useState(initialUserName || JSON.parse(localStorage.getItem("multiSession") || "{}").name || "");
