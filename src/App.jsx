@@ -2725,8 +2725,8 @@ function CardSection({ showToast }) {
         body: JSON.stringify({ phone, label:form.label, last4:digits.slice(-4), brand:form.brand, type:form.type }),
       });
       const d = await r.json();
-      if (d.card) {
-        setCards(prev => [...prev, d.card]);
+      if (d.id) {
+        setCards(prev => [...prev, d]);
         setShowModal(false);
         setForm({ label:"", number:"", brand:"Visa", type:"credit" });
         showToast?.("✅ Cartão salvo com sucesso!");
