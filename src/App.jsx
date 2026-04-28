@@ -2804,11 +2804,10 @@ function CardSection({ showToast }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
-function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange }) {
+function ProfileScreen({ role, isPro, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange }) {
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [editMode,  setEditMode]  = useState(false);
-  const [activeMode, setActiveMode] = useState(localStorage.getItem("multiMode") || "client");
-  const [name,      setName]      = useState(initialUserName || JSON.parse(localStorage.getItem("multiSession") || "{}").name || "");
+  const [name,      setName]      = useState(role === "client" ? "Maria Oliveira" : "João Silva");
   const [portfolioImgs, setPortfolioImgs] = useState([]);
   const avatarRef = useRef(null);
   const portfolioRef = useRef(null);
@@ -2906,10 +2905,6 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
 
           {/* stats row */}
           <div style={{ display:"flex", gap:0, background:"rgba(255,255,255,.12)", borderRadius:14, overflow:"hidden", marginTop:4 }}>
-          <div style={{ display:"flex", background:"rgba(255,255,255,.15)", borderRadius:99, padding:3, margin:"12px auto 0", width:"fit-content", gap:2 }}>
-            <button onClick={() => { localStorage.setItem("multiMode","client"); setTimeout(() => window.location.reload(), 100); }} style={{ border:"none", borderRadius:99, padding:"7px 18px", fontSize:13, fontWeight:700, cursor:"pointer", background: activeMode==="client" ? "white" : "transparent", color: activeMode==="client" ? "#007BFF" : "rgba(255,255,255,.8)" }}>👤 Cliente</button>
-            <button onClick={() => { localStorage.setItem("multiMode","pro"); setTimeout(() => window.location.reload(), 100); }} style={{ border:"none", borderRadius:99, padding:"7px 18px", fontSize:13, fontWeight:700, cursor:"pointer", background: activeMode==="pro" ? "white" : "transparent", color: activeMode==="pro" ? "#FF5722" : "rgba(255,255,255,.8)" }}>👷 Profissional</button>
-          </div>
             {[
               { val: `⭐ ${stats.rating}`, lbl:"Avaliação" },
               { val: stats.count,          lbl: stats.label },
@@ -2922,6 +2917,10 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
             ))}
           </div>
         </div>
+      </div>
+
+      {/* ── PROFESSIONAL SECTIONS ── */}
+      {role === "professional" && (
           {/* Wallet card — links to full WalletScreen */}
           <div style={{ padding:"0 16px", marginTop:-20, position:"relative", zIndex:2 }}>
             <div onClick={onOpenWallet} style={{ background:"white", borderRadius:20, padding:18, boxShadow:"0 4px 20px rgba(0,0,0,.10)", border:"1px solid #F0F0F0", cursor:"pointer" }}>
@@ -5665,6 +5664,7 @@ export default function App() {
   if (showAdmin) {
     return wrapper(<AdminDashboard onExit={() => setShowAdmin(false)} />);
   }
+
   return wrapper(
     <>
       {ratingTarget && (
