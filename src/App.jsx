@@ -1838,7 +1838,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
               </div>
 
               {/* Simulate payment confirmed (demo button) */}
-              <button onClick={handleConfirmPayment} style={{ padding:"14px 0", borderRadius:16, border:"none", cursor:"pointer", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", color:"white", fontWeight:900, fontSize:14, boxShadow:"0 5px 18px rgba(124,58,237,.4)", display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
+              <button onClick={() => { setStep("done"); setTimeout(() => onSubscribe(), 2000); }} style={{ padding:"14px 0", borderRadius:16, border:"none", cursor:"pointer", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", color:"white", fontWeight:900, fontSize:14, boxShadow:"0 5px 18px rgba(124,58,237,.4)", display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
                 <CheckCircle2 size={18} /> Já paguei — Ativar PRO
               </button>
 
@@ -4558,7 +4558,7 @@ function RegisterScreen({ onBack, onComplete }) {
   const [phone,   setPhone]   = useState("");
   const [password, setPassword] = useState("");
   const [cep,     setCep]     = useState("");
-  const [role,    setRole]    = useState(localStorage.getItem("multiMode")==="pro"  "professional" : "client");
+  const [role,    setRole]    = useState(localStorage.getItem("multiMode")==="pro" ? "professional" : "client");
   const [errors,  setErrors]  = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -5664,6 +5664,8 @@ export default function App() {
   const [ratingTarget, setRatingTarget] = useState(null);
   const [showRankingGlobal, setShowRankingGlobal] = useState(false);
   const [modeKey, setModeKey] = useState(0);
+  const [guestRole, setGuestRole] = useState(localStorage.getItem("multiMode") === "pro" ? "professional" : "client");
+  const [guestRole, setGuestRole] = useState(localStorage.getItem("multiMode") === "pro" ? "professional" : "client");
   useEffect(() => { setScreen("home"); }, [role]);
   useEffect(() => {
     const h = () => setModeKey(k => k+1);
@@ -5973,7 +5975,7 @@ export default function App() {
 
     if (role === "client") {
       // Route guard: logged-in professionals must never see ClientHome
-      if (isLoggedIn if (isLoggedIn && userRole === "professional") {if (isLoggedIn && userRole === "professional") { role === "professional") {
+      if (isLoggedIn && userRole === "professional" && role === "professional") {
         setTimeout(() => { setRole("professional"); setScreen("home"); }, 0);
         return <ProfessionalFeed isPro={isPro} feedServices={feedServices} onViewService={handleProFeedAction} />;
       }
