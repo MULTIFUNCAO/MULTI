@@ -5972,7 +5972,7 @@ export default function App() {
       );
     }
 
-    if (role === "client") {
+    if (role === "client" && userRole === "client") {
       // Route guard: logged-in professionals must never see ClientHome
       if (isLoggedIn && userRole === "professional" && role === "professional") {
         setTimeout(() => { setRole("professional"); setScreen("home"); }, 0);
