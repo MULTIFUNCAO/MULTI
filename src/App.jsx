@@ -5716,11 +5716,13 @@ export default function App() {
     fetch("https://web-production-e103b.up.railway.app/api/enderecos/" + encodeURIComponent(email))
       .then(r => r.json())
       .then(data => {
-        if (Array.isArray(data) && data.length > 0 && data[0].cep) {
+        if (Array.isArray(data) && data.length > 0) {
+          if (data[0].city) { setUserLocation(data[0].city + ", SP"); return; }
           const cep = data[0].cep.replace(/\D/g,"");
           fetch("https://viacep.com.br/ws/" + cep + "/json/")
             .then(r => r.json())
             .then(d => { if (d.localidade) setUserLocation(d.localidade + ", " + d.uf); })
+            .catch(() => { if (data[0].city) setUserLocation(data[0].city); })
             .catch(() => {});
         }
       }).catch(() => {});
@@ -5732,11 +5734,13 @@ export default function App() {
     fetch("https://web-production-e103b.up.railway.app/api/enderecos/" + encodeURIComponent(email))
       .then(r => r.json())
       .then(data => {
-        if (Array.isArray(data) && data.length > 0 && data[0].cep) {
+        if (Array.isArray(data) && data.length > 0) {
+          if (data[0].city) { setUserLocation(data[0].city + ", SP"); return; }
           const cep = data[0].cep.replace(/\D/g,"");
           fetch("https://viacep.com.br/ws/" + cep + "/json/")
             .then(r => r.json())
             .then(d => { if (d.localidade) setUserLocation(d.localidade + ", " + d.uf); })
+            .catch(() => { if (data[0].city) setUserLocation(data[0].city); })
             .catch(() => {});
         }
       }).catch(() => {});
