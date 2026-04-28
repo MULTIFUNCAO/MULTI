@@ -2804,6 +2804,50 @@ function CardSection({ showToast }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
+function SuporteScreen({ onBack }) {
+  const [faqOpen, setFaqOpen] = useState(null);
+  const faqs = [
+    { q: "Como contratar um profissional?", a: "Va em Inicio, escolha a categoria do servico, selecione um profissional e clique em Contratar." },
+    { q: "Como funciona o pagamento?", a: "O pagamento e feito via PIX apos a conclusao do servico. Voce so paga quando estiver satisfeito." },
+    { q: "Posso cancelar um servico?", a: "Sim, voce pode cancelar antes do profissional iniciar o servico sem custo algum." },
+    { q: "Como avaliar um profissional?", a: "Apos a conclusao do servico, voce recebe uma notificacao para avaliar o profissional com 1 a 5 estrelas." },
+    { q: "O que e o plano PRO?", a: "O plano PRO e para profissionais que querem aparecer em destaque e receber mais pedidos na plataforma." }
+  ];
+  return (
+    <div style={{ minHeight:"100vh", background:"#F5F6FA" }}>
+      <div style={{ background:"#007BFF", padding:"20px 16px 16px", display:"flex", alignItems:"center", gap:12 }}>
+        <button onClick={onBack} style={{ background:"none", border:"none", color:"white", fontSize:22, cursor:"pointer" }}>&larr;</button>
+        <h2 style={{ margin:0, color:"white", fontSize:18, fontWeight:800 }}>Suporte e Ajuda</h2>
+      </div>
+      <div style={{ padding:16 }}>
+        <div style={{ background:"white", borderRadius:16, padding:20, marginBottom:16, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
+          <h3 style={{ margin:"0 0 12px", fontSize:16, fontWeight:800 }}>Fale com a gente</h3>
+          <a href="https://wa.me/5511939437657" target="_blank" style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 0", borderBottom:"1px solid #F3F4F6", textDecoration:"none", color:"#111" }}>
+            <span style={{ fontSize:24 }}>💬</span>
+            <div><p style={{ margin:0, fontWeight:700, fontSize:15 }}>WhatsApp</p><p style={{ margin:0, fontSize:12, color:"#6B7280" }}>(11) 93943-7657</p></div>
+          </a>
+          <a href="mailto:suporte@multifuncao.com.br" style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 0", textDecoration:"none", color:"#111" }}>
+            <span style={{ fontSize:24 }}>📧</span>
+            <div><p style={{ margin:0, fontWeight:700, fontSize:15 }}>Email</p><p style={{ margin:0, fontSize:12, color:"#6B7280" }}>suporte@multifuncao.com.br</p></div>
+          </a>
+        </div>
+        <div style={{ background:"white", borderRadius:16, padding:20, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
+          <h3 style={{ margin:"0 0 12px", fontSize:16, fontWeight:800 }}>Perguntas Frequentes</h3>
+          {faqs.map((f, i) => (
+            <div key={i} style={{ borderBottom:"1px solid #F3F4F6" }}>
+              <div onClick={() => setFaqOpen(faqOpen===i?null:i)} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 0", cursor:"pointer" }}>
+                <p style={{ margin:0, fontWeight:600, fontSize:14 }}>{f.q}</p>
+                <span style={{ fontSize:18, color:"#007BFF" }}>{faqOpen===i?"−":"+"}</span>
+              </div>
+              {faqOpen===i && <p style={{ margin:"0 0 14px", fontSize:13, color:"#6B7280", lineHeight:1.5 }}>{f.a}</p>}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SegurancaScreen({ onBack }) {
   const user = (() => { try { return JSON.parse(localStorage.getItem("multiUser")) || {}; } catch { return {}; } })();
   const [step, setStep] = useState(1);
@@ -2902,6 +2946,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
   const [portfolioImgs, setPortfolioImgs] = useState([]);
   const [showNotif, setShowNotif] = useState(false);
   const [showSeguranca, setShowSeguranca] = useState(false);
+  const [showSuporte, setShowSuporte] = useState(false);
   const avatarRef = useRef(null);
   const portfolioRef = useRef(null);
 
@@ -2952,6 +2997,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
 
   if (showNotif) return <NotificacoesScreen onBack={() => setShowNotif(false)} />;
   if (showSeguranca) return <SegurancaScreen onBack={() => setShowSeguranca(false)} />;
+  if (showSuporte) return <SuporteScreen onBack={() => setShowSuporte(false)} />;
   return (
     <div style={{ display:"flex", flexDirection:"column", paddingBottom:40 }}>
 
@@ -3142,10 +3188,10 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
       <div style={{ background:"white", borderRadius:"0", overflow:"hidden" }}>
         <MenuRow Icon={BellRing}   iconBg="#E8F4FF" iconColor={B}        label="Notificações"      sub="Push e WhatsApp ativos"     onClick={() => setShowNotif(true)} />
         <MenuRow Icon={KeyRound}   iconBg="#F3E5F5" iconColor="#7B1FA2"  label="Segurança e Senha" sub="Última alteração há 3 meses"  onClick={() => setShowSeguranca(true)} />
-        <MenuRow Icon={HelpCircle} iconBg="#E8F8EE" iconColor="#2E7D32"  label="Suporte e Ajuda"   sub="Fale com nossa equipe"        onClick={() => showToast("💬 Suporte: (11) 4002-8922")} />
+        <MenuRow Icon={HelpCircle} iconBg="#E8F8EE" iconColor="#2E7D32"  label="Suporte e Ajuda"   sub="Fale com nossa equipe"        onClick={() => setShowSuporte(true)} />
         <MenuRow Icon={Shield}     iconBg="#FFF0EE" iconColor={O}        label="Botão de Pânico"   sub="Emergência — acionar segurança"
           right={<span style={{ background:"#FFF0EE", color:O, fontWeight:800, fontSize:11, padding:"4px 10px", borderRadius:99, border:`1px solid ${O}40` }}>SOS</span>}
-          onClick={() => showToast("🆘 Suporte de emergência acionado!", "#E53935")} />
+          onClick={() => setShowSuporte(true)} />
       </div>
 
       {/* Logout */}
