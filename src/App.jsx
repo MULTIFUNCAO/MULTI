@@ -2712,12 +2712,12 @@ function CardSection({ showToast }) {
   useEffect(() => {
     
     fetch(`${API_BASE}/api/cartoes/${encodeURIComponent(phone)}`)
-      .then(r => r.json()).then(d => setCards(d.cards || [])).catch(() => {});
+      .then(r => r.json()).then(d => setCards(Array.isArray(d) ? d : [])).catch(() => {});
   }, [phone]);
 
   const handleSave = async () => {
     const digits = form.number.replace(/\D/g, "");
-    if (!form.label.trim() || digits.length < 4) return;
+    
     setSaving(true);
     try {
       const r = await fetch(`${API_BASE}/api/cartoes`, {
