@@ -5717,7 +5717,7 @@ export default function App() {
       .then(r => r.json())
       .then(data => { console.log("ENDERECOS DATA:", JSON.stringify(data));
         if (Array.isArray(data) && data.length > 0) {
-          if (data[0].city) { setUserLocation(data[0].city + ", SP"); return; }
+          if (data[0].city) setUserLocation(data[0].city + ", SP");
           const cep = data[0].cep.replace(/\D/g,"");
           fetch("https://viacep.com.br/ws/" + cep + "/json/")
             .then(r => r.json())
@@ -5735,7 +5735,7 @@ export default function App() {
       .then(r => r.json())
       .then(data => { console.log("ENDERECOS DATA:", JSON.stringify(data));
         if (Array.isArray(data) && data.length > 0) {
-          if (data[0].city) { setUserLocation(data[0].city + ", SP"); return; }
+          if (data[0].city) setUserLocation(data[0].city + ", SP");
           const cep = data[0].cep.replace(/\D/g,"");
           fetch("https://viacep.com.br/ws/" + cep + "/json/")
             .then(r => r.json())
