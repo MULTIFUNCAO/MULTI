@@ -3089,7 +3089,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, showRankingGlob
   if (showSeguranca) return <SegurancaScreen onBack={() => setShowSeguranca(false)} />;
   if (showSuporte) return <SuporteScreen onBack={() => setShowSuporte(false)} />;
   if (showSOS) return <SOSScreen onBack={() => setShowSOS(false)} />;
-  if (showRanking) return <RankingScreen onBack={() => setShowRanking(false)} contratacoes={contratacoes || 12} />;
+  if (showRanking) return <RankingScreen onBack={() => setShowRanking(false)} contratacoes={stats.count || 0} />;
   return (
     <div style={{ display:"flex", flexDirection:"column", paddingBottom:40 }}>
 
