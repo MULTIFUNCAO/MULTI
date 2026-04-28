@@ -2998,6 +2998,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
   if (showNotif) return <NotificacoesScreen onBack={() => setShowNotif(false)} />;
   if (showSeguranca) return <SegurancaScreen onBack={() => setShowSeguranca(false)} />;
   if (showSuporte) return <SuporteScreen onBack={() => setShowSuporte(false)} />;
+  if (showSOS) return <SOSScreen onBack={() => setShowSOS(false)} />;
   return (
     <div style={{ display:"flex", flexDirection:"column", paddingBottom:40 }}>
 
