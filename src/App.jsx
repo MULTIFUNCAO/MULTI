@@ -5659,12 +5659,12 @@ export default function App() {
   const [role,      setRole]    = useState(() => {
     try { const m = localStorage.getItem("multiMode"); if (m === "pro") return "professional"; return JSON.parse(localStorage.getItem("multiSession") || "null")?.role || "client"; } catch { return "client"; }
   const [selected,  setSelected]  = useState(null);
+  });
   const [isPro,     setIsPro]     = useState(false);
   const [toast,     setToast]     = useState(null);
   const [ratingTarget, setRatingTarget] = useState(null);
   const [showRankingGlobal, setShowRankingGlobal] = useState(false);
   const [modeKey, setModeKey] = useState(0);
-  const [guestRole, setGuestRole] = useState(localStorage.getItem("multiMode") === "pro" ? "professional" : "client");
   const [guestRole, setGuestRole] = useState(localStorage.getItem("multiMode") === "pro" ? "professional" : "client");
   useEffect(() => { setScreen("home"); }, [role]);
   useEffect(() => {
