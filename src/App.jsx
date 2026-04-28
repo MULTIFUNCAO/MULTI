@@ -2621,9 +2621,9 @@ function AddressSection({ showToast }) {
   const phone = safeGetUser().whatsapp || safeGetUser().email || "";
 
   useEffect(() => {
-    if (!phone) return;
+    
     fetch(`${API_BASE}/api/enderecos/${encodeURIComponent(phone)}`)
-      .then(r => r.json()).then(d => setAddresses(d.addresses || [])).catch(() => {});
+      .then(r => r.json()).then(d => setAddresses(Array.isArray(d) ? d : [])).catch(() => {});
   }, [phone]);
 
   const handleSave = async () => {
@@ -2710,7 +2710,7 @@ function CardSection({ showToast }) {
   const phone = safeGetUser().whatsapp || safeGetUser().email || "";
 
   useEffect(() => {
-    if (!phone) return;
+    
     fetch(`${API_BASE}/api/cartoes/${encodeURIComponent(phone)}`)
       .then(r => r.json()).then(d => setCards(d.cards || [])).catch(() => {});
   }, [phone]);
