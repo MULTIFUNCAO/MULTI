@@ -5992,7 +5992,8 @@ export default function App() {
         return <GuestMural onSignup={() => setAuthScreen("welcome")} allDocsVerified={null} />;
       }
 
-      // HOME — always visible, auth gates on action
+        // HOME — always visible, auth gates on action
+        if (role === "professional") return <ProfessionalHome userName={userName} isPro={isPro} feedServices={feedServices} onViewService={handleProFeedAction} onUpgrade={() => setScreen("upgrade")} />;
       return (
         <div style={{ position:"relative" }}>
           <ClientHome
