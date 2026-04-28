@@ -2906,6 +2906,10 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
 
           {/* stats row */}
           <div style={{ display:"flex", gap:0, background:"rgba(255,255,255,.12)", borderRadius:14, overflow:"hidden", marginTop:4 }}>
+          <div style={{ display:"flex", background:"rgba(255,255,255,.15)", borderRadius:99, padding:3, margin:"12px auto 0", width:"fit-content", gap:2 }}>
+            <button onClick={() => { localStorage.setItem("multiMode","client"); setTimeout(() => window.location.reload(), 100); }} style={{ border:"none", borderRadius:99, padding:"7px 18px", fontSize:13, fontWeight:700, cursor:"pointer", background: activeMode==="client" ? "white" : "transparent", color: activeMode==="client" ? "#007BFF" : "rgba(255,255,255,.8)" }}>👤 Cliente</button>
+            <button onClick={() => { localStorage.setItem("multiMode","pro"); setTimeout(() => window.location.reload(), 100); }} style={{ border:"none", borderRadius:99, padding:"7px 18px", fontSize:13, fontWeight:700, cursor:"pointer", background: activeMode==="pro" ? "white" : "transparent", color: activeMode==="pro" ? "#FF5722" : "rgba(255,255,255,.8)" }}>👷 Profissional</button>
+          </div>
             {[
               { val: `⭐ ${stats.rating}`, lbl:"Avaliação" },
               { val: stats.count,          lbl: stats.label },
@@ -2918,14 +2922,6 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
             ))}
           </div>
         </div>
-      </div>
-          <div style={{ display:"flex", background:"rgba(255,255,255,.15)", borderRadius:99, padding:3, margin:"12px auto 0", width:"fit-content", gap:2 }}>
-            <button onClick={() => { localStorage.setItem("multiMode","client"); setTimeout(() => window.location.reload(), 100); }} style={{ border:"none", borderRadius:99, padding:"7px 18px", fontSize:13, fontWeight:700, cursor:"pointer", background: activeMode==="client" ? "white" : "transparent", color: activeMode==="client" ? "#007BFF" : "rgba(255,255,255,.8)" }}>👤 Cliente</button>
-            <button onClick={() => { localStorage.setItem("multiMode","pro"); setTimeout(() => window.location.reload(), 100); }} style={{ border:"none", borderRadius:99, padding:"7px 18px", fontSize:13, fontWeight:700, cursor:"pointer", background: activeMode==="pro" ? "white" : "transparent", color: activeMode==="pro" ? "#FF5722" : "rgba(255,255,255,.8)" }}>👷 Profissional</button>
-          </div>
-
-      {/* ── PROFESSIONAL SECTIONS ── */}
-      {role === "professional" && (
         <>
           {/* Wallet card — links to full WalletScreen */}
           <div style={{ padding:"0 16px", marginTop:-20, position:"relative", zIndex:2 }}>
