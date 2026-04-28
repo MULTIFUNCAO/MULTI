@@ -5516,7 +5516,7 @@ export default function App() {
       );
     }
 
-    if (localStorage.getItem("multiMode") !== "pro") {
+    if (role === "client") {
       // Route guard: logged-in professionals must never see ClientHome
       if (isLoggedIn && userRole === "professional") {
         setTimeout(() => { setRole("professional"); setScreen("home"); }, 0);
