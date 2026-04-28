@@ -3020,7 +3020,7 @@ function RankingScreen({ onBack, contratacoes }) {
   );
 }
 
-function ProfileScreen({ role, isPro, userName: initialUserName, showRankingGlobal, onClearRankingGlobal, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange }) {
+function ProfileScreen({ role, isPro, userName: initialUserName, showRankingGlobal, onClearRankingGlobal, onSwitchMode, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange }) {
   const [avatarUrl, setAvatarUrl] = useState(() => sessionStorage.getItem("multiAvatar") || null);
   const [editMode,  setEditMode]  = useState(false);
   const [name, setName] = useState(initialUserName || "");
