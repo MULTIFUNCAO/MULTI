@@ -5715,7 +5715,7 @@ export default function App() {
     console.log("LOCATION EMAIL:", email); if (!email) { console.log("EMAIL VAZIO - multiUser:", JSON.stringify(JSON.parse(localStorage.getItem("multiUser")||"{}"))); return; }
     fetch("https://web-production-e103b.up.railway.app/api/enderecos/" + encodeURIComponent(email))
       .then(r => r.json())
-      .then(data => {
+      .then(data => { console.log("ENDERECOS DATA:", JSON.stringify(data));
         if (Array.isArray(data) && data.length > 0) {
           if (data[0].city) { setUserLocation(data[0].city + ", SP"); return; }
           const cep = data[0].cep.replace(/\D/g,"");
@@ -5733,7 +5733,7 @@ export default function App() {
     console.log("LOCATION EMAIL:", email); if (!email) { console.log("EMAIL VAZIO - multiUser:", JSON.stringify(JSON.parse(localStorage.getItem("multiUser")||"{}"))); return; }
     fetch("https://web-production-e103b.up.railway.app/api/enderecos/" + encodeURIComponent(email))
       .then(r => r.json())
-      .then(data => {
+      .then(data => { console.log("ENDERECOS DATA:", JSON.stringify(data));
         if (Array.isArray(data) && data.length > 0) {
           if (data[0].city) { setUserLocation(data[0].city + ", SP"); return; }
           const cep = data[0].cep.replace(/\D/g,"");
