@@ -276,7 +276,7 @@ function GuestHeader({ onToggleRole, activeRole = "client" }) {
           <MapPin size={13} color="rgba(255,255,255,.7)" />
           <div>
             <p style={{ fontSize:9, color:"rgba(255,255,255,.5)", fontWeight:700, margin:0 }}>Sua Localização</p>
-            <p style={{ fontSize:12, color:"white", fontWeight:800, margin:0 }}>Sua localização</p>
+                <p style={{ fontSize:12, color:"white", fontWeight:800, margin:0 }}>{localStorage.getItem("multiLocation") || "Sua localização"}</p>
           </div>
         </div>
         <div style={{ width:34, height:34, borderRadius:"50%", background:"rgba(255,255,255,.2)", border:"2px solid rgba(255,255,255,.4)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:17 }}>👤</div>
