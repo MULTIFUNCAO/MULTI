@@ -5710,7 +5710,8 @@ export default function App() {
   const [userLocation,  setUserLocation]  = useState(savedSession?.location || "sua região");
   const [walletBalance, setWalletBalance] = useState(1240);
   useEffect(() => {
-    const email = savedSession?.email || "";
+    const sess = (() => { try { return JSON.parse(localStorage.getItem("multiSession")) || {}; } catch { return {}; } })();
+    const email = sess.email || savedSession?.email || "";
     if (!email) return;
     fetch("https://web-production-e103b.up.railway.app/api/enderecos/" + encodeURIComponent(email))
       .then(r => r.json())
@@ -5725,7 +5726,8 @@ export default function App() {
       }).catch(() => {});
   }, []);
   useEffect(() => {
-    const email = savedSession?.email || "";
+    const sess = (() => { try { return JSON.parse(localStorage.getItem("multiSession")) || {}; } catch { return {}; } })();
+    const email = sess.email || savedSession?.email || "";
     if (!email) return;
     fetch("https://web-production-e103b.up.railway.app/api/enderecos/" + encodeURIComponent(email))
       .then(r => r.json())
