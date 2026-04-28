@@ -2807,7 +2807,7 @@ function CardSection({ showToast }) {
 function ProfileScreen({ role, isPro, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange }) {
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [editMode,  setEditMode]  = useState(false);
-  const [name,      setName]      = useState(role === "client" ? "Maria Oliveira" : "João Silva");
+  const [name,      setName]      = useState(initialUserName || JSON.parse(localStorage.getItem("multiSession") || "{}").name || "");
   const [portfolioImgs, setPortfolioImgs] = useState([]);
   const avatarRef = useRef(null);
   const portfolioRef = useRef(null);
