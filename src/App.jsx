@@ -212,7 +212,7 @@ function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua
               {isProfessional ? "👨‍🔧" : "👩"}
             </div>
             {!isProfessional && (
-              <div style={{ position:"absolute", bottom:-4, right:-4, background:"linear-gradient(135deg,#F9A825,#E65100)", borderRadius:99, padding:"1px 5px", boxShadow:"0 2px 6px rgba(0,0,0,.22)" }}>
+              <div style={{ position:"absolute", bottom:-4, right:-4, background:"linear-gradient(135deg,#F9A825,#E65100)", borderRadius:99, padding:"1px 5px", boxShadow:"0 2px 6px rgba(0,0,0,.22)", cursor:"pointer" }} onClick={() => window.dispatchEvent(new Event("openRanking"))}>
                 <span style={{ fontSize:8, fontWeight:900, color:"white" }}>OURO</span>
               </div>
             )}
@@ -2976,6 +2976,50 @@ function NotificacoesScreen({ onBack }) {
   );
 }
 
+function RankingScreen({ onBack, contratacoes }) {
+  const niveis = [
+    { nome:"Bronze", icon:"🥉", min:0, max:3, cor:"#CD7F32", bg:"#FDF3E7", beneficios:["Acesso completo a plataforma","Suporte por chat"] },
+    { nome:"Prata", icon:"🥈", min:4, max:9, cor:"#9E9E9E", bg:"#F5F5F5", beneficios:["Badge especial no perfil","Prioridade no suporte","Profissionais veem voce como cliente ativo"] },
+    { nome:"Ouro", icon:"🥇", min:10, max:19, cor:"#FFC107", bg:"#FFFDE7", beneficios:["Badge dourado no perfil","Selo Cliente Verificado Multi","Acesso antecipado a novidades"] },
+    { nome:"Diamante", icon:"💎", min:20, max:49, cor:"#00BCD4", bg:"#E0F7FA", beneficios:["Badge Diamante exclusivo","Perfil em destaque para profissionais","Convite para grupo VIP no WhatsApp"] },
+    { nome:"VIP", icon:"👑", min:50, max:999, cor:"#9C27B0", bg:"#F3E5F5", beneficios:["Badge VIP exclusivo","Linha direta no WhatsApp com a equipe Multi","Acesso beta a funcionalidades novas"] }
+  ];
+  const atual = niveis.findIndex(n => contratacoes >= n.min && contratacoes <= n.max);
+  const nivel = niveis[atual] || niveis[0];
+  const proximo = niveis[atual + 1];
+  const progresso = proximo ? Math.round(((contratacoes - nivel.min) / (proximo.min - nivel.min)) * 100) : 100;
+  return (
+    <div style={{ minHeight:"100vh", background:"#F5F6FA" }}>
+      <div style={{ background:nivel.cor, padding:"20px 16px 16px", display:"flex", alignItems:"center", gap:12 }}>
+        <button onClick={onBack} style={{ background:"none", border:"none", color:"white", fontSize:22, cursor:"pointer" }}>&larr;</button>
+        <h2 style={{ margin:0, color:"white", fontSize:18, fontWeight:800 }}>Clube Multi</h2>
+      </div>
+      <div style={{ padding:16 }}>
+        <div style={{ background:nivel.bg, borderRadius:20, padding:24, textAlign:"center", marginBottom:16, border:"2px solid "+nivel.cor }}>
+          <div style={{ fontSize:64 }}>{nivel.icon}</div>
+          <h2 style={{ margin:"8px 0 4px", fontSize:28, fontWeight:900, color:nivel.cor }}>{nivel.nome}</h2>
+          <p style={{ margin:0, color:"#6B7280", fontSize:14 }}>{contratacoes} contratacoes realizadas</p>
+          {proximo && <>
+            <div style={{ margin:"16px 0 6px", background:"#E5E7EB", borderRadius:99, height:10, overflow:"hidden" }}>
+              <div style={{ width:progresso+"%", height:"100%", background:nivel.cor, borderRadius:99, transition:"width 1s" }} />
+            </div>
+            <p style={{ margin:0, fontSize:12, color:"#6B7280" }}>Faltam {proximo.min - contratacoes} contratacoes para {proximo.icon} {proximo.nome}</p>
+          </>}
+          {!proximo && <p style={{ margin:"12px 0 0", fontSize:13, fontWeight:700, color:nivel.cor }}>Voce atingiu o nivel maximo! 🎉</p>}
+        </div>
+        <div style={{ background:"white", borderRadius:16, padding:20, marginBottom:16, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
+          <h3 style={{ margin:"0 0 12px", fontSize:15, fontWeight:800 }}>Seus beneficios atuais</h3>
+          {nivel.beneficios.map((b,i) => <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 0", borderBottom:i<nivel.beneficios.length-1?"1px solid #F3F4F6":"none" }}><span style={{ color:nivel.cor, fontSize:18 }}>✓</span><p style={{ margin:0, fontSize:14, color:"#374151" }}>{b}</p></div>)}
+        </div>
+        <div style={{ background:"white", borderRadius:16, padding:20, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
+          <h3 style={{ margin:"0 0 12px", fontSize:15, fontWeight:800 }}>Todos os niveis</h3>
+          {niveis.map((n,i) => <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0", borderBottom:i<niveis.length-1?"1px solid #F3F4F6":"none", opacity:i>atual?0.4:1 }}><span style={{ fontSize:24 }}>{n.icon}</span><div style={{ flex:1 }}><p style={{ margin:0, fontWeight:700, fontSize:14, color:n.cor }}>{n.nome}</p><p style={{ margin:0, fontSize:12, color:"#6B7280" }}>{n.min === 50 ? "50+ contratacoes" : n.min+" - "+n.max+" contratacoes"}</p></div>{i<=atual && <span style={{ fontSize:18 }}>✅</span>}</div>)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange }) {
   const [avatarUrl, setAvatarUrl] = useState(() => sessionStorage.getItem("multiAvatar") || null);
   const [editMode,  setEditMode]  = useState(false);
@@ -2986,6 +3030,12 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
   const [showSeguranca, setShowSeguranca] = useState(false);
   const [showSuporte, setShowSuporte] = useState(false);
   const [showSOS, setShowSOS] = useState(false);
+  const [showRanking, setShowRanking] = useState(false);
+  useEffect(() => {
+    const h = () => setShowRanking(true);
+    window.addEventListener("openRanking", h);
+    return () => window.removeEventListener("openRanking", h);
+  }, []);
   const avatarRef = useRef(null);
   const portfolioRef = useRef(null);
 
@@ -3038,6 +3088,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
   if (showSeguranca) return <SegurancaScreen onBack={() => setShowSeguranca(false)} />;
   if (showSuporte) return <SuporteScreen onBack={() => setShowSuporte(false)} />;
   if (showSOS) return <SOSScreen onBack={() => setShowSOS(false)} />;
+  if (showRanking) return <RankingScreen onBack={() => setShowRanking(false)} contratacoes={contratacoes || 12} />;
   return (
     <div style={{ display:"flex", flexDirection:"column", paddingBottom:40 }}>
 
