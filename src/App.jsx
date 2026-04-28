@@ -5712,7 +5712,7 @@ export default function App() {
   useEffect(() => {
     const sess = (() => { try { return JSON.parse(localStorage.getItem("multiUser")) || {}; } catch { return {}; } })();
     const email = sess.email || savedSession?.email || "";
-    if (!email) return;
+    console.log("LOCATION EMAIL:", email); if (!email) { console.log("EMAIL VAZIO - multiUser:", JSON.stringify(JSON.parse(localStorage.getItem("multiUser")||"{}"))); return; }
     fetch("https://web-production-e103b.up.railway.app/api/enderecos/" + encodeURIComponent(email))
       .then(r => r.json())
       .then(data => {
@@ -5730,7 +5730,7 @@ export default function App() {
   useEffect(() => {
     const sess = (() => { try { return JSON.parse(localStorage.getItem("multiUser")) || {}; } catch { return {}; } })();
     const email = sess.email || savedSession?.email || "";
-    if (!email) return;
+    console.log("LOCATION EMAIL:", email); if (!email) { console.log("EMAIL VAZIO - multiUser:", JSON.stringify(JSON.parse(localStorage.getItem("multiUser")||"{}"))); return; }
     fetch("https://web-production-e103b.up.railway.app/api/enderecos/" + encodeURIComponent(email))
       .then(r => r.json())
       .then(data => {
