@@ -197,7 +197,7 @@ function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua
           <MapPin size={13} color="rgba(255,255,255,.7)" />
           <div>
             <p style={{ fontSize:9, color:"rgba(255,255,255,.5)", fontWeight:700, margin:0 }}>Sua Localização</p>
-            <p style={{ fontSize:12, color:"white", fontWeight:800, margin:0 }}>Sua localização</p>
+                <p style={{ fontSize:12, color:"white", fontWeight:800, margin:0 }}>{localStorage.getItem("multiLocation") || userLocation}</p>
           </div>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
