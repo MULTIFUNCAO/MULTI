@@ -2804,6 +2804,44 @@ function CardSection({ showToast }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
+function SOSScreen({ onBack }) {
+  return (
+    <div style={{ minHeight:"100vh", background:"#fff" }}>
+      <div style={{ background:"#EF4444", padding:"20px 16px 16px", display:"flex", alignItems:"center", gap:12 }}>
+        <button onClick={onBack} style={{ background:"none", border:"none", color:"white", fontSize:22, cursor:"pointer" }}>&larr;</button>
+        <h2 style={{ margin:0, color:"white", fontSize:18, fontWeight:800 }}>Botao de Panico</h2>
+      </div>
+      <div style={{ padding:24, display:"flex", flexDirection:"column", alignItems:"center", gap:16 }}>
+        <p style={{ color:"#6B7280", fontSize:14, textAlign:"center", margin:0 }}>Em caso de emergencia, acione os servicos abaixo imediatamente.</p>
+        <a href="tel:192" style={{ width:"100%", textDecoration:"none" }}>
+          <div style={{ background:"#EF4444", borderRadius:20, padding:"24px 20px", display:"flex", alignItems:"center", gap:16, boxShadow:"0 4px 20px rgba(239,68,68,.4)" }}>
+            <span style={{ fontSize:40 }}>🚑</span>
+            <div><p style={{ margin:0, color:"white", fontWeight:900, fontSize:20 }}>SAMU</p><p style={{ margin:0, color:"rgba(255,255,255,.8)", fontSize:14 }}>Ligar para 192</p></div>
+          </div>
+        </a>
+        <a href="tel:190" style={{ width:"100%", textDecoration:"none" }}>
+          <div style={{ background:"#1D4ED8", borderRadius:20, padding:"24px 20px", display:"flex", alignItems:"center", gap:16, boxShadow:"0 4px 20px rgba(29,78,216,.4)" }}>
+            <span style={{ fontSize:40 }}>👮</span>
+            <div><p style={{ margin:0, color:"white", fontWeight:900, fontSize:20 }}>POLICIA</p><p style={{ margin:0, color:"rgba(255,255,255,.8)", fontSize:14 }}>Ligar para 190</p></div>
+          </div>
+        </a>
+        <a href="tel:193" style={{ width:"100%", textDecoration:"none" }}>
+          <div style={{ background:"#F97316", borderRadius:20, padding:"24px 20px", display:"flex", alignItems:"center", gap:16, boxShadow:"0 4px 20px rgba(249,115,22,.4)" }}>
+            <span style={{ fontSize:40 }}>🚒</span>
+            <div><p style={{ margin:0, color:"white", fontWeight:900, fontSize:20 }}>BOMBEIROS</p><p style={{ margin:0, color:"rgba(255,255,255,.8)", fontSize:14 }}>Ligar para 193</p></div>
+          </div>
+        </a>
+        <a href="https://wa.me/5511939437657?text=EMERGENCIA%20-%20Preciso%20de%20ajuda!" target="_blank" style={{ width:"100%", textDecoration:"none" }}>
+          <div style={{ background:"#22c55e", borderRadius:20, padding:"24px 20px", display:"flex", alignItems:"center", gap:16, boxShadow:"0 4px 20px rgba(34,197,94,.4)" }}>
+            <span style={{ fontSize:40 }}>💬</span>
+            <div><p style={{ margin:0, color:"white", fontWeight:900, fontSize:20 }}>SUPORTE MULTI</p><p style={{ margin:0, color:"rgba(255,255,255,.8)", fontSize:14 }}>Chamar no WhatsApp</p></div>
+          </div>
+        </a>
+      </div>
+    </div>
+  );
+}
+
 function SuporteScreen({ onBack }) {
   const [faqOpen, setFaqOpen] = useState(null);
   const faqs = [
