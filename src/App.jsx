@@ -2804,6 +2804,61 @@ function CardSection({ showToast }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
+function SegurancaScreen({ onBack }) {
+  const user = (() => { try { return JSON.parse(localStorage.getItem("multiUser")) || {}; } catch { return {}; } })();
+  const [step, setStep] = useState(1);
+  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const API = "https://web-production-e103b.up.railway.app";
+  const email = user.email || "";
+  const btn = { width:"100%", padding:14, background:"#007BFF", color:"white", border:"none", borderRadius:12, fontSize:16, fontWeight:700, cursor:"pointer", marginTop:8 };
+  const inp = { width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:15, marginTop:6, marginBottom:16, boxSizing:"border-box" };
+  const sendCode = async () => {
+    if (!email) return alert("Email nao encontrado");
+    setLoading(true);
+    await fetch(API+"/api/auth/solicitar-codigo", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email}) });
+    setLoading(false);
+    setStep(2);
+  };
+  const confirm = async () => {
+    if (!code || code.length < 6) return alert("Codigo incompleto");
+    if (!password || password.length < 6) return alert("Senha muito curta");
+    setLoading(true);
+    const r = await fetch(API+"/api/auth/verificar-codigo", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email,code,newPassword:password}) });
+    setLoading(false);
+    if (r.ok) { alert("Senha alterada com sucesso!"); onBack(); } else { alert("Codigo invalido"); }
+  };
+  return (
+    <div style={{ minHeight:"100vh", background:"#F5F6FA" }}>
+      <div style={{ background:"#007BFF", padding:"20px 16px 16px", display:"flex", alignItems:"center", gap:12 }}>
+        <button onClick={onBack} style={{ background:"none", border:"none", color:"white", fontSize:22, cursor:"pointer" }}>&larr;</button>
+        <h2 style={{ margin:0, color:"white", fontSize:18, fontWeight:800 }}>Seguranca e Senha</h2>
+      </div>
+      <div style={{ padding:16 }}>
+        <div style={{ background:"white", borderRadius:16, padding:20, marginBottom:16, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
+          <p style={{ margin:"0 0 4px", fontSize:12, color:"#6B7280", fontWeight:700, textTransform:"uppercase" }}>Email da conta</p>
+          <p style={{ margin:0, fontSize:15, fontWeight:600 }}>{email || "Nao informado"}</p>
+        </div>
+        <div style={{ background:"white", borderRadius:16, padding:20, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
+          <h3 style={{ margin:"0 0 16px", fontSize:16, fontWeight:800 }}>Alterar Senha</h3>
+          {step === 1 && <>
+            <p style={{ color:"#6B7280", fontSize:14, margin:"0 0 16px" }}>Enviaremos um codigo de verificacao para seu email.</p>
+            <button style={btn} onClick={sendCode} disabled={loading}>{loading ? "Enviando..." : "Enviar Codigo"}</button>
+          </>}
+          {step === 2 && <>
+            <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>CODIGO</label>
+            <input type="text" value={code} onChange={e => setCode(e.target.value)} placeholder="000000" maxLength={6} style={{ ...inp, fontSize:22, letterSpacing:6, textAlign:"center" }} />
+            <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>NOVA SENHA</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Minimo 6 caracteres" style={inp} />
+            <button style={btn} onClick={confirm} disabled={loading}>{loading ? "Verificando..." : "Confirmar"}</button>
+          </>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function NotificacoesScreen({ onBack }) {
   const [prefs, setPrefs] = useState(() => {
     try { return JSON.parse(localStorage.getItem("multiNotif")) || { servicos: true, whatsapp: false, email: false }; } catch { return { servicos: true, whatsapp: false, email: false }; }
@@ -2846,6 +2901,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
   useEffect(() => { if (initialUserName) setName(initialUserName); }, [initialUserName]);
   const [portfolioImgs, setPortfolioImgs] = useState([]);
   const [showNotif, setShowNotif] = useState(false);
+  const [showSeguranca, setShowSeguranca] = useState(false);
   const avatarRef = useRef(null);
   const portfolioRef = useRef(null);
 
@@ -2895,6 +2951,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
   );
 
   if (showNotif) return <NotificacoesScreen onBack={() => setShowNotif(false)} />;
+  if (showSeguranca) return <SegurancaScreen onBack={() => setShowSeguranca(false)} />;
   return (
     <div style={{ display:"flex", flexDirection:"column", paddingBottom:40 }}>
 
@@ -3084,7 +3141,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
       <SectionLabel label="Configurações" />
       <div style={{ background:"white", borderRadius:"0", overflow:"hidden" }}>
         <MenuRow Icon={BellRing}   iconBg="#E8F4FF" iconColor={B}        label="Notificações"      sub="Push e WhatsApp ativos"     onClick={() => setShowNotif(true)} />
-        <MenuRow Icon={KeyRound}   iconBg="#F3E5F5" iconColor="#7B1FA2"  label="Segurança e Senha" sub="Última alteração há 3 meses"  onClick={() => showToast("🔐 Segurança — em breve")} />
+        <MenuRow Icon={KeyRound}   iconBg="#F3E5F5" iconColor="#7B1FA2"  label="Segurança e Senha" sub="Última alteração há 3 meses"  onClick={() => setShowSeguranca(true)} />
         <MenuRow Icon={HelpCircle} iconBg="#E8F8EE" iconColor="#2E7D32"  label="Suporte e Ajuda"   sub="Fale com nossa equipe"        onClick={() => showToast("💬 Suporte: (11) 4002-8922")} />
         <MenuRow Icon={Shield}     iconBg="#FFF0EE" iconColor={O}        label="Botão de Pânico"   sub="Emergência — acionar segurança"
           right={<span style={{ background:"#FFF0EE", color:O, fontWeight:800, fontSize:11, padding:"4px 10px", borderRadius:99, border:`1px solid ${O}40` }}>SOS</span>}
