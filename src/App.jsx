@@ -4558,7 +4558,7 @@ function RegisterScreen({ onBack, onComplete }) {
   const [phone,   setPhone]   = useState("");
   const [password, setPassword] = useState("");
   const [cep,     setCep]     = useState("");
-  const [role,    setRole]    = useState("client");
+  const [role,    setRole]    = useState(localStorage.getItem("multiMode")==="pro"  "professional" : "client");
   const [errors,  setErrors]  = useState({});
   const [loading, setLoading] = useState(false);
 
