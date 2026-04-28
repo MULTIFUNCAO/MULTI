@@ -2947,6 +2947,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
   const [showNotif, setShowNotif] = useState(false);
   const [showSeguranca, setShowSeguranca] = useState(false);
   const [showSuporte, setShowSuporte] = useState(false);
+  const [showSOS, setShowSOS] = useState(false);
   const avatarRef = useRef(null);
   const portfolioRef = useRef(null);
 
