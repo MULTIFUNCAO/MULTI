@@ -5667,6 +5667,7 @@ export default function App() {
   const [ratingTarget, setRatingTarget] = useState(null);
   const [showRankingGlobal, setShowRankingGlobal] = useState(false);
   const [modeKey, setModeKey] = useState(0);
+  useEffect(() => { setScreen("home"); }, [role]);
   useEffect(() => {
     const h = () => setModeKey(k => k+1);
     window.addEventListener("modeChanged", h);
