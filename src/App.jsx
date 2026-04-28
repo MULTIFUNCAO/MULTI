@@ -2627,7 +2627,7 @@ function AddressSection({ showToast }) {
   }, [phone]);
 
   const handleSave = async () => {
-    if (!form.label.trim() || !form.street.trim()) return;
+    
     setSaving(true);
     try {
       const r = await fetch(`${API_BASE}/api/enderecos`, {
