@@ -5709,6 +5709,21 @@ export default function App() {
   const [userEmail,     setUserEmail]     = useState(savedSession?.email    || "");
   const [userLocation,  setUserLocation]  = useState(savedSession?.location || "sua região");
   const [walletBalance, setWalletBalance] = useState(1240);
+  useEffect(() => {
+    const email = savedSession?.email || "";
+    if (!email) return;
+    fetch("https://web-production-e103b.up.railway.app/api/enderecos/" + encodeURIComponent(email))
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0 && data[0].cep) {
+          const cep = data[0].cep.replace(/\D/g,"");
+          fetch("https://viacep.com.br/ws/" + cep + "/json/")
+            .then(r => r.json())
+            .then(d => { if (d.localidade) setUserLocation(d.localidade + ", " + d.uf); })
+            .catch(() => {});
+        }
+      }).catch(() => {});
+  }, []);
 
   const feedServices = [...SEED_FEED, ...myServices.filter(s => s.status === "open")];
 
