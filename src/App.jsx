@@ -5658,6 +5658,12 @@ export default function App() {
   const [isPro,     setIsPro]     = useState(false);
   const [toast,     setToast]     = useState(null);
   const [ratingTarget, setRatingTarget] = useState(null);
+  const [showRankingGlobal, setShowRankingGlobal] = useState(false);
+  useEffect(() => {
+    const h = () => { setScreen("profile"); setShowRankingGlobal(true); };
+    window.addEventListener("openRanking", h);
+    return () => window.removeEventListener("openRanking", h);
+  }, []);
   const [showAdmin, setShowAdmin] = useState(false);
 
   // Document verification state — shared between ProfileScreen and ProfessionalHome
