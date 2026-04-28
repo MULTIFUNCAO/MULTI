@@ -2807,6 +2807,7 @@ function CardSection({ showToast }) {
 function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange }) {
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [editMode,  setEditMode]  = useState(false);
+  const [activeMode, setActiveMode] = useState(localStorage.getItem("multiMode") || "client");
   const [name,      setName]      = useState(initialUserName || JSON.parse(localStorage.getItem("multiSession") || "{}").name || "");
   const [portfolioImgs, setPortfolioImgs] = useState([]);
   const avatarRef = useRef(null);
@@ -2905,6 +2906,11 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
 
           {/* stats row */}
           <div style={{ display:"flex", gap:0, background:"rgba(255,255,255,.12)", borderRadius:14, overflow:"hidden", marginTop:4 }}>
+          {/* mode toggle */}
+          <div style={{ display:"flex", background:"rgba(255,255,255,.15)", borderRadius:99, padding:3, margin:"12px auto 0", width:"fit-content", gap:2 }}>
+            <button onClick={() => { setActiveMode("client"); localStorage.setItem("multiMode","client"); setTimeout(() => window.location.reload(), 100); }} style={{ border:"none", borderRadius:99, padding:"7px 18px", fontSize:13, fontWeight:700, cursor:"pointer", background: activeMode==="client" ? "white" : "transparent", color: activeMode==="client" ? "#007BFF" : "rgba(255,255,255,.8)", transition:"all .2s" }}>👤 Cliente</button>
+            <button onClick={() => { setActiveMode("pro"); localStorage.setItem("multiMode","pro"); setTimeout(() => window.location.reload(), 100); }} style={{ border:"none", borderRadius:99, padding:"7px 18px", fontSize:13, fontWeight:700, cursor:"pointer", background: activeMode==="pro" ? "white" : "transparent", color: activeMode==="pro" ? "#FF5722" : "rgba(255,255,255,.8)", transition:"all .2s" }}>👷 Profissional</button>
+          </div>
             {[
               { val: `⭐ ${stats.rating}`, lbl:"Avaliação" },
               { val: stats.count,          lbl: stats.label },
