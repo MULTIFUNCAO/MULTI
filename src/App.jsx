@@ -5827,7 +5827,7 @@ export default function App() {
     const firstName = name.trim().split(/\s+/)[0];
     if (name)     setUserName(firstName);
     if (email)    setUserEmail(email);
-    if (location) setUserLocation(location); // location from session
+    if (location && location !== "sua região") setUserLocation(location);
     const resolvedRole = registeredRole || userRole;
     setUserRole(resolvedRole);
     setRole(resolvedRole);
