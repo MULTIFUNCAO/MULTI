@@ -2804,12 +2804,48 @@ function CardSection({ showToast }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
+function NotificacoesScreen({ onBack }) {
+  const [prefs, setPrefs] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("multiNotif")) || { servicos: true, whatsapp: false, email: false }; } catch { return { servicos: true, whatsapp: false, email: false }; }
+  });
+  const toggle = (key) => {
+    const novo = { ...prefs, [key]: !prefs[key] };
+    setPrefs(novo);
+    localStorage.setItem("multiNotif", JSON.stringify(novo));
+  };
+  const Item = ({ icon, title, sub, k }) => (
+    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 0", borderBottom:"1px solid #F3F4F6" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+        <span style={{ fontSize:22 }}>{icon}</span>
+        <div><p style={{ margin:0, fontWeight:700, fontSize:15 }}>{title}</p><p style={{ margin:0, fontSize:12, color:"#6B7280" }}>{sub}</p></div>
+      </div>
+      <div onClick={() => toggle(k)} style={{ width:48, height:26, borderRadius:13, background:prefs[k]?"#007BFF":"#D1D5DB", cursor:"pointer", position:"relative", transition:"background .2s" }}>
+        <div style={{ position:"absolute", top:3, left:prefs[k]?22:3, width:20, height:20, borderRadius:"50%", background:"white", transition:"left .2s", boxShadow:"0 1px 3px rgba(0,0,0,.2)" }} />
+      </div>
+    </div>
+  );
+  return (
+    <div style={{ minHeight:"100vh", background:"#F5F6FA" }}>
+      <div style={{ background:"#007BFF", padding:"20px 16px 16px", display:"flex", alignItems:"center", gap:12 }}>
+        <button onClick={onBack} style={{ background:"none", border:"none", color:"white", fontSize:22, cursor:"pointer" }}>&larr;</button>
+        <h2 style={{ margin:0, color:"white", fontSize:18, fontWeight:800 }}>Notificacoes</h2>
+      </div>
+      <div style={{ padding:"0 16px", background:"white", margin:16, borderRadius:16, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
+        <Item icon="🔔" title="Notificacoes de servicos" sub="Avisos quando um profissional aceitar seu pedido" k="servicos" />
+        <Item icon="📱" title="Notificacoes por WhatsApp" sub="Receber atualizacoes no WhatsApp" k="whatsapp" />
+        <Item icon="📧" title="Notificacoes por email" sub="Receber resumos por email" k="email" />
+      </div>
+    </div>
+  );
+}
+
 function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange }) {
   const [avatarUrl, setAvatarUrl] = useState(() => sessionStorage.getItem("multiAvatar") || null);
   const [editMode,  setEditMode]  = useState(false);
   const [name, setName] = useState(initialUserName || "");
   useEffect(() => { if (initialUserName) setName(initialUserName); }, [initialUserName]);
   const [portfolioImgs, setPortfolioImgs] = useState([]);
+  const [showNotif, setShowNotif] = useState(false);
   const avatarRef = useRef(null);
   const portfolioRef = useRef(null);
 
@@ -2858,6 +2894,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
     </div>
   );
 
+  if (showNotif) return <NotificacoesScreen onBack={() => setShowNotif(false)} />;
   return (
     <div style={{ display:"flex", flexDirection:"column", paddingBottom:40 }}>
 
@@ -3046,7 +3083,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, onUpgrade, onLo
       {/* ── GENERAL SETTINGS ── */}
       <SectionLabel label="Configurações" />
       <div style={{ background:"white", borderRadius:"0", overflow:"hidden" }}>
-        <MenuRow Icon={BellRing}   iconBg="#E8F4FF" iconColor={B}        label="Notificações"      sub="Push e WhatsApp ativos"     onClick={() => showToast("🔔 Configurações de notificação")} />
+        <MenuRow Icon={BellRing}   iconBg="#E8F4FF" iconColor={B}        label="Notificações"      sub="Push e WhatsApp ativos"     onClick={() => setShowNotif(true)} />
         <MenuRow Icon={KeyRound}   iconBg="#F3E5F5" iconColor="#7B1FA2"  label="Segurança e Senha" sub="Última alteração há 3 meses"  onClick={() => showToast("🔐 Segurança — em breve")} />
         <MenuRow Icon={HelpCircle} iconBg="#E8F8EE" iconColor="#2E7D32"  label="Suporte e Ajuda"   sub="Fale com nossa equipe"        onClick={() => showToast("💬 Suporte: (11) 4002-8922")} />
         <MenuRow Icon={Shield}     iconBg="#FFF0EE" iconColor={O}        label="Botão de Pânico"   sub="Emergência — acionar segurança"
