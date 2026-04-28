@@ -311,7 +311,7 @@ function GuestHeader({ onToggleRole, activeRole = "client" }) {
 /* Public façade — picks the right header, nothing shared between them */
 function Header({ isPro, notifCount, isLoggedIn, userRole, onAlerts, userLocation, onToggleRole, activeRole }) {
   if (isLoggedIn) {
-    return <AuthHeader isPro={isPro} notifCount={notifCount} userRole={userRole} onAlerts={onAlerts} userLocation={userLocation} />;
+    return <AuthHeader isPro={isPro} notifCount={notifCount} userRole={userRole} onAlerts={onAlerts} userLocation={localStorage.getItem("multiLocation") || userLocation} />;
   }
   return <GuestHeader onToggleRole={onToggleRole} activeRole={activeRole} />;
 }
@@ -6046,7 +6046,7 @@ export default function App() {
         feedServices={feedServices}
         onViewService={handleProFeedAction}
         onUpgrade={() => setScreen("upgrade")}
-        userLocation={userLocation}
+        userLocation={localStorage.getItem("multiLocation") || userLocation}
         allDocsVerified={allDocsVerified}
         docStatus={docStatus}
         onGoToDocs={() => setScreen("profile")}
@@ -6128,7 +6128,7 @@ export default function App() {
         </div>
       )}
 
-      <Header isPro={isPro} notifCount={notifCount} isLoggedIn={isLoggedIn} userRole={userRole} onAlerts={() => setScreen("alerts")} userLocation={userLocation} onToggleRole={setGuestRole} activeRole={guestRole} />
+      <Header isPro={isPro} notifCount={notifCount} isLoggedIn={isLoggedIn} userRole={userRole} onAlerts={() => setScreen("alerts")} userLocation={localStorage.getItem("multiLocation") || userLocation} onToggleRole={setGuestRole} activeRole={guestRole} />
 
       <div style={{ flex:1, overflowY:"auto" }}>
         {renderContent()}
