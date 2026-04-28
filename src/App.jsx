@@ -248,7 +248,7 @@ function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua
       {!isProfessional && (
         <div style={{ margin:"0 16px 12px", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
           <div style={{ width:7, height:7, borderRadius:"50%", background:"#4ade80" }} />
-          <span style={{ fontSize:11, color:"rgba(255,255,255,.7)", fontWeight:700 }}>Logado como Cliente</span>
+          <span style={{ fontSize:11, color:"rgba(255,255,255,.7)", fontWeight:700 }}>{localStorage.getItem("multiMode")==="pro" ? "● Logado como Profissional" : "● Logado como Cliente"}</span>
         </div>
       )}
       {isProfessional && (
