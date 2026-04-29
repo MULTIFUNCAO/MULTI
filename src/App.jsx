@@ -6180,7 +6180,7 @@ export default function App() {
           // ── Professional tabs (no FAB, no + Novo Pedido) ──
           ? [
               { id:"home",    label:"Mural",    Icon:Home },
-              { id:"orders",  label:"Meus Jobs", Icon:ClipboardList },
+              { id:"orders",  label:"Meus Serviços", Icon:ClipboardList },
               { id:"upgrade", label:"Seja PRO",  Icon:Crown },
               { id:"profile", label:"Perfil",    Icon:User },
             ]
