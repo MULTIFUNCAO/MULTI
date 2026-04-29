@@ -2604,6 +2604,7 @@ function AdminAccessTrigger({ onOpenAdmin }) {
 const API_BASE = "https://web-production-e103b.up.railway.app";
 
 function safeGetUser() {
+  try { const s = JSON.parse(localStorage.getItem("multiSession") || "null"); if (s) return s; } catch {}
   try { return JSON.parse(localStorage.getItem("multiUser") || "{}"); } catch { return {}; }
 }
 
