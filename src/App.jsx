@@ -2834,7 +2834,7 @@ function CardSection({ showToast }) {
                   value={form.cvv||""} onChange={e => setForm(f=>({...f,cvv:e.target.value.replace(/\D/g,"")}))}
                   style={{ width:80, padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", background:"white" }} />
               </div>
-                {saving ? "Salvando..." : "Salvar Cartão"}
+                <button onClick={() => handleSave()} disabled={saving} style={{ width:"100%", padding:"14px 0", borderRadius:14, border:"none", background:`linear-gradient(135deg,${B},#0055d4)`, color:"white", fontWeight:900, fontSize:14, cursor:"pointer" }}>{saving ? "Salvando..." : "Salvar Cartão"}</button>
               </button>
             </div>
           </div>
