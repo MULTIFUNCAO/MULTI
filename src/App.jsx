@@ -2826,7 +2826,14 @@ function CardSection({ showToast }) {
                   <option value="debit">Débito</option>
                 </select>
               </div>
-              <button onClick={() => handleSave()} disabled={saving} style={{ padding:"14px 0", borderRadius:14, border:"none", background:`linear-gradient(135deg,${B},#0055d4)`, color:"white", fontWeight:900, fontSize:14, cursor:"pointer" }}>
+              <div style={{ display:"flex", gap:10, marginBottom:12 }}>
+                <input placeholder="Validade (MM/AA)" type="tel" maxLength={5}
+                  value={form.expiry||""} onChange={e => { let v=e.target.value.replace(/\D/g,""); if(v.length>2) v=v.slice(0,2)+"/"+v.slice(2); setForm(f=>({...f,expiry:v})); }}
+                  style={{ flex:1, padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", background:"white" }} />
+                <input placeholder="CVV" type="tel" maxLength={4}
+                  value={form.cvv||""} onChange={e => setForm(f=>({...f,cvv:e.target.value.replace(/\D/g,"")}))}
+                  style={{ width:80, padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", background:"white" }} />
+              </div>
                 {saving ? "Salvando..." : "Salvar Cartão"}
               </button>
             </div>
