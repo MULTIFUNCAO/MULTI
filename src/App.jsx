@@ -2725,7 +2725,7 @@ function CardSection({ showToast }) {
   const [selectedCard, setSelectedCard] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [saving,    setSaving]    = useState(false);
-  const [form,      setForm]      = useState({ label:"", number:"", brand:"Visa", type:"credit" });
+  const [form,      setForm]      = useState({ label:"", number:"", expiry:"", cvv:"", brand:"Visa", type:"credit" });
   const phone = safeGetUser().email || safeGetUser().whatsapp || "";
 
   useEffect(() => {
@@ -2817,6 +2817,10 @@ function CardSection({ showToast }) {
             <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
               <input placeholder="Nome do cartão (ex: Meu Nubank)" value={form.label} onChange={e => setForm(f => ({...f, label:e.target.value}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
               <input placeholder="Número do cartão" type="tel" maxLength={19} value={form.number} onChange={e => setForm(f => ({...f, number:e.target.value.replace(/(\d{4})/g,"$1 ").trim()}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", fontFamily:"monospace" }} />
+              <div style={{ display:"flex", gap:10 }}>
+                <input placeholder="Validade (MM/AA)" type="tel" maxLength={5} value={form.expiry||""} onChange={e => { let v=e.target.value.replace(/\D/g,""); if(v.length>2) v=v.slice(0,2)+"/"+v.slice(2,4); setForm(f=>({...f,expiry:v})); }} style={{ flex:1, padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
+                <input placeholder="CVV" type="tel" maxLength={4} value={form.cvv||""} onChange={e => setForm(f=>({...f,cvv:e.target.value.replace(/\D/g,"")}))} style={{ width:80, padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
+              </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                 <select value={form.brand} onChange={e => setForm(f => ({...f, brand:e.target.value}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", background:"white" }}>
                   {["Visa","Mastercard","Elo","Amex"].map(b => <option key={b}>{b}</option>)}
@@ -3291,7 +3295,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, showRankingGlob
               { emoji:"👷",   name:"Pedro Mestre",     cat:"Pedreiro",  rating:4.8 },
               { emoji:"🎨",   name:"Ana Pintora",      cat:"Pintora",   rating:5.0 },
             ].map((fav, i) => (
-              <div key={i} style={{ display:"flex", alignItems:"center", gap:13, padding:"13px 16px", borderBottom:"1px solid #F8F8F8", cursor:"pointer" }} onClick={() => { setEditingAddr(addr); setForm({ label:addr.label, street:addr.street, city:addr.city||"", cep:addr.cep||"" }); setShowModal(true); }}>
+              <div key={i} style={{ display:"flex", alignItems:"center", gap:13, padding:"13px 16px", borderBottom:"1px solid #F8F8F8", cursor:"pointer" }} onClick={() => {}}>
                 <div style={{ width:40, height:40, borderRadius:12, background:"#E8F4FF", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>{fav.emoji}</div>
                 <div style={{ flex:1 }}>
                   <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e", marginBottom:2 }}>{fav.name}</p>
