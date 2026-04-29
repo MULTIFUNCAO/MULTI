@@ -3337,8 +3337,8 @@ function ProfileScreen({ role, isPro, userName: initialUserName, showRankingGlob
 }
 
 /* ───────────────────────── MY SERVICES SCREEN ───────────────────────────────── */
-function MyServicesScreen({ myServices, onOpenService, onOpenChat, isPro }) {
-  const [tab, setTab] = useState("open");
+function MyServicesScreen({ myServices, onOpenService, onOpenChat, isPro, initialTab = "open" }) {
+  const [tab, setTab] = useState(initialTab);
 
   const tabs = [
     { id:"open",       label:"Aguardando",  color:"#0070F3" },
@@ -6007,7 +6007,7 @@ export default function App() {
       if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onFound={(pro, svc) => { openChatFromService({ ...svc, pro:pro.name, proposalValue:pro.value, contactUnlocked:true, status:"inprogress" }); }} />;
       if (screen === "alerts") return <AlertsScreen notifications={notifications} onAccept={handleAcceptProposal} onOpenChat={openChatFromNotif} />;
       if (screen === "chat")   return <ChatInbox myServices={myServices} onOpenChat={openChatFromService} />;
-      if (screen === "orders") return <MyServicesScreen myServices={myServices} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} isPro={isPro} />;
+      if (screen === "orders") return <MyServicesScreen initialTab={screen === "orders" && role === "professional" ? "done" : "open"} myServices={myServices} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} isPro={isPro} />;
       if (screen === "profile") {
         if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
         return <ProfileScreen role="client" userName={userName} isPro={false} showRankingGlobal={showRankingGlobal} onClearRankingGlobal={() => setShowRankingGlobal(false)} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenAdmin={() => setShowAdmin(true)} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} setScreen("home"); }} />;
