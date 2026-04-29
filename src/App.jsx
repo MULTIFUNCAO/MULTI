@@ -3327,6 +3327,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, showRankingGlob
       {/* Logout */}
       <SectionLabel label="" />
       <div style={{ background:"white" }}>
+        <MenuRow Icon={role === "client" ? Briefcase : Home} iconBg={role === "client" ? "#FFF3E0" : "#EBF4FF"} iconColor={role === "client" ? O : B} label={role === "client" ? "Alternar para Profissional" : "Alternar para Cliente"} sub={role === "client" ? "Ver mural de serviços como profissional" : "Ver como cliente e fazer pedidos"} onClick={() => { const newRole = role === "client" ? "professional" : "client"; onSwitchRole?.(newRole); showToast(newRole === "professional" ? "🔧 Modo Profissional ativado!" : "🏠 Modo Cliente ativado!", newRole === "professional" ? O : B); }} />
         <MenuRow Icon={LogOut} iconBg="#FFF0F0" iconColor="#E53935" label="Sair da Conta" danger onClick={() => { showToast("👋 Até logo!"); setTimeout(onLogout, 1200); }} />
       </div>
 
