@@ -5001,9 +5001,9 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
           {/* stats */}
           <div style={{ display:"flex", gap:8, marginBottom:16 }}>
             {[
-              { label:"Serviços em aberto", val:filtered.length,                     color:"white" },
-              { label:"Volume disponível",  val:`R$ ${(totalValue/1000).toFixed(1)}k`, color:O      },
-              { label:"Urgentes",           val:feedServices.filter(s=>s.urgent).length, color:"#EF4444" },
+              { label:"Ganhos do mes",   val:"R$ 1.240", color:"#4ade80" },
+              { label:"Servicos feitos", val:"47",       color:"white"    },
+              { label:"Avaliacao",       val:"4.8 estrelas",  color:"#F9A825"  },
             ].map((s, i) => (
               <div key={i} style={{ flex:1, background:"rgba(255,255,255,.08)", borderRadius:12, padding:"9px 10px" }}>
                 <p style={{ fontSize:11, color:"rgba(255,255,255,.45)", fontWeight:700, margin:0, lineHeight:1.3 }}>{s.label}</p>
