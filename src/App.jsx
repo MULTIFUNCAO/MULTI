@@ -2162,7 +2162,7 @@ function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
         <button onClick={() => setShowPix(true)} style={{ padding:"14px 0", borderRadius:16, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${G},#16a34a)`, color:"white", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:`0 5px 16px ${G}44` }}>
           <Banknote size={17} /> Sacar via PIX
         </button>
-        <button onClick={() => showToast("📊 Relatório em PDF disponível em breve!")} style={{ padding:"14px 0", borderRadius:16, border:`1.5px solid ${B}`, background:"white", color:B, fontWeight:900, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+        <button onClick={() => window.open("/relatorio.html", "_blank")} style={{ padding:"14px 0", borderRadius:16, border:"1.5px solid "+B, background:"white", color:B, fontWeight:900, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
           <TrendingUp size={17} /> Relatório
         </button>
       </div>
