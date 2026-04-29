@@ -5030,7 +5030,6 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
             </svg>
             {online ? "✓  Online — Clique para pausar" : "Ficar Online"}
           </button>
-        </div>
       </div>
 
       {/* ── PRO TRIAL BANNER (free users) ── */}
