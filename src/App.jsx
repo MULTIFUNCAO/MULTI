@@ -2810,7 +2810,7 @@ function CardSection({ showToast }) {
                   <option value="debit">Débito</option>
                 </select>
               </div>
-              <button onClick={() => editingAddr ? handleUpdate() : handleSave()} disabled={saving} style={{ padding:"14px 0", borderRadius:14, border:"none", background:`linear-gradient(135deg,${B},#0055d4)`, color:"white", fontWeight:900, fontSize:14, cursor:"pointer" }}>
+              <button onClick={() => handleSave()} disabled={saving} style={{ padding:"14px 0", borderRadius:14, border:"none", background:`linear-gradient(135deg,${B},#0055d4)`, color:"white", fontWeight:900, fontSize:14, cursor:"pointer" }}>
                 {saving ? "Salvando..." : "Salvar Cartão"}
               </button>
             </div>
