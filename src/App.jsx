@@ -2619,7 +2619,7 @@ function AddressSection({ showToast }) {
   const [showModal,   setShowModal]   = useState(false);
   const [saving,      setSaving]      = useState(false);
   const [form,        setForm]        = useState({ label:"", street:"", city:"", cep:"" });
-  const phone = safeGetUser().whatsapp || "";
+  const phone = safeGetUser().email || safeGetUser().whatsapp || "";
 
   useEffect(() => {
     if (!phone) return;
@@ -2708,7 +2708,7 @@ function CardSection({ showToast }) {
   const [showModal, setShowModal] = useState(false);
   const [saving,    setSaving]    = useState(false);
   const [form,      setForm]      = useState({ label:"", number:"", brand:"Visa", type:"credit" });
-  const phone = safeGetUser().whatsapp || "";
+  const phone = safeGetUser().email || safeGetUser().whatsapp || "";
 
   useEffect(() => {
     if (!phone) return;
