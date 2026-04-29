@@ -2780,7 +2780,7 @@ function CardSection({ showToast }) {
               <span style={{ fontSize:9, fontWeight:900, color: brandColor[card.brand] || "#1a1a2e" }}>{card.brand}</span>
             </div>
             <div style={{ flex:1 }}>
-              <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e", marginBottom:1 }}>{card.label} •••• {card.last4}</p>
+              <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e", marginBottom:1 }}>{card.label} •••• {card.last4 || "••••"}</p>
               <p style={{ fontSize:11, color:"#bbb" }}>{card.type === "credit" ? "Crédito" : "Débito"}{card.is_main ? " — Principal" : ""}</p>
             </div>
             <button onClick={() => handleDelete(card.id)} style={{ background:"none", border:"none", cursor:"pointer", padding:4 }}>
