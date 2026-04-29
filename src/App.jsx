@@ -2774,7 +2774,7 @@ function CardSection({ showToast }) {
           </p>
         )}
         {cards.map((card, i) => (
-          <div key={card.id} style={{ display:"flex", alignItems:"center", gap:13, padding:"13px 16px", borderBottom:"1px solid #F8F8F8", cursor:"pointer" }} onClick={() => { setEditingAddr(addr); setForm({ label:addr.label, street:addr.street, city:addr.city||"", cep:addr.cep||"" }); setShowModal(true); }}>
+          <div key={card.id} style={{ display:"flex", alignItems:"center", gap:13, padding:"13px 16px", borderBottom:"1px solid #F8F8F8", cursor:"pointer" }} onClick={() => setShowModal(true)}>
             <div style={{ width:36, height:36, borderRadius:11, background: brandBg[card.brand] || "#E5E7EB", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
               <span style={{ fontSize:9, fontWeight:900, color: brandColor[card.brand] || "#1a1a2e" }}>{card.brand}</span>
             </div>
