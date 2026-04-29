@@ -2815,8 +2815,8 @@ function CardSection({ showToast }) {
             <div style={{ width:40, height:4, background:"#E5E7EB", borderRadius:99, margin:"0 auto 20px" }} />
             <h3 style={{ fontSize:17, fontWeight:900, color:"#1a1a2e", margin:"0 0 18px" }}>Novo Cartão</h3>
             <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-              <input placeholder="Nome do cartão (ex: Meu Nubank)" value={form.label} onChange={e => setForm(f => ({...f, label:e.target.value}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
-              <input placeholder="Número do cartão" type="tel" maxLength={19} value={form.number} onChange={e => setForm(f => ({...f, number:e.target.value.replace(/(\d{4})/g,"$1 ").trim()}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", fontFamily:"monospace" }} />
+              <input placeholder="Nome do cartão (ex: Meu Nubank)" autoComplete="off" value={form.label} onChange={e => setForm(f => ({...f, label:e.target.value}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
+              <input placeholder="Número do cartão" type="tel" maxLength={19} autoComplete="off" value={form.number} onChange={e => setForm(f => ({...f, number:e.target.value.replace(/(\d{4})/g,"$1 ").trim()}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", fontFamily:"monospace" }} />
               <div style={{ display:"flex", gap:10 }}>
                 <input placeholder="Validade (MM/AA)" type="tel" maxLength={5} value={form.expiry||""} onChange={e => { let v=e.target.value.replace(/\D/g,""); if(v.length>2) v=v.slice(0,2)+"/"+v.slice(2,4); setForm(f=>({...f,expiry:v})); }} style={{ flex:1, padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
                 <input placeholder="CVV" type="tel" maxLength={4} value={form.cvv||""} onChange={e => setForm(f=>({...f,cvv:e.target.value.replace(/\D/g,"")}))} style={{ width:80, padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
@@ -3846,7 +3846,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
             <div style={{ background:"white", borderRadius:18, padding:"16px", boxShadow:"0 2px 10px rgba(0,0,0,.06)" }}>
               <p style={{ fontSize:13, fontWeight:900, color:"#1a1a2e", margin:"0 0 16px" }}>Dados do Cartão</p>
               <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-                <input placeholder="Número do cartão" type="tel" maxLength={19} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", fontFamily:"monospace" }} />
+                <input placeholder="Número do cartão" type="tel" maxLength={19} autoComplete="off" style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", fontFamily:"monospace" }} />
                 <input placeholder="Nome como no cartão" style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                   <input placeholder="MM/AA" type="tel" maxLength={5} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
