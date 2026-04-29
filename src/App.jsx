@@ -2788,7 +2788,7 @@ function CardSection({ showToast }) {
             </button>
           </div>
         ))}
-        <button onClick={() => setSelectedCard(card)} style={{ width:"100%", padding:"12px 0", border:"none", background:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:7, color:B, fontWeight:800, fontSize:13, cursor:"pointer" }}>
+        <button onClick={() => setShowModal(true)} style={{ width:"100%", padding:"12px 0", border:"none", background:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:7, color:B, fontWeight:800, fontSize:13, cursor:"pointer" }}>
           <Plus size={14} /> Adicionar cartão
         </button>
       </div>
