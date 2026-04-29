@@ -6088,7 +6088,7 @@ export default function App() {
         userLocation={localStorage.getItem("multiLocation") || userLocation}
         allDocsVerified={allDocsVerified}
         docStatus={docStatus}
-        onGoToDocs={() => setScreen("profile")}
+        onGoToDocs={() => setScreen("profile")} onGoToOrders={() => setScreen("orders")}
       />
     );
   };
