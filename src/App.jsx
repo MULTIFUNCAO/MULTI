@@ -4993,20 +4993,16 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
               </div>
               <h3 style={{ fontSize:19, fontWeight:900, color:"white", lineHeight:1.3, margin:0 }}>
                 {userName ? `Olá, ${userName}!` : "Bem-vindo,"}<br/>
-                <span style={{ color: online ? G : "#94A3B8" }}>Novas Oportunidades Esperam</span>
-              </h3>
-            </div>
-          </div>
-
-          {/* stats */}
+          {/* stats row */}
           <div style={{ display:"flex", gap:8, marginBottom:16 }}>
             {[
-              { label:"Serviços em aberto", val:filtered.length,                     color:"white" },
-              { label:"Volume disponível",  val:`R$ ${(totalValue/1000).toFixed(1)}k`, color:O      },
-              { label:"Urgentes",           val:feedServices.filter(s=>s.urgent).length, color:"#EF4444" },
+              { label:"Ganhos do mês",   val:"R$ 1.240",  color:"#4ade80", icon:"💰" },
+              { label:"Serviços feitos",  val:"47",        color:"white",    icon:"✅" },
+              { label:"Avaliação",        val:"4.8 ★",    color:"#F9A825",  icon:"⭐" },
             ].map((s, i) => (
               <div key={i} style={{ flex:1, background:"rgba(255,255,255,.08)", borderRadius:12, padding:"9px 10px" }}>
-                <p style={{ fontSize:11, color:"rgba(255,255,255,.45)", fontWeight:700, margin:0, lineHeight:1.3 }}>{s.label}</p>
+                <p style={{ fontSize:13, margin:"0 0 2px" }}>{s.icon}</p>
+                <p style={{ fontSize:11, color:"rgba(255,255,255,.55)", fontWeight:700, margin:0, lineHeight:1.3 }}>{s.label}</p>
                 <p style={{ fontSize:17, fontWeight:900, color:s.color, margin:"3px 0 0" }}>{s.val}</p>
               </div>
             ))}
