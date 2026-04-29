@@ -2645,6 +2645,23 @@ function AddressSection({ showToast }) {
     finally { setSaving(false); }
   };
 
+  const handleUpdate = async () => {
+    if (!editingAddr) return;
+    setSaving(true);
+    try {
+      const r = await fetch(`${API_BASE}/api/enderecos/${editingAddr.id}`, {
+        method:"PUT", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ label:form.label, street:form.street, city:form.city, cep:form.cep }),
+      });
+      const d = await r.json();
+      if (d.address) {
+        setAddresses(prev => prev.map(a => a.id === editingAddr.id ? d.address : a));
+        setShowModal(false); setEditingAddr(null); setForm({ label:"", street:"", city:"", cep:"" });
+        showToast?.("✅ Endereço atualizado!");
+      }
+    } catch { showToast?.("❌ Erro ao atualizar", "#EF4444"); }
+    finally { setSaving(false); }
+  };
   const handleDelete = async (id) => {
     try {
       await fetch(`${API_BASE}/api/enderecos/${id}`, { method:"DELETE" });
@@ -2663,7 +2680,7 @@ function AddressSection({ showToast }) {
           </p>
         )}
         {addresses.map((addr, i) => (
-          <div key={addr.id} style={{ display:"flex", alignItems:"center", gap:13, padding:"13px 16px", borderBottom:"1px solid #F8F8F8" }}>
+          <div key={addr.id} style={{ display:"flex", alignItems:"center", gap:13, padding:"13px 16px", borderBottom:"1px solid #F8F8F8", cursor:"pointer" }} onClick={() => { setEditingAddr(addr); setForm({ label:addr.label, street:addr.street, city:addr.city||"", cep:addr.cep||"" }); setShowModal(true); }}>
             <span style={{ width:36, height:36, borderRadius:11, background:B+"12", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>🏠</span>
             <div style={{ flex:1 }}>
               <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e", marginBottom:1 }}>{addr.label}</p>
@@ -2684,13 +2701,13 @@ function AddressSection({ showToast }) {
         <div onClick={() => setShowModal(false)} style={{ position:"fixed", inset:0, zIndex:600, background:"rgba(0,0,0,.5)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
           <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:440, background:"white", borderRadius:"24px 24px 0 0", padding:"24px 20px 40px" }}>
             <div style={{ width:40, height:4, background:"#E5E7EB", borderRadius:99, margin:"0 auto 20px" }} />
-            <h3 style={{ fontSize:17, fontWeight:900, color:"#1a1a2e", margin:"0 0 18px" }}>Novo Endereço</h3>
+            <h3 style={{ fontSize:17, fontWeight:900, color:"#1a1a2e", margin:"0 0 18px" }}>{editingAddr ? "Editar Endereço" : "Novo Endereço"}</h3>
             <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
               <input placeholder="Nome (ex: Minha Casa, Trabalho)" value={form.label} onChange={e => setForm(f => ({...f, label:e.target.value}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
               <input placeholder="Rua e número" value={form.street} onChange={e => setForm(f => ({...f, street:e.target.value}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
               <input placeholder="Cidade" value={form.city} onChange={e => setForm(f => ({...f, city:e.target.value}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
               <input placeholder="CEP" value={form.cep} onChange={e => setForm(f => ({...f, cep:e.target.value}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
-              <button onClick={handleSave} disabled={saving} style={{ padding:"14px 0", borderRadius:14, border:"none", background:`linear-gradient(135deg,${B},#0055d4)`, color:"white", fontWeight:900, fontSize:14, cursor:"pointer" }}>
+              <button onClick={() => editingAddr ? handleUpdate() : handleSave()} disabled={saving} style={{ padding:"14px 0", borderRadius:14, border:"none", background:`linear-gradient(135deg,${B},#0055d4)`, color:"white", fontWeight:900, fontSize:14, cursor:"pointer" }}>
                 {saving ? "Salvando..." : "Salvar Endereço"}
               </button>
             </div>
@@ -2756,7 +2773,7 @@ function CardSection({ showToast }) {
           </p>
         )}
         {cards.map((card, i) => (
-          <div key={card.id} style={{ display:"flex", alignItems:"center", gap:13, padding:"13px 16px", borderBottom:"1px solid #F8F8F8" }}>
+          <div key={card.id} style={{ display:"flex", alignItems:"center", gap:13, padding:"13px 16px", borderBottom:"1px solid #F8F8F8", cursor:"pointer" }} onClick={() => { setEditingAddr(addr); setForm({ label:addr.label, street:addr.street, city:addr.city||"", cep:addr.cep||"" }); setShowModal(true); }}>
             <div style={{ width:36, height:36, borderRadius:11, background: brandBg[card.brand] || "#E5E7EB", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
               <span style={{ fontSize:9, fontWeight:900, color: brandColor[card.brand] || "#1a1a2e" }}>{card.brand}</span>
             </div>
@@ -2792,7 +2809,7 @@ function CardSection({ showToast }) {
                   <option value="debit">Débito</option>
                 </select>
               </div>
-              <button onClick={handleSave} disabled={saving} style={{ padding:"14px 0", borderRadius:14, border:"none", background:`linear-gradient(135deg,${B},#0055d4)`, color:"white", fontWeight:900, fontSize:14, cursor:"pointer" }}>
+              <button onClick={() => editingAddr ? handleUpdate() : handleSave()} disabled={saving} style={{ padding:"14px 0", borderRadius:14, border:"none", background:`linear-gradient(135deg,${B},#0055d4)`, color:"white", fontWeight:900, fontSize:14, cursor:"pointer" }}>
                 {saving ? "Salvando..." : "Salvar Cartão"}
               </button>
             </div>
@@ -3257,7 +3274,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, showRankingGlob
               { emoji:"👷",   name:"Pedro Mestre",     cat:"Pedreiro",  rating:4.8 },
               { emoji:"🎨",   name:"Ana Pintora",      cat:"Pintora",   rating:5.0 },
             ].map((fav, i) => (
-              <div key={i} style={{ display:"flex", alignItems:"center", gap:13, padding:"13px 16px", borderBottom:"1px solid #F8F8F8" }}>
+              <div key={i} style={{ display:"flex", alignItems:"center", gap:13, padding:"13px 16px", borderBottom:"1px solid #F8F8F8", cursor:"pointer" }} onClick={() => { setEditingAddr(addr); setForm({ label:addr.label, street:addr.street, city:addr.city||"", cep:addr.cep||"" }); setShowModal(true); }}>
                 <div style={{ width:40, height:40, borderRadius:12, background:"#E8F4FF", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>{fav.emoji}</div>
                 <div style={{ flex:1 }}>
                   <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e", marginBottom:2 }}>{fav.name}</p>
