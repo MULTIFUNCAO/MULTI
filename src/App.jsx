@@ -2165,9 +2165,6 @@ function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
         <button onClick={() => { const w=window.open("","_blank"); w.document.write("<html><head><meta charset=utf-8><title>Relatorio Multi</title><style>body{font-family:Arial;max-width:600px;margin:40px auto;padding:20px}.valor{color:#22c55e;font-weight:900}.item{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #eee}.total{background:#007BFF;color:white;padding:15px;border-radius:10px;display:flex;justify-content:space-between;margin-top:20px}@media print{button{display:none}}</style></head><body><h1 style=color:#007BFF>Multi - Relatorio Financeiro</h1><p>" + new Date().toLocaleDateString("pt-BR",{month:"long",year:"numeric"}) + "</p><h3>Servicos Realizados</h3><div class=item><span>Pintura do quarto</span><span class=valor>R$ 320,00</span></div><div class=item><span>Reforma calcada</span><span class=valor>R$ 600,00</span></div><div class=item><span>Instalacao eletrica</span><span class=valor>R$ 280,00</span></div><div class=item><span>Reparo de encanacao</span><span class=valor>R$ 150,00</span></div><div class=total><span>TOTAL DO MES</span><span>R$ 1.240,00</span></div><br><button onclick=window.print() style=background:#007BFF;color:white;border:none;padding:12px 28px;border-radius:8px;font-size:16px;cursor:pointer>Imprimir / Salvar PDF</button></body></html>"); w.document.close(); }} style={{ padding:"14px 0", borderRadius:16, border:"1.5px solid ${B}", background:"white", color:B, fontWeight:900, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
           <TrendingUp size={17} /> Relatório
         </button>
-          <TrendingUp size={17} /> Relatório
-        </button>
-      </div>
 
       {/* ── PENDING SERVICES ── */}
       {PENDING_SERVICES.length > 0 && (
