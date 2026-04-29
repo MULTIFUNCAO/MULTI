@@ -2618,6 +2618,7 @@ function AddressSection({ showToast }) {
   const [showModal,   setShowModal]   = useState(false);
   const [saving,      setSaving]      = useState(false);
   const [form,        setForm]        = useState({ label:"", street:"", city:"", cep:"" });
+  const [editingAddr, setEditingAddr] = useState(null);
   const phone = safeGetUser().email || safeGetUser().whatsapp || "";
 
   useEffect(() => {
