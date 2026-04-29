@@ -4936,7 +4936,7 @@ function GuestMural({ onSignup, allDocsVerified }) {
 }
 
 /* ───────────────────────── PROFESSIONAL HOME ────────────────────────────────── */
-function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs }) {
+function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders }) {
   const [online,       setOnline]       = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
   const [showDocBlock, setShowDocBlock] = useState(false); // pop-up modal
@@ -5005,7 +5005,7 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
               { label:"Servicos feitos", val:"47",       color:"white"    },
               { label:"Avaliacao",       val:"4.8 estrelas",  color:"#F9A825"  },
             ].map((s, i) => (
-              <div key={i} style={{ flex:1, background:"rgba(255,255,255,.08)", borderRadius:12, padding:"9px 10px" }}>
+              <div key={i} onClick={i === 1 ? () => onViewService(&& setScreen("orders")) : undefined} style={{ flex:1, background:"rgba(255,255,255,.08)", borderRadius:12, padding:"9px 10px", cursor: i === 1 ? "pointer" : "default" }}>
                 <p style={{ fontSize:11, color:"rgba(255,255,255,.45)", fontWeight:700, margin:0, lineHeight:1.3 }}>{s.label}</p>
                 <p style={{ fontSize:17, fontWeight:900, color:s.color, margin:"3px 0 0" }}>{s.val}</p>
               </div>
