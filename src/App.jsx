@@ -2800,9 +2800,9 @@ function CardSection({ showToast }) {
             <div style={{ width:40, height:4, background:"#E5E7EB", borderRadius:99, margin:"0 auto 20px" }} />
             <h3 style={{ fontSize:17, fontWeight:900, color:"#1a1a2e", margin:"0 0 20px" }}>Detalhes do Cartão</h3>
             <div style={{ background:"linear-gradient(135deg,#1a1a2e,#2d2d44)", borderRadius:16, padding:"20px", marginBottom:20 }}>
-              <p style={{ fontSize:12, color:"rgba(255,255,255,.5)", margin:"0 0 16px" }}>{selectedCard.brand} · {selectedCard.type === "credit" ? "Crédito" : "Débito"}</p>
-              <p style={{ fontSize:22, fontWeight:900, color:"white", letterSpacing:3, margin:"0 0 16px", fontFamily:"monospace" }}>•••• •••• •••• {selectedCard.last4}</p>
-              <p style={{ fontSize:13, color:"rgba(255,255,255,.7)", margin:0 }}>{selectedCard.label}</p>
+              <p style={{ fontSize:12, color:"rgba(255,255,255,.5)", margin:"0 0 16px" }}>{selectedCard.bandeira || selectedCard.brand || "Cartão"} · {(selectedCard.tipo || selectedCard.type) === "credit" ? "Crédito" : "Débito"}</p>
+              <p style={{ fontSize:22, fontWeight:900, color:"white", letterSpacing:3, margin:"0 0 16px", fontFamily:"monospace" }}>•••• •••• •••• {selectedCard.last4 || selectedCard.numero?.slice(-4) || "••••"}</p>
+              <p style={{ fontSize:13, color:"rgba(255,255,255,.7)", margin:0 }}>{selectedCard.label || selectedCard.nome || ""}</p>
             </div>
             <button onClick={() => { handleDelete(selectedCard.id); setSelectedCard(null); }} style={{ width:"100%", padding:"13px 0", borderRadius:12, border:"1.5px solid #FECACA", background:"#FFF5F5", color:"#DC2626", fontWeight:800, fontSize:13, cursor:"pointer" }}>Remover Cartão</button>
             <button onClick={() => setSelectedCard(null)} style={{ width:"100%", marginTop:10, padding:"13px 0", borderRadius:12, border:"1.5px solid #E5E7EB", background:"white", color:"#888", fontWeight:800, fontSize:13, cursor:"pointer" }}>Fechar</button>
