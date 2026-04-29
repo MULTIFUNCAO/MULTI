@@ -6077,6 +6077,7 @@ export default function App() {
     }
     if (screen === "service" && selected) return <ServiceDetailPro service={selected} onBack={() => setScreen("home")} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onOpenPinEntry={() => setScreen("pinjob")} />;
     if (screen === "pinjob"  && selected) return <ServiceDetailPinEntry service={selected} onBack={() => setScreen("service")} onStatusChange={(id, ns) => setMyServices(s => s.map(x => x.id === id ? { ...x, status:ns } : x))} showToast={showToast} />;
+    if (screen === "orders") return <MyServicesScreen initialTab="done" myServices={myServices} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} isPro={isPro} />;
     // Pro home — shows professional-specific banner + filters + feed
     return (
       <ProfessionalHome
