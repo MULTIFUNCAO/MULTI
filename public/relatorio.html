@@ -8,9 +8,20 @@ body{font-family:Arial,sans-serif;max-width:600px;margin:40px auto;padding:20px;
 h1{color:#007BFF;border-bottom:3px solid #007BFF;padding-bottom:10px}
 .item{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #eee}
 .valor{font-weight:900;color:#22c55e}
-.total{background:#007BFF;color:white;padding:16px;border-radius:12px;display:f
-
-ls public/relatorio.html
-
-
-
+.total{background:#007BFF;color:white;padding:16px;border-radius:12px;display:flex;justify-content:space-between;margin-top:20px;font-weight:900;font-size:18px}
+.btn{background:#007BFF;color:white;border:none;padding:14px 32px;border-radius:10px;font-size:16px;cursor:pointer;margin-top:24px;width:100%}
+@media print{.btn{display:none}}
+</style>
+</head>
+<body>
+<h1>Multi - Relatorio Financeiro</h1>
+<p style="color:#888">Periodo: Abril / 2026</p>
+<h3>Servicos Realizados</h3>
+<div class="item"><span>Pintura do quarto</span><span class="valor">R$ 320,00</span></div>
+<div class="item"><span>Reforma calcada</span><span class="valor">R$ 600,00</span></div>
+<div class="item"><span>Instalacao eletrica</span><span class="valor">R$ 280,00</span></div>
+<div class="item"><span>Reparo de encanacao</span><span class="valor">R$ 150,00</span></div>
+<div class="total"><span>TOTAL DO MES</span><span>R$ 1.240,00</span></div>
+<button class="btn" onclick="window.print()">Imprimir / Salvar como PDF</button>
+</body>
+</html>
