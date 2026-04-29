@@ -2692,7 +2692,7 @@ function AddressSection({ showToast }) {
             </button>
           </div>
         ))}
-        <button onClick={() => setShowModal(true)} style={{ width:"100%", padding:"12px 0", border:"none", background:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:7, color:B, fontWeight:800, fontSize:13, cursor:"pointer" }}>
+        <button onClick={() => setSelectedCard(card)} style={{ width:"100%", padding:"12px 0", border:"none", background:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:7, color:B, fontWeight:800, fontSize:13, cursor:"pointer" }}>
           <Plus size={14} /> Adicionar endereço
         </button>
       </div>
@@ -2722,6 +2722,7 @@ function AddressSection({ showToast }) {
 /* ───────────────────────── CARTÕES DO CLIENTE ───────────────────────────────── */
 function CardSection({ showToast }) {
   const [cards,     setCards]     = useState([]);
+  const [selectedCard, setSelectedCard] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [saving,    setSaving]    = useState(false);
   const [form,      setForm]      = useState({ label:"", number:"", brand:"Visa", type:"credit" });
@@ -2774,7 +2775,7 @@ function CardSection({ showToast }) {
           </p>
         )}
         {cards.map((card, i) => (
-          <div key={card.id} style={{ display:"flex", alignItems:"center", gap:13, padding:"13px 16px", borderBottom:"1px solid #F8F8F8", cursor:"pointer" }} onClick={() => setShowModal(true)}>
+          <div key={card.id} style={{ display:"flex", alignItems:"center", gap:13, padding:"13px 16px", borderBottom:"1px solid #F8F8F8", cursor:"pointer" }} onClick={() => setSelectedCard(card)}>
             <div style={{ width:36, height:36, borderRadius:11, background: brandBg[card.brand] || "#E5E7EB", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
               <span style={{ fontSize:9, fontWeight:900, color: brandColor[card.brand] || "#1a1a2e" }}>{card.brand}</span>
             </div>
@@ -2787,12 +2788,27 @@ function CardSection({ showToast }) {
             </button>
           </div>
         ))}
-        <button onClick={() => setShowModal(true)} style={{ width:"100%", padding:"12px 0", border:"none", background:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:7, color:B, fontWeight:800, fontSize:13, cursor:"pointer" }}>
+        <button onClick={() => setSelectedCard(card)} style={{ width:"100%", padding:"12px 0", border:"none", background:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:7, color:B, fontWeight:800, fontSize:13, cursor:"pointer" }}>
           <Plus size={14} /> Adicionar cartão
         </button>
       </div>
 
       {/* Modal */}
+      {selectedCard && (
+        <div onClick={() => setSelectedCard(null)} style={{ position:"fixed", inset:0, zIndex:600, background:"rgba(0,0,0,.5)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+          <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:440, background:"white", borderRadius:"24px 24px 0 0", padding:"24px 20px 40px" }}>
+            <div style={{ width:40, height:4, background:"#E5E7EB", borderRadius:99, margin:"0 auto 20px" }} />
+            <h3 style={{ fontSize:17, fontWeight:900, color:"#1a1a2e", margin:"0 0 20px" }}>Detalhes do Cartão</h3>
+            <div style={{ background:"linear-gradient(135deg,#1a1a2e,#2d2d44)", borderRadius:16, padding:"20px", marginBottom:20 }}>
+              <p style={{ fontSize:12, color:"rgba(255,255,255,.5)", margin:"0 0 16px" }}>{selectedCard.brand} · {selectedCard.type === "credit" ? "Crédito" : "Débito"}</p>
+              <p style={{ fontSize:22, fontWeight:900, color:"white", letterSpacing:3, margin:"0 0 16px", fontFamily:"monospace" }}>•••• •••• •••• {selectedCard.last4}</p>
+              <p style={{ fontSize:13, color:"rgba(255,255,255,.7)", margin:0 }}>{selectedCard.label}</p>
+            </div>
+            <button onClick={() => { handleDelete(selectedCard.id); setSelectedCard(null); }} style={{ width:"100%", padding:"13px 0", borderRadius:12, border:"1.5px solid #FECACA", background:"#FFF5F5", color:"#DC2626", fontWeight:800, fontSize:13, cursor:"pointer" }}>Remover Cartão</button>
+            <button onClick={() => setSelectedCard(null)} style={{ width:"100%", marginTop:10, padding:"13px 0", borderRadius:12, border:"1.5px solid #E5E7EB", background:"white", color:"#888", fontWeight:800, fontSize:13, cursor:"pointer" }}>Fechar</button>
+          </div>
+        </div>
+      )}
       {showModal && (
         <div onClick={() => setShowModal(false)} style={{ position:"fixed", inset:0, zIndex:600, background:"rgba(0,0,0,.5)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
           <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:440, background:"white", borderRadius:"24px 24px 0 0", padding:"24px 20px 40px" }}>
