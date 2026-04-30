@@ -1838,7 +1838,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
               </div>
 
               {/* Simulate payment confirmed (demo button) */}
-              <button onClick={handleConfirmPayment} style={{ padding:"14px 0", borderRadius:16, border:"none", cursor:"pointer", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", color:"white", fontWeight:900, fontSize:14, boxShadow:"0 5px 18px rgba(124,58,237,.4)", display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
+              <button onClick={handleConfirmDeal} style={{ padding:"14px 0", borderRadius:16, border:"none", cursor:"pointer", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", color:"white", fontWeight:900, fontSize:14, boxShadow:"0 5px 18px rgba(124,58,237,.4)", display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
                 <CheckCircle2 size={18} /> Já paguei — Ativar PRO
               </button>
 
