@@ -2045,7 +2045,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
               <select style={{ padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", color:"#555", background:"white" }}>
                 {[1,2,3,4,6,8,10,12].map(n => <option key={n} value={n}>{n}x de R$ {(parseFloat((chosen?.price||"29,90").replace(",",".")) / n).toFixed(2).replace(".",",")} {n===1?"sem juros":n<=6?"sem juros":"com juros"}</option>)}
               </select>
-              <button style={{ padding:"13px 0", borderRadius:12, border:"none", background:`linear-gradient(135deg,#1a1a2e,#2d2d44)`, color:"white", fontWeight:900, fontSize:14, cursor:"pointer" }}>
+              <button style={{ padding:"13px 0", borderRadius:12, border:"none", {background:`linear-gradient(135deg,#1a1a2e,#2d2d44)`, color:"white", fontWeight:900, fontSize:14, cursor:"pointer" }} onClick={handleCardPayment} disabled={saving}}>
                 Confirmar Pagamento
               </button>
             </div>
@@ -2727,6 +2727,22 @@ function CardSection({ showToast }) {
   const [saving,    setSaving]    = useState(false);
   const [form,      setForm]      = useState({ label:"", number:"", expiry:"", cvv:"", brand:"Visa", type:"credit" });
   const phone = safeGetUser().email || safeGetUser().whatsapp || "";
+  const handleCardPayment = async () => {
+    if (!form.number || !form.expiry || !form.cvv || !form.label) { alert("Preencha todos os campos do cartão"); return; }
+    setSaving(true);
+    try {
+      const user = safeGetUser();
+      const res = await fetch(`${API}/cobrar-cartao`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: user.email, name: user.name || form.label, phone: user.whatsapp || "", plan: chosen?.label || "monthly", cardNumber: form.number.replace(/s/g,""), cardHolder: form.label, expiryMonth: form.expiry.split("/")[0], expiryYear: "20"+form.expiry.split("/")[1], cvv: form.cvv, installments: 1 })
+      });
+      const data = await res.json();
+      if (res.ok) { showToast("✅ Pagamento aprovado! PRO ativado!"); onUpgraded && onUpgraded(); }
+      else { alert(data.error || "Erro no pagamento"); }
+    } catch(e) { alert("Erro de conexão"); }
+    setSaving(false);
+  };
 
   useEffect(() => {
     
