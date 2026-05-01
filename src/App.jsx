@@ -608,10 +608,13 @@ const CAT_GRID = [
 ];
 
 const MOCK_PROS = [
-  { id:1, name:"Ricardo Alves",  cat:"Encanador",  rating:5.0, jobs:127, value:180, verified:true,  avatar:"👨‍🔧", tag:"Mais rápido"  },
-  { id:2, name:"Miguel Santos",  cat:"Encanador",  rating:4.9, jobs:89,  value:220, verified:true,  avatar:"👷",   tag:"Melhor avaliado" },
-  { id:3, name:"Carla Freitas",  cat:"Encanadora", rating:4.8, jobs:54,  value:160, verified:false, avatar:"👩‍🔧", tag:"Mais barato" },
-];
+  { id:1, name:"Ricardo Alves",  cat:"Encanador",  rating:5.0, jobs:127, value:180, verified:true,  avatar:"👨", tag:"Mais rápido"    },
+  { id:2, name:"Miguel Santos",  cat:"Encanador",  rating:4.9, jobs:89,  value:220, verified:true,  avatar:"👷", tag:"Melhor avaliado" },
+  { id:3, name:"Carla Freitas",  cat:"Encanadora", rating:4.8, jobs:54,  value:160, verified:false, avatar:"👩", tag:"Mais barato"     },
+  { id:4, name:"João Oliveira",  cat:"Encanador",  rating:4.7, jobs:203, value:190, verified:true,  avatar:"🧑", tag:"" },
+  { id:5, name:"Paula Mendes",   cat:"Encanadora", rating:4.6, jobs:41,  value:175, verified:true,  avatar:"👩", tag:"" },
+  { id:6, name:"Roberto Lima",   cat:"Encanador",  rating:4.5, jobs:88,  value:200, verified:false, avatar:"👨", tag:"" },
+  { id:7, name:"Sandra Costa",   cat:"Encanadora", rating:4.4, jobs:62,  value:155, verified:true,  avatar:"👩", tag:"" },
 
 /* ───────────────────────── RADAR SCREEN ────────────────────────────────────── */
 function RadarSearchScreen({ service, onFound }) {
