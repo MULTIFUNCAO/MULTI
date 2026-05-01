@@ -5501,7 +5501,7 @@ function AdminDashboard({ onExit }) {
       .then(r => r.json()).then(setStats).catch(console.error);
   }, []);
   if (!authed) return <AdminLogin onSuccess={() => setAuthed(true)} />;
-  const [stats, setStats] = useState(null);
+
 
 
 
