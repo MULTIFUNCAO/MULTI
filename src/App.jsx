@@ -5513,11 +5513,11 @@ function AdminDashboard({ onExit }) {
 
 
 
-  const newUsersToday   = { clients: stats?.totalClients || 0, pros: stats?.totalPros || 0 };
-  const totalRevenue    = parseFloat(stats?.receitaEstimada || 0);
-  const custodyTotal    = totalRevenue;
-  const ordersToday     = stats?.totalUsers || 0;
-  const maxBar          = totalRevenue || 1;
+
+
+
+
+
 
 
 
