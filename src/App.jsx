@@ -5241,7 +5241,7 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
                 return (
                   <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:"white", border:"1px solid #BBF7D0", borderRadius:99, padding:"5px 14px", marginBottom:16, boxShadow:"0 2px 8px rgba(34,197,94,.15)" }}>
                     <div style={{ width:52, height:6, background:"#E5E7EB", borderRadius:99, overflow:"hidden" }}>
-                      <div style={{ height:"100%", width:`${pct}%`, background:"linear-gradient(90deg,#22c55e,#16a34a)", borderRadius:99, transition:"width .5s" }} />
+                      <div style={{ height:"100%", width:""+(pct)+"%", background:"linear-gradient(90deg,#22c55e,#16a34a)", borderRadius:99, transition:"width .5s" }} />
                     </div>
                     <span style={{ fontSize:12, fontWeight:800, color:"#166534" }}>{verified}/3 verificados</span>
                   </div>
@@ -5464,7 +5464,7 @@ function AdminLogin({ onSuccess }) {
             value={pass}
             onChange={e => setPass(e.target.value)}
             onKeyDown={e => e.key === "Enter" && attempt()}
-            style={{ width:"100%", background:"#0F172A", border:`1.5px solid ${error ? "#EF4444" : "#1E293B"}`, borderRadius:14, padding:"13px 44px 13px 42px", fontSize:14, color:"white", outline:"none", fontFamily:"inherit", boxSizing:"border-box", transition:"border-color .2s" }}
+            style={{ width:"100%", background:"#0F172A", border:"1.5px solid "+(error ? "#EF4444" : "#1E293B")+"", borderRadius:14, padding:"13px 44px 13px 42px", fontSize:14, color:"white", outline:"none", fontFamily:"inherit", boxSizing:"border-box", transition:"border-color .2s" }}
           />
           <button onClick={() => setShow(v => !v)} style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", padding:0, display:"flex" }}>
             {show ? <EyeOff size={16} color="#475569" /> : <Eye size={16} color="#475569" />}
