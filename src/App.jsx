@@ -5503,9 +5503,6 @@ function AdminDashboard({ onExit }) {
   const [showReceita, setShowReceita] = useState(false);
   const [receitaList, setReceitaList] = useState([]);
   const loadReceita = async () => { const r = await fetch('https://web-production-e103b.up.railway.app/api/admin/receita',{headers:{'x-admin-key':'multi2026'}}); setReceitaList(await r.json()); setShowReceita(true); };
-  const [showReceita, setShowReceita] = useState(false);
-  const [receitaList, setReceitaList] = useState([]);
-  const loadReceita = async () => { const r = await fetch('https://web-production-e103b.up.railway.app/api/admin/receita',{headers:{'x-admin-key':'multi2026'}}); setReceitaList(await r.json()); setShowReceita(true); };
   const [pedidosList, setPedidosList] = useState([]);
   const [selectedPedido, setSelectedPedido] = useState(null);
   const loadPedidos = async () => { const r = await fetch('https://web-production-e103b.up.railway.app/api/admin/pedidos-hoje',{headers:{'x-admin-key':'multi2026'}}); setPedidosList(await r.json()); setShowPedidos(true); };
