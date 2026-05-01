@@ -2725,24 +2725,19 @@ function CardSection({ showToast }) {
   const [selectedCard, setSelectedCard] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [saving,    setSaving]    = useState(false);
-  const [form,      setForm]      = useState({ label:"", number:"", expiry:"", cvv:"", brand:"Visa", type:"credit" });
-  const phone = safeGetUser().email || safeGetUser().whatsapp || "";
   const handleCardPayment = async () => {
-    if (!form.number || !form.expiry || !form.cvv || !form.label) { alert("Preencha todos os campos do cartão"); return; }
     setSaving(true);
     try {
       const user = safeGetUser();
-      const res = await fetch(`${API}/cobrar-cartao`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: user.email, name: user.name || form.label, phone: user.whatsapp || "", plan: chosen?.label || "monthly", cardNumber: form.number.replace(/s/g,""), cardHolder: form.label, expiryMonth: form.expiry.split("/")[0], expiryYear: "20"+form.expiry.split("/")[1], cvv: form.cvv, installments: 1 })
-      });
+      const res = await fetch(API + '/cobrar-cartao', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: user.email, name: user.name || form.label, phone: user.whatsapp || '', plan: chosen?.label || 'monthly', cardNumber: form.number.replace(/s/g,''), cardHolder: form.label, expiryMonth: form.expiry.split('/')[0], expiryYear: '20'+form.expiry.split('/')[1], cvv: form.cvv, installments: 1 }) });
       const data = await res.json();
-      if (res.ok) { showToast("✅ Pagamento aprovado! PRO ativado!"); onUpgraded && onUpgraded(); }
-      else { alert(data.error || "Erro no pagamento"); }
-    } catch(e) { alert("Erro de conexão"); }
+      if (res.ok) { showToast('Pagamento aprovado! PRO ativado!'); onSubscribe && onSubscribe(); }
+      else { alert(data.error || 'Erro no pagamento'); }
+    } catch(e) { alert('Erro de conexão'); }
     setSaving(false);
   };
+  const [form,      setForm]      = useState({ label:"", number:"", expiry:"", cvv:"", brand:"Visa", type:"credit" });
+  const phone = safeGetUser().email || safeGetUser().whatsapp || "";
 
   useEffect(() => {
     
