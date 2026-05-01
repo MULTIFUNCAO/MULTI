@@ -5543,8 +5543,8 @@ function AdminDashboard({ onExit }) {
     </div>
   );
 
-  const KPI = ({ icon:Icon, iconColor, iconBg, label, value, sub, trend }) => (
-    <Card>
+  const KPI = ({ icon:Icon, iconColor, iconBg, label, value, sub, trend, onClick }) => (
+    <Card onClick={onClick} style={{cursor:onClick?"pointer":"default"}}>
       <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:12 }}>
         <div style={{ width:40, height:40, borderRadius:12, background:iconBg, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
           <Icon size={20} color={iconColor} />
