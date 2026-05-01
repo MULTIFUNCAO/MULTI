@@ -5481,7 +5481,7 @@ function AdminLogin({ onSuccess }) {
 }
 
 /* ── Main Admin Dashboard ── */
-return null; } // admin primeira metade comentada
+return (<div/>); } // admin quarto 1 comentado
 //  const [authed,      setAuthed]      = useState(false);
 //  const [verifs,      setVerifs]      = useState(PENDING_PROS);
 //  const [activeRange, setActiveRange] = useState("7d");
@@ -5596,120 +5596,120 @@ return null; } // admin primeira metade comentada
 //        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
 //          <span style={{ fontSize:11, color:'#22c55e', fontWeight:700, display:'flex', alignItems:'center', gap:4 }}>
 //            <span style={{ width:7, height:7, borderRadius:'50%', background:'#22c55e', display:'inline-block' }} /> Ao vivo
-//          </span>
-//          <button onClick={onExit} style={{ background:'#e2e8f0', border:'none', color:'#64748B', fontSize:12, fontWeight:700, padding:'6px 14px', borderRadius:99, cursor:'pointer' }}>
-//            Sair
-//          </button>
-//        </div>
-//      </div>
-//
-//      <div style={{ padding:'20px 16px', display:'flex', flexDirection:'column', gap:16 }}>
-//
-//        {/* ── DATE RANGE ── */}
-//        <div style={{ display:'flex', gap:8 }}>
-//          {["hoje","7d","14d"].map(r => (
-//            <button key={r} onClick={() => setActiveRange(r)} style={{ padding:'6px 16px', borderRadius:99, fontSize:11, fontWeight:800, border:'none', cursor:'pointer', background: activeRange === r ? ACC : D2, color: activeRange === r ? "white" : T2, textTransform:'uppercase', letterSpacing:.5 }}>
-//              {r === "hoje" ? "Hoje" : r === "7d" ? "7 dias" : "14 dias"}
-//            </button>
-//          ))}
-//        </div>
-//
-//        {/* ── KPI GRID ── */}
-//        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-//          <KPI icon={DollarSign} iconColor="#22c55e" iconBg="#14532d55" label="Receita Total" onClick={loadReceita} value={`R$ ${(totalRevenue/1000).toFixed(1)}k`} sub="Assinaturas + taxas" trend="+24%" />
-//          <KPI icon={Crown}      iconColor="#F9A825" iconBg="#78350f55" label="Assinaturas PRO" onClick={()=>{fetch("https://web-production-e103b.up.railway.app/api/admin/assinantes-pro",{headers:{"x-admin-key":"multi2026"}}).then(r=>r.json()).then(d=>{setProsList(d);setShowProsList(true);})}} value={activeSubsCount} sub={`R$ ${(activeSubsCount * 29.9).toFixed(0)} MRR`} trend="+8%" />
-//          <KPI icon={Lock}       iconColor="#6366F1" iconBg="#312e8155" label="Em Custódia" value={`R$ ${(custodyTotal/1000).toFixed(1)}k`} sub="Serviços em andamento" />
-//          <KPI icon={Activity}   iconColor="#f43f5e" iconBg="#881337aa" label="Pedidos Hoje" onClick={loadPedidos} value={ordersToday} sub="Últimas 24h" trend="+31%" />
-//        </div>
-//
-//      {showClientes && (
-//        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={()=>setShowClientes(false)}>
-//          <div style={{background:'#0F172A',borderRadius:16,padding:24,width:'90%',maxWidth:440,maxHeight:'85vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
-//            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-//              <p style={{color:'white',fontWeight:900,fontSize:16,margin:0}}>Clientes ({clientesList.length})</p>
-//              <button onClick={()=>setShowClientes(false)} style={{background:'none',border:'none',color:'#aaa',fontSize:20,cursor:'pointer'}}>X</button>
-//            </div>
-//            {clientesList.length===0 && <p style={{color:'#64748B',textAlign:'center',padding:20}}>Nenhum cliente cadastrado</p>}
-//            {clientesList.map((u,i)=>(
-//              <div key={i} style={{background:'#1E293B',borderRadius:12,padding:'12px 14px',marginBottom:8,border:'1px solid #334155'}}>
-//                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-//                  <p style={{color:'white',fontWeight:700,fontSize:14,margin:0}}>{u.name||'Sem nome'}</p>
-//                  <span style={{fontSize:11,color:'#3B82F6',fontWeight:700}}>Cliente</span>
-//                </div>
-//                <p style={{color:'#94A3B8',fontSize:12,margin:'4px 0 0'}}>{u.email}</p>
-//                <p style={{color:'#64748B',fontSize:11,margin:'2px 0 0'}}>{u.whatsapp||''} {u.city?'- '+u.city:''}</p>
-//                <p style={{color:'#475569',fontSize:10,margin:'2px 0 0'}}>Desde {u.created_at?new Date(u.created_at).toLocaleDateString():'?'}</p>
-//              </div>
-//            ))}
-//          </div>
-//        </div>
-//      )}
-//          </div>
-//        </div>
-//      )}
-//      {showReceita && (
-//        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={()=>setShowReceita(false)}>
-//          <div style={{background:'#0F172A',borderRadius:16,padding:24,width:'90%',maxWidth:440,maxHeight:'85vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
-//            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-//              <p style={{color:'white',fontWeight:900,fontSize:16,margin:0}}>Receita Total</p>
-//              <button onClick={()=>setShowReceita(false)} style={{background:'none',border:'none',color:'#aaa',fontSize:20,cursor:'pointer'}}>X</button>
-//            </div>
-//            {receitaList.length===0 && <p style={{color:'#64748B',textAlign:'center',padding:20}}>Nenhuma transacao encontrada</p>}
-//            {receitaList.map((t,i)=>(
-//              <div key={i} style={{background:'#1E293B',borderRadius:12,padding:'12px 14px',marginBottom:8,border:'1px solid #334155'}}>
-//                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-//                  <p style={{color:'white',fontWeight:700,fontSize:14,margin:0}}>{t.client_name||t.user_id||'Cliente'}</p>
-//                  <span style={{fontSize:14,color:'#22C55E',fontWeight:800}}>R$ {t.budget||t.price||'0'}</span>
-//                </div>
-//                <p style={{color:'#94A3B8',fontSize:12,margin:'4px 0 0'}}>{t.category||t.service_type||'Servico'}</p>
-//                <p style={{color:'#64748B',fontSize:11,margin:'2px 0 0'}}>{new Date(t.created_at).toLocaleDateString()}</p>
-//              </div>
-//            ))}
-//            <div style={{background:'#0F3460',borderRadius:12,padding:16,marginTop:8}}>
-//              <p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>TOTAL GERAL</p>
-//              <p style={{color:'#22C55E',fontWeight:900,fontSize:20,margin:0}}>R$ {receitaList.reduce((a,t)=>a+parseFloat(t.budget||t.price||0),0).toLocaleString()}</p>
-//            </div>
-//          </div>
-//        </div>
-//      )}
-//      {showReceita && (
-//        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={()=>setShowReceita(false)}>
-//          <div style={{background:'#0F172A',borderRadius:16,padding:24,width:'90%',maxWidth:440,maxHeight:'85vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
-//            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-//              <p style={{color:'white',fontWeight:900,fontSize:16,margin:0}}>Receita Total</p>
-//              <button onClick={()=>setShowReceita(false)} style={{background:'none',border:'none',color:'#aaa',fontSize:20,cursor:'pointer'}}>X</button>
-//            </div>
-//            {receitaList.length===0 && <p style={{color:'#64748B',textAlign:'center',padding:20}}>Nenhuma transacao encontrada</p>}
-//            {receitaList.map((t,i)=>(
-//              <div key={i} style={{background:'#1E293B',borderRadius:12,padding:'12px 14px',marginBottom:8,border:'1px solid #334155'}}>
-//                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-//                  <p style={{color:'white',fontWeight:700,fontSize:14,margin:0}}>{t.client_name||t.user_id||'Cliente'}</p>
-//                  <span style={{fontSize:14,color:'#22C55E',fontWeight:800}}>R$ {t.budget||t.price||'0'}</span>
-//                </div>
-//                <p style={{color:'#94A3B8',fontSize:12,margin:'4px 0 0'}}>{t.category||t.service_type||'Servico'}</p>
-//                <p style={{color:'#64748B',fontSize:11,margin:'2px 0 0'}}>{new Date(t.created_at).toLocaleDateString()}</p>
-//              </div>
-//            ))}
-//            <div style={{background:'#0F3460',borderRadius:12,padding:16,marginTop:8}}>
-//              <p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>TOTAL GERAL</p>
-//              <p style={{color:'#22C55E',fontWeight:900,fontSize:20,margin:0}}>R$ {receitaList.reduce((a,t)=>a+parseFloat(t.budget||t.price||0),0).toLocaleString()}</p>
-//            </div>
-//          </div>
-//        </div>
-//      )}
-//      {showPedidos && (
-//        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={()=>setShowPedidos(false)}>
-//          <div style={{background:'#0F172A',borderRadius:16,padding:24,width:'90%',maxWidth:440,maxHeight:'85vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
-//            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-//              <p style={{color:'white',fontWeight:900,fontSize:16,margin:0}}>Pedidos Hoje ({pedidosList.length})</p>
-//              <button onClick={()=>setShowPedidos(false)} style={{background:'none',border:'none',color:'#aaa',fontSize:20,cursor:'pointer'}}>X</button>
-//            </div>
-//            {pedidosList.length===0 && <p style={{color:'#64748B',textAlign:'center',padding:20}}>Nenhum pedido hoje ainda</p>}
-//            {pedidosList.map((p,i)=>(
-//              <div key={i} onClick={()=>setSelectedPedido(p)} style={{background:'#1E293B',borderRadius:12,padding:'12px 14px',marginBottom:8,cursor:'pointer',border:'1px solid #334155'}}>
-//                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-//                  <p style={{color:'white',fontWeight:700,fontSize:14,margin:0}}>{p.category||p.service_type||'Servico'}</p>
-//                  <span style={{fontSize:11,color:p.status==='completed'?'#22C55E':p.status==='in_progress'?'#F59E0B':'#94A3B8',fontWeight:700}}>{p.status||'pendente'}</span>
+          </span>
+          <button onClick={onExit} style={{ background:'#e2e8f0', border:'none', color:'#64748B', fontSize:12, fontWeight:700, padding:'6px 14px', borderRadius:99, cursor:'pointer' }}>
+            Sair
+          </button>
+        </div>
+      </div>
+
+      <div style={{ padding:'20px 16px', display:'flex', flexDirection:'column', gap:16 }}>
+
+        {/* ── DATE RANGE ── */}
+        <div style={{ display:'flex', gap:8 }}>
+          {["hoje","7d","14d"].map(r => (
+            <button key={r} onClick={() => setActiveRange(r)} style={{ padding:'6px 16px', borderRadius:99, fontSize:11, fontWeight:800, border:'none', cursor:'pointer', background: activeRange === r ? ACC : D2, color: activeRange === r ? "white" : T2, textTransform:'uppercase', letterSpacing:.5 }}>
+              {r === "hoje" ? "Hoje" : r === "7d" ? "7 dias" : "14 dias"}
+            </button>
+          ))}
+        </div>
+
+        {/* ── KPI GRID ── */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+          <KPI icon={DollarSign} iconColor="#22c55e" iconBg="#14532d55" label="Receita Total" onClick={loadReceita} value={`R$ ${(totalRevenue/1000).toFixed(1)}k`} sub="Assinaturas + taxas" trend="+24%" />
+          <KPI icon={Crown}      iconColor="#F9A825" iconBg="#78350f55" label="Assinaturas PRO" onClick={()=>{fetch("https://web-production-e103b.up.railway.app/api/admin/assinantes-pro",{headers:{"x-admin-key":"multi2026"}}).then(r=>r.json()).then(d=>{setProsList(d);setShowProsList(true);})}} value={activeSubsCount} sub={`R$ ${(activeSubsCount * 29.9).toFixed(0)} MRR`} trend="+8%" />
+          <KPI icon={Lock}       iconColor="#6366F1" iconBg="#312e8155" label="Em Custódia" value={`R$ ${(custodyTotal/1000).toFixed(1)}k`} sub="Serviços em andamento" />
+          <KPI icon={Activity}   iconColor="#f43f5e" iconBg="#881337aa" label="Pedidos Hoje" onClick={loadPedidos} value={ordersToday} sub="Últimas 24h" trend="+31%" />
+        </div>
+
+      {showClientes && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={()=>setShowClientes(false)}>
+          <div style={{background:'#0F172A',borderRadius:16,padding:24,width:'90%',maxWidth:440,maxHeight:'85vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+              <p style={{color:'white',fontWeight:900,fontSize:16,margin:0}}>Clientes ({clientesList.length})</p>
+              <button onClick={()=>setShowClientes(false)} style={{background:'none',border:'none',color:'#aaa',fontSize:20,cursor:'pointer'}}>X</button>
+            </div>
+            {clientesList.length===0 && <p style={{color:'#64748B',textAlign:'center',padding:20}}>Nenhum cliente cadastrado</p>}
+            {clientesList.map((u,i)=>(
+              <div key={i} style={{background:'#1E293B',borderRadius:12,padding:'12px 14px',marginBottom:8,border:'1px solid #334155'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <p style={{color:'white',fontWeight:700,fontSize:14,margin:0}}>{u.name||'Sem nome'}</p>
+                  <span style={{fontSize:11,color:'#3B82F6',fontWeight:700}}>Cliente</span>
+                </div>
+                <p style={{color:'#94A3B8',fontSize:12,margin:'4px 0 0'}}>{u.email}</p>
+                <p style={{color:'#64748B',fontSize:11,margin:'2px 0 0'}}>{u.whatsapp||''} {u.city?'- '+u.city:''}</p>
+                <p style={{color:'#475569',fontSize:10,margin:'2px 0 0'}}>Desde {u.created_at?new Date(u.created_at).toLocaleDateString():'?'}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+          </div>
+        </div>
+      )}
+      {showReceita && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={()=>setShowReceita(false)}>
+          <div style={{background:'#0F172A',borderRadius:16,padding:24,width:'90%',maxWidth:440,maxHeight:'85vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+              <p style={{color:'white',fontWeight:900,fontSize:16,margin:0}}>Receita Total</p>
+              <button onClick={()=>setShowReceita(false)} style={{background:'none',border:'none',color:'#aaa',fontSize:20,cursor:'pointer'}}>X</button>
+            </div>
+            {receitaList.length===0 && <p style={{color:'#64748B',textAlign:'center',padding:20}}>Nenhuma transacao encontrada</p>}
+            {receitaList.map((t,i)=>(
+              <div key={i} style={{background:'#1E293B',borderRadius:12,padding:'12px 14px',marginBottom:8,border:'1px solid #334155'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <p style={{color:'white',fontWeight:700,fontSize:14,margin:0}}>{t.client_name||t.user_id||'Cliente'}</p>
+                  <span style={{fontSize:14,color:'#22C55E',fontWeight:800}}>R$ {t.budget||t.price||'0'}</span>
+                </div>
+                <p style={{color:'#94A3B8',fontSize:12,margin:'4px 0 0'}}>{t.category||t.service_type||'Servico'}</p>
+                <p style={{color:'#64748B',fontSize:11,margin:'2px 0 0'}}>{new Date(t.created_at).toLocaleDateString()}</p>
+              </div>
+            ))}
+            <div style={{background:'#0F3460',borderRadius:12,padding:16,marginTop:8}}>
+              <p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>TOTAL GERAL</p>
+              <p style={{color:'#22C55E',fontWeight:900,fontSize:20,margin:0}}>R$ {receitaList.reduce((a,t)=>a+parseFloat(t.budget||t.price||0),0).toLocaleString()}</p>
+            </div>
+          </div>
+        </div>
+      )}
+      {showReceita && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={()=>setShowReceita(false)}>
+          <div style={{background:'#0F172A',borderRadius:16,padding:24,width:'90%',maxWidth:440,maxHeight:'85vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+              <p style={{color:'white',fontWeight:900,fontSize:16,margin:0}}>Receita Total</p>
+              <button onClick={()=>setShowReceita(false)} style={{background:'none',border:'none',color:'#aaa',fontSize:20,cursor:'pointer'}}>X</button>
+            </div>
+            {receitaList.length===0 && <p style={{color:'#64748B',textAlign:'center',padding:20}}>Nenhuma transacao encontrada</p>}
+            {receitaList.map((t,i)=>(
+              <div key={i} style={{background:'#1E293B',borderRadius:12,padding:'12px 14px',marginBottom:8,border:'1px solid #334155'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <p style={{color:'white',fontWeight:700,fontSize:14,margin:0}}>{t.client_name||t.user_id||'Cliente'}</p>
+                  <span style={{fontSize:14,color:'#22C55E',fontWeight:800}}>R$ {t.budget||t.price||'0'}</span>
+                </div>
+                <p style={{color:'#94A3B8',fontSize:12,margin:'4px 0 0'}}>{t.category||t.service_type||'Servico'}</p>
+                <p style={{color:'#64748B',fontSize:11,margin:'2px 0 0'}}>{new Date(t.created_at).toLocaleDateString()}</p>
+              </div>
+            ))}
+            <div style={{background:'#0F3460',borderRadius:12,padding:16,marginTop:8}}>
+              <p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>TOTAL GERAL</p>
+              <p style={{color:'#22C55E',fontWeight:900,fontSize:20,margin:0}}>R$ {receitaList.reduce((a,t)=>a+parseFloat(t.budget||t.price||0),0).toLocaleString()}</p>
+            </div>
+          </div>
+        </div>
+      )}
+      {showPedidos && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={()=>setShowPedidos(false)}>
+          <div style={{background:'#0F172A',borderRadius:16,padding:24,width:'90%',maxWidth:440,maxHeight:'85vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+              <p style={{color:'white',fontWeight:900,fontSize:16,margin:0}}>Pedidos Hoje ({pedidosList.length})</p>
+              <button onClick={()=>setShowPedidos(false)} style={{background:'none',border:'none',color:'#aaa',fontSize:20,cursor:'pointer'}}>X</button>
+            </div>
+            {pedidosList.length===0 && <p style={{color:'#64748B',textAlign:'center',padding:20}}>Nenhum pedido hoje ainda</p>}
+            {pedidosList.map((p,i)=>(
+              <div key={i} onClick={()=>setSelectedPedido(p)} style={{background:'#1E293B',borderRadius:12,padding:'12px 14px',marginBottom:8,cursor:'pointer',border:'1px solid #334155'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <p style={{color:'white',fontWeight:700,fontSize:14,margin:0}}>{p.category||p.service_type||'Servico'}</p>
+                  <span style={{fontSize:11,color:p.status==='completed'?'#22C55E':p.status==='in_progress'?'#F59E0B':'#94A3B8',fontWeight:700}}>{p.status||'pendente'}</span>
                 </div>
                 <p style={{color:'#94A3B8',fontSize:12,margin:'4px 0 0'}}>{p.client_name||p.user_id||'Cliente'}</p>
                 <p style={{color:'#64748B',fontSize:11,margin:'2px 0 0'}}>{p.city||p.location||''} - {new Date(p.created_at).toLocaleTimeString()}</p>
