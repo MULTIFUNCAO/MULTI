@@ -2045,7 +2045,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
               <select style={{ padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", color:"#555", background:"white" }}>
                 {[1,2,3,4,6,8,10,12].map(n => <option key={n} value={n}>{n}x de R$ {(parseFloat((chosen?.price||"29,90").replace(",",".")) / n).toFixed(2).replace(".",",")} {n===1?"sem juros":n<=6?"sem juros":"com juros"}</option>)}
               </select>
-              <button style={{ padding:"13px 0", borderRadius:12, border:"none", background:`linear-gradient(135deg,#1a1a2e,#2d2d44)`, color:"white", fontWeight:900, fontSize:14, cursor:"pointer" }} onClick={handleCardPayment} disabled={saving}}>
+                <button style={{ padding:"13px 0", borderRadius:12, border:"none", background:`linear-gradient(135deg,#1a1a2e,#2d2d44)`, color:"white", fontWeight:900, fontSize:14, cursor:"pointer" }} onClick={handleCardPayment} disabled={saving}>
                 Confirmar Pagamento
               </button>
             </div>
