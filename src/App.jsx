@@ -5509,7 +5509,7 @@ function AdminDashboard({ onExit }) {
   const maxBar=totalRevenue||1;
 
 
-  const maxBar          = totalRevenue || 1;
+
 
 
 
