@@ -5807,7 +5807,7 @@ const Card = ({ children, style = {}, onClick }) => (
               return (
                 <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:5 }}>
                   <p style={{ fontSize:9, fontWeight:800, color: isMax ? "#22c55e" : T2, margin:0 }}>
-                    {d.val >= 1000 ? `${(d.val/1000).toFixed(1)}k` : d.val}
+                    {d.val >= 1000 ? (d.val/1000).toFixed(1)+"k" : d.val}
                   </p>
                   <div style={{ width:"100%", height:(pct)+"%", minHeight:4, borderRadius:"6px 6px 0 0", background: isMax ? "linear-gradient(180deg,#22c55e,#16a34a)" : "linear-gradient(180deg,#6366f1,#4338ca)", transition:"height .4s" }} />
                   <p style={{ fontSize:9, color:T2, margin:0, fontWeight:700 }}>{d.day}</p>
