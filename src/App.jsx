@@ -1041,8 +1041,15 @@ function PostServiceScreen({ onBack, onSuccess }) {
               </div>
               {/* Data preferida */}
               <div style={{ marginBottom:18 }}>
-                <label style={{ display:'block', fontSize:10, fontWeight:800, color:'#aaa', textTransform:'uppercase', letterSpacing:1.2, marginBottom:6 }}>DATA E HORÁRIO PREFERIDO</label>
-                <input type='datetime-local' style={{ width:'100%', padding:'13px 14px', borderRadius:12, border:'1.5px solid #EBEBEB', fontSize:13, color:'#1a1a2e', outline:'none', boxSizing:'border-box' }} value={form.scheduledDate} onChange={e=>setForm({...form, scheduledDate:e.target.value})} />
+                <label style={{ display:'block', fontSize:10, fontWeight:800, color:'#aaa', textTransform:'uppercase', letterSpacing:1.2, marginBottom:6 }}>QUANDO VOCÊ PRECISA?</label>
+                <div style={{ display:'flex', gap:8, marginBottom:8 }}>
+                  {['Hoje','Amanhã','Esta semana','Flexível'].map(op => (
+                    <button key={op} onClick={()=>setForm({...form, scheduledDate:op})} style={{ flex:1, padding:'9px 4px', borderRadius:10, border: form.scheduledDate===op ? '2px solid #007BFF' : '1.5px solid #E5E7EB', background: form.scheduledDate===op ? '#EEF4FF' : 'white', color: form.scheduledDate===op ? '#007BFF' : '#555', fontWeight: form.scheduledDate===op ? 800 : 500, fontSize:11, cursor:'pointer' }}>
+                      {op}
+                    </button>
+                  ))}
+                </div>
+                <input type='text' style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid #EBEBEB', fontSize:13, color:'#1a1a2e', outline:'none', boxSizing:'border-box', fontFamily:'inherit' }} value={['Hoje','Amanhã','Esta semana','Flexível'].includes(form.scheduledDate)?'':form.scheduledDate} onChange={e=>setForm({...form, scheduledDate:e.target.value})} placeholder='Ex: 20/05/2026 às 14h' />
               </div>
       {/* Fotos */}
       <div>
