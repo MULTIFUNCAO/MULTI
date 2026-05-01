@@ -5836,7 +5836,7 @@ const Card = ({ children, style = {}, onClick }) => (
                   <span style={{ fontSize:13, fontWeight:900, color:r.color }}>{r.count}</span>
                 </div>
                 <div style={{ height:5, borderRadius:99, background:D2, overflow:"hidden" }}>
-                  <div style={{ height:"100%", borderRadius:99, background:r.color, width:`${(r.count / 20) * 100}%` }} />
+                  <div style={{ height:"100%", borderRadius:99, background:r.color, width:((r.count/20)*100)+"%" }} />
                 </div>
               </div>
             ))}
