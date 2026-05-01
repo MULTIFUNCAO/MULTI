@@ -5498,7 +5498,7 @@ function AdminDashboard({ onExit }) {
   if (!authed) return <AdminLogin onSuccess={() => setAuthed(true)} />;
   const [stats, setStats] = useState(null);
   useEffect(() => {
-    fetch(API_URL + '/api/admin/stats', { headers: { 'x-admin-key': 'multi2026' } })
+    fetch('https://web-production-e103b.up.railway.app/api/admin/stats', { headers: { 'x-admin-key': 'multi2026' } })
       .then(r => r.json()).then(setStats).catch(console.error);
   }, []);
   const activeSubsCount = stats?.proAtivos || 0;
