@@ -5926,7 +5926,7 @@ const Card = ({ children, style = {}, onClick }) => (
             { label:"Uptime",         val:"99.97%",ok:true  },
             { label:"Filas em aberto",val:"4",     ok:true  },
           ].map((h, i) => (
-            <div key={i} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 0", borderBottom: i < 3 ? `1px solid ${D2}` : "none" }}>
+            <div key={i} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 0", borderBottom: i < 3 ? "1px solid #334155" : "none" }}>
               <span style={{ fontSize:12, color:T2, fontWeight:600 }}>{h.label}</span>
               <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                 <span style={{ fontSize:12, fontWeight:900, color:T }}>{h.val}</span>
