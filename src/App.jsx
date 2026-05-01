@@ -1643,13 +1643,13 @@ function ProUpgrade({ onBack, onSubscribe }) {
   const [seconds,      setSeconds]      = useState(1800);   // 30min real PIX
   const [copied,       setCopied]       = useState(false);
   const [showCardForm, setShowCardForm] = useState(false);
-  const [form, setForm] = useState({ label:'', number:'', expiry:'', cvv:'', brand:'Visa', type:'credit' });
+  const [form, setForm] = useState({ label:'', number:'', expiry:'', cvv:'', cpf:'', brand:'Visa', type:'credit' });
   const [saving, setSaving] = useState(false);
   const handleCardPayment = async () => {
     setSaving(true);
     try {
       const user = safeGetUser();
-      const res = await fetch(API_URL + '/api/cobrar-cartao', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: user.email, name: user.name || form.label, phone: user.whatsapp || '', plan: chosen?.label || 'monthly', cardNumber: form.number.replace(/\s/g,''), cardHolder: form.label, expiryMonth: form.expiry.split('/')[0], expiryYear: '20'+form.expiry.split('/')[1], cvv: form.cvv, installments: 1 }) });
+      const res = await fetch(API_URL + '/api/cobrar-cartao', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: user.email, name: user.name || form.label, phone: user.whatsapp || '', plan: chosen?.label || 'monthly', cardNumber: form.number.replace(/\s/g,''), cardHolder: form.label, expiryMonth: form.expiry.split('/')[0], expiryYear: '20'+form.expiry.split('/')[1], cvv: form.cvv, cpf: form.cpf, installments: 1 }) });
       const data = await res.json();
       if (res.ok) { showToast('Pagamento aprovado! PRO ativado!'); onSubscribe && onSubscribe(); }
       else { alert(data.error || 'Erro no pagamento'); }
@@ -2054,6 +2054,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                 <input placeholder="MM/AA" type="tel" style={{ padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} value={form.expiry} onChange={e => setForm(f=>({...f,expiry:e.target.value}))} />
                 <input placeholder="CVV" type="tel" style={{ padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} value={form.cvv} onChange={e => setForm(f=>({...f,cvv:e.target.value}))} />
+                <input placeholder="CPF do titular (somente números)" type="tel" maxLength={11} style={{ padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", width:"100%", boxSizing:"border-box" }} value={form.cpf} onChange={e => setForm(f=>({...f,cpf:e.target.value.replace(/\D/g,'')}))} />
               </div>
               <select style={{ padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", color:"#555", background:"white" }}>
                 {[1,2,3,4,6,8,10,12].map(n => <option key={n} value={n}>{n}x de R$ {(parseFloat((chosen?.price||"29,90").replace(",",".")) / n).toFixed(2).replace(".",",")} {n===1?"sem juros":n<=6?"sem juros":"com juros"}</option>)}
