@@ -5537,8 +5537,8 @@ function AdminDashboard({ onExit }) {
   const T2  = "#94A3B8";   // secondary text
   const ACC = "#6366F1";   // indigo accent
 
-  const Card = ({ children, style = {} }) => (
-    <div style={{ background:D1, borderRadius:18, border:`1px solid ${D2}`, padding:18, ...style }}>
+  const Card = ({ children, style = {}, onClick } => (
+    <div style={{ background:D1, borderRadius:18, cursor:onClick?"pointer":"default", border:`1px solid ${D2}`, padding:18, ...style, }} onClick={onClick}>
       {children}
     </div>
   );
