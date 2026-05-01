@@ -61,7 +61,7 @@ const SEED_FEED = [
   { id:106, cat:'desentupidor', title:'Ralo do banheiro entupido',  desc:'Água acumulando no box há 3 dias.',      value:120,  loc:'Tatuapé, SP',         time:'Há 45min', client:'Marcos T.',   rating:4.6, urgent:true  },
   { id:107, cat:'redes',        title:'Rede de proteção varanda',   desc:'Varanda 8m², apartamento 4º andar.',     value:450,  loc:'Mooca, SP',           time:'Há 2h',    client:'Silvia B.',   rating:4.7, urgent:false },
   { id:108, cat:'lavanderia',   title:'Máquina de lavar com defeito',desc:'Não centrifuga e faz barulho estranho.', value:200,  loc:'Ipiranga, SP',        time:'Há 3h',    client:'Jorge F.',    rating:4.4, urgent:false },
-  { id:109, cat:'tv',           title:'Instalar TV 65\' na parede", desc:'TV nova, precisa de suporte articulado.', value:160,  loc:'Vila Olímpia, SP',    time:'Há 1h',    client:'Daniela M.',  rating:4.8, urgent:false },
+  { id:109, cat:'tv',           title:'Instalar TV 65\" na parede", desc:'TV nova, precisa de suporte articulado.', value:160,  loc:'Vila Olímpia, SP',    time:'Há 1h',    client:'Daniela M.',  rating:4.8, urgent:false },
   { id:110, cat:'montador',     title:'Montar guarda-roupas 6 portas',desc:'Comprei na Tok&Stok, preciso montar.', value:220,  loc:'Lapa, SP',            time:'Há 4h',    client:'André C.',    rating:4.5, urgent:false },
   { id:111, cat:'estofados',    title:'Higienizar sofá e poltrona', desc:'Sofá 3 lugares + 1 poltrona, tecido.',   value:350,  loc:'Perdizes, SP',        time:'Há 5h',    client:'Beatriz N.',  rating:4.9, urgent:false },
 ];
