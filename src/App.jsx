@@ -5481,121 +5481,121 @@ function AdminLogin({ onSuccess }) {
 }
 
 /* ── Main Admin Dashboard ── */
-return (<div/>); } // admin quarto 1 comentado
-//  const [authed,      setAuthed]      = useState(false);
-//  const [verifs,      setVerifs]      = useState(PENDING_PROS);
-//  const [activeRange, setActiveRange] = useState("7d");
-//  const [toastMsg,    setToastMsg]    = useState(null);
-//
-//  const adminToast = (msg, color = "#22c55e") => {
-//    setToastMsg({ msg, color });
-//    setTimeout(() => setToastMsg(null), 2400);
-//  };
-//
-//  const approveVer  = (id) => { setVerifs(v => v.filter(p => p.id !== id)); adminToast("✅ Profissional aprovado e notificado!"); };
-//  const rejectVer   = (id) => { setVerifs(v => v.filter(p => p.id !== id)); adminToast("❌ Profissional reprovado.", "#EF4444"); };
-//
-//  const [stats, setStats] = useState(null);
-//  const [showProsList, setShowProsList] = useState(false);
-//  const [prosList, setProsList] = useState([]);
-//  const [selectedPro, setSelectedPro] = useState(null);
-//  const [showPedidos, setShowPedidos] = useState(false);
-//  const [showReceita, setShowReceita] = useState(false);
-//  const [showClientes, setShowClientes] = useState(false);
-//  const [clientesList, setClientesList] = useState([]);
-//  const loadClientes = async () => { const r = await fetch('https://web-production-e103b.up.railway.app/api/admin/clientes',{headers:{'x-admin-key':'multi2026'}}); setClientesList(await r.json()); setShowClientes(true); };
-//  const [receitaList, setReceitaList] = useState([]);
-//  const loadReceita = async () => { const r = await fetch('https://web-production-e103b.up.railway.app/api/admin/receita',{headers:{'x-admin-key':'multi2026'}}); setReceitaList(await r.json()); setShowReceita(true); };
-//  const [pedidosList, setPedidosList] = useState([]);
-//  const [selectedPedido, setSelectedPedido] = useState(null);
-//  const loadPedidos = async () => { const r = await fetch('https://web-production-e103b.up.railway.app/api/admin/pedidos-hoje',{headers:{'x-admin-key':'multi2026'}}); setPedidosList(await r.json()); setShowPedidos(true); };
-//  useEffect(() => { fetch("https://web-production-e103b.up.railway.app/api/admin/stats",{headers:{"x-admin-key":"multi2026"}}).then(r=>r.json()).then(setStats).catch(console.error); }, []);
-//  const loadPros=async()=>{const r=await fetch("https://web-production-e103b.up.railway.app/api/admin/assinantes-pro",{headers:{"x-admin-key":"multi2026"}});setProsList(await r.json());setShowProsList(true);};
-//  if (!authed) return <AdminLogin onSuccess={() => setAuthed(true)} />;
-//  const activeSubsCount=stats?.proAtivos||0;
-//  const newUsersToday={clients:stats?.totalClients||0,pros:stats?.totalPros||0};
-//  const totalRevenue=parseFloat(stats?.receitaEstimada||0);
-//  const custodyTotal=totalRevenue;
-//  const ordersToday=stats?.totalUsers||0;
-//  const maxBar=totalRevenue||1;
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//  /* colour helpers */
-//  const DK  = "#060D1F";   // page bg
-//  const D1  = "#0F172A";   // card bg
-//  const D2  = "#1E293B";   // card border / divider
-//  const T   = "#F8FAFC";   // primary text
-//  const T2  = "#94A3B8";   // secondary text
-//  const ACC = "#6366F1";   // indigo accent
-//
-//const Card = ({ children, style = {}, onClick }) => (
-//    <div style={{ background:'#f8fafc', borderRadius:18, cursor:onClick?"pointer":"default", border:`1px solid #e2e8f0`, padding:18, ...style, }} onClick={onClick}>
-//      {children}
-//    </div>
-//  );
-//
-//  const KPI = ({ icon:Icon, iconColor, iconBg, label, value, sub, trend, onClick }) => (
-//    <Card onClick={onClick} style={{cursor:onClick?"pointer":"default"}}>
-//      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:12 }}>
-//        <div style={{ width:40, height:40, borderRadius:12, background:iconBg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-//          <Icon size={20} color={iconColor} />
-//        </div>
-//        {trend && (
-//          <span style={{ fontSize:11, fontWeight:800, color:trend.startsWith("+") ? "#22c55e" : "#EF4444", background: trend.startsWith("+") ? "#14532d55" : "#7f1d1d55", borderRadius:99, padding:'2px 8px', display:'flex', alignItems:'center', gap:3 }}>
-//            <ChevronUp size={11} style={{ transform: trend.startsWith("-") ? "rotate(180deg)" : "none" }} />
-//            {trend}
-//          </span>
-//        )}
-//      </div>
-//      <p style={{ fontSize:11, color:'#64748B', fontWeight:700, textTransform:'uppercase', letterSpacing:1.2, margin:'0 0 4px' }}>{label}</p>
-//      <p style={{ fontSize:26, fontWeight:900, color:'#1e293b', margin:'0 0 2px', lineHeight:1 }}>{value}</p>
-//      {sub && <p style={{ fontSize:11, color:'#64748B', margin:0 }}>{sub}</p>}
-//    </Card>
-//  );
-//
-//  return (
-//    <div style={{ minHeight:'100vh', background:DK, color:'#1e293b', paddingBottom:60 }}>
-//      {/* toast */}
-//      {toastMsg && (
-//        <div style={{ position:'fixed', top:18, left:'50%', transform:'translateX(-50%)', zIndex:999, background:toastMsg.color, color:'white', padding:'10px 20px', borderRadius:12, fontSize:13, fontWeight:800, whiteSpace:'nowrap', boxShadow:'0 4px 16px rgba(0,0,0,.4)' }}>
-//          {toastMsg.msg}
-//        </div>
-//      )}
-//
-//      {/* ── TOP BAR ── */}
-//      <div style={{ background:'#0A1628', borderBottom:`1px solid #e2e8f0`, padding:'14px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', position:'sticky', top:0, zIndex:50 }}>
-//        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-//          <div style={{ width:34, height:34, borderRadius:10, background:'linear-gradient(135deg,#1d4ed8,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-//            <ShieldCheck size={17} color="white" />
-//          </div>
-//          <div>
-//            <p style={{ fontSize:14, fontWeight:900, color:'#1e293b', margin:0 }}>Multi Admin</p>
-//            <p style={{ fontSize:10, color:'#64748B', margin:0 }}>Painel Operacional</p>
-//          </div>
-//        </div>
-//        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-//          <span style={{ fontSize:11, color:'#22c55e', fontWeight:700, display:'flex', alignItems:'center', gap:4 }}>
-//            <span style={{ width:7, height:7, borderRadius:'50%', background:'#22c55e', display:'inline-block' }} /> Ao vivo
+function AdminDashboard({ onExit }) {
+  const [authed,      setAuthed]      = useState(false);
+  const [verifs,      setVerifs]      = useState(PENDING_PROS);
+  const [activeRange, setActiveRange] = useState("7d");
+  const [toastMsg,    setToastMsg]    = useState(null);
+
+  const adminToast = (msg, color = "#22c55e") => {
+    setToastMsg({ msg, color });
+    setTimeout(() => setToastMsg(null), 2400);
+  };
+
+  const approveVer  = (id) => { setVerifs(v => v.filter(p => p.id !== id)); adminToast("✅ Profissional aprovado e notificado!"); };
+  const rejectVer   = (id) => { setVerifs(v => v.filter(p => p.id !== id)); adminToast("❌ Profissional reprovado.", "#EF4444"); };
+
+  const [stats, setStats] = useState(null);
+  const [showProsList, setShowProsList] = useState(false);
+  const [prosList, setProsList] = useState([]);
+  const [selectedPro, setSelectedPro] = useState(null);
+  const [showPedidos, setShowPedidos] = useState(false);
+  const [showReceita, setShowReceita] = useState(false);
+  const [showClientes, setShowClientes] = useState(false);
+  const [clientesList, setClientesList] = useState([]);
+  const loadClientes = async () => { const r = await fetch('https://web-production-e103b.up.railway.app/api/admin/clientes',{headers:{'x-admin-key':'multi2026'}}); setClientesList(await r.json()); setShowClientes(true); };
+  const [receitaList, setReceitaList] = useState([]);
+  const loadReceita = async () => { const r = await fetch('https://web-production-e103b.up.railway.app/api/admin/receita',{headers:{'x-admin-key':'multi2026'}}); setReceitaList(await r.json()); setShowReceita(true); };
+  const [pedidosList, setPedidosList] = useState([]);
+  const [selectedPedido, setSelectedPedido] = useState(null);
+  const loadPedidos = async () => { const r = await fetch('https://web-production-e103b.up.railway.app/api/admin/pedidos-hoje',{headers:{'x-admin-key':'multi2026'}}); setPedidosList(await r.json()); setShowPedidos(true); };
+  useEffect(() => { fetch("https://web-production-e103b.up.railway.app/api/admin/stats",{headers:{"x-admin-key":"multi2026"}}).then(r=>r.json()).then(setStats).catch(console.error); }, []);
+  const loadPros=async()=>{const r=await fetch("https://web-production-e103b.up.railway.app/api/admin/assinantes-pro",{headers:{"x-admin-key":"multi2026"}});setProsList(await r.json());setShowProsList(true);};
+  if (!authed) return <AdminLogin onSuccess={() => setAuthed(true)} />;
+  const activeSubsCount=stats?.proAtivos||0;
+  const newUsersToday={clients:stats?.totalClients||0,pros:stats?.totalPros||0};
+  const totalRevenue=parseFloat(stats?.receitaEstimada||0);
+  const custodyTotal=totalRevenue;
+  const ordersToday=stats?.totalUsers||0;
+  const maxBar=totalRevenue||1;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  /* colour helpers */
+  const DK  = "#060D1F";   // page bg
+  const D1  = "#0F172A";   // card bg
+  const D2  = "#1E293B";   // card border / divider
+  const T   = "#F8FAFC";   // primary text
+  const T2  = "#94A3B8";   // secondary text
+  const ACC = "#6366F1";   // indigo accent
+
+const Card = ({ children, style = {}, onClick }) => (
+    <div style={{ background:'#f8fafc', borderRadius:18, cursor:onClick?"pointer":"default", border:`1px solid #e2e8f0`, padding:18, ...style, }} onClick={onClick}>
+      {children}
+    </div>
+  );
+
+  const KPI = ({ icon:Icon, iconColor, iconBg, label, value, sub, trend, onClick }) => (
+    <Card onClick={onClick} style={{cursor:onClick?"pointer":"default"}}>
+      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:12 }}>
+        <div style={{ width:40, height:40, borderRadius:12, background:iconBg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+          <Icon size={20} color={iconColor} />
+        </div>
+        {trend && (
+          <span style={{ fontSize:11, fontWeight:800, color:trend.startsWith("+") ? "#22c55e" : "#EF4444", background: trend.startsWith("+") ? "#14532d55" : "#7f1d1d55", borderRadius:99, padding:'2px 8px', display:'flex', alignItems:'center', gap:3 }}>
+            <ChevronUp size={11} style={{ transform: trend.startsWith("-") ? "rotate(180deg)" : "none" }} />
+            {trend}
+          </span>
+        )}
+      </div>
+      <p style={{ fontSize:11, color:'#64748B', fontWeight:700, textTransform:'uppercase', letterSpacing:1.2, margin:'0 0 4px' }}>{label}</p>
+      <p style={{ fontSize:26, fontWeight:900, color:'#1e293b', margin:'0 0 2px', lineHeight:1 }}>{value}</p>
+      {sub && <p style={{ fontSize:11, color:'#64748B', margin:0 }}>{sub}</p>}
+    </Card>
+  );
+
+  return (
+    <div style={{ minHeight:'100vh', background:DK, color:'#1e293b', paddingBottom:60 }}>
+      {/* toast */}
+      {toastMsg && (
+        <div style={{ position:'fixed', top:18, left:'50%', transform:'translateX(-50%)', zIndex:999, background:toastMsg.color, color:'white', padding:'10px 20px', borderRadius:12, fontSize:13, fontWeight:800, whiteSpace:'nowrap', boxShadow:'0 4px 16px rgba(0,0,0,.4)' }}>
+          {toastMsg.msg}
+        </div>
+      )}
+
+      {/* ── TOP BAR ── */}
+      <div style={{ background:'#0A1628', borderBottom:`1px solid #e2e8f0`, padding:'14px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', position:'sticky', top:0, zIndex:50 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <div style={{ width:34, height:34, borderRadius:10, background:'linear-gradient(135deg,#1d4ed8,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <ShieldCheck size={17} color="white" />
+          </div>
+          <div>
+            <p style={{ fontSize:14, fontWeight:900, color:'#1e293b', margin:0 }}>Multi Admin</p>
+            <p style={{ fontSize:10, color:'#64748B', margin:0 }}>Painel Operacional</p>
+          </div>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <span style={{ fontSize:11, color:'#22c55e', fontWeight:700, display:'flex', alignItems:'center', gap:4 }}>
+            <span style={{ width:7, height:7, borderRadius:'50%', background:'#22c55e', display:'inline-block' }} /> Ao vivo
           </span>
           <button onClick={onExit} style={{ background:'#e2e8f0', border:'none', color:'#64748B', fontSize:12, fontWeight:700, padding:'6px 14px', borderRadius:99, cursor:'pointer' }}>
             Sair
