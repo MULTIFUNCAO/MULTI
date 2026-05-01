@@ -5809,7 +5809,7 @@ const Card = ({ children, style = {}, onClick }) => (
                   <p style={{ fontSize:9, fontWeight:800, color: isMax ? "#22c55e" : T2, margin:0 }}>
                     {d.val >= 1000 ? `${(d.val/1000).toFixed(1)}k` : d.val}
                   </p>
-                  <div style={{ width:"100%", height:`${pct}%`, minHeight:4, borderRadius:"6px 6px 0 0", background: isMax ? "linear-gradient(180deg,#22c55e,#16a34a)" : `linear-gradient(180deg,${ACC},#4338ca)`, transition:"height .4s" }} />
+                  <div style={{ width:"100%", height:(pct)+"%", minHeight:4, borderRadius:"6px 6px 0 0", background: isMax ? "linear-gradient(180deg,#22c55e,#16a34a)" : `linear-gradient(180deg,${ACC},#4338ca)`, transition:"height .4s" }} />
                   <p style={{ fontSize:9, color:T2, margin:0, fontWeight:700 }}>{d.day}</p>
                 </div>
               );
@@ -5882,9 +5882,9 @@ const Card = ({ children, style = {}, onClick }) => (
           ) : (
             <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
               {verifs.map((p) => (
-                <div key={p.id} style={{ background:D2, borderRadius:14, padding:"14px", border:`1px solid #334155` }}>
+                <div key={p.id} style={{ background:D2, borderRadius:14, padding:"14px", border:"1px solid #334155" }}>
                   <div style={{ display:"flex", alignItems:"flex-start", gap:10, marginBottom:10 }}>
-                    <div style={{ width:38, height:38, borderRadius:12, background:"#1d4ed820", border:`1px solid ${ACC}44`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>👨‍🔧</div>
+                    <div style={{ width:38, height:38, borderRadius:12, background:"#1d4ed820", border:"1px solid #1d4ed8", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>👨‍🔧</div>
                     <div style={{ flex:1 }}>
                       <p style={{ fontSize:13, fontWeight:900, color:T, margin:"0 0 2px" }}>{p.name}</p>
                       <p style={{ fontSize:11, color:T2, margin:0 }}>{p.cat} · Cadastrado {p.joined}</p>
