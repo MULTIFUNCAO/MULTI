@@ -929,7 +929,7 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName }
 
 /* ───────────────────────── POST SERVICE SCREEN ──────────────────────────────── */
 function PostServiceScreen({ onBack, onSuccess }) {
-  const [form,       setForm]       = useState({ cat:"", desc:"", value:"", cep:"", material: false });
+  const [form,       setForm]       = useState({ cat:"", desc:"", value:"", cep:"", material: false, urgent:"normal", scheduledDate:"" });
   const [photos,     setPhotos]     = useState([]);
   const [cepInfo,    setCepInfo]    = useState(null);  // { bairro, cidade, uf }
   const [cepLoading, setCepLoading] = useState(false);
@@ -1028,6 +1028,22 @@ function PostServiceScreen({ onBack, onSuccess }) {
         {cepError && <p style={{ fontSize:12, color:"#EF4444", fontWeight:700, margin:"6px 0 0" }}>{cepError}</p>}
       </div>
 
+              {/* Urgência */}
+              <div style={{ marginBottom:18 }}>
+                <label style={{ display:'block', fontSize:10, fontWeight:800, color:'#aaa', textTransform:'uppercase', letterSpacing:1.2, marginBottom:6 }}>URGÊNCIA</label>
+                <div style={{ display:'flex', gap:8 }}>
+                  {['normal','urgente','muito urgente'].map(u => (
+                    <button key={u} onClick={()=>setForm({...form, urgent:u})} style={{ flex:1, padding:'10px 0', borderRadius:10, border: form.urgent===u ? '2px solid #FF5722' : '1.5px solid #E5E7EB', background: form.urgent===u ? '#FFF3F0' : 'white', color: form.urgent===u ? '#FF5722' : '#555', fontWeight: form.urgent===u ? 800 : 500, fontSize:12, cursor:'pointer', textTransform:'capitalize' }}>
+                      {u==='normal'?'🟢':u==='urgente'?'🟡':'🔴'} {u.charAt(0).toUpperCase()+u.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Data preferida */}
+              <div style={{ marginBottom:18 }}>
+                <label style={{ display:'block', fontSize:10, fontWeight:800, color:'#aaa', textTransform:'uppercase', letterSpacing:1.2, marginBottom:6 }}>DATA E HORÁRIO PREFERIDO</label>
+                <input type='datetime-local' style={{ width:'100%', padding:'13px 14px', borderRadius:12, border:'1.5px solid #EBEBEB', fontSize:13, color:'#1a1a2e', outline:'none', boxSizing:'border-box' }} value={form.scheduledDate} onChange={e=>setForm({...form, scheduledDate:e.target.value})} />
+              </div>
       {/* Fotos */}
       <div>
         <label style={L}>Fotos <span style={{ textTransform:"none", fontWeight:400, letterSpacing:0, color:"#ccc" }}>(opcional)</span></label>
