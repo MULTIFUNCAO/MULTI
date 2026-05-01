@@ -5606,7 +5606,7 @@ function AdminDashboard({ onExit }) {
         {/* ── KPI GRID ── */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
           <KPI icon={DollarSign} iconColor="#22c55e" iconBg="#14532d55" label="Receita Total" value={`R$ ${(totalRevenue/1000).toFixed(1)}k`} sub="Assinaturas + taxas" trend="+24%" />
-          <KPI icon={Crown}      iconColor="#F9A825" iconBg="#78350f55" label="Assinaturas PRO" onClick={loadPros} value={activeSubsCount} sub={`R$ ${(activeSubsCount * 29.9).toFixed(0)} MRR`} trend="+8%" />
+          <KPI icon={Crown}      iconColor="#F9A825" iconBg="#78350f55" label="Assinaturas PRO" onClick={()=>{fetch("https://web-production-e103b.up.railway.app/api/admin/assinantes-pro",{headers:{"x-admin-key":"multi2026"}}).then(r=>r.json()).then(d=>{setProsList(d);setShowProsList(true);})}} value={activeSubsCount} sub={`R$ ${(activeSubsCount * 29.9).toFixed(0)} MRR`} trend="+8%" />
           <KPI icon={Lock}       iconColor="#6366F1" iconBg="#312e8155" label="Em Custódia" value={`R$ ${(custodyTotal/1000).toFixed(1)}k`} sub="Serviços em andamento" />
           <KPI icon={Activity}   iconColor="#f43f5e" iconBg="#881337aa" label="Pedidos Hoje" value={ordersToday} sub="Últimas 24h" trend="+31%" />
         </div>
