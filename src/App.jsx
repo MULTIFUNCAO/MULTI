@@ -5930,7 +5930,7 @@ const Card = ({ children, style = {}, onClick }) => (
               <span style={{ fontSize:12, color:T2, fontWeight:600 }}>{h.label}</span>
               <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                 <span style={{ fontSize:12, fontWeight:900, color:T }}>{h.val}</span>
-                <span style={{ width:8, height:8, borderRadius:"50%", background: h.ok ? '#22c55e' : '#EF4444' }} />
+              <span style={{ width:8, height:8, borderRadius:'50%', background: h.ok ? '#22c55e' : '#EF4444' }} />
               </div>
             </div>
           ))}
