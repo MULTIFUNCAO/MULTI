@@ -5611,6 +5611,23 @@ function AdminDashboard({ onExit }) {
           <KPI icon={Activity}   iconColor="#f43f5e" iconBg="#881337aa" label="Pedidos Hoje" value={ordersToday} sub="Últimas 24h" trend="+31%" />
         </div>
 
+      {showProsList && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setShowProsList(false)}>
+          <div style={{background:"#0F172A",borderRadius:16,padding:24,width:"90%",maxWidth:400,maxHeight:"80vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <p style={{color:"white",fontWeight:900,fontSize:16,margin:0}}>Assinantes PRO ({prosList.length})</p>
+              <button onClick={()=>setShowProsList(false)} style={{background:"none",border:"none",color:"#aaa",fontSize:20,cursor:"pointer"}}>X</button>
+            </div>
+            {prosList.map((u,i)=>(
+ <div key={i} style={{background:"#1E293B",borderRadius:12,padding:"12px 14px",marginBottom:8}}>
+                <p style={{color:"white",fontWeight:700,fontSize:14,margin:"0 0 4px"}}>{u.name||"Sem nome"}</p>
+                <p style={{color:"#94A3B8",fontSize:12,margin:"0 0 2px"}}>{u.email}</p>
+                <p style={{color:"#64748B",fontSize:11,margin:0}}>Desde {new Date(u.created_at).toLocaleDateString("pt-BR")}</p>
+              </div>
+))}
+          </div>
+        </div>
+      )}
         {/* ── REVENUE CHART ── */}
         <Card>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
