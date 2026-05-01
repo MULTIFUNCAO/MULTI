@@ -5499,6 +5499,10 @@ function AdminDashboard({ onExit }) {
   const [showProsList, setShowProsList] = useState(false);
   const [prosList, setProsList] = useState([]);
   const [selectedPro, setSelectedPro] = useState(null);
+  const [showPedidos, setShowPedidos] = useState(false);
+  const [pedidosList, setPedidosList] = useState([]);
+  const [selectedPedido, setSelectedPedido] = useState(null);
+  const loadPedidos = async () => { const r = await fetch('https://web-production-e103b.up.railway.app/api/admin/pedidos-hoje',{headers:{'x-admin-key':'multi2026'}}); setPedidosList(await r.json()); setShowPedidos(true); };
   useEffect(() => { fetch("https://web-production-e103b.up.railway.app/api/admin/stats",{headers:{"x-admin-key":"multi2026"}}).then(r=>r.json()).then(setStats).catch(console.error); }, []);
   const loadPros=async()=>{const r=await fetch("https://web-production-e103b.up.railway.app/api/admin/assinantes-pro",{headers:{"x-admin-key":"multi2026"}});setProsList(await r.json());setShowProsList(true);};
   if (!authed) return <AdminLogin onSuccess={() => setAuthed(true)} />;
@@ -5609,9 +5613,48 @@ const Card = ({ children, style = {}, onClick }) => (
           <KPI icon={DollarSign} iconColor="#22c55e" iconBg="#14532d55" label="Receita Total" value={`R$ ${(totalRevenue/1000).toFixed(1)}k`} sub="Assinaturas + taxas" trend="+24%" />
           <KPI icon={Crown}      iconColor="#F9A825" iconBg="#78350f55" label="Assinaturas PRO" onClick={()=>{fetch("https://web-production-e103b.up.railway.app/api/admin/assinantes-pro",{headers:{"x-admin-key":"multi2026"}}).then(r=>r.json()).then(d=>{setProsList(d);setShowProsList(true);})}} value={activeSubsCount} sub={`R$ ${(activeSubsCount * 29.9).toFixed(0)} MRR`} trend="+8%" />
           <KPI icon={Lock}       iconColor="#6366F1" iconBg="#312e8155" label="Em Custódia" value={`R$ ${(custodyTotal/1000).toFixed(1)}k`} sub="Serviços em andamento" />
-          <KPI icon={Activity}   iconColor="#f43f5e" iconBg="#881337aa" label="Pedidos Hoje" value={ordersToday} sub="Últimas 24h" trend="+31%" />
+          <KPI icon={Activity}   iconColor="#f43f5e" iconBg="#881337aa" label="Pedidos Hoje" onClick={loadPedidos} value={ordersToday} sub="Últimas 24h" trend="+31%" />
         </div>
 
+      {showPedidos && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={()=>setShowPedidos(false)}>
+          <div style={{background:'#0F172A',borderRadius:16,padding:24,width:'90%',maxWidth:440,maxHeight:'85vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+              <p style={{color:'white',fontWeight:900,fontSize:16,margin:0}}>Pedidos Hoje ({pedidosList.length})</p>
+              <button onClick={()=>setShowPedidos(false)} style={{background:'none',border:'none',color:'#aaa',fontSize:20,cursor:'pointer'}}>X</button>
+            </div>
+            {pedidosList.length===0 && <p style={{color:'#64748B',textAlign:'center',padding:20}}>Nenhum pedido hoje ainda</p>}
+            {pedidosList.map((p,i)=>(
+              <div key={i} onClick={()=>setSelectedPedido(p)} style={{background:'#1E293B',borderRadius:12,padding:'12px 14px',marginBottom:8,cursor:'pointer',border:'1px solid #334155'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <p style={{color:'white',fontWeight:700,fontSize:14,margin:0}}>{p.category||p.service_type||'Servico'}</p>
+                  <span style={{fontSize:11,color:p.status==='completed'?'#22C55E':p.status==='in_progress'?'#F59E0B':'#94A3B8',fontWeight:700}}>{p.status||'pendente'}</span>
+                </div>
+                <p style={{color:'#94A3B8',fontSize:12,margin:'4px 0 0'}}>{p.client_name||p.user_id||'Cliente'}</p>
+                <p style={{color:'#64748B',fontSize:11,margin:'2px 0 0'}}>{p.city||p.location||''} - {new Date(p.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {selectedPedido && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.9)',zIndex:1001,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={()=>setSelectedPedido(null)}>
+          <div style={{background:'#0F172A',borderRadius:16,padding:24,width:'90%',maxWidth:420,maxHeight:'85vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+              <p style={{color:'white',fontWeight:900,fontSize:16,margin:0}}>Detalhes do Pedido</p>
+              <button onClick={()=>setSelectedPedido(null)} style={{background:'none',border:'none',color:'#aaa',fontSize:20,cursor:'pointer'}}>X</button>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
+              <div style={{background:'#1E293B',borderRadius:12,padding:14}}><p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>SERVICO</p><p style={{color:'white',fontWeight:700,fontSize:15,margin:0}}>{selectedPedido.category||selectedPedido.service_type||'N/A'}</p></div>
+              <div style={{background:'#1E293B',borderRadius:12,padding:14}}><p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>CLIENTE</p><p style={{color:'#38BDF8',fontWeight:600,fontSize:14,margin:0}}>{selectedPedido.client_name||selectedPedido.user_id||'N/A'}</p></div>
+              <div style={{background:'#1E293B',borderRadius:12,padding:14}}><p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>STATUS</p><p style={{color:'#22C55E',fontWeight:700,fontSize:14,margin:0}}>{selectedPedido.status||'pendente'}</p></div>
+              <div style={{background:'#1E293B',borderRadius:12,padding:14}}><p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>LOCALIZACAO</p><p style={{color:'white',fontWeight:600,fontSize:14,margin:0}}>{selectedPedido.city||selectedPedido.location||'N/A'}</p></div>
+              <div style={{background:'#1E293B',borderRadius:12,padding:14}}><p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>VALOR</p><p style={{color:'#22C55E',fontWeight:800,fontSize:16,margin:0}}>R$ {selectedPedido.budget||selectedPedido.price||'0,00'}</p></div>
+              <div style={{background:'#1E293B',borderRadius:12,padding:14}}><p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>HORARIO</p><p style={{color:'white',fontWeight:600,fontSize:14,margin:0}}>{new Date(selectedPedido.created_at).toLocaleString('pt-BR')}</p></div>
+            </div>
+          </div>
+        </div>
+      )}
       {selectedPro && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={()=>setSelectedPro(null)}>
           <div style={{background:'#0F172A',borderRadius:16,padding:24,width:'90%',maxWidth:420,maxHeight:'85vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
