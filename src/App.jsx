@@ -5495,13 +5495,18 @@ function AdminDashboard({ onExit }) {
   const approveVer  = (id) => { setVerifs(v => v.filter(p => p.id !== id)); adminToast("✅ Profissional aprovado e notificado!"); };
   const rejectVer   = (id) => { setVerifs(v => v.filter(p => p.id !== id)); adminToast("❌ Profissional reprovado.", "#EF4444"); };
 
-  if (!authed) return <AdminLogin onSuccess={() => setAuthed(true)} />;
   const [stats, setStats] = useState(null);
   useEffect(() => {
-    fetch('https://web-production-e103b.up.railway.app/api/admin/stats', { headers: { 'x-admin-key': 'multi2026' } })
+    fetch("https://web-production-e103b.up.railway.app/api/admin/stats", { headers: { "x-admin-key": "multi2026" } })
       .then(r => r.json()).then(setStats).catch(console.error);
   }, []);
-  const activeSubsCount = stats?.proAtivos || 0;
+  if (!authed) return <AdminLogin onSuccess={() => setAuthed(true)} />;
+  const [stats, setStats] = useState(null);
+
+
+
+
+
   const newUsersToday   = { clients: stats?.totalClients || 0, pros: stats?.totalPros || 0 };
   const totalRevenue    = parseFloat(stats?.receitaEstimada || 0);
   const custodyTotal    = totalRevenue;
