@@ -5496,14 +5496,24 @@ function AdminDashboard({ onExit }) {
   const rejectVer   = (id) => { setVerifs(v => v.filter(p => p.id !== id)); adminToast("❌ Profissional reprovado.", "#EF4444"); };
 
   if (!authed) return <AdminLogin onSuccess={() => setAuthed(true)} />;
+  const [stats, setStats] = useState(null);
+  useEffect(() => {
+    fetch(API_URL + '/api/admin/stats', { headers: { 'x-admin-key': 'multi2026' } })
+      .then(r => r.json()).then(setStats).catch(console.error);
+  }, []);
+  const activeSubsCount = stats?.proAtivos || 0;
+  const newUsersToday   = { clients: stats?.totalClients || 0, pros: stats?.totalPros || 0 };
+  const totalRevenue    = parseFloat(stats?.receitaEstimada || 0);
+  const custodyTotal    = totalRevenue;
+  const ordersToday     = stats?.totalUsers || 0;
+  const maxBar          = totalRevenue || 1;
 
-  /* KPI totals */
-  const totalRevenue   = REVENUE_7D.reduce((a, d) => a + d.val, 0);
-  const maxBar         = Math.max(...REVENUE_7D.map(d => d.val));
-  const activeSubsCount = 38;
-  const custodyTotal   = 12_480;
-  const newUsersToday  = { clients:14, pros:6 };
-  const ordersToday    = 47;
+
+
+
+
+
+
 
   /* colour helpers */
   const DK  = "#060D1F";   // page bg
