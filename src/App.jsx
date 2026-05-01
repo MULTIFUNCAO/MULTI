@@ -1,4 +1,5 @@
 ﻿import { useState, useRef, useEffect } from "react";
+import AdminDashboard from "./AdminDashboard";
 import {
   Search, MapPin, Bell, Star, Plus, ChevronRight,
   Hammer, Wrench, Paintbrush, Scissors, Zap, Square,
@@ -5478,10 +5479,6 @@ function AdminLogin({ onSuccess }) {
       </div>
     </div>
   );
-}
-
-/* ── Main Admin Dashboard ── */
-import AdminDashboard from "./AdminDashboard";
 }
 
 /* ───────────────────────── ROOT APP ─────────────────────────────────────────── */
