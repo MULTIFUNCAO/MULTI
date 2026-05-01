@@ -5549,7 +5549,7 @@ function AdminDashboard({ onExit }) {
   const ACC = "#6366F1";   // indigo accent
 
 const Card = ({ children, style = {}, onClick }) => (
-    <div style={{ background:D1, borderRadius:18, cursor:onClick?"pointer":"default", border:`1px solid ${D2}`, padding:18, ...style, }} onClick={onClick}>
+    <div style={{ background:"#f8fafc", borderRadius:18, cursor:onClick?"pointer":"default", border:`1px solid #e2e8f0`, padding:18, ...style, }} onClick={onClick}>
       {children}
     </div>
   );
@@ -5583,7 +5583,7 @@ const Card = ({ children, style = {}, onClick }) => (
       )}
 
       {/* ── TOP BAR ── */}
-      <div style={{ background:"#0A1628", borderBottom:`1px solid ${D2}`, padding:"14px 20px", display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:50 }}>
+      <div style={{ background:"#0A1628", borderBottom:`1px solid #e2e8f0`, padding:"14px 20px", display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:50 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <div style={{ width:34, height:34, borderRadius:10, background:"linear-gradient(135deg,#1d4ed8,#7c3aed)", display:"flex", alignItems:"center", justifyContent:"center" }}>
             <ShieldCheck size={17} color="white" />
