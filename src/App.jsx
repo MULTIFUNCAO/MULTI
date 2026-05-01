@@ -5567,14 +5567,14 @@ const Card = ({ children, style = {}, onClick }) => (
           </span>
         )}
       </div>
-      <p style={{ fontSize:11, color:T2, fontWeight:700, textTransform:"uppercase", letterSpacing:1.2, margin:"0 0 4px" }}>{label}</p>
-      <p style={{ fontSize:26, fontWeight:900, color:T, margin:"0 0 2px", lineHeight:1 }}>{value}</p>
-      {sub && <p style={{ fontSize:11, color:T2, margin:0 }}>{sub}</p>}
+      <p style={{ fontSize:11, color:'#64748B', fontWeight:700, textTransform:"uppercase", letterSpacing:1.2, margin:"0 0 4px" }}>{label}</p>
+      <p style={{ fontSize:26, fontWeight:900, color:'#1e293b', margin:"0 0 2px", lineHeight:1 }}>{value}</p>
+      {sub && <p style={{ fontSize:11, color:'#64748B', margin:0 }}>{sub}</p>}
     </Card>
   );
 
   return (
-    <div style={{ minHeight:"100vh", background:DK, color:T, paddingBottom:60 }}>
+    <div style={{ minHeight:"100vh", background:DK, color:'#1e293b', paddingBottom:60 }}>
       {/* toast */}
       {toastMsg && (
         <div style={{ position:"fixed", top:18, left:"50%", transform:"translateX(-50%)", zIndex:999, background:toastMsg.color, color:"white", padding:"10px 20px", borderRadius:12, fontSize:13, fontWeight:800, whiteSpace:"nowrap", boxShadow:"0 4px 16px rgba(0,0,0,.4)" }}>
@@ -5589,15 +5589,15 @@ const Card = ({ children, style = {}, onClick }) => (
             <ShieldCheck size={17} color="white" />
           </div>
           <div>
-            <p style={{ fontSize:14, fontWeight:900, color:T, margin:0 }}>Multi Admin</p>
-            <p style={{ fontSize:10, color:T2, margin:0 }}>Painel Operacional</p>
+            <p style={{ fontSize:14, fontWeight:900, color:'#1e293b', margin:0 }}>Multi Admin</p>
+            <p style={{ fontSize:10, color:'#64748B', margin:0 }}>Painel Operacional</p>
           </div>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <span style={{ fontSize:11, color:"#22c55e", fontWeight:700, display:"flex", alignItems:"center", gap:4 }}>
             <span style={{ width:7, height:7, borderRadius:"50%", background:"#22c55e", display:"inline-block" }} /> Ao vivo
           </span>
-          <button onClick={onExit} style={{ background:D2, border:"none", color:T2, fontSize:12, fontWeight:700, padding:"6px 14px", borderRadius:99, cursor:"pointer" }}>
+          <button onClick={onExit} style={{ background:'#e2e8f0', border:"none", color:'#64748B', fontSize:12, fontWeight:700, padding:"6px 14px", borderRadius:99, cursor:"pointer" }}>
             Sair
           </button>
         </div>
@@ -5795,8 +5795,8 @@ const Card = ({ children, style = {}, onClick }) => (
         <Card>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
             <div>
-              <p style={{ fontSize:13, fontWeight:900, color:T, margin:"0 0 2px" }}>Faturamento — Últimos 7 Dias</p>
-              <p style={{ fontSize:11, color:T2, margin:0 }}>Total: R$ {totalRevenue.toLocaleString("pt-BR")}</p>
+              <p style={{ fontSize:13, fontWeight:900, color:'#1e293b', margin:"0 0 2px" }}>Faturamento — Últimos 7 Dias</p>
+              <p style={{ fontSize:11, color:'#64748B', margin:0 }}>Total: R$ {totalRevenue.toLocaleString("pt-BR")}</p>
             </div>
             <BarChart2 size={18} color={ACC} />
           </div>
@@ -5810,7 +5810,7 @@ const Card = ({ children, style = {}, onClick }) => (
                     {d.val >= 1000 ? (d.val/1000).toFixed(1)+"k" : d.val}
                   </p>
                   <div style={{ width:"100%", height:(pct)+"%", minHeight:4, borderRadius:"6px 6px 0 0", background: isMax ? "linear-gradient(180deg,#22c55e,#16a34a)" : "linear-gradient(180deg,#6366f1,#4338ca)", transition:"height .4s" }} />
-                  <p style={{ fontSize:9, color:T2, margin:0, fontWeight:700 }}>{d.day}</p>
+                  <p style={{ fontSize:9, color:'#64748B', margin:0, fontWeight:700 }}>{d.day}</p>
                 </div>
               );
             })}
@@ -5824,7 +5824,7 @@ const Card = ({ children, style = {}, onClick }) => (
           <Card>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
               <Users size={16} color={ACC} />
-              <p style={{ fontSize:12, fontWeight:900, color:T, margin:0 }}>Novos Hoje</p>
+              <p style={{ fontSize:12, fontWeight:900, color:'#1e293b', margin:0 }}>Novos Hoje</p>
             </div>
             {[
               { label:"Clientes",      count:newUsersToday.clients, color:"#3b82f6" },
@@ -5832,29 +5832,29 @@ const Card = ({ children, style = {}, onClick }) => (
             ].map((r, i) => (
               <div key={i} style={{ marginBottom: i === 0 ? 12 : 0 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
-                  <span style={{ fontSize:11, color:T2, fontWeight:700 }}>{r.label}</span>
+                  <span style={{ fontSize:11, color:'#64748B', fontWeight:700 }}>{r.label}</span>
                   <span style={{ fontSize:13, fontWeight:900, color:r.color }}>{r.count}</span>
                 </div>
-                <div style={{ height:5, borderRadius:99, background:D2, overflow:"hidden" }}>
+                <div style={{ height:5, borderRadius:99, background:'#e2e8f0', overflow:"hidden" }}>
                   <div style={{ height:"100%", borderRadius:99, background:r.color, width:((r.count/20)*100)+"%" }} />
                 </div>
               </div>
             ))}
-            <p style={{ fontSize:10, color:T2, margin:"10px 0 0" }}>Total acumulado: {12_400 + newUsersToday.clients + newUsersToday.pros} usuários</p>
+            <p style={{ fontSize:10, color:'#64748B', margin:"10px 0 0" }}>Total acumulado: {12_400 + newUsersToday.clients + newUsersToday.pros} usuários</p>
           </Card>
 
           {/* Hot categories */}
           <Card>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
               <TrendingUp size={16} color="#f43f5e" />
-              <p style={{ fontSize:12, fontWeight:900, color:T, margin:0 }}>🔥 Mais Buscados</p>
+              <p style={{ fontSize:12, fontWeight:900, color:'#1e293b', margin:0 }}>🔥 Mais Buscados</p>
             </div>
             {HOT_CATS.map((h, i) => (
               <div key={i} style={{ display:"flex", alignItems:"center", gap:8, marginBottom: i < HOT_CATS.length-1 ? 10 : 0 }}>
                 <span style={{ width:22, height:22, borderRadius:"50%", background: i === 0 ? "#F9A825" : i === 1 ? D2 : "#cd7c2f", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:900, color: i === 0 ? "#1a1a2e" : T2, flexShrink:0 }}>{h.rank}</span>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ fontSize:12, fontWeight:800, color:T, margin:"0 0 1px" }}>{h.cat}</p>
-                  <p style={{ fontSize:10, color:T2, margin:0 }}>{h.searches} buscas</p>
+                  <p style={{ fontSize:12, fontWeight:800, color:'#1e293b', margin:"0 0 1px" }}>{h.cat}</p>
+                  <p style={{ fontSize:10, color:'#64748B', margin:0 }}>{h.searches} buscas</p>
                 </div>
                 <span style={{ fontSize:11, fontWeight:800, color:"#22c55e" }}>{h.trend}</span>
               </div>
@@ -5867,7 +5867,7 @@ const Card = ({ children, style = {}, onClick }) => (
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8 }}>
               <ShieldCheck size={17} color={ACC} />
-              <p style={{ fontSize:13, fontWeight:900, color:T, margin:0 }}>Aguardando Verificação</p>
+              <p style={{ fontSize:13, fontWeight:900, color:'#1e293b', margin:0 }}>Aguardando Verificação</p>
             </div>
             <span style={{ background: verifs.length > 0 ? "#EF444430" : "#14532d55", color: verifs.length > 0 ? "#EF4444" : "#22c55e", fontSize:11, fontWeight:900, borderRadius:99, padding:"3px 10px" }}>
               {verifs.length} pendente{verifs.length !== 1 ? "s" : ""}
@@ -5882,19 +5882,19 @@ const Card = ({ children, style = {}, onClick }) => (
           ) : (
             <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
               {verifs.map((p) => (
-                <div key={p.id} style={{ background:D2, borderRadius:14, padding:"14px", border:"1px solid #334155" }}>
+                <div key={p.id} style={{ background:'#e2e8f0', borderRadius:14, padding:"14px", border:'1px solid #334155' }}>
                   <div style={{ display:"flex", alignItems:"flex-start", gap:10, marginBottom:10 }}>
                     <div style={{ width:38, height:38, borderRadius:12, background:"#1d4ed820", border:"1px solid #1d4ed8", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>👨‍🔧</div>
                     <div style={{ flex:1 }}>
-                      <p style={{ fontSize:13, fontWeight:900, color:T, margin:"0 0 2px" }}>{p.name}</p>
-                      <p style={{ fontSize:11, color:T2, margin:0 }}>{p.cat} · Cadastrado {p.joined}</p>
+                      <p style={{ fontSize:13, fontWeight:900, color:'#1e293b', margin:"0 0 2px" }}>{p.name}</p>
+                      <p style={{ fontSize:11, color:'#64748B', margin:0 }}>{p.cat} · Cadastrado {p.joined}</p>
                     </div>
                   </div>
                   {/* doc status */}
                   <div style={{ display:"flex", gap:8, marginBottom:12 }}>
                     {[{ label:"RG/CPF", status:p.rg }, { label:"Antecedentes", status:p.background }].map((doc, i) => (
                       <div key={i} style={{ flex:1, background:"#0F172A", borderRadius:10, padding:"8px 10px" }}>
-                        <p style={{ fontSize:9, color:T2, fontWeight:700, textTransform:"uppercase", letterSpacing:.8, margin:"0 0 3px" }}>{doc.label}</p>
+                        <p style={{ fontSize:9, color:'#64748B', fontWeight:700, textTransform:"uppercase", letterSpacing:.8, margin:"0 0 3px" }}>{doc.label}</p>
                         <p style={{ fontSize:11, fontWeight:800, color: doc.status.includes("✅") ? "#22c55e" : "#F59E0B", margin:0 }}>{doc.status}</p>
                       </div>
                     ))}
@@ -5918,7 +5918,7 @@ const Card = ({ children, style = {}, onClick }) => (
         <Card>
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
             <Activity size={16} color={ACC} />
-            <p style={{ fontSize:13, fontWeight:900, color:T, margin:0 }}>Saúde da Plataforma</p>
+            <p style={{ fontSize:13, fontWeight:900, color:'#1e293b', margin:0 }}>Saúde da Plataforma</p>
           </div>
           {[
             { label:"API Response",   val:"98ms",  ok:true  },
