@@ -5498,6 +5498,7 @@ function AdminDashboard({ onExit }) {
   const [stats, setStats] = useState(null);
   const [showProsList, setShowProsList] = useState(false);
   const [prosList, setProsList] = useState([]);
+  const [selectedPro, setSelectedPro] = useState(null);
   useEffect(() => { fetch("https://web-production-e103b.up.railway.app/api/admin/stats",{headers:{"x-admin-key":"multi2026"}}).then(r=>r.json()).then(setStats).catch(console.error); }, []);
   const loadPros=async()=>{const r=await fetch("https://web-production-e103b.up.railway.app/api/admin/assinantes-pro",{headers:{"x-admin-key":"multi2026"}});setProsList(await r.json());setShowProsList(true);};
   if (!authed) return <AdminLogin onSuccess={() => setAuthed(true)} />;
@@ -5611,6 +5612,44 @@ const Card = ({ children, style = {}, onClick }) => (
           <KPI icon={Activity}   iconColor="#f43f5e" iconBg="#881337aa" label="Pedidos Hoje" value={ordersToday} sub="Últimas 24h" trend="+31%" />
         </div>
 
+      {selectedPro && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={()=>setSelectedPro(null)}>
+          <div style={{background:'#0F172A',borderRadius:16,padding:24,width:'90%',maxWidth:420,maxHeight:'85vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+              <p style={{color:'white',fontWeight:900,fontSize:16,margin:0}}>Assinante PRO</p>
+              <button onClick={()=>setSelectedPro(null)} style={{background:'none',border:'none',color:'#aaa',fontSize:20,cursor:'pointer'}}>X</button>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:12}}>
+              <div style={{background:'#1E293B',borderRadius:12,padding:16}}>
+                <p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>NOME</p>
+                <p style={{color:'white',fontWeight:700,fontSize:15,margin:0}}>{selectedPro.name||'Sem nome'}</p>
+              </div>
+              <div style={{background:'#1E293B',borderRadius:12,padding:16}}>
+                <p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>EMAIL</p>
+                <p style={{color:'#38BDF8',fontWeight:600,fontSize:14,margin:0}}>{selectedPro.email}</p>
+              </div>
+              <div style={{background:'#1E293B',borderRadius:12,padding:16}}>
+                <p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>WHATSAPP</p>
+                <p style={{color:'white',fontWeight:600,fontSize:14,margin:0}}>{selectedPro.whatsapp||'Nao informado'}</p>
+              </div>
+              <div style={{background:'#1E293B',borderRadius:12,padding:16}}>
+                <p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>CUSTOMER ID ASAAS</p>
+                <p style={{color:'#A78BFA',fontWeight:600,fontSize:13,margin:0,wordBreak:'break-all'}}>{selectedPro.payment_id||'Nao vinculado'}</p>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                <div style={{background:'#1E293B',borderRadius:12,padding:16}}>
+                  <p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>STATUS</p>
+                  <p style={{color:'#22C55E',fontWeight:800,fontSize:13,margin:0}}>{selectedPro.is_pro?'Ativo':'Inativo'}</p>
+                </div>
+                <div style={{background:'#1E293B',borderRadius:12,padding:16}}>
+                  <p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>DESDE</p>
+                  <p style={{color:'white',fontWeight:600,fontSize:13,margin:0}}>{selectedPro.created_at?new Date(selectedPro.created_at).toLocaleDateString('pt-BR'):'desconhecido'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {showProsList && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setShowProsList(false)}>
           <div style={{background:"#0F172A",borderRadius:16,padding:24,width:"90%",maxWidth:400,maxHeight:"80vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
