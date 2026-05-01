@@ -5500,7 +5500,7 @@ function AdminDashboard({ onExit }) {
   const [prosList, setProsList] = useState([]);
   useEffect(() => { fetch("https://web-production-e103b.up.railway.app/api/admin/stats",{headers:{"x-admin-key":"multi2026"}}).then(r=>r.json()).then(setStats).catch(console.error); }, []);
   const loadPros=async()=>{const r=await fetch("https://web-production-e103b.up.railway.app/api/admin/assinantes-pro",{headers:{"x-admin-key":"multi2026"}});setProsList(await r.json());setShowProsList(true);};
-  if (!authed) return React.createElement(AdminLogin,{onSuccess:()=>setAuthed(true)});
+  if (!authed) return <AdminLogin onSuccess={() => setAuthed(true)} />;
   const activeSubsCount=stats?.proAtivos||0;
   const newUsersToday={clients:stats?.totalClients||0,pros:stats?.totalPros||0};
   const totalRevenue=parseFloat(stats?.receitaEstimada||0);
