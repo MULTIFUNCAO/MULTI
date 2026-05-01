@@ -2049,11 +2049,11 @@ function ProUpgrade({ onBack, onSubscribe }) {
           {/* inline card form (expandable) */}
           {showCardForm && (
             <div style={{ padding:"14px 16px 16px", borderTop:"1px solid #F0F0F0", display:"flex", flexDirection:"column", gap:10 }}>
-              <input placeholder="Número do cartão" type="tel" style={{ padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", fontFamily:"monospace" }} />
-              <input placeholder="Nome como no cartão" type="text" style={{ padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
+              <input placeholder="Número do cartão" type="tel" style={{ padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", fontFamily:"monospace" }} value={form.number} onChange={e => setForm(f=>({...f,number:e.target.value}))} />
+              <input placeholder="Nome como no cartão" type="text" style={{ padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} value={form.label} onChange={e => setForm(f=>({...f,label:e.target.value}))} />
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                <input placeholder="MM/AA" type="tel" style={{ padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
-                <input placeholder="CVV" type="tel" style={{ padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
+                <input placeholder="MM/AA" type="tel" style={{ padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} value={form.expiry} onChange={e => setForm(f=>({...f,expiry:e.target.value}))} />
+                <input placeholder="CVV" type="tel" style={{ padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} value={form.cvv} onChange={e => setForm(f=>({...f,cvv:e.target.value}))} />
               </div>
               <select style={{ padding:"12px 14px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", color:"#555", background:"white" }}>
                 {[1,2,3,4,6,8,10,12].map(n => <option key={n} value={n}>{n}x de R$ {(parseFloat((chosen?.price||"29,90").replace(",",".")) / n).toFixed(2).replace(".",",")} {n===1?"sem juros":n<=6?"sem juros":"com juros"}</option>)}
