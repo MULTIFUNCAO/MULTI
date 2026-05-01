@@ -5767,7 +5767,7 @@ const Card = ({ children, style = {}, onClick }) => (
                 </div>
                 <div style={{background:'#1E293B',borderRadius:12,padding:16}}>
                   <p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>DESDE</p>
-                  <p style={{color:'white',fontWeight:600,fontSize:13,margin:0}}>{selectedPro.created_at?new Date(selectedPro.created_at).toLocaleDateString('pt-BR'):'desconhecido'}</p>
+                  <p style={{color:'white',fontWeight:600,fontSize:13,margin:0}}>{selectedPro.created_at?new Date(selectedPro.created_at).toLocaleDateString():'desconhecido'}</p>
                 </div>
               </div>
             </div>
