@@ -643,7 +643,7 @@ function RadarSearchScreen({ service, onFound }) {
           <div style={{ marginTop:12, padding:"10px 14px", borderRadius:14, background:G+"12", border:`1px solid ${G}40`, display:"flex", alignItems:"center", gap:8 }}>
             <span style={{ fontSize:18 }}>🎉</span>
             <div>
-              <p style={{ fontSize:13, fontWeight:900, color:"#166534", margin:0 }}>3 Profissionais Interessados!</p>
+              <p style={{ fontSize:13, fontWeight:900, color:"#166534", margin:0 }}>${MOCK_PROS.length} Profissionais Interessados!</p>
               <p style={{ fontSize:11, color:"#4ade80", margin:0 }}>Selecione o melhor para você</p>
             </div>
           </div>
