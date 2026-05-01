@@ -5658,7 +5658,7 @@ const Card = ({ children, style = {}, onClick }) => (
               <button onClick={()=>setShowProsList(false)} style={{background:"none",border:"none",color:"#aaa",fontSize:20,cursor:"pointer"}}>X</button>
             </div>
             {prosList.map((u,i)=>(
- <div key={i} style={{background:"#1E293B",borderRadius:12,padding:"12px 14px",marginBottom:8}}>
+ <div key={i} style={{background:"#1E293B",borderRadius:12,padding:"12px 14px",marginBottom:8,cursor:"pointer"}} onClick={()=>setSelectedPro(u)}>
                 <p style={{color:"white",fontWeight:700,fontSize:14,margin:"0 0 4px"}}>{u.name||"Sem nome"}</p>
                 <p style={{color:"#94A3B8",fontSize:12,margin:"0 0 2px"}}>{u.email}</p>
                 <p style={{color:"#64748B",fontSize:11,margin:0}}>Desde {new Date(u.created_at).toLocaleDateString("pt-BR")}</p>
