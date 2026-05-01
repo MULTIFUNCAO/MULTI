@@ -5501,6 +5501,12 @@ function AdminDashboard({ onExit }) {
   const [selectedPro, setSelectedPro] = useState(null);
   const [showPedidos, setShowPedidos] = useState(false);
   const [showReceita, setShowReceita] = useState(false);
+  const [showClientes, setShowClientes] = useState(false);
+  const [clientesList, setClientesList] = useState([]);
+  const loadClientes = async () => { const r = await fetch('https://web-production-e103b.up.railway.app/api/admin/clientes',{headers:{'x-admin-key':'multi2026'}}); setClientesList(await r.json()); setShowClientes(true); };
+  const [showClientes, setShowClientes] = useState(false);
+  const [clientesList, setClientesList] = useState([]);
+  const loadClientes = async () => { const r = await fetch('https://web-production-e103b.up.railway.app/api/admin/clientes',{headers:{'x-admin-key':'multi2026'}}); setClientesList(await r.json()); setShowClientes(true); };
   const [receitaList, setReceitaList] = useState([]);
   const loadReceita = async () => { const r = await fetch('https://web-production-e103b.up.railway.app/api/admin/receita',{headers:{'x-admin-key':'multi2026'}}); setReceitaList(await r.json()); setShowReceita(true); };
   const [pedidosList, setPedidosList] = useState([]);
@@ -5619,6 +5625,50 @@ const Card = ({ children, style = {}, onClick }) => (
           <KPI icon={Activity}   iconColor="#f43f5e" iconBg="#881337aa" label="Pedidos Hoje" onClick={loadPedidos} value={ordersToday} sub="Últimas 24h" trend="+31%" />
         </div>
 
+      {showClientes && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={()=>setShowClientes(false)}>
+          <div style={{background:'#0F172A',borderRadius:16,padding:24,width:'90%',maxWidth:440,maxHeight:'85vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+              <p style={{color:'white',fontWeight:900,fontSize:16,margin:0}}>Clientes ({clientesList.length})</p>
+              <button onClick={()=>setShowClientes(false)} style={{background:'none',border:'none',color:'#aaa',fontSize:20,cursor:'pointer'}}>X</button>
+            </div>
+            {clientesList.length===0 && <p style={{color:'#64748B',textAlign:'center',padding:20}}>Nenhum cliente cadastrado</p>}
+            {clientesList.map((u,i)=>(
+              <div key={i} style={{background:'#1E293B',borderRadius:12,padding:'12px 14px',marginBottom:8,border:'1px solid #334155'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <p style={{color:'white',fontWeight:700,fontSize:14,margin:0}}>{u.name||'Sem nome'}</p>
+                  <span style={{fontSize:11,color:'#3B82F6',fontWeight:700}}>Cliente</span>
+                </div>
+                <p style={{color:'#94A3B8',fontSize:12,margin:'4px 0 0'}}>{u.email}</p>
+                <p style={{color:'#64748B',fontSize:11,margin:'2px 0 0'}}>{u.whatsapp||''} {u.city?'- '+u.city:''}</p>
+                <p style={{color:'#475569',fontSize:10,margin:'2px 0 0'}}>Desde {u.created_at?new Date(u.created_at).toLocaleDateString('pt-BR'):'?'}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {showClientes && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={()=>setShowClientes(false)}>
+          <div style={{background:'#0F172A',borderRadius:16,padding:24,width:'90%',maxWidth:440,maxHeight:'85vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+              <p style={{color:'white',fontWeight:900,fontSize:16,margin:0}}>Clientes ({clientesList.length})</p>
+              <button onClick={()=>setShowClientes(false)} style={{background:'none',border:'none',color:'#aaa',fontSize:20,cursor:'pointer'}}>X</button>
+            </div>
+            {clientesList.length===0 && <p style={{color:'#64748B',textAlign:'center',padding:20}}>Nenhum cliente cadastrado</p>}
+            {clientesList.map((u,i)=>(
+              <div key={i} style={{background:'#1E293B',borderRadius:12,padding:'12px 14px',marginBottom:8,border:'1px solid #334155'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <p style={{color:'white',fontWeight:700,fontSize:14,margin:0}}>{u.name||'Sem nome'}</p>
+                  <span style={{fontSize:11,color:'#3B82F6',fontWeight:700}}>Cliente</span>
+                </div>
+                <p style={{color:'#94A3B8',fontSize:12,margin:'4px 0 0'}}>{u.email}</p>
+                <p style={{color:'#64748B',fontSize:11,margin:'2px 0 0'}}>{u.whatsapp||''} {u.city?'- '+u.city:''}</p>
+                <p style={{color:'#475569',fontSize:10,margin:'2px 0 0'}}>Desde {u.created_at?new Date(u.created_at).toLocaleDateString('pt-BR'):'?'}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {showReceita && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={()=>setShowReceita(false)}>
           <div style={{background:'#0F172A',borderRadius:16,padding:24,width:'90%',maxWidth:440,maxHeight:'85vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
