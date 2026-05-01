@@ -5936,7 +5936,7 @@ const Card = ({ children, style = {}, onClick }) => (
           ))}
         </Card>
 
-        <p style={{fontSize:11,color:'#334155',textAlign:'center'}}>Multi Admin Panel - Acesso: Thiago (Owner) - {new Date().toLocaleDateString('pt-BR')}</p>
+        <p style={{fontSize:11,color:"#334155",textAlign:"center"}}>Multi Admin Panel - Acesso: Thiago (Owner)</p>
       </div>
     </div>
   );
