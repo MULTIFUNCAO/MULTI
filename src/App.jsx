@@ -5496,19 +5496,19 @@ function AdminDashboard({ onExit }) {
   const rejectVer   = (id) => { setVerifs(v => v.filter(p => p.id !== id)); adminToast("❌ Profissional reprovado.", "#EF4444"); };
 
   const [stats, setStats] = useState(null);
-  useEffect(() => {
   const [showProsList, setShowProsList] = useState(false);
   const [prosList, setProsList] = useState([]);
-  const loadPros = async () => { const r = await fetch("https://web-production-e103b.up.railway.app/api/admin/assinantes-pro", { headers:{"x-admin-key":"multi2026"} }); const d = await r.json(); setProsList(d); setShowProsList(true); };
-    fetch("https://web-production-e103b.up.railway.app/api/admin/stats", { headers: { "x-admin-key": "multi2026" } })
-      .then(r => r.json()).then(setStats).catch(console.error);
-  }, []);
-  if (!authed) return <AdminLogin onSuccess={() => setAuthed(true)} />;
-  const activeSubsCount = stats?.proAtivos || 0;
-  const newUsersToday   = { clients: stats?.totalClients || 0, pros: stats?.totalPros || 0 };
-  const totalRevenue    = parseFloat(stats?.receitaEstimada || 0);
-  const custodyTotal    = totalRevenue;
-  const ordersToday     = stats?.totalUsers || 0;
+  useEffect(() => { fetch("https://web-production-e103b.up.railway.app/api/admin/stats",{headers:{"x-admin-key":"multi2026"}}).then(r=>r.json()).then(setStats).catch(console.error); }, []);
+  const loadPros=async()=>{const r=await fetch("https://web-production-e103b.up.railway.app/api/admin/assinantes-pro",{headers:{"x-admin-key":"multi2026"}});setProsList(await r.json());setShowProsList(true);};
+  if (!authed) return React.createElement(AdminLogin,{onSuccess:()=>setAuthed(true)});
+  const activeSubsCount=stats?.proAtivos||0;
+  const newUsersToday={clients:stats?.totalClients||0,pros:stats?.totalPros||0};
+  const totalRevenue=parseFloat(stats?.receitaEstimada||0);
+  const custodyTotal=totalRevenue;
+  const ordersToday=stats?.totalUsers||0;
+  const maxBar=totalRevenue||1;
+
+
   const maxBar          = totalRevenue || 1;
 
 
