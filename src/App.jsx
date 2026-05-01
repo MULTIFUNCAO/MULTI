@@ -5712,7 +5712,7 @@ const Card = ({ children, style = {}, onClick }) => (
 //                  <span style={{fontSize:11,color:p.status==='completed'?'#22C55E':p.status==='in_progress'?'#F59E0B':'#94A3B8',fontWeight:700}}>{p.status||'pendente'}</span>
                 </div>
                 <p style={{color:'#94A3B8',fontSize:12,margin:'4px 0 0'}}>{p.client_name||p.user_id||'Cliente'}</p>
-                <p style={{color:'#64748B',fontSize:11,margin:'2px 0 0'}}>{p.city||p.location||''} - {new Date(p.created_at).toLocaleTimeString()}</p>
+                <p style={{color:'#64748B',fontSize:11,margin:'2px 0 0'}}>{p.city||p.location||""} - {new Date(p.created_at).toLocaleTimeString()}</p>
               </div>
             ))}
           </div>
