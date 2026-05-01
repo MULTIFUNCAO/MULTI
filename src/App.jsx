@@ -615,7 +615,7 @@ const MOCK_PROS = [
   { id:5, name:"Paula Mendes",   cat:"Encanadora", rating:4.6, jobs:41,  value:175, verified:true,  avatar:"👩", tag:"" },
   { id:6, name:"Roberto Lima",   cat:"Encanador",  rating:4.5, jobs:88,  value:200, verified:false, avatar:"👨", tag:"" },
   { id:7, name:"Sandra Costa",   cat:"Encanadora", rating:4.4, jobs:62,  value:155, verified:true,  avatar:"👩", tag:"" },
-
+];
 /* ───────────────────────── RADAR SCREEN ────────────────────────────────────── */
 function RadarSearchScreen({ service, onFound }) {
   const [phase, setPhase] = useState(0); // 0=searching, 1=found
