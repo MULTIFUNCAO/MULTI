@@ -4189,7 +4189,6 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
             <button
               onClick={() => setShowPaymentModal(true)}
               style={{ flex:1, padding:"13px 0", borderRadius:14, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${G},#16a34a)`, color:"white", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:`0 4px 14px ${G}44` }}>
-          <p style={{fontSize:11,color:'#6b7280',textAlign:'center',margin:'0 0 8px',lineHeight:1.5}}>🔒 Pagamento seguro • liberado após conclusão do serviço</p>
               <DollarSign size={16} /> Pagar Serviço com Segurança
             </button>
           </div>
