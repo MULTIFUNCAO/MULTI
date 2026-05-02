@@ -1104,7 +1104,7 @@ function PostServiceScreen({ onBack, onSuccess }) {
                 <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e", margin:"0 0 2px" }}>{opt.label}</p>
                 <p style={{ fontSize:11, color:"#9CA3AF", margin:0 }}>{opt.sub}</p>
               </div>
-              <div style={{ width:20, height:20, borderRadius:"50%", border:`2px solid ${form.material === opt.val ? B : "#D1D5DB"}`, background: form.material === opt.val ? B : "white", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .15s" }}>
+              <div style={{ width:20, height:20, borderRadius:"50%", border:(form.material===opt.val?"2px solid "+B:"2px solid #D1D5DB"), background: form.material === opt.val ? B : "white", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .15s" }}>
                 {form.material === opt.val && <div style={{ width:8, height:8, borderRadius:"50%", background:"white" }} />}
               </div>
             </div>
