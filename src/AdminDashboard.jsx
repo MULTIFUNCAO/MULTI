@@ -272,7 +272,7 @@ const Card = ({ children, style = {}, onClick }) => (
               </div>
               <div style={{background:'#1E293B',borderRadius:12,padding:16}}>
                 <p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>WHATSAPP</p>
-                <p style={{color:'white',fontWeight:600,fontSize:14,margin:0}}>{selectedPro.whatsapp||'Sem info'}</p>
+                <p style={{color:'white',fontWeight:600,fontSize:14,margin:0}}>{selectedPro.whatsapp||'Nao informado'}</p>
               </div>
               <div style={{background:'#1E293B',borderRadius:12,padding:16}}>
                 <p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>CUSTOMER ID ASAAS</p>
@@ -281,11 +281,11 @@ const Card = ({ children, style = {}, onClick }) => (
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                 <div style={{background:'#1E293B',borderRadius:12,padding:16}}>
                   <p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>STATUS</p>
-                  <p style={{color:'#22C55E',fontWeight:800,fontSize:13,margin:0}}>{selectedPro.is_pro ? 'PRO Ativo' : 'Inativo'}</p>
+                  <p style={{color:'#22C55E',fontWeight:800,fontSize:13,margin:0}}>{selectedPro.is_pro?'Ativo':'Inativo'}</p>
                 </div>
                 <div style={{background:'#1E293B',borderRadius:12,padding:16}}>
                   <p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>DESDE</p>
-                  <p style={{color:'white',fontWeight:600,fontSize:13,margin:0}}>{selectedPro.created_at?new Date(selectedPro.created_at).toLocaleDateString():'N/A'}</p>
+                  <p style={{color:'white',fontWeight:600,fontSize:13,margin:0}}>{selectedPro.created_at?new Date(selectedPro.created_at).toLocaleDateString():'desconhecido'}</p>
                 </div>
               </div>
             </div>
@@ -444,11 +444,11 @@ const Card = ({ children, style = {}, onClick }) => (
             { label:'Uptime',         val:'99.97%',ok:true  },
             { label:'Filas em aberto',val:'4',     ok:true  },
           ].map((h, i) => (
-            <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 0', borderBottom: i < 3 ? "1px solid #334155" : "none" }}>
+            <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 0', borderBottom: i < 3 ? '1px solid #334155' : 'none' }}>
               <span style={{ fontSize:12, color:'#64748B', fontWeight:600 }}>{h.label}</span>
               <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                 <span style={{ fontSize:12, fontWeight:900, color:'#1e293b' }}>{h.val}</span>
-                <span style={{ width:8, height:8, borderRadius:'50%', background: h.ok ? '#22c55e' : '#EF4444' }} />
+              <span style={{ width:8, height:8, borderRadius:'50%', background: h.ok ? '#22c55e' : '#EF4444' }} />
               </div>
             </div>
           ))}
