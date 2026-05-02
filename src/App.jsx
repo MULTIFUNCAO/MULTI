@@ -5136,7 +5136,7 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
         {filtered.length === 0 ? (
           <div style={{ textAlign:"center", padding:"40px 24px", color:"#bbb" }}>
             <p style={{ fontSize:15, fontWeight:700 }}>Nenhum serviço neste filtro</p>
-            <p style={{ fontSize:12, marginTop:4 }}>Tente outro filtro ou aguarde novos pedidos</p>
+            <p style={{ fontSize:12, marginTop:4 }}>Nenhum profissional disponível agora 😔 Seu pedido ficará no mural e você será notificado assim que alguém aceitar.</p>
           </div>
         ) : filtered.map((s, idx) => {
           const cat       = CATS.find(c => c.id === s.cat);
