@@ -272,7 +272,7 @@ const Card = ({ children, style = {}, onClick }) => (
               </div>
               <div style={{background:'#1E293B',borderRadius:12,padding:16}}>
                 <p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>WHATSAPP</p>
-                <p style={{color:'white',fontWeight:600,fontSize:14,margin:0}}>{selectedPro.whatsapp||'Nao informado'}</p>
+                <p style={{color:'white',fontWeight:600,fontSize:14,margin:0}}>{selectedPro.whatsapp||'Sem info'}</p>
               </div>
               <div style={{background:'#1E293B',borderRadius:12,padding:16}}>
                 <p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>CUSTOMER ID ASAAS</p>
@@ -281,11 +281,11 @@ const Card = ({ children, style = {}, onClick }) => (
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                 <div style={{background:'#1E293B',borderRadius:12,padding:16}}>
                   <p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>STATUS</p>
-                  <p style={{color:'#22C55E',fontWeight:800,fontSize:13,margin:0}}>{selectedPro.is_pro?'Ativo':'Inativo'}</p>
+                  <p style={{color:'#22C55E',fontWeight:800,fontSize:13,margin:0}}>{selectedPro.is_pro ? 'PRO Ativo' : 'Inativo'}</p>
                 </div>
                 <div style={{background:'#1E293B',borderRadius:12,padding:16}}>
                   <p style={{color:'#64748B',fontSize:11,margin:'0 0 4px'}}>DESDE</p>
-                  <p style={{color:'white',fontWeight:600,fontSize:13,margin:0}}>{selectedPro.created_at?new Date(selectedPro.created_at).toLocaleDateString():'desconhecido'}</p>
+                  <p style={{color:'white',fontWeight:600,fontSize:13,margin:0}}>{selectedPro.created_at?new Date(selectedPro.created_at).toLocaleDateString():'N/A'}</p>
                 </div>
               </div>
             </div>
