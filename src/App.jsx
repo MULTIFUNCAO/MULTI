@@ -5998,10 +5998,10 @@ export default function App() {
           );
         })}
       </div>
+    <ChatWidget />
     </>
+
   );
 }
-
-  <ChatWidget />
-// deploy Sun Apr 26 23:30:18     2026
+// deploy Sun Apr 26 23:30:18     2026
 // utf8-fix
