@@ -1123,9 +1123,6 @@ function PostServiceScreen({ onBack, onSuccess }) {
       {/* Aviso de privacidade */}
       <div style={{ background:"#FFFBEB", border:"1px solid #FDE68A", borderRadius:12, padding:"10px 14px", display:"flex", gap:10 }}>
         <span style={{ fontSize:16, flexShrink:0 }}>🔒</span>
-        <p style={{ fontSize:12, color:"#92400E", fontWeight:700, margin:0, lineHeight:1.6 }}>
-          No mural, os profissionais verão apenas o <strong>bairro e cidade</strong>. O endereço completo só é liberado após ambos confirmarem o serviço.
-        </p>
       </div>
 
       <button
