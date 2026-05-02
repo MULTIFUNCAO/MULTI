@@ -4178,7 +4178,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
           <div style={{ display:"flex", alignItems:"flex-start", gap:8, background:"#FFFBEB", border:"1px solid #FDE68A", borderRadius:10, padding:"8px 10px" }}>
             <span style={{ fontSize:15, flexShrink:0, lineHeight:1.4 }}>⚠️</span>
             <p style={{ fontSize:10, fontWeight:700, color:"#92400E", lineHeight:1.5, margin:0 }}>
-              Por sua segurança, <strong>não realize pagamentos antecipados</strong>. Exija a conclusão do serviço antes de passar o PIN de liberação. O Multi nunca pede pagamento por fora da plataforma.
+              Seu pagamento fica guardado no app e só é liberado ao profissional após você confirmar que o serviço foi concluído.
             </p>
           </div>
         </div>
