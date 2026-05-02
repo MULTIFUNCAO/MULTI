@@ -4036,10 +4036,6 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
           {/* service info + contact chip */}
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:8, paddingTop:8, borderTop:"1px solid #F4F4F6" }}>
             <span style={{ fontSize:11, color:"#888" }}>Conversa: <strong style={{ color:"#1a1a2e" }}>{chat.serviceTitle}</strong></span>
-            {(isPro || dealAccepted || contactUnlocked) ? (
-            ) : (
-              <span style={{ fontSize:10, color:"#C44B00", background:"#FFF6F2", border:"1px solid #FFD8C8", borderRadius:8, padding:"3px 8px" }}>🔒 Feche o acordo para liberar</span>
-            )}
           </div>
         </div>
 
