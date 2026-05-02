@@ -165,8 +165,6 @@ const Card = ({ children, style = {}, onClick }) => (
         </div>
       )}
           </div>
-        </div>
-      )}
       {showReceita && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={()=>setShowReceita(false)}>
           <div style={{background:'#0F172A',borderRadius:16,padding:24,width:'90%',maxWidth:440,maxHeight:'85vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
