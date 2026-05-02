@@ -1,3 +1,4 @@
+import ChatWidget from './ChatWidget';
 ﻿import { useState, useRef, useEffect } from "react";
 import AdminDashboard from "./AdminDashboard";
 import {
@@ -6001,5 +6002,6 @@ export default function App() {
   );
 }
 
+  <ChatWidget />
 // deploy Sun Apr 26 23:30:18     2026
 // utf8-fix
