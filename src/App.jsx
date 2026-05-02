@@ -4189,7 +4189,8 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
             <button
               onClick={() => setShowPaymentModal(true)}
               style={{ flex:1, padding:"13px 0", borderRadius:14, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${G},#16a34a)`, color:"white", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:`0 4px 14px ${G}44` }}>
-              <DollarSign size={16} /> Pagar Serviço com Custódia
+          <div style={{background:'#EBF5FF',border:'1px solid #BFDBFE',borderRadius:12,padding:'12px 14px',marginBottom:10,display:'flex',gap:10,alignItems:'flex-start'}}><span style={{fontSize:18}}>🔒</span><div><div style={{fontWeight:800,fontSize:12,color:'#1e40af',marginBottom:2}}>Como funciona o pagamento seguro?</div><div style={{fontSize:11,color:'#1e40af',lineHeight:1.5}}>Seu pagamento fica guardado no app. O profissional só recebe depois que você confirmar que o serviço foi concluído. Você está protegido.</div></div></div>
+              <DollarSign size={16} /> Pagar Serviço com Segurança
             </button>
           </div>
         )}
