@@ -1647,7 +1647,6 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry })
         {isPro ? (
           <div style={{ background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:12, padding:12 }}>
             <p style={{ fontSize:11, fontWeight:800, color:"#166534", marginBottom:5 }}>✅ Contato desbloqueado (PRO)</p>
-            <p style={{ fontSize:14, fontWeight:900, color:"#1a1a2e", marginBottom:2 }}>📱 (11) 9 8765-4321</p>
             <p style={{ fontSize:13, color:"#666" }}>cliente@email.com</p>
           </div>
         ) : (
@@ -4038,7 +4037,6 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:8, paddingTop:8, borderTop:"1px solid #F4F4F6" }}>
             <span style={{ fontSize:11, color:"#888" }}>Conversa: <strong style={{ color:"#1a1a2e" }}>{chat.serviceTitle}</strong></span>
             {(isPro || dealAccepted || contactUnlocked) ? (
-              <span style={{ fontSize:11, fontWeight:800, color:"#166534", background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:8, padding:"3px 8px" }}>📱 (11) 9 8765-4321</span>
             ) : (
               <span style={{ fontSize:10, color:"#C44B00", background:"#FFF6F2", border:"1px solid #FFD8C8", borderRadius:8, padding:"3px 8px" }}>🔒 Feche o acordo para liberar</span>
             )}
