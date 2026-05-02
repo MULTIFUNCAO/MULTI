@@ -6007,7 +6007,7 @@ export default function App() {
         })}
       </div>
     <ChatWidget />
-      {showCheckout && <CheckoutPagamento valor={showCheckout.valor} servico={showCheckout.servico} profissional={showCheckout.profissional} onClose={()=>setShowCheckout(null)} onPago={()=>setShowCheckout(null)} />}
+      
     </>
 
   );
