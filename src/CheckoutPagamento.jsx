@@ -143,7 +143,7 @@ function TelaMetodo({ valor, servico, profissional, onNext }) {
       }}>
         <span style={{ fontSize: 14 }}>ℹ️</span>
         <span style={{ fontSize: 11, color: "#92400E", lineHeight: 1.5 }}>
-          A taxa cobrada é da operadora de pagamento (Asaas). O profissional recebe o valor integral de <strong>{fmt(valor)}</strong> após a conclusão do serviço.
+          Pague com PIX e economize 💚 Cartão de débito ou crédito possui acréscimo de processamento.
         </span>
       </div>
 
