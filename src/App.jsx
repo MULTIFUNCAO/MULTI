@@ -1120,11 +1120,6 @@ function PostServiceScreen({ onBack, onSuccess }) {
         </div>
       </div>
 
-      {/* Aviso de privacidade */}
-      <div style={{ background:"#FFFBEB", border:"1px solid #FDE68A", borderRadius:12, padding:"10px 14px", display:"flex", gap:10 }}>
-        <span style={{ fontSize:16, flexShrink:0 }}>🔒</span>
-      </div>
-
       <button
         onClick={() => { if (canPublish) onSuccess({ cat:form.cat, desc:form.desc, value:Number(form.value), cep:form.cep, cepInfo, material:form.material }); }}
         style={{ padding:"15px 0", borderRadius:14, border:"none", cursor: canPublish ? "pointer" : "not-allowed", background: canPublish ? `linear-gradient(135deg,${O},#E64A19)` : "#E5E7EB", color: canPublish ? "white" : "#9CA3AF", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow: canPublish ? "0 5px 18px rgba(255,87,34,.30)" : "none", transition:"all .2s" }}>
