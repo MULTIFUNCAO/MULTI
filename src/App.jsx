@@ -1030,7 +1030,22 @@ function PostServiceScreen({ onBack, onSuccess }) {
         {cepError && <p style={{ fontSize:12, color:"#EF4444", fontWeight:700, margin:"6px 0 0" }}>{cepError}</p>}
       </div>
 
-              {/* Urgência */}
+              
+        {/* Endereco completo - so aparece apos CEP valido */}
+        {cepInfo && (
+          <div style={{marginBottom:18}}>
+            <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:8,padding:'8px 12px',background:'#FFF8E1',borderRadius:8,border:'1px solid #FFE082'}}>
+              <span style={{fontSize:13}}>🔒</span>
+              <span style={{fontSize:11,color:'#F57F17',fontWeight:600}}>No mural, os profissionais verao apenas o bairro e cidade. O endereco completo so e liberado apos ambos confirmarem o servico.</span>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr auto',gap:8,marginBottom:8}}>
+              <div><label style={{display:'block',fontSize:10,fontWeight:800,color:'#aaa',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4}}>RUA / LOGRADOURO</label><input placeholder='Ex: Rua das Flores' value={form.rua||''} onChange={e=>setForm({...form,rua:e.target.value})} style={{...F,width:'100%',boxSizing:'border-box'}} /></div>
+              <div style={{width:80}}><label style={{display:'block',fontSize:10,fontWeight:800,color:'#aaa',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4}}>NUMERO</label><input placeholder='123' value={form.numero||''} onChange={e=>setForm({...form,numero:e.target.value})} style={{...F,width:'100%',boxSizing:'border-box'}} /></div>
+            </div>
+            <div><label style={{display:'block',fontSize:10,fontWeight:800,color:'#aaa',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4}}>COMPLEMENTO (opcional)</label><input placeholder='Apto, bloco, ref...' value={form.complemento||''} onChange={e=>setForm({...form,complemento:e.target.value})} style={{...F,width:'100%',boxSizing:'border-box'}} /></div>
+          </div>
+        )}
+{/* Urgência */}
               <div style={{ marginBottom:18 }}>
                 <label style={{ display:'block', fontSize:10, fontWeight:800, color:'#aaa', textTransform:'uppercase', letterSpacing:1.2, marginBottom:6 }}>URGÊNCIA</label>
                 <div style={{ display:'flex', gap:8 }}>
