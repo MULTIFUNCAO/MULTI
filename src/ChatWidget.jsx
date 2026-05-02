@@ -101,7 +101,7 @@ export default function ChatWidget() {
           onClick={() => setOpen(true)}
           style={{
             position: "fixed",
-            bottom: "80px",
+            bottom: "140px",
             right: "16px",
             width: "52px",
             height: "52px",
@@ -135,7 +135,7 @@ export default function ChatWidget() {
       {open && (
         <div style={{
           position: "fixed",
-          bottom: "80px",
+          bottom: "200px",
           right: "12px",
           width: "320px",
           height: "480px",
