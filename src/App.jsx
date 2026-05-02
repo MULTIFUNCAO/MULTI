@@ -1,3 +1,4 @@
+import CheckoutPagamento from './CheckoutPagamento';
 import ChatWidget from './ChatWidget';
 ﻿import { useState, useRef, useEffect } from "react";
 import AdminDashboard from "./AdminDashboard";
@@ -4115,7 +4116,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
                           <button style={{ padding:"11px 0", borderRadius:12, border:`1.5px solid ${B}`, background:"white", color:B, fontWeight:800, fontSize:11, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}>
                             <MapPin size={13} /> Ver Endereço
                           </button>
-                          <button onClick={() => setShowPaymentModal(true)} style={{ padding:"11px 0", borderRadius:12, border:"none", background:`linear-gradient(135deg,${G},#16a34a)`, color:"white", fontWeight:800, fontSize:11, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}>
+                          <button onClick={() => setShowCheckout({valor:selectedService?.orcamento||100,servico:selectedService?.categoria||"Servico",profissional:selectedPro?.nome||"Profissional"})} style={{ padding:"11px 0", borderRadius:12, border:"none", background:`linear-gradient(135deg,${G},#16a34a)`, color:"white", fontWeight:800, fontSize:11, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}>
                             <DollarSign size={13} /> Pagar PIX/Cartão
                           </button>
                         </div>
@@ -6006,6 +6007,7 @@ export default function App() {
         })}
       </div>
     <ChatWidget />
+      {showCheckout && <CheckoutPagamento valor={showCheckout.valor} servico={showCheckout.servico} profissional={showCheckout.profissional} onClose={()=>setShowCheckout(null)} onPago={()=>setShowCheckout(null)} />}
     </>
 
   );
