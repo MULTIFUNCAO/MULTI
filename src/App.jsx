@@ -3868,7 +3868,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
         <div style={{ padding:"20px 16px", display:"flex", flexDirection:"column", gap:14, alignItems:"center" }}>
           <div style={{ background:"white", borderRadius:20, padding:20, width:"100%", textAlign:"center", boxShadow:"0 3px 16px rgba(0,0,0,.09)" }}>
             <p style={{ fontSize:13, fontWeight:700, color:"#888", margin:"0 0 16px" }}>Escaneie com o app do seu banco</p>
-            {/* QR Code placeholder */}
+            {qrBase64 ? <img src={"data:image/png;base64,"+qrBase64} alt="QR PIX" style={{width:200,height:200,display:"block",margin:"0 auto 8px",borderRadius:12}} /> : <div style={{width:200,height:200,margin:"0 auto 8px",background:"#F0F0F0",borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"#888"}}>Gerando QR Code...</div>}
             {qrBase64 ? React.createElement("img",{src:"data:image/png;base64,"+qrBase64,alt:"QR PIX",style:{width:200,height:200,display:"block",margin:"0 auto 8px",borderRadius:12}}) : React.createElement("div",{style:{width:200,height:200,margin:"0 auto",background:"#F0F0F0",borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center"}},"Gerando...")}
             <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:99, padding:"5px 14px", marginBottom:16 }}>
               <div style={{ width:8, height:8, borderRadius:"50%", background:G }} />
