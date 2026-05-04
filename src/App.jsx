@@ -6005,7 +6005,6 @@ export default function App() {
       </div>
     <ChatWidget />
       {showPixModal && <PixQRCode valor={showPixModal.valor} onClose={()=>setShowPixModal(null)} onPago={()=>{setPaymentDone(true);setShowPixModal(null);setShowPaymentModal(false);}} />}
-      {showPixModal && <PixQRCode valor={showPixModal.valor} onClose={()=>setShowPixModal(null)} onPago={()=>{setPaymentDone(true);setShowPixModal(null);setShowPaymentModal(false);}} />}
       
     </>
 
