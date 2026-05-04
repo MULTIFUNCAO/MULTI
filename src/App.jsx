@@ -1892,6 +1892,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
   }
 
   /* ── CHECKOUT SCREEN ── */
+const CheckoutScreen = () => {
   const PIX_KEY = "contato@multifuncao.com.br";
 
   const handleCopyKey = function() {
@@ -2340,6 +2341,7 @@ function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
     </div>
   );
 }
+};
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 /* ── Autonomy term card for professional profile ── */
