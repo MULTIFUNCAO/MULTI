@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const API_URL = "https://web-production-e103b.up.railway.app";
+const API_URL = "https://api.multifuncao.com.br";
 
 export default function PixQRCode({ valor, onPago, onClose }) {
   const [qrBase64, setQrBase64] = useState("");
