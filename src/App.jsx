@@ -1890,7 +1890,6 @@ function ProUpgrade({ onBack, onSubscribe }) {
           )}
     );
   }
-}
 
   /* ── CHECKOUT SCREEN ── */
   const PIX_KEY = "contato@multifuncao.com.br";
