@@ -1893,6 +1893,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
   }
 
   /* ── CHECKOUT SCREEN ── */
+const CheckoutScreen = function() {
   const PIX_KEY = "contato@multifuncao.com.br";
 
   const handleCopyKey = function() {
