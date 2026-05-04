@@ -3619,6 +3619,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
   const [messages,        setMessages]        = useState(chat.messages?.length ? chat.messages : initMsgs);
   const [text,            setText]            = useState("");
   const [dealAccepted,    setDealAccepted]    = useState(false);
+  const [showPixModal, setShowPixModal] = useState(null);
   const [showPaymentModal,  setShowPaymentModal]  = useState(false);
   const [paymentDone,       setPaymentDone]       = useState(false);
   const [paymentStep,       setPaymentStep]       = useState("choose");
