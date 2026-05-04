@@ -2168,7 +2168,7 @@ function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
       setWalletBalance?.(b => b - amount);
       setHistory(h => [{ id:Date.now(), date: new Date().toLocaleDateString("pt-BR"), service:"Saque via PIX", value:-amount, status:"withdrawn" }, ...h]);
       showToast(`💸 Saque de R$ ${amount.toFixed(2).replace(".",",")} enviado via PIX!`, G);
-      setTimeout(() => { setShowPix(false); setWithdrawn(false); setPixKey(""); setPixAmount(""); }, 2000);
+      setTimeout(() => { setShowPixModal(false); setWithdrawn(false); setPixKey(""); setPixAmount(""); }, 2000);
     }, 2200);
   };
 
@@ -2210,7 +2210,7 @@ function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
 
       {/* ── ACTION BUTTONS ── */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, padding:"20px 16px 0" }}>
-        <button onClick={() => setShowPix(true)} style={{ padding:"14px 0", borderRadius:16, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${G},#16a34a)`, color:"white", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:`0 5px 16px ${G}44` }}>
+        <button onClick={() => setShowPixModal(true)} style={{ padding:"14px 0", borderRadius:16, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${G},#16a34a)`, color:"white", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:`0 5px 16px ${G}44` }}>
           <Banknote size={17} /> Sacar via PIX
         </button>
         <button onClick={() => window.open("/relatorio.html", "_blank")} style={{ padding:"14px 0", borderRadius:16, border:"1.5px solid "+B, background:"white", color:B, fontWeight:900, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
@@ -2291,7 +2291,7 @@ function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
       </div>
 
       {/* ── PIX WITHDRAWAL MODAL ── */}
-      {showPix && (
+      {showPixModal && (
         <div style={{ position:"fixed", inset:0, zIndex:300, background:"rgba(0,0,0,.5)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
           <div style={{ width:"100%", maxWidth:400, background:"white", borderRadius:"24px 24px 0 0", padding:"24px 20px 40px" }}>
             <div style={{ width:40, height:4, background:"#E0E0E0", borderRadius:99, margin:"0 auto 20px" }} />
@@ -2331,7 +2331,7 @@ function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
                 </div>
 
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                  <button onClick={() => { setShowPix(false); setPixKey(""); setPixAmount(""); }} style={{ padding:"13px 0", borderRadius:12, border:"1.5px solid #E5E7EB", background:"white", color:"#888", fontWeight:800, fontSize:13, cursor:"pointer" }}>Cancelar</button>
+                  <button onClick={() => { setShowPixModal(false); setPixKey(""); setPixAmount(""); }} style={{ padding:"13px 0", borderRadius:12, border:"1.5px solid #E5E7EB", background:"white", color:"#888", fontWeight:800, fontSize:13, cursor:"pointer" }}>Cancelar</button>
                   <button onClick={handleWithdraw} disabled={processing || !pixKey.trim() || !pixAmount} style={{ padding:"13px 0", borderRadius:12, border:"none", background: pixKey.trim() && pixAmount ? `linear-gradient(135deg,${G},#16a34a)` : "#E5E7EB", color: pixKey.trim() && pixAmount ? "white" : "#aaa", fontWeight:900, fontSize:13, cursor: pixKey.trim() && pixAmount ? "pointer" : "default", display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow: pixKey.trim() && pixAmount ? `0 4px 12px ${G}44` : "none" }}>
                     {processing ? <><span style={{ width:16, height:16, border:"2px solid white", borderTopColor:"transparent", borderRadius:"50%", display:"inline-block", animation:"spin .7s linear infinite" }} /> Enviando…</> : <><Check size={15} /> Confirmar</>}
                   </button>
