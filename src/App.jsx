@@ -1698,6 +1698,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
   const [pixLoading,   setPixLoading]   = useState(false);
   const [pixCode,      setPixCode]      = useState("");
   const [qrBase64,     setQrBase64]     = useState("");
+  useEffect(function(){if(paymentStep==="pix" && showPaymentModal){gerarPixReal();}}, [paymentStep, showPaymentModal]);
   const [paymentId,    setPaymentId]    = useState(null);
   const [pixError,     setPixError]     = useState("");
 
