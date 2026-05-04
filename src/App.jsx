@@ -1,4 +1,5 @@
 import CheckoutPagamento from './CheckoutPagamento';
+import PixQRCode from "./PixQRCode";
 import ChatWidget from './ChatWidget';
 ﻿import { useState, useRef, useEffect } from "react";
 import AdminDashboard from "./AdminDashboard";
@@ -6001,6 +6002,7 @@ export default function App() {
         })}
       </div>
     <ChatWidget />
+      {showPixModal && <PixQRCode valor={showPixModal.valor} onClose={()=>setShowPixModal(null)} onPago={()=>{setPaymentDone(true);setShowPixModal(null);setShowPaymentModal(false);}} />}
       
     </>
 
