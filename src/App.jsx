@@ -2290,7 +2290,6 @@ function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
       </div>
 
       {/* ── PIX WITHDRAWAL MODAL ── */}
-      {showPixModal && (
         <div style={{ position:"fixed", inset:0, zIndex:300, background:"rgba(0,0,0,.5)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
           <div style={{ width:"100%", maxWidth:400, background:"white", borderRadius:"24px 24px 0 0", padding:"24px 20px 40px" }}>
             <div style={{ width:40, height:4, background:"#E0E0E0", borderRadius:99, margin:"0 auto 20px" }} />
@@ -6002,7 +6001,6 @@ export default function App() {
         })}
       </div>
     <ChatWidget />
-      {showPixModal && <PixQRCode valor={showPixModal.valor} onClose={()=>setShowPixModal(null)} onPago={()=>{setPaymentDone(true);setShowPixModal(null);setShowPaymentModal(false);}} />}
       
     </>
 
