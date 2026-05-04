@@ -1847,10 +1847,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
                 <p style={{ fontSize:12, color:"#888", fontWeight:700, margin:"0 0 14px" }}>Escaneie o QR Code com o app do seu banco</p>
 
                 <div style={{ width:200, height:200, margin:"0 auto 14px", borderRadius:16, border:"3px solid #1a1a2e", display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", background:"white" }}>
-                  {qrBase64
-                    ? <img src={`data:image/png;base64,${qrBase64}`} alt="QR Code PIX" style={{ width:"100%", height:"100%", objectFit:"contain" }} />
-                  }
-                </div>
+            {qrBase64 ? <img src={"data:image/png;base64,"+qrBase64} alt="QR PIX" style={{width:"100%",height:"100%",objectFit:"contain"}} /> : null}
 
                 <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:99, padding:"5px 14px" }}>
                   <div style={{ width:8, height:8, borderRadius:"50%", background:G }} />
