@@ -1849,11 +1849,6 @@ function ProUpgrade({ onBack, onSubscribe }) {
                 <div style={{ width:200, height:200, margin:"0 auto 14px", borderRadius:16, border:"3px solid #1a1a2e", display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", background:"white" }}>
                   {qrBase64
                     ? <img src={`data:image/png;base64,${qrBase64}`} alt="QR Code PIX" style={{ width:"100%", height:"100%", objectFit:"contain" }} />
-                    : <div style={{ display:"grid", gridTemplateColumns:"repeat(9,1fr)", gap:2, padding:10, width:"100%", height:"100%" }}>
-                          const isBlack = (i%3===0)||(i%7===1)||(i<9)||(i>=72)||(i%9===0)||(i%9===8);
-                          return <div key={i} style={{ background: isBlack ? "#1a1a2e" : "white", borderRadius:1 }} />;
-                        })}
-                      </div>
                   }
                 </div>
 
