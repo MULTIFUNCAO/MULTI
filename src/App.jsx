@@ -1889,7 +1889,6 @@ function ProUpgrade({ onBack, onSubscribe }) {
               </p>
           )}
         </div>
-      </div>
     );
   }
 
