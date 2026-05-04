@@ -1,8 +1,7 @@
 import CheckoutPagamento from './CheckoutPagamento';
 //already from "./PixQRCode";
 import ChatWidget from './ChatWidget';
-﻿import PixQRCode from './PixQRCode';
-import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef, useEffect } from "react";
 import AdminDashboard from "./AdminDashboard";
 import {
   Search, MapPin, Bell, Star, Plus, ChevronRight,
@@ -3619,8 +3618,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
   const [messages,        setMessages]        = useState(chat.messages?.length ? chat.messages : initMsgs);
   const [text,            setText]            = useState("");
   const [dealAccepted,    setDealAccepted]    = useState(false);
-  const [showPixModal, setShowPixModal] = useState(null);
-  const [showPaymentModal,  setShowPaymentModal]  = useState(false);
+    const [showPaymentModal,  setShowPaymentModal]  = useState(false);
   const [paymentDone,       setPaymentDone]       = useState(false);
   const [paymentStep,       setPaymentStep]       = useState("choose");
   const [isTyping,        setIsTyping]        = useState(false);
@@ -3786,7 +3784,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
           <p style={{ fontSize:11, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.5, margin:"4px 0 0" }}>Escolha como pagar</p>
 
           {/* PIX option */}
-          <div onClick={() => setShowPixModal({valor: serviceValue || "100"})} style={{ background:"white", borderRadius:20, overflow:"hidden", boxShadow:"0 4px 18px rgba(0,122,255,.12)", border:`2px solid ${B}`, cursor:"pointer" }}>
+          <div onClick={() => setPaymentStep("pix")} style={{ background:"white", borderRadius:20, overflow:"hidden", boxShadow:"0 4px 18px rgba(0,122,255,.12)", border:`2px solid ${B}`, cursor:"pointer" }}>
             <div style={{ background:`linear-gradient(135deg,${B},#0055d4)`, padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
               <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                 <span style={{ fontSize:13 }}>⚡</span>
