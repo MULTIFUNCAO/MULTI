@@ -1896,7 +1896,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
   const PIX_KEY = "contato@multifuncao.com.br";
 
   const handleCopyKey = () => {
-    navigator.clipboard?.writeText(PIX_KEY).catch(() => {});
+    navigator.clipboard && navigator.clipboard.writeText(PIX_KEY);
     setCopiedPix(true);
     setTimeout(() => setCopiedPix(false), 2000);
   };
