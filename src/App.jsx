@@ -1895,10 +1895,10 @@ function ProUpgrade({ onBack, onSubscribe }) {
   /* ── CHECKOUT SCREEN ── */
   const PIX_KEY = "contato@multifuncao.com.br";
 
-  const handleCopyKey = () => {
-    navigator.clipboard && navigator.clipboard.writeText(PIX_KEY);
+  const handleCopyKey = function() {
+    if(navigator.clipboard) navigator.clipboard.writeText(PIX_KEY);
     setCopiedPix(true);
-    setTimeout(() => setCopiedPix(false), 2000);
+    setTimeout(function(){ setCopiedPix(false); }, 2000);
   };
 
   return (
