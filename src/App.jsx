@@ -3675,6 +3675,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
     setDealAccepted(true);
     setMessages(m => m.map(x => x.type === "deal" ? { ...x, deal: { ...x.deal, accepted:true } } : x));
     pushClient("✅ Acordo confirmado! Serviço garantido pelo Multi.");
+    if (dealValue) { chat.dealValue = dealValue; }
     proRespond("Perfeito! Acordo fechado. Estarei no local no horário combinado. Até logo! 🤝", 1000);
   };
 
@@ -3739,7 +3740,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
 
   // ── PAYMENT MODAL ────────────────────────────────────────────────────────
   if (showPaymentModal) {
-    const serviceValue = chat.serviceValue || chat.proposalValue || "150,00";
+    const serviceValue = chat.dealValue || chat.serviceValue || chat.proposalValue || "150,00";
 
     // Step: choose payment method
     if (paymentStep === "choose") return (
