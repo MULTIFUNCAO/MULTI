@@ -1887,9 +1887,9 @@ function ProUpgrade({ onBack, onSubscribe }) {
               <p style={{ textAlign:"center", fontSize:11, color:"#aaa" }}>
                 Pagamento processado em até 5 segundos após o PIX.
               </p>
-          )}
         </div>
       </div>
+          )}
     );
   }
 
