@@ -1887,12 +1887,14 @@ function ProUpgrade({ onBack, onSubscribe }) {
               <p style={{ textAlign:"center", fontSize:11, color:"#aaa" }}>
                 Pagamento processado em até 5 segundos após o PIX.
               </p>
+            </>
           )}
+        </div>
+      </div>
     );
   }
-}
 
-  /* ── CHECKOUT SCREEN ── */
+/* ── CHECKOUT SCREEN ── */
 const CheckoutScreen = () => {
   const PIX_KEY = "contato@multifuncao.com.br";
 
@@ -2342,7 +2344,6 @@ function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
     </div>
   );
 }
-};
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 /* ── Autonomy term card for professional profile ── */
