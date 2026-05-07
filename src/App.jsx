@@ -3620,7 +3620,7 @@ function PixQRChat({ valor }) {
     <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,color:'#888'}}>Gerando...</div>
     <img ref={ref} alt='QR PIX' style={{width:200,height:200,display:'none',borderRadius:12}} />
   </div>;
-}ems:"center",justifyContent:"center",margin:"0 auto",fontSize:12,color:"#888"}}>Erro ao gerar QR</div>;
+  <div style={{width:200,height:200,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#888"}}>Erro ao gerar QR</div>;
   return <img src={"data:image/png;base64,"+qr} alt="QR PIX" style={{width:200,height:200,display:"block",margin:"0 auto",borderRadius:12}} />;
 }
 
