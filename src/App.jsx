@@ -1698,7 +1698,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
   const [pixLoading,   setPixLoading]   = useState(false);
   const [pixCode,      setPixCode]      = useState("");
   const [qrBase64,     setQrBase64]     = useState("");
-  useEffect(() => { if (paymentStep === "pix" && showPaymentModal && !chatQrBase64) { setChatQrLoading(true); const sv = chat.dealValue || chat.proposalValue || "100"; fetch("https://web-production-e103b.up.railway.app/api/gerar-pix-servico", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ value: parseFloat(String(sv).replace(",",".")), name: "Cliente", email: "cliente@multi.com", phone: "11999999999" }) }).then(r => r.json()).then(d => { if (d.qrCodeBase64) setChatQrBase64(d.qrCodeBase64); }).catch(() => {}).finally(() => setChatQrLoading(false)); } }, [paymentStep, showPaymentModal]);
+  useEffect(() => { if (paymentStep === "pix" && showPaymentModal && !chatQrBase64) { setChatQrLoading(true); const sv = chat.dealValue || chat.proposalValue || "100"; fetch("https://web-production-e103b.up.railway.app/api/gerar-pix-servico", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ value: parseFloat(String(sv).replace(",",".")), name: "Cliente", email: "cliente@multi.com", phone: "11999999999" }) }).then(r => r.json()).then(d => { if (d.qrCodeBase64) { setChatQrBase64(d.qrCodeBase64); setChatQrKey(k => k+1); } }).catch(() => {}).finally(() => setChatQrLoading(false)); } }, [paymentStep, showPaymentModal]);
   const [paymentId,    setPaymentId]    = useState(null);
   const [pixError,     setPixError]     = useState("");
 
@@ -1847,7 +1847,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
                 <p style={{ fontSize:12, color:"#888", fontWeight:700, margin:"0 0 14px" }}>Escaneie o QR Code com o app do seu banco</p>
 
                 <div style={{ width:200, height:200, margin:"0 auto 14px", borderRadius:16, border:"3px solid #1a1a2e", display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden",position:"relative", background:"white" }}>
-            {chatQrBase64 && <img src={"data:image/png;base64,"+chatQrBase64} alt="QR PIX" style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",objectFit:"cover",borderRadius:14,zIndex:10}} />}
+            {chatQrBase64 && <img key={chatQrKey} src={"data:image/png;base64,"+chatQrBase64} alt="QR PIX" style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",objectFit:"cover",borderRadius:14,zIndex:10}} />}
 
                 <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:99, padding:"5px 14px" }}>
                   <div style={{ width:8, height:8, borderRadius:"50%", background:G }} />
@@ -3621,6 +3621,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
   const [paymentStep,       setPaymentStep]       = useState("choose");
   const [chatQrBase64, setChatQrBase64] = useState("");
   const [chatQrLoading, setChatQrLoading] = useState(false);
+  const [chatQrKey, setChatQrKey] = useState(0);
   const [isTyping,        setIsTyping]        = useState(false);
   const [showFinishConfirm, setShowFinishConfirm] = useState(false);
   const [finished,        setFinished]        = useState(false);
