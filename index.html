@@ -11,7 +11,14 @@
       body { font-family:'Nunito',sans-serif; background:#F5F6FA; -webkit-font-smoothing:antialiased; }
       #root { max-width:430px; margin:0 auto; min-height:100vh; background:white; box-shadow:0 0 60px rgba(0,0,0,.14); }
     </style>
-  </head>
+    <script src='https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js' defer></script>
+  <script>
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+      await OneSignal.init({ appId: '184f4647-8fbd-427d-8a8e-60f5aa38243c' });
+    });
+  </script>
+</head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
