@@ -3603,28 +3603,26 @@ function ChatInbox({ myServices, onOpenChat }) {
 
 
 function PixQRChat({ valor }) {
-  const ref = React.useRef(null);
   React.useEffect(() => {
     fetch('https://web-production-e103b.up.railway.app/api/gerar-pix-servico', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ value: parseFloat(String(valor).replace(',','.')), name:'Cliente', email:'cliente@multi.com', phone:'11999999999' })
     }).then(r=>r.json()).then(d=>{
-      if(d.qrCodeBase64 && ref.current) {
-        ref.current.src = 'data:image/png;base64,'+d.qrCodeBase64;
-        ref.current.style.display = 'block';
-        ref.current.previousSibling && (ref.current.previousSibling.style.display='none');
+      const el = document.getElementById('pix-qr-img');
+      const txt = document.getElementById('pix-qr-txt');
+      if(d.qrCodeBase64 && el) {
+        el.src = 'data:image/png;base64,'+d.qrCodeBase64;
+        el.style.display = 'block';
+        if(txt) txt.style.display = 'none';
       }
     }).catch(()=>{});
   }, []);
-  return <div style={{width:200,height:200,margin:'0 auto',position:'relative'}}>
-    <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,color:'#888'}}>Gerando...</div>
-    <img ref={ref} alt='QR PIX' style={{width:200,height:200,display:'none',borderRadius:12}} />
+  return <div style={{width:200,height:200,margin:'0 auto',background:'white',borderRadius:12,display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden'}}>
+    <span id='pix-qr-txt' style={{fontSize:12,color:'#888'}}>Gerando...</span>
+    <img id='pix-qr-img' alt='QR PIX' style={{width:200,height:200,display:'none'}} />
   </div>;
-  <div style={{width:200,height:200,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#888"}}>Erro ao gerar QR</div>;
-  return <img src={"data:image/png;base64,"+qr} alt="QR PIX" style={{width:200,height:200,display:"block",margin:"0 auto",borderRadius:12}} />;
 }
 
-/* ───────────────────────── FULL CHAT SCREEN ─────────────────────────────────── */
 function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnlocked }) {
   const initMsgs = [
     { id:1, from:"pro",    text:"Olá! Vi seu serviço e posso ajudar. Tenho 8 anos de experiência na área.", time:"10:01", read:true  },
