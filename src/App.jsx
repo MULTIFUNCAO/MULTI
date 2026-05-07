@@ -4196,7 +4196,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
         </div>
 
         {/* ── STICKY PAYMENT BUTTON — shown after deal accepted ── */}
-        {dealAccepted && !paymentDone && !isPro && (
+        {dealAccepted && !paymentDone && !isPro && !isProfessional && (
           <div style={{ padding:"10px 16px", background:"white", borderTop:"1px solid #F0F0F0", display:"flex", gap:8 }}>
             <button
               onClick={() => setShowPaymentModal(true)}
