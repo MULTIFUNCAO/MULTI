@@ -3605,6 +3605,21 @@ function ChatInbox({ myServices, onOpenChat }) {
   );
 }
 
+
+function PixQRChat({ valor }) {
+  const [qr, setQr] = React.useState("");
+  const [loading, setLoading] = React.useState(true);
+  React.useEffect(() => {
+    fetch("https://web-production-e103b.up.railway.app/api/gerar-pix-servico", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ value: parseFloat(String(valor).replace(",",".")), name:"Cliente", email:"cliente@multi.com", phone:"11999999999" })
+    }).then(r=>r.json()).then(d=>{ if(d.qrCodeBase64) setQr(d.qrCodeBase64); }).catch(()=>{}).finally(()=>setLoading(false));
+  }, []);
+  if (loading) return <div style={{width:200,height:200,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",fontSize:12,color:"#888"}}>Gerando...</div>;
+  if (!qr) return <div style={{width:200,height:200,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",fontSize:12,color:"#888"}}>Erro ao gerar QR</div>;
+  return <img src={"data:image/png;base64,"+qr} alt="QR PIX" style={{width:200,height:200,display:"block",margin:"0 auto",borderRadius:12}} />;
+}
+
 /* ───────────────────────── FULL CHAT SCREEN ─────────────────────────────────── */
 function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnlocked }) {
   const initMsgs = [
