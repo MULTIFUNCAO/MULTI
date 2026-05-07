@@ -1885,7 +1885,6 @@ function ProUpgrade({ onBack, onSubscribe }) {
               </button>
 
               </p>
-              </>
           )}
         </div>
       </div>
