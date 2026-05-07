@@ -3603,21 +3603,19 @@ function ChatInbox({ myServices, onOpenChat }) {
 
 
 function PixQRChat({ valor }) {
-  const [src, setSrc] = React.useState('');
-  const mounted = React.useRef(true);
+  const divId = 'pix-qr-' + Math.random().toString(36).slice(2);
   React.useEffect(() => {
-    mounted.current = true;
+    const container = document.getElementById(divId);
+    container.innerHTML = '<div style="font-size:12px;color:#888;text-align:center;padding:80px 0">Gerando QR Code...</div>';
     fetch('https://web-production-e103b.up.railway.app/api/gerar-pix-servico', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ value: parseFloat(String(valor||'100').replace(',','.')), name:'Cliente', email:'cliente@multi.com', phone:'11999999999' })
     }).then(r=>r.json()).then(d=>{
-      if(mounted.current && d.qrCodeBase64) setSrc('data:image/png;base64,'+d.qrCodeBase64);
+      const el = document.getElementById(divId);
+      if(el && d.qrCodeBase64) el.innerHTML = '<img src="data:image/png;base64,'+d.qrCodeBase64+'" style="width:200px;height:200px;display:block;margin:0 auto;border-radius:12px" />';
     }).catch(()=>{});
-    return () => { mounted.current = false; };
   }, []);
-  return src
-    ? <img src={src} alt='QR PIX' style={{width:200,height:200,display:'block',margin:'0 auto',borderRadius:12}} />
-    : <div style={{width:200,height:200,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,color:'#888',margin:'0 auto'}}>Gerando...</div>;
+  return <div id={divId} style={{width:200,height:200,margin:'0 auto'}} />;
 }
 
 function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnlocked }) {
