@@ -1,6 +1,10 @@
 
 // Som de novo pedido - Multi
+let _playing=false;
 export const playNewOrderSound = () => {
+  if(_playing) return;
+  _playing=true;
+  setTimeout(()=>_playing=false,3000);
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   const playBeep = (freq, start, duration) => {
     const osc = ctx.createOscillator();
