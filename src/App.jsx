@@ -1890,7 +1890,6 @@ function ProUpgrade({ onBack, onSubscribe }) {
       </div>
     );
   }
-  }
 
   // plans screen (default)
   return null;
