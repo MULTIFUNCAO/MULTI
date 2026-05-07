@@ -1,7 +1,8 @@
 import CheckoutPagamento from './CheckoutPagamento';
 //already from "./PixQRCode";
 import ChatWidget from './ChatWidget';
-﻿import { useState, useRef, useEffect } from "react";
+﻿import { playNewOrderSound } from './newOrderSound';
+import { useState, useRef, useEffect } from "react";
 import AdminDashboard from "./AdminDashboard";
 import {
   Search, MapPin, Bell, Star, Plus, ChevronRight,
@@ -5495,6 +5496,36 @@ function AdminLogin({ onSuccess }) {
 }
 
 /* ───────────────────────── ROOT APP ─────────────────────────────────────────── */
+
+function NewOrderCard({ order, onAccept, onReject }) {
+  const [seconds, setSeconds] = React.useState(15);
+  React.useEffect(() => {
+    playNewOrderSound();
+    const interval = setInterval(() => {
+      setSeconds(s => {
+        if (s <= 1) { clearInterval(interval); onReject(); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <div style={{background:'white',borderRadius:24,padding:28,width:320,textAlign:'center',animation:'slideUp 0.3s ease'}}>
+        <div style={{fontSize:40,marginBottom:8}}>🔨</div>
+        <div style={{fontSize:18,fontWeight:900,color:'#1a1a2e',marginBottom:4}}>{order.category}</div>
+        <div style={{fontSize:14,color:'#666',marginBottom:4}}>📍 {order.location}</div>
+        <div style={{fontSize:14,color:'#666',marginBottom:16}}>💰 R$ {order.value}</div>
+        <div style={{width:60,height:60,borderRadius:'50%',border:'4px solid #FF5722',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px',fontSize:22,fontWeight:900,color:'#FF5722'}}>{seconds}</div>
+        <div style={{display:'flex',gap:12}}>
+          <button onClick={onReject} style={{flex:1,padding:'14px 0',borderRadius:14,border:'2px solid #ddd',background:'white',color:'#666',fontWeight:700,fontSize:15,cursor:'pointer'}}>Recusar</button>
+          <button onClick={onAccept} style={{flex:1,padding:'14px 0',borderRadius:14,border:'none',background:'linear-gradient(135deg,#FF5722,#FF8A50)',color:'white',fontWeight:900,fontSize:15,cursor:'pointer'}}>✓ Aceitar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [role,      setRole]      = useState(() => {
     try { return JSON.parse(localStorage.getItem("multiSession") || "null")?.role || "client"; } catch { return "client"; }
