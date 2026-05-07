@@ -1884,12 +1884,12 @@ function ProUpgrade({ onBack, onSubscribe }) {
                 <CheckCircle2 size={18} /> Já paguei — Ativar PRO
               </button>
 
-              <p style={{ textAlign:"center", fontSize:11, color:"#aaa" }}>
-                Pagamento processado em até 5 segundos após o PIX.
               </p>
           )}
+        </div>
       </div>
     );
+  }
   }
 
   // plans screen (default)
