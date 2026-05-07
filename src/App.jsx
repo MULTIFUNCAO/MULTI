@@ -3896,11 +3896,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
               </div>
               <button onClick={() => navigator.clipboard?.writeText("fcb02632-5dd9-4c2d-92f6-0c3a907d2b81")} style={{ padding:"7px 14px", borderRadius:9, border:"none", background:B, color:"white", fontWeight:800, fontSize:12, cursor:"pointer" }}>Copiar</button>
             </div>
-            <button
-              onClick={() => { setPaymentDone(true); setPaymentStep("done"); setShowPaymentModal(false); }}
-              style={{ width:"100%", padding:"14px 0", borderRadius:14, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${G},#16a34a)`, color:"white", fontWeight:900, fontSize:14, boxShadow:`0 5px 18px ${G}44` }}>
-              ✅ Já fiz o pagamento
-            </button>
+            
           </div>
         </div>
       </div>
