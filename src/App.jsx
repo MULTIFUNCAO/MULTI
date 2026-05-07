@@ -26,7 +26,7 @@ const G  = "#22c55e";
    EMAIL CONFIG — SendGrid
    ⚠️  NUNCA coloque a chave real aqui. Configure no backend:
        Variável de ambiente:  SENDGRID_API_KEY=SG.xxxxxx
-       From:                  contato@multifuncao.com.br
+       From:                  fcb02632-5dd9-4c2d-92f6-0c3a907d2b81
    Em produção, substitua a função sendWelcomeEmail() abaixo por uma
    chamada ao seu backend:  POST /api/send-welcome  { name, email, role }
    O backend então usa:  sgMail.send({ to, from, subject, text })
