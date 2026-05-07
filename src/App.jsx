@@ -5501,8 +5501,8 @@ function AdminLogin({ onSuccess }) {
 /* ───────────────────────── ROOT APP ─────────────────────────────────────────── */
 
 function NewOrderCard({ order, onAccept, onReject }) {
-  const [seconds, setSeconds] = React.useState(15);
-  React.useEffect(() => {
+  const [seconds, setSeconds] = useState(15);
+  useEffect(() => {
     playNewOrderSound();
     const interval = setInterval(() => {
       setSeconds(s => {
