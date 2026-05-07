@@ -1714,7 +1714,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
   const chosen = plans.find(p => p.id === sel);
 
   // Generate real PIX via Asaas
-  const gerarPixServico = async () => { try { const r = await fetch("https://api.multifuncao.com.br/api/gerar-pix-servico",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({valor:serviceValue||"100",name:"Cliente",email:"cliente@multi.com",phone:"11999999999"})}); const d = await r.json(); if(d.pixCode){setPixCode(d.pixCode);setQrBase64(d.qrCodeBase64);} } catch(e){console.error(e);} };
+  const gerarPixServico = async () => { try { const r = await fetch("https://api.multifuncao.com.br/api/gerar-pix-servico",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({valor:serviceValue||"100",name:"Cliente",email:"cliente@multi.com",phone:"11939437657"})}); const d = await r.json(); if(d.pixCode){setPixCode(d.pixCode);setQrBase64(d.qrCodeBase64);} } catch(e){console.error(e);} };
   const gerarPixReal = async () => {
     if (!chosen) return;
     setPixLoading(true);
