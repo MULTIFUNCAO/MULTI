@@ -5005,6 +5005,7 @@ function GuestMural({ onSignup, allDocsVerified }) {
 /* ───────────────────────── PROFESSIONAL HOME ────────────────────────────────── */
 function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet }) {
   const [online,       setOnline]       = useState(false);
+  const [newOrder, setNewOrder] = useState(null);
   const [activeFilter, setActiveFilter] = useState("all");
   const [showDocBlock, setShowDocBlock] = useState(false); // pop-up modal
 
