@@ -1906,13 +1906,7 @@ const CheckoutScreen = () => {
     setTimeout(function(){ setCopiedPix(false); }, 2000);
   };
 
-  {/* TESTE - remover depois */}
-      {showTestOrder && <NewOrderCard 
-        order={{category:'Encanador',location:'Guarulhos, SP',value:'150'}}
-        onAccept={()=>{setShowTestOrder(false);alert('Pedido aceito!');}}
-        onReject={()=>setShowTestOrder(false)}
-      />}
-      <button onClick={()=>setShowTestOrder(true)} style={{position:'fixed',bottom:80,right:16,zIndex:999,background:'#FF5722',color:'white',border:'none',borderRadius:12,padding:'10px 16px',fontSize:12,fontWeight:700,cursor:'pointer'}}>🧪 Testar Pedido</button>
+  
     return (
     <div style={{ minHeight:"100vh", background:"#F5F6FA", display:"flex", flexDirection:"column" }}>
 
