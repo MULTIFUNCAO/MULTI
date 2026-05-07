@@ -627,7 +627,7 @@ function RadarSearchScreen({ service, onFound }) {
   useEffect(() => {
     const t = setTimeout(() => setPhase(1), 3000);
     return () => clearTimeout(t);
-  }, []);
+  })(); }, []);
 
   const cat = CATS.find(c => c.id === service.cat);
 
@@ -3604,8 +3604,8 @@ function ChatInbox({ myServices, onOpenChat }) {
 
 function PixQRChat({ valor }) {
   const divId = 'pix-qr-' + Math.random().toString(36).slice(2);
-  React.useEffect(() => {
-    const container = document.getElementById(divId);
+  React.useEffect(() => { (async()=>{
+    await new Promise(r=>setTimeout(r,100)); const container = document.getElementById(divId);
     container.innerHTML = '<div style="font-size:12px;color:#888;text-align:center;padding:80px 0">Gerando QR Code...</div>';
     fetch('https://web-production-e103b.up.railway.app/api/gerar-pix-servico', {
       method:'POST', headers:{'Content-Type':'application/json'},
