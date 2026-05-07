@@ -1888,7 +1888,6 @@ function ProUpgrade({ onBack, onSubscribe }) {
                 Pagamento processado em até 5 segundos após o PIX.
               </p>
           )}
-        </div>
       </div>
     );
   }
