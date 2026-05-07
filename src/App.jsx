@@ -1698,7 +1698,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
   const [pixLoading,   setPixLoading]   = useState(false);
   const [pixCode,      setPixCode]      = useState("");
   const [qrBase64,     setQrBase64]     = useState("");
-  useEffect(function(){if(paymentStep==="pix" && showPaymentModal){gerarPixServico();}}, [paymentStep, showPaymentModal]);
+  useEffect(() => { if (paymentStep === "pix" && showPaymentModal && !chatQrBase64) { setChatQrLoading(true); const sv = chat.dealValue || chat.proposalValue || "100"; fetch("https://web-production-e103b.up.railway.app/api/gerar-pix-servico", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ value: parseFloat(String(sv).replace(",",".")), name: "Cliente", email: "cliente@multi.com", phone: "11999999999" }) }).then(r => r.json()).then(d => { if (d.qrCodeBase64) setChatQrBase64(d.qrCodeBase64); }).catch(() => {}).finally(() => setChatQrLoading(false)); } }, [paymentStep, showPaymentModal]);
   const [paymentId,    setPaymentId]    = useState(null);
   const [pixError,     setPixError]     = useState("");
 
@@ -3619,6 +3619,8 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
     const [showPaymentModal,  setShowPaymentModal]  = useState(false);
   const [paymentDone,       setPaymentDone]       = useState(false);
   const [paymentStep,       setPaymentStep]       = useState("choose");
+  const [chatQrBase64, setChatQrBase64] = useState("");
+  const [chatQrLoading, setChatQrLoading] = useState(false);
   const [isTyping,        setIsTyping]        = useState(false);
   const [showFinishConfirm, setShowFinishConfirm] = useState(false);
   const [finished,        setFinished]        = useState(false);
@@ -3867,7 +3869,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
         <div style={{ padding:"20px 16px", display:"flex", flexDirection:"column", gap:14, alignItems:"center" }}>
           <div style={{ background:"white", borderRadius:20, padding:20, width:"100%", textAlign:"center", boxShadow:"0 3px 16px rgba(0,0,0,.09)" }}>
             <p style={{ fontSize:13, fontWeight:700, color:"#888", margin:"0 0 16px" }}>Escaneie com o app do seu banco</p>
-            <div style={{width:200,height:200,margin:"0 auto 8px",background:"#F0F0F0",borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"#888"}}>QR Code PIX</div>
+            <div style={{width:200,height:200,margin:"0 auto 8px",background:"#F0F0F0",borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"#888"}}>{chatQrLoading ? "Gerando..." : chatQrBase64 ? <img src={"data:image/png;base64,"+chatQrBase64} alt="QR PIX" style={{width:"100%",height:"100%",objectFit:"contain"}} /> : "QR Code PIX"}</div>
             <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:99, padding:"5px 14px", marginBottom:16 }}>
               <div style={{ width:8, height:8, borderRadius:"50%", background:G }} />
               <span style={{ fontSize:11, fontWeight:800, color:"#166534" }}>Aguardando pagamento — R$ {serviceValue}</span>
