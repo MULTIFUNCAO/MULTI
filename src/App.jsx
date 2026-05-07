@@ -1897,7 +1897,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
 
 /* ── CHECKOUT SCREEN ── */
 const CheckoutScreen = () => {
-  const PIX_KEY = "contato@multifuncao.com.br";
+  const PIX_KEY = "fcb02632-5dd9-4c2d-92f6-0c3a907d2b81";
 
   const handleCopyKey = function() {
     if(navigator.clipboard) navigator.clipboard.writeText(PIX_KEY);
@@ -3892,9 +3892,9 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
             <div style={{ background:"#F8FAFF", border:"1px solid #DBEAFE", borderRadius:12, padding:"10px 12px", display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
               <div style={{ flex:1, minWidth:0, textAlign:"left" }}>
                 <p style={{ fontSize:10, fontWeight:700, color:"#3B82F6", margin:"0 0 2px", textTransform:"uppercase", letterSpacing:.8 }}>Ou copie a chave PIX</p>
-                <p style={{ fontSize:11, fontWeight:800, color:"#1E3A8A", margin:0, fontFamily:"monospace" }}>contato@multifuncao.com.br</p>
+                <p style={{ fontSize:11, fontWeight:800, color:"#1E3A8A", margin:0, fontFamily:"monospace" }}>fcb02632-5dd9-4c2d-92f6-0c3a907d2b81</p>
               </div>
-              <button onClick={() => navigator.clipboard?.writeText("contato@multifuncao.com.br")} style={{ padding:"7px 14px", borderRadius:9, border:"none", background:B, color:"white", fontWeight:800, fontSize:12, cursor:"pointer" }}>Copiar</button>
+              <button onClick={() => navigator.clipboard?.writeText("fcb02632-5dd9-4c2d-92f6-0c3a907d2b81")} style={{ padding:"7px 14px", borderRadius:9, border:"none", background:B, color:"white", fontWeight:800, fontSize:12, cursor:"pointer" }}>Copiar</button>
             </div>
             <button
               onClick={() => { setPaymentDone(true); setPaymentStep("done"); setShowPaymentModal(false); }}
