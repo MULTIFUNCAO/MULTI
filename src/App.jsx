@@ -1208,8 +1208,8 @@ function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
   const phaseColors = ["#6366F1", B, O, G];
   const currentColor = phaseColors[phase];
 
-  // Simulate pro arriving (demo button)
-  const simulateProArrival = () => {
+  // Check-in do profissional
+  const handleCheckin = () => {
     setPhase(2);
     showToast?.("🛠️ Status atualizado: O profissional está no local!", O);
     onStatusChange?.(service.id, "executing");
@@ -1325,7 +1325,7 @@ function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
 
           {/* simulate arrival button — demo only, phase 1 */}
           {phase === 1 && (
-            <button onClick={simulateProArrival} style={{ marginTop:12, width:"100%", padding:"11px 0", borderRadius:12, border:`1.5px solid ${O}`, background:"white", color:O, fontWeight:800, fontSize:13, cursor:"pointer" }}>
+            <button onClick={handleCheckin} style={{ marginTop:12, width:"100%", padding:"11px 0", borderRadius:12, border:`1.5px solid ${O}`, background:"white", color:O, fontWeight:800, fontSize:13, cursor:"pointer" }}>
               🛠️ Simular: Profissional chegou
             </button>
           )}
