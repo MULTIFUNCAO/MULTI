@@ -3604,7 +3604,7 @@ function ChatInbox({ myServices, onOpenChat }) {
 
 function PixQRChat({ valor }) {
   const divId = 'pix-qr-' + Math.random().toString(36).slice(2);
-  React.useEffect(() => { 
+  useEffect(() => { 
     const container = document.getElementById(divId);
     container.innerHTML = '<div style="font-size:12px;color:#888;text-align:center;padding:80px 0">Gerando QR Code...</div>';
     fetch('https://web-production-e103b.up.railway.app/api/gerar-pix-servico', {
