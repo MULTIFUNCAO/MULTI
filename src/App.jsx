@@ -3603,19 +3603,21 @@ function ChatInbox({ myServices, onOpenChat }) {
 
 
 function PixQRChat({ valor }) {
-  const divId = 'pix-qr-' + Math.random().toString(36).slice(2);
-  useEffect(() => { 
-    const container = document.getElementById(divId);
-    container.innerHTML = '<div style="font-size:12px;color:#888;text-align:center;padding:80px 0">Gerando QR Code...</div>';
+  const [src, setSrc] = useState('');
+  const [err, setErr] = useState('');
+  useEffect(() => {
+    const val = parseFloat(String(valor||'100').replace(',','.'));
     fetch('https://web-production-e103b.up.railway.app/api/gerar-pix-servico', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ value: parseFloat(String(valor||'100').replace(',','.')), name:'Cliente', email:'cliente@multi.com', phone:'11999999999' })
+      body: JSON.stringify({ value: val, name:'Cliente', email:'cliente@multi.com', phone:'11999999999' })
     }).then(r=>r.json()).then(d=>{
-      const el = document.getElementById(divId);
-      if(el && d.qrCodeBase64) el.innerHTML = '<img src="data:image/png;base64,'+d.qrCodeBase64+'" style="width:200px;height:200px;display:block;margin:0 auto;border-radius:12px" />';
-    }).catch(()=>{});
+      if(d.qrCodeBase64) setSrc('data:image/png;base64,'+d.qrCodeBase64);
+      else setErr('Sem QR: '+JSON.stringify(d).slice(0,100));
+    }).catch(e=>setErr('Erro: '+e.message));
   }, []);
-  return <div id={divId} style={{width:200,height:200,margin:'0 auto'}} />;
+  if (err) return <div style={{fontSize:10,color:'red',padding:8,wordBreak:'break-all'}}>{err}</div>;
+  if (src) return <img src={src} alt='QR PIX' style={{width:200,height:200,display:'block',margin:'0 auto',borderRadius:12}} />;
+  return <div style={{width:200,height:200,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,color:'#888',margin:'0 auto'}}>Gerando QR Code...</div>;
 }
 
 function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnlocked }) {
