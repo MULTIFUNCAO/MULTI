@@ -1884,7 +1884,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
                 <CheckCircle2 size={18} /> Já paguei — Ativar PRO
               </button>
 
-              </p>
+            </>
           )}
         </div>
       </div>
