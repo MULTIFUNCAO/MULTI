@@ -1382,7 +1382,21 @@ function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
               <div style={{ display:"flex", gap:6, marginBottom:14 }}>
                 {[1,2,3,4,5].map(s => <Star key={s} size={32} fill={rating >= s ? O : "none"} stroke={rating >= s ? O : "#ddd"} style={{ cursor:"pointer" }} onClick={() => setRating(s)} />)}
               </div>
-              {rating > 0 && <button onClick={() => setRated(true)} style={{ width:"100%", padding:"13px 0", borderRadius:12, fontWeight:900, color:"white", fontSize:13, background:`linear-gradient(135deg,${O},#E64A19)`, border:"none", cursor:"pointer" }}>Enviar Avaliação ⭐</button>}
+              {rating > 0 && !rated && (
+              <div style={{ marginBottom:12 }}>
+                <p style={{ fontSize:12, color:'#888', marginBottom:8 }}>O que se destacou? (opcional)</p>
+                <div id="eval-tags" style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                  {['Pontual','Atencioso','Cuidadoso','Prestativo','Limpeza','Preco justo'].map(tag => (
+                    <span key={tag} onClick={(e) => {
+                      e.currentTarget.style.background = e.currentTarget.dataset.sel === '1' ? '#f0f0f0' : '#FF5722';
+                      e.currentTarget.style.color = e.currentTarget.dataset.sel === '1' ? '#555' : 'white';
+                      e.currentTarget.dataset.sel = e.currentTarget.dataset.sel === '1' ? '0' : '1';
+                    }} data-sel="0" style={{ padding:'6px 12px', borderRadius:20, border:'1px solid #ddd', fontSize:12, cursor:'pointer', background:'#f0f0f0', color:'#555', userSelect:'none' }}>{tag}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {rating > 0 && <button onClick={() => setRated(true)} style={{ width:"100%", padding:"13px 0", borderRadius:12, fontWeight:900, color:"white", fontSize:13, background:`linear-gradient(135deg,${O},#E64A19)`, border:"none", cursor:"pointer" }}>Enviar Avaliação ⭐</button>}
             </>
           ) : (
             <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8, padding:"8px 0" }}>
