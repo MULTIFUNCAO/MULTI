@@ -515,8 +515,6 @@ function ChatScreen({ chat, onBack, onFinish }) {
     { label:"💰 Valor ok?", msg:"Confirma o valor combinado?" },
     { label:"📍 Endereço?", msg:"Pode confirmar o endereço completo?" },
     { label:"📸 Manda foto", msg:"Pode mandar uma foto do problema?" },
-    { label:"❌ nao_usar, 
-    { label:"📸 Solicitar Foto",    msg:"📸 Solicitar Foto do problema" },
     { label:"✅ Finalizar Serviço", action: handleFinish },
   ];
 
