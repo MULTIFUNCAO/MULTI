@@ -644,7 +644,15 @@ function RadarSearchScreen({ service, onFound }) {
               <p style={{ fontSize:14, fontWeight:900, color:"#1a1a2e", margin:0 }}>R$ {service.value} · {service.loc || "sua região"}</p>
             </div>
           </div>
-          {/* interest banner */}
+          {/* nao apareceu */}
+        <div style={{ margin:'12px 16px 0', padding:'14px', borderRadius:14, border:'1px solid #FFE0E0', background:'#FFF5F5', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div>
+            <p style={{ margin:0, fontSize:13, fontWeight:700, color:'#C0392B' }}>Profissional nao apareceu?</p>
+            <p style={{ margin:0, fontSize:11, color:'#888' }}>Reembolso automatico em ate 1h</p>
+          </div>
+          <button onClick={() => { if(window.confirm('Confirma cancelamento? Reembolso em ate 1h.')) { onStatusChange && onStatusChange(service.id, 'cancelled'); showToast && showToast('Pedido cancelado. Reembolso em ate 1h.', 'E'); } }} style={{ padding:'8px 14px', borderRadius:10, border:'none', background:'#C0392B', color:'white', fontWeight:700, fontSize:12, cursor:'pointer' }}>Cancelar pedido</button>
+        </div>
+        {/* interest banner */}
           <div style={{ marginTop:12, padding:"10px 14px", borderRadius:14, background:G+"12", border:`1px solid ${G}40`, display:"flex", alignItems:"center", gap:8 }}>
             <span style={{ fontSize:18 }}>🎉</span>
             <div>
