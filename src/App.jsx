@@ -5587,6 +5587,8 @@ function AdminLogin({ onSuccess }) {
 /* ───────────────────────── ROOT APP ─────────────────────────────────────────── */
 
 function NewOrderCard({ order, onAccept, onReject }) {
+  const R = 26;
+  const CIRC = 2 * Math.PI * R;
   const [seconds, setSeconds] = useState(15);
   useEffect(() => {
     playNewOrderSound();
@@ -5599,20 +5601,61 @@ function NewOrderCard({ order, onAccept, onReject }) {
     return () => clearInterval(interval);
   }, []);
   return (
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center'}}>
-      <div style={{background:'white',borderRadius:24,padding:28,width:320,textAlign:'center',animation:'slideUp 0.3s ease'}}>
-        <div style={{fontSize:40,marginBottom:8}}>🔨</div>
-        <div style={{fontSize:18,fontWeight:900,color:'#1a1a2e',marginBottom:4}}>{order.category}</div>
-        <div style={{fontSize:14,color:'#666',marginBottom:4}}>📍 {order.location}</div>
-        <div style={{fontSize:14,color:'#666',marginBottom:16}}>💰 R$ {order.value}</div>
-        <div style={{width:60,height:60,borderRadius:'50%',border:'4px solid #FF5722',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px',fontSize:22,fontWeight:900,color:'#FF5722'}}>{seconds}</div>
-        <div style={{display:'flex',gap:12}}>
-          <button onClick={onReject} style={{flex:1,padding:'14px 0',borderRadius:14,border:'2px solid #ddd',background:'white',color:'#666',fontWeight:700,fontSize:15,cursor:'pointer'}}>Recusar</button>
-          <button onClick={onAccept} style={{flex:1,padding:'14px 0',borderRadius:14,border:'none',background:'linear-gradient(135deg,#FF5722,#FF8A50)',color:'white',fontWeight:900,fontSize:15,cursor:'pointer'}}>✓ Aceitar</button>
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.88)',zIndex:9999,display:'flex',alignItems:'flex-end',justifyContent:'center',padding:'0 0 20px'}}>
+      <div style={{background:'#0f1117',borderRadius:28,padding:'20px',width:340,textAlign:'center',border:'1px solid #FF572240'}}>
+        <div style={{fontSize:11,color:'#FF5722',fontWeight:700,letterSpacing:2,marginBottom:10}}>NOVO PEDIDO!</div>
+        <svg width="190" height="190" viewBox="0 0 200 200" style={{margin:'0 auto 12px',display:'block'}}>
+          <circle cx="100" cy="100" fill="#FF572208" stroke="#FF572218" strokeWidth="0.5">
+            <animate attributeName="r" values="30;85;30" dur="2s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.6;0;0.6" dur="2s" repeatCount="indefinite"/>
+          </circle>
+          <circle cx="100" cy="100" fill="#FF572208" stroke="#FF572218" strokeWidth="0.5">
+            <animate attributeName="r" values="30;85;30" dur="2s" begin="0.7s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.4;0;0.4" dur="2s" begin="0.7s" repeatCount="indefinite"/>
+          </circle>
+          <circle cx="100" cy="100" r="60" fill="#FF572210" stroke="#FF572225" strokeWidth="0.5"/>
+          <circle cx="100" cy="100" r="40" fill="#FF572215" stroke="#FF572230" strokeWidth="0.5"/>
+          <line x1="100" y1="15" x2="100" y2="100" stroke="#FF572230" strokeWidth="1" strokeDasharray="3 4"/>
+          <line x1="185" y1="100" x2="100" y2="100" stroke="#FF572230" strokeWidth="1" strokeDasharray="3 4"/>
+          <line x1="100" y1="185" x2="100" y2="100" stroke="#FF572230" strokeWidth="1" strokeDasharray="3 4"/>
+          <line x1="15" y1="100" x2="100" y2="100" stroke="#FF572230" strokeWidth="1" strokeDasharray="3 4"/>
+          <text x="100" y="56" textAnchor="middle" fontSize="8" fill="#FF572250" fontFamily="sans-serif">500m</text>
+          <text x="100" y="76" textAnchor="middle" fontSize="8" fill="#FF572240" fontFamily="sans-serif">1km</text>
+          <circle cx="132" cy="60" r="5" fill="#FF5722">
+            <animate attributeName="opacity" values="1;0.2;1" dur="1.5s" repeatCount="indefinite"/>
+          </circle>
+          <circle cx="75" cy="148" r="4" fill="#4CAF50">
+            <animate attributeName="opacity" values="1;0.2;1" dur="1.5s" begin="0.5s" repeatCount="indefinite"/>
+          </circle>
+          <circle cx="100" cy="100" r="26" fill="#1a1a2e" stroke={seconds <= 5 ? "#E24B4A" : "#FF5722"} strokeWidth="4"/>
+          <circle cx="100" cy="100" r="26" fill="none" stroke="#222" strokeWidth="4"/>
+          <circle cx="100" cy="100" r="26" fill="none" stroke={seconds <= 5 ? "#E24B4A" : "#FF5722"} strokeWidth="4"
+            strokeDasharray={CIRC} strokeDashoffset={CIRC - (seconds/15)*CIRC}
+            strokeLinecap="round" transform="rotate(-90 100 100)"/>
+          <text x="100" y="105" textAnchor="middle" fontSize="14" fontWeight="bold" fill={seconds <= 5 ? "#E24B4A" : "white"} fontFamily="sans-serif">{seconds}s</text>
+        </svg>
+        <div style={{fontSize:19,fontWeight:900,color:'white',marginBottom:3}}>{order.category}</div>
+        <div style={{fontSize:12,color:'#ffffff60',marginBottom:10}}>📍 {order.location}</div>
+        <div style={{display:'flex',justifyContent:'center',gap:10,marginBottom:16}}>
+          <div style={{background:'#FF572220',borderRadius:10,padding:'8px 14px'}}>
+            <div style={{fontSize:10,color:'#FF572299',marginBottom:2}}>Valor</div>
+            <div style={{fontSize:17,fontWeight:900,color:'#FF5722'}}>R$ {order.value}</div>
+          </div>
+          <div style={{background:'#4CAF5020',borderRadius:10,padding:'8px 14px'}}>
+            <div style={{fontSize:10,color:'#4CAF5099',marginBottom:2}}>Distância</div>
+            <div style={{fontSize:17,fontWeight:900,color:'#4CAF50'}}>1.2 km</div>
+          </div>
+        </div>
+        <div style={{display:'flex',gap:10}}>
+          <button onClick={onReject} style={{flex:1,padding:'13px 0',borderRadius:14,border:'1px solid #ffffff20',background:'transparent',color:'#ffffff50',fontWeight:700,fontSize:13,cursor:'pointer'}}>Recusar</button>
+          <button onClick={onAccept} style={{flex:2,padding:'13px 0',borderRadius:14,border:'none',background:'#FF5722',color:'white',fontWeight:900,fontSize:15,cursor:'pointer'}}>✓ Aceitar agora</button>
         </div>
       </div>
     </div>
   );
+}
+
+
 }
 
 export default function App() {
