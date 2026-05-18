@@ -624,10 +624,14 @@ const MOCK_PROS = [
 /* ───────────────────────── RADAR SCREEN ────────────────────────────────────── */
 function RadarSearchScreen({ service, onFound }) {
   const [phase, setPhase] = useState(0); // 0=searching, 1=found
+  const [raio, setRaio] = useState(2);
+  const [expandMsg, setExpandMsg] = useState('');
 
   useEffect(() => {
-    const t = setTimeout(() => setPhase(1), 8000);
-    return () => clearTimeout(t);
+    const t1 = setTimeout(() => { setRaio(5); setExpandMsg('Expandindo para 5km...'); }, 8000);
+    const t2 = setTimeout(() => { setRaio(10); setExpandMsg('Expandindo para 10km...'); }, 16000);
+    const t3 = setTimeout(() => setPhase(1), 24000);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, []);
 
   const cat = CATS.find(c => c.id === service.cat);
@@ -682,11 +686,11 @@ function RadarSearchScreen({ service, onFound }) {
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:5 }}>
             <div style={{ width:8, height:8, borderRadius:'50%', background:'#FF5722' }}></div>
-            <span style={{ fontSize:11, color:'#ffffff60' }}>raio: 2km</span>
+            <span style={{ fontSize:11, color:'#ffffff60' }}>raio: {raio}km</span>
           </div>
         </div>
         <div style={{ marginTop:20, padding:'10px 16px', background:'#FF572215', borderRadius:12, border:'0.5px solid #FF572230', fontSize:11, color:'#FF572299', textAlign:'center' }}>
-          Se ninguém aceitar em 5 min, o raio expande automaticamente
+          {expandMsg || 'Se ninguém aceitar em 5 min, o raio expande automaticamente'}
         </div>
       </div>
     );
