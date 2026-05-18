@@ -5660,7 +5660,6 @@ function NewOrderCard({ order, onAccept, onReject }) {
 }
 
 
-}
 
 export default function App() {
   const [role,      setRole]      = useState(() => {
