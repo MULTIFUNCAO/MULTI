@@ -632,6 +632,66 @@ function RadarSearchScreen({ service, onFound }) {
 
   const cat = CATS.find(c => c.id === service.cat);
 
+  if (phase === 0) {
+    return (
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'100vh', background:'#0f1117', padding:24 }}>
+        <p style={{ color:'#ffffff99', fontSize:12, marginBottom:4, textTransform:'uppercase', letterSpacing:1 }}>{service.title}</p>
+        <p style={{ color:'white', fontSize:16, fontWeight:700, marginBottom:32 }}>R$ {service.value}</p>
+        <svg width="240" height="240" viewBox="0 0 240 240" style={{ marginBottom:24 }}>
+          <circle cx="120" cy="120" r="100" fill="#FF572208" stroke="#FF572218" strokeWidth="0.5"/>
+          <circle cx="120" cy="120" r="72" fill="#FF572210" stroke="#FF572228" strokeWidth="0.5"/>
+          <circle cx="120" cy="120" r="44" fill="#FF572218" stroke="#FF572238" strokeWidth="0.5"/>
+          <line x1="120" y1="20" x2="120" y2="120" stroke="#FF572240" strokeWidth="1" strokeDasharray="3 4"/>
+          <line x1="220" y1="120" x2="120" y2="120" stroke="#FF572240" strokeWidth="1" strokeDasharray="3 4"/>
+          <line x1="120" y1="220" x2="120" y2="120" stroke="#FF572240" strokeWidth="1" strokeDasharray="3 4"/>
+          <line x1="20" y1="120" x2="120" y2="120" stroke="#FF572240" strokeWidth="1" strokeDasharray="3 4"/>
+          <g style={{ transformOrigin:'120px 120px', animation:'radarSweep 3s linear infinite' }}>
+            <path d="M120 120 L120 21 A99 99 0 0 1 198 168 Z" fill="#FF572218"/>
+            <line x1="120" y1="120" x2="120" y2="21" stroke="#FF572299" strokeWidth="1.5"/>
+          </g>
+          <circle cx="120" cy="120" fill="none" stroke="#FF5722" strokeWidth="1.5">
+            <animate attributeName="r" values="36;98;36" dur="2.5s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.8;0;0.8" dur="2.5s" repeatCount="indefinite"/>
+          </circle>
+          <circle cx="120" cy="120" fill="none" stroke="#FF5722" strokeWidth="1">
+            <animate attributeName="r" values="36;98;36" dur="2.5s" begin="0.8s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.5;0;0.5" dur="2.5s" begin="0.8s" repeatCount="indefinite"/>
+          </circle>
+          <circle cx="160" cy="70" r="5" fill="#4CAF50">
+            <animate attributeName="opacity" values="1;0.2;1" dur="1.8s" repeatCount="indefinite"/>
+          </circle>
+          <circle cx="82" cy="158" r="4" fill="#4CAF50">
+            <animate attributeName="opacity" values="1;0.2;1" dur="1.8s" begin="0.6s" repeatCount="indefinite"/>
+          </circle>
+          <circle cx="175" cy="148" r="3.5" fill="#4CAF50">
+            <animate attributeName="opacity" values="1;0.2;1" dur="1.8s" begin="1.2s" repeatCount="indefinite"/>
+          </circle>
+          <text x="120" y="104" textAnchor="middle" fontSize="9" fill="#FF572270" fontFamily="sans-serif">500m</text>
+          <text x="120" y="76" textAnchor="middle" fontSize="9" fill="#FF572260" fontFamily="sans-serif">1km</text>
+          <text x="120" y="48" textAnchor="middle" fontSize="9" fill="#FF572250" fontFamily="sans-serif">2km</text>
+          <circle cx="120" cy="120" r="18" fill="#FF5722"/>
+          <text x="120" y="125" textAnchor="middle" fontSize="16" fill="white" fontFamily="sans-serif">⌂</text>
+        </svg>
+        <style>{"`@keyframes radarSweep { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`"}</style>
+        <p style={{ color:'white', fontSize:16, fontWeight:700, marginBottom:6 }}>Buscando profissional...</p>
+        <p style={{ color:'#ffffff60', fontSize:12, marginBottom:24 }}>3 profissionais na sua região</p>
+        <div style={{ display:'flex', gap:16 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+            <div style={{ width:8, height:8, borderRadius:'50%', background:'#4CAF50' }}></div>
+            <span style={{ fontSize:11, color:'#ffffff60' }}>disponíveis</span>
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+            <div style={{ width:8, height:8, borderRadius:'50%', background:'#FF5722' }}></div>
+            <span style={{ fontSize:11, color:'#ffffff60' }}>raio: 2km</span>
+          </div>
+        </div>
+        <div style={{ marginTop:20, padding:'10px 16px', background:'#FF572215', borderRadius:12, border:'0.5px solid #FF572230', fontSize:11, color:'#FF572299', textAlign:'center' }}>
+          Se ninguém aceitar em 5 min, o raio expande automaticamente
+        </div>
+      </div>
+    );
+  }
+
   if (phase === 1) {
     return (
       <div style={{ display:"flex", flexDirection:"column", paddingBottom:100 }}>
