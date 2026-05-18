@@ -626,7 +626,7 @@ function RadarSearchScreen({ service, onFound }) {
   const [phase, setPhase] = useState(0); // 0=searching, 1=found
 
   useEffect(() => {
-    const t = setTimeout(() => setPhase(1), 3000);
+    const t = setTimeout(() => setPhase(1), 8000);
     return () => clearTimeout(t);
   }, []);
 
