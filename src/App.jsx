@@ -5706,7 +5706,7 @@ function NewOrderCard({ order, onAccept, onReject }) {
         </svg>
         <div style={{fontSize:19,fontWeight:900,color:'white',marginBottom:3}}>{order.category.charAt(0).toUpperCase()+order.category.slice(1)}</div>
         {order.description && <div style={{fontSize:12,color:'#ffffff99',marginBottom:6,padding:'0 4px',fontStyle:'italic',lineHeight:1.4}}>{order.description.slice(0,65)}{order.description.length>65?'...':''}</div>}
-        {order.description && <div style={{fontSize:12,color:'#ffffff99',marginBottom:6,padding:'0 4px',fontStyle:'italic',lineHeight:1.4}}>{order.description.slice(0,65)}{order.description.length>65?'...':''}</div>}
+        {
         <div style={{fontSize:12,color:'#ffffff60',marginBottom:10}}>📍 {order.location}</div>
         <div style={{display:'flex',justifyContent:'center',gap:10,marginBottom:16}}>
           <div style={{background:'#FF572220',borderRadius:10,padding:'8px 14px'}}>
