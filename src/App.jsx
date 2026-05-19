@@ -5133,7 +5133,7 @@ function GuestMural({ onSignup, allDocsVerified }) {
 }
 
 /* ───────────────────────── PROFESSIONAL HOME ────────────────────────────────── */
-function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet, onAcceptOrder }) {
+function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet, onAcceptOrder, pendingOrders=[] }) {
   const [online,       setOnline]       = useState(false);
   const [newOrder, setNewOrder] = useState(null);
   const [activeFilter, setActiveFilter] = useState("all");
@@ -5212,7 +5212,7 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
 
           {/* FICAR ONLINE button */}
           <button
-            onClick={() => { const next=!online; setOnline(next); if(next){ setTimeout(()=>setNewOrder({category:"Encanador",location:"Guarulhos, SP",value:"150",description:"Torneira com vazamento na cozinha. Precisa trocar o reparo com urgência.",photo:window._photoPreview||null}),3000); }}}
+            onClick={() => { const next=!online; setOnline(next); if(next){ setTimeout(()=>const p=pendingOrders[0]; if(p) setNewOrder({category:p.cat||p.category,location:p.loc||p.location||"Guarulhos, SP",value:String(p.value||"0"),description:p.desc||p.description||"",photo:p.photo||null}),3000); }}}
             className={online ? "pulse-online" : "pulse-offline"}
             style={{
               width:"100%", padding:"14px 0", borderRadius:16, border:"none", cursor:"pointer",
@@ -6104,7 +6104,7 @@ export default function App() {
         userLocation={localStorage.getItem("multiLocation") || userLocation}
         allDocsVerified={allDocsVerified}
         docStatus={docStatus}
-        onGoToDocs={() => setScreen("profile")} onGoToOrders={() => setScreen("orders")} onGoToWallet={() => setScreen("wallet")} onAcceptOrder={(order) => { setSelected(order); setScreen("service"); }}
+        onGoToDocs={() => setScreen("profile")} onGoToOrders={() => setScreen("orders")} onGoToWallet={() => setScreen("wallet")} onAcceptOrder={(order) => { setSelected(order); setScreen("service"); }} pendingOrders={myServices.filter(s=>s.status==="open")}
       />
     );
   };
