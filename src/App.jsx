@@ -5755,8 +5755,8 @@ export default function App() {
   // SHARED STATE
   const [myServices, setMyServices] = useState([
     { id:10, cat:"encanador", title:"Instalação de chuveiro",  desc:"Trocar chuveiro elétrico por a gás.", value:200, candidates:3, status:"open",       time:"Há 1h",  urgent:false, loc:"sua região", client:"Você", rating:5.0 },
-    { id:11, cat:"pintor",    title:"Pintura do quarto",       desc:"Quarto 12m² cor azul claro.",         value:350, candidates:7, status:"inprogress", time:"Ontem",  urgent:false, loc:"sua região", client:"Você", rating:5.0, pro:"Carlos Pintor",   proRating:4.7, proposalValue:320, contactUnlocked:true },
-    { id:12, cat:"pedreiro",  title:"Reforma calçada frente",  desc:"Calçada 20m² com pedras irregulares.",value:600, candidates:2, status:"done",       time:"Semana passada", urgent:false, loc:"sua região", client:"Você", rating:5.0, pro:"Pedro Mestre", proRating:4.9, clientRating:5 },
+    { id:11, cat:"pintor",    title:"Pintura do quarto",       desc:"Quarto 12m² cor azul claro.",         value:350, candidates:7, status:"inprogress", time:"Ontem",  urgent:false, loc:"sua região", client:"Você", rating:5.0, photo:photo||null, pro:"Carlos Pintor",   proRating:4.7, proposalValue:320, contactUnlocked:true },
+    { id:12, cat:"pedreiro",  title:"Reforma calçada frente",  desc:"Calçada 20m² com pedras irregulares.",value:600, candidates:2, status:"done",       time:"Semana passada", urgent:false, loc:"sua região", client:"Você", rating:5.0, photo:photo||null, pro:"Pedro Mestre", proRating:4.9, clientRating:5 },
   ]);
   const [notifications, setNotifications] = useState([]);
   const [activeChat,    setActiveChat]    = useState(null);
@@ -5910,14 +5910,14 @@ export default function App() {
   };
 
   // ── SERVICE HANDLERS ────────────────────────────────────────────────────────
-  const handlePostService = ({ cat, desc, value }) => {
+  const handlePostService = ({ cat, desc, value, photo }) => {
     const catDef = CATS.find(c => c.id === cat);
     const svc = {
       id: Date.now(), cat, desc, value,
       title: `${catDef?.label ?? "Serviço"} — ${desc.slice(0, 28)}…`,
       candidates: 0, status:"open", time:"Agora", urgent:false,
       loc: userLocation === "sua região" ? "Perto de você" : userLocation,
-      client:"Você", rating:5.0,
+      client:"Você", rating:5.0, photo:photo||null,
     };
     setMyServices(s => [svc, ...s]);
     setSelected(svc);
