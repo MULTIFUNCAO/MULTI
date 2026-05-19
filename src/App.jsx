@@ -627,7 +627,7 @@ const MOCK_PROS = [
 ];
 /* ───────────────────────── RADAR SCREEN ────────────────────────────────────── */
 function RadarSearchScreen({ service, onFound }) {
-  const [phase, setPhase] = useState(0); // 0=searching, 1=found // v2
+  const [phase, setPhase] = useState(0); // 0=searching, 1=found // v3
   const [raio, setRaio] = useState(2);
   const [expandMsg, setExpandMsg] = useState('');
 
