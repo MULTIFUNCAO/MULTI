@@ -1077,21 +1077,46 @@ function PostServiceScreen({ onBack, onSuccess }) {
 
       {/* Foto do problema */}
         <div>
-          <label style={L}>Foto do problema <span style={{ textTransform:'none', fontWeight:400, letterSpacing:0, color:'#ccc' }}>(opcional)</span></label>
-          <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:4 }}>
-            <label style={{ flex:1, padding:'12px', borderRadius:12, border:'2px dashed #ddd', display:'flex', alignItems:'center', justifyContent:'center', gap:8, cursor:'pointer', background:'#fafafa' }}>
-              <input type='file' accept='image/*' capture='environment' style={{ display:'none' }} onChange={e => {
-                const file = e.target.files[0];
-                if(file) {
-                  const reader = new FileReader();
-                  reader.onload = ev => { window._photoPreview=ev.target.result; document.getElementById('foto-span') && (document.getElementById('foto-span').textContent='Foto adicionada ✓'); document.getElementById('foto-img') && Object.assign(document.getElementById('foto-img').style,{display:'block'},(document.getElementById('foto-img').src=ev.target.result,{})); };
-                  reader.readAsDataURL(file);
-                }
-              }} />
-              📷 <span id='foto-span' style={{ fontSize:13, color:'#888' }}>Tirar foto ou escolher da galeria</span>
-            </label>
-          </div>
-          <img id='foto-img' src='' style={{ display:'none', width:'100%', borderRadius:12, marginTop:8, maxHeight:160, objectFit:'cover' }} />
+          <label style={L}>Fotos do problema <span style={{ textTransform:'none', fontWeight:400, letterSpacing:0, color:'#ccc' }}>(opcional, até 5)</span></label>
+          <label style={{ display:'flex', alignItems:'center', gap:8, marginTop:4, padding:'12px', borderRadius:12, border:'2px dashed #ddd', cursor:'pointer', background:'#fafafa', justifyContent:'center' }}>
+            <input type='file' accept='image/*' multiple style={{ display:'none' }} onChange={e => {
+              const files=Array.from(e.target.files).slice(0,5);
+              const current=window._photos||[];
+              const remaining=5-current.length;
+              const toAdd=files.slice(0,remaining);
+              let loaded=0;
+              toAdd.forEach(file=>{
+                const reader=new FileReader();
+                reader.onload=ev=>{
+                  window._photos=[...(window._photos||[]),ev.target.result];
+                  loaded++;
+                  const grid=document.getElementById('photos-grid');
+                  if(grid){
+                    grid.innerHTML='';
+                    (window._photos||[]).forEach((src,i)=>{
+                      const wrap=document.createElement('div');
+                      wrap.style.cssText='position:relative;width:72px;height:72px;border-radius:10px;overflow:hidden;';
+                      const img=document.createElement('img');
+                      img.src=src;
+                      img.style.cssText='width:100%;height:100%;object-fit:cover;';
+                      const btn=document.createElement('button');
+                      btn.innerHTML='×';
+                      btn.style.cssText='position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;';
+                      btn.onclick=()=>{ window._photos.splice(i,1); wrap.remove(); const cnt=document.getElementById('photos-count'); if(cnt) cnt.textContent=window._photos.length>0?window._photos.length+' foto(s)':''; };
+                      wrap.appendChild(img);
+                      wrap.appendChild(btn);
+                      grid.appendChild(wrap);
+                    });
+                    const cnt=document.getElementById('photos-count');
+                    if(cnt) cnt.textContent=window._photos.length+' foto(s) adicionada(s)';
+                  }
+                };
+                reader.readAsDataURL(file);
+              });
+            }} />
+            📷 <span id='photos-count' style={{ fontSize:13, color:'#888' }}>Tirar foto ou escolher da galeria</span>
+          </label>
+          <div id='photos-grid' style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:8 }}></div>
         </div>
 
         {/* CEP */}
