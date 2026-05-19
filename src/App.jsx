@@ -1229,7 +1229,8 @@ function PostServiceScreen({ onBack, onSuccess }) {
       </div>
 
       <button
-        onClick={() => { if (canPublish) onSuccess({ cat:form.cat, desc:form.desc, value:Number(form.value), cep:form.cep, photos:window._photos||[],photo:(window._photos&&window._photos[0])||null, cepInfo, material:form.material }); }}
+        onClick={() => { if (canPublish) supabase.from("pedidos").insert({cliente_id:safeGetUser().email||"anonimo",cliente_nome:safeGetUser().name||"Cliente",categoria:form.cat,descricao:form.desc,valor:Number(form.value),cep:form.cep,fotos:window._photos||[],status:"aberto"}).then(({error})=>{if(error)console.warn("supabase:",error)});
+              onSuccess({ cat:form.cat, desc:form.desc, value:Number(form.value), cep:form.cep, photos:window._photos||[],photo:(window._photos&&window._photos[0])||null, cepInfo, material:form.material }); }}
         style={{ padding:"15px 0", borderRadius:14, border:"none", cursor: canPublish ? "pointer" : "not-allowed", background: canPublish ? `linear-gradient(135deg,${O},#E64A19)` : "#E5E7EB", color: canPublish ? "white" : "#9CA3AF", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow: canPublish ? "0 5px 18px rgba(255,87,34,.30)" : "none", transition:"all .2s" }}>
         <Send size={15} /> Publicar Serviço
       </button>
