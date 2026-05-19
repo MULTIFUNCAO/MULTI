@@ -1147,24 +1147,6 @@ function PostServiceScreen({ onBack, onSuccess }) {
                 </div>
                 <input type='text' style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid #EBEBEB', fontSize:13, color:'#1a1a2e', outline:'none', boxSizing:'border-box', fontFamily:'inherit' }} value={['Hoje','Amanhã','Esta semana','Flexível'].includes(form.scheduledDate)?'':form.scheduledDate} onChange={e=>setForm({...form, scheduledDate:e.target.value})} placeholder='Ex: 20/05/2026 às 14h' />
               </div>
-      {/* Fotos */}
-      <div>
-        <label style={L}>Fotos <span style={{ textTransform:"none", fontWeight:400, letterSpacing:0, color:"#ccc" }}>(opcional)</span></label>
-        <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
-          {photos.map(p => (
-            <div key={p.id} style={{ width:72, height:72, borderRadius:12, overflow:"hidden", position:"relative", boxShadow:"0 2px 8px rgba(0,0,0,.12)", flexShrink:0 }}>
-              <img src={p.url} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt="" />
-              <button onClick={() => setPhotos(prev => prev.filter(x => x.id !== p.id))} style={{ position:"absolute", top:3, right:3, width:18, height:18, borderRadius:"50%", background:"rgba(0,0,0,.55)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <X size={10} color="white" />
-              </button>
-            </div>
-          ))}
-          <button onClick={() => inputRef.current?.click()} style={{ width:72, height:72, borderRadius:12, border:"2px dashed #DDDEE4", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, color:"#ccc", background:"white", cursor:"pointer", flexShrink:0 }}>
-            <Camera size={18} /><span style={{ fontSize:10, fontWeight:600 }}>Adicionar</span>
-          </button>
-        </div>
-      </div>
-
       {/* Material */}
       <div>
         <label style={L}>Material necessário</label>
