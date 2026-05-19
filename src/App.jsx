@@ -1316,7 +1316,7 @@ function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
             </div>
           </div>
         </div>
-        <p style={{ fontSize:12, color:"#888", lineHeight:1.5, margin:0 }}>{service.desc}</p>
+        <p style={{ fontSize:12, color:"#888", lineHeight:1.5, margin:0 }}>{service.description || service.desc || "Sem descrição"}</p>
       </div>
 
       {/* ── STEPPER ── */}
@@ -1725,7 +1725,7 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry })
         </div>
       )}
 
-      <Card><p style={{ fontWeight:800, color:"#1a1a2e", marginBottom:8, fontSize:13 }}>Descrição</p><p style={{ fontSize:13, color:"#aaa", lineHeight:1.5 }}>{service.desc}</p></Card>
+      <Card><p style={{ fontWeight:800, color:"#1a1a2e", marginBottom:8, fontSize:13 }}>Descrição</p><p style={{ fontSize:13, color:"#aaa", lineHeight:1.5 }}>{service.description || service.desc || "Sem descrição"}</p></Card>
 
       <Card>
         <p style={{ fontWeight:800, color:"#1a1a2e", marginBottom:12, fontSize:13 }}>Cliente</p>
