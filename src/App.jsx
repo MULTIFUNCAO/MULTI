@@ -5704,7 +5704,7 @@ function NewOrderCard({ order, onAccept, onReject }) {
             strokeLinecap="round" transform="rotate(-90 100 100)"/>
           <text x="100" y="105" textAnchor="middle" fontSize="14" fontWeight="bold" fill={seconds <= 5 ? "#E24B4A" : "white"} fontFamily="sans-serif">{seconds}s</text>
         </svg>
-        <div style={{fontSize:19,fontWeight:900,color:'white',marginBottom:3}}>{order.category}</div>
+        <div style={{fontSize:19,fontWeight:900,color:'white',marginBottom:3}}>{order.category.charAt(0).toUpperCase()+order.category.slice(1)}</div>
         {order.description && <div style={{fontSize:12,color:'#ffffff99',marginBottom:6,padding:'0 4px',fontStyle:'italic',lineHeight:1.4}}>{order.description.slice(0,65)}{order.description.length>65?'...':''}</div>}
         {order.description && <div style={{fontSize:12,color:'#ffffff99',marginBottom:6,padding:'0 4px',fontStyle:'italic',lineHeight:1.4}}>{order.description.slice(0,65)}{order.description.length>65?'...':''}</div>}
         <div style={{fontSize:12,color:'#ffffff60',marginBottom:10}}>📍 {order.location}</div>
