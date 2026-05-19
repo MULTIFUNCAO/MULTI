@@ -5699,7 +5699,7 @@ function NewOrderCard({ order, onAccept, onReject }) {
           </circle>
           <circle cx="100" cy="100" r="26" fill="#1a1a2e" stroke={seconds <= 5 ? "#E24B4A" : "#FF5722"} strokeWidth="4"/>
           <circle cx="100" cy="100" r="26" fill="none" stroke="#222" strokeWidth="4"/>
-          <circle cx="100" cy="100" r="26" fill="none" stroke={seconds <= 5 ? "#E24B4A" : "#FF5722"} strokeWidth="4
+          <circle cx="100" cy="100" r="26" fill="none" stroke={seconds <= 5 ? "#E24B4A" : "#FF5722"} strokeWidth="4"
             strokeDasharray={CIRC} strokeDashoffset={CIRC - (seconds/15)*CIRC}
             strokeLinecap="round" transform="rotate(-90 100 100)"/>
           <text x="100" y="105" textAnchor="middle" fontSize="14" fontWeight="bold" fill={seconds <= 5 ? "#E24B4A" : "white"} fontFamily="sans-serif">{seconds}s</text>
