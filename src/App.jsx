@@ -5186,10 +5186,10 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
 
   const handleFicarOnline=()=>{const next=!online;setOnline(next);if(next){
   supabase.from("pedidos").select("*").eq("status","aberto").order("created_at",{ascending:false}).limit(1).then(({data})=>{
-    if(data&&data[0]){const p=data[0];setNewOrder({category:p.categoria,location:p.cidade||"Guarulhos, SP",value:String(p.valor||"0"),description:p.descricao||"",photo:(p.fotos&&p.fotos[0])||null});}
+    if(data&&data[0]){const p=data[0];setNewOrder({category:p.categoria,location:p.cidade||"Guarulhos, SP",value:String(p.valor||"0"),description:p.descricao||"",photos:p.fotos||[],photo:(p.fotos&&p.fotos[0])||null});}
   });
   supabase.channel("pedidos_novos").on("postgres_changes",{event:"INSERT",schema:"public",table:"pedidos"},(payload)=>{
-    const p=payload.new;setNewOrder({category:p.categoria,location:p.cidade||"Guarulhos, SP",value:String(p.valor||"0"),description:p.descricao||"",photo:(p.fotos&&p.fotos[0])||null});
+    const p=payload.new;setNewOrder({category:p.categoria,location:p.cidade||"Guarulhos, SP",value:String(p.valor||"0"),description:p.descricao||"",photos:p.fotos||[],photo:(p.fotos&&p.fotos[0])||null});
   }).subscribe();
 }else{supabase.removeAllChannels();}};
   return (
