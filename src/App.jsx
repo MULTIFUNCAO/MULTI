@@ -5705,8 +5705,8 @@ function NewOrderCard({ order, onAccept, onReject }) {
           <text x="100" y="105" textAnchor="middle" fontSize="14" fontWeight="bold" fill={seconds <= 5 ? "#E24B4A" : "white"} fontFamily="sans-serif">{seconds}s</text>
         </svg>
         <div style={{fontSize:19,fontWeight:900,color:'white',marginBottom:3}}>{order.category}</div>
-        {order.description && <div style={{fontSize:12,color:'#ffffff80',marginBottom:6,padding:'0 4px'}}>{order.description}</div>}
-        {order.description && <div style={{fontSize:12,color:'#ffffff80',marginBottom:6,padding:'0 4px'}}>{order.description}</div>}
+        {order.description && <div style={{fontSize:12,color:'#ffffff99',marginBottom:6,padding:'0 4px',fontStyle:'italic',lineHeight:1.4}}>{order.description.slice(0,65)}{order.description.length>65?'...':''}</div>}
+        {order.description && <div style={{fontSize:12,color:'#ffffff99',marginBottom:6,padding:'0 4px',fontStyle:'italic',lineHeight:1.4}}>{order.description.slice(0,65)}{order.description.length>65?'...':''}</div>}
         <div style={{fontSize:12,color:'#ffffff60',marginBottom:10}}>📍 {order.location}</div>
         <div style={{display:'flex',justifyContent:'center',gap:10,marginBottom:16}}>
           <div style={{background:'#FF572220',borderRadius:10,padding:'8px 14px'}}>
