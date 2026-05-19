@@ -1234,10 +1234,6 @@ function PostServiceScreen({ onBack, onSuccess }) {
             <Send size={15} /> Publicar Serviço
           </button>
         </div>
-      );
-    }
-  );
-}
 
 /* ───────────────────────── SERVICE DETAIL CLIENT ──────────────────────────── */
 /* ───────────────────────── SERVICE STATUS STEPPER ──────────────────────────── */
