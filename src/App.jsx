@@ -1075,26 +1075,7 @@ function PostServiceScreen({ onBack, onSuccess }) {
         <textarea rows={4} placeholder="Seja detalhado sobre o que precisa…" style={{ ...F, resize:"none", lineHeight:1.6 }} value={form.desc} onChange={e => setForm({ ...form, desc:e.target.value })} />
       </div>
 
-      {/* Foto do problema */}
-        <div>
-          <label style={L}>Foto do problema (opcional)</label>
-          <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:4 }}>
-            <label style={{ flex:1, padding:'12px', borderRadius:12, border:'2px dashed #ddd', display:'flex', alignItems:'center', justifyContent:'center', gap:8, cursor:'pointer', background:'#fafafa' }}>
-              <input type='file' accept='image/*' capture='environment' style={{ display:'none' }} onChange={e => {
-                const file = e.target.files[0];
-                if(file) {
-                  const reader = new FileReader();
-                  reader.onload = ev => window._photoPreview=ev.target.result;document.getElementById("photo-preview-img") && (document.getElementById("photo-preview-img").src=ev.target.result);document.getElementById("photo-preview-span") && (document.getElementById("photo-preview-span").textContent="Foto adicionada ✓");
-                  reader.readAsDataURL(file);
-                }
-              }} />
-              📷 <span style={{ fontSize:13, color:'#888' }}>Tirar foto ou escolher da galeria</span>
-            </label>
-          </div>
-          <img id="photo-preview-img" src="" style={{ display:"none", width:"100%", borderRadius:12, marginTop:8, maxHeight:160, objectFit:"cover" }} />
-        </div>
-
-        {/* CEP */}
+      {/* CEP */}
       <div>
         <label style={L}>CEP do local do serviço</label>
         <div style={{ position:"relative" }}>
