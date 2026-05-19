@@ -1075,7 +1075,26 @@ function PostServiceScreen({ onBack, onSuccess }) {
         <textarea rows={4} placeholder="Seja detalhado sobre o que precisa…" style={{ ...F, resize:"none", lineHeight:1.6 }} value={form.desc} onChange={e => setForm({ ...form, desc:e.target.value })} />
       </div>
 
-      {/* CEP */}
+      {/* Foto do problema */}
+        <div>
+          <label style={L}>Foto do problema (opcional)</label>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:4 }}>
+            <label style={{ flex:1, padding:'12px', borderRadius:12, border:'2px dashed #ddd', display:'flex', alignItems:'center', justifyContent:'center', gap:8, cursor:'pointer', background:'#fafafa' }}>
+              <input type='file' accept='image/*' capture='environment' style={{ display:'none' }} onChange={e => {
+                const file = e.target.files[0];
+                if(file) {
+                  const reader = new FileReader();
+                  reader.onload = ev => setPhotoPreview(ev.target.result);
+                  reader.readAsDataURL(file);
+                }
+              }} />
+              📷 <span style={{ fontSize:13, color:'#888' }}>{photoPreview ? 'Foto adicionada ✓' : 'Tirar foto ou escolher da galeria'}</span>
+            </label>
+          </div>
+          {photoPreview && <img src={photoPreview} style={{ width:'100%', borderRadius:12, marginTop:8, maxHeight:160, objectFit:'cover' }} />}
+        </div>
+
+        {/* CEP */}
       <div>
         <label style={L}>CEP do local do serviço</label>
         <div style={{ position:"relative" }}>
@@ -4917,6 +4936,25 @@ function RegisterScreen({ onBack, onComplete }) {
             style={{ ...REG_INPUT, borderColor: errors.phone ? "#E53935" : undefined }} />
         </FormField>
 
+        {/* Foto do problema */}
+        <div>
+          <label style={L}>Foto do problema (opcional)</label>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:4 }}>
+            <label style={{ flex:1, padding:'12px', borderRadius:12, border:'2px dashed #ddd', display:'flex', alignItems:'center', justifyContent:'center', gap:8, cursor:'pointer', background:'#fafafa' }}>
+              <input type='file' accept='image/*' capture='environment' style={{ display:'none' }} onChange={e => {
+                const file = e.target.files[0];
+                if(file) {
+                  const reader = new FileReader();
+                  reader.onload = ev => setPhotoPreview(ev.target.result);
+                  reader.readAsDataURL(file);
+                }
+              }} />
+              📷 <span style={{ fontSize:13, color:'#888' }}>{photoPreview ? 'Foto adicionada ✓' : 'Tirar foto ou escolher da galeria'}</span>
+            </label>
+          </div>
+          {photoPreview && <img src={photoPreview} style={{ width:'100%', borderRadius:12, marginTop:8, maxHeight:160, objectFit:'cover' }} />}
+        </div>
+
         {/* CEP */}
         <FormField IconComp={MapPin} label="CEP" error={errors.cep} hint={cepFound ? "📍 Localização encontrada!" : undefined}>
           <input autoComplete="postal-code" type="tel" placeholder="00000-000" value={cep}
@@ -5172,7 +5210,7 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
 
           {/* FICAR ONLINE button */}
           <button
-            onClick={() => { const next=!online; setOnline(next); if(next){ setTimeout(()=>setNewOrder({category:"Encanador",location:"Guarulhos, SP",value:"150",description:"Torneira com vazamento na cozinha. Precisa trocar o reparo com urgência."}),3000); }}}
+            onClick={() => { const next=!online; setOnline(next); if(next){ setTimeout(()=>setNewOrder({category:"Encanador",location:"Guarulhos, SP",value:"150",description:"Torneira com vazamento na cozinha. Precisa trocar o reparo com urgência.",photo:photoPreview}),3000); }}}
             className={online ? "pulse-online" : "pulse-offline"}
             style={{
               width:"100%", padding:"14px 0", borderRadius:16, border:"none", cursor:"pointer",
@@ -5182,7 +5220,7 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
               display:"flex", alignItems:"center", justifyContent:"center", gap:10,
               transition:"background .3s, color .3s",
             }}>
-            {newOrder && <NewOrderCard order={newOrder} onAccept={()=>{stopNewOrderSound();setNewOrder(null);setOnline(false);onAcceptOrder&&onAcceptOrder({id:Date.now(),title:newOrder.category,category:newOrder.category,clientName:"Cliente",location:newOrder.location,value:newOrder.value,description:newOrder.description,status:"accepted",phase:1});}} onReject={()=>{stopNewOrderSound();setNewOrder(null);}} />}
+            {newOrder && <NewOrderCard order={newOrder} onAccept={()=>{stopNewOrderSound();setNewOrder(null);setOnline(false);onAcceptOrder&&onAcceptOrder({id:Date.now(),title:newOrder.category,category:newOrder.category,clientName:"Cliente",location:newOrder.location,value:newOrder.value,description:newOrder.description,photo:newOrder.photo,status:"accepted",phase:1});}} onReject={()=>{stopNewOrderSound();setNewOrder(null);}} />}
             {/* radar icon */}
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <circle cx="12" cy="12" r="2"/>
