@@ -1084,14 +1084,14 @@ function PostServiceScreen({ onBack, onSuccess }) {
                 const file = e.target.files[0];
                 if(file) {
                   const reader = new FileReader();
-                  reader.onload = ev => setPhotoPreview(ev.target.result);
+                  reader.onload = ev => window._photoPreview=ev.target.result;document.getElementById("photo-preview-img") && (document.getElementById("photo-preview-img").src=ev.target.result);document.getElementById("photo-preview-span") && (document.getElementById("photo-preview-span").textContent="Foto adicionada ✓");
                   reader.readAsDataURL(file);
                 }
               }} />
-              📷 <span style={{ fontSize:13, color:'#888' }}>{photoPreview ? 'Foto adicionada ✓' : 'Tirar foto ou escolher da galeria'}</span>
+              📷 <span style={{ fontSize:13, color:'#888' }}>Tirar foto ou escolher da galeria</span>
             </label>
           </div>
-          {photoPreview && <img src={photoPreview} style={{ width:'100%', borderRadius:12, marginTop:8, maxHeight:160, objectFit:'cover' }} />}
+          <img id="photo-preview-img" src="" style={{ display:"none", style={{ width:'100%', borderRadius:12, marginTop:8, maxHeight:160, objectFit:'cover' }} />}
         </div>
 
         {/* CEP */}
@@ -4946,14 +4946,14 @@ function RegisterScreen({ onBack, onComplete }) {
                 const file = e.target.files[0];
                 if(file) {
                   const reader = new FileReader();
-                  reader.onload = ev => setPhotoPreview(ev.target.result);
+                  reader.onload = ev => window._photoPreview=ev.target.result;document.getElementById("photo-preview-img") && (document.getElementById("photo-preview-img").src=ev.target.result);document.getElementById("photo-preview-span") && (document.getElementById("photo-preview-span").textContent="Foto adicionada ✓");
                   reader.readAsDataURL(file);
                 }
               }} />
-              📷 <span style={{ fontSize:13, color:'#888' }}>{photoPreview ? 'Foto adicionada ✓' : 'Tirar foto ou escolher da galeria'}</span>
+              📷 <span style={{ fontSize:13, color:'#888' }}>Tirar foto ou escolher da galeria</span>
             </label>
           </div>
-          {photoPreview && <img src={photoPreview} style={{ width:'100%', borderRadius:12, marginTop:8, maxHeight:160, objectFit:'cover' }} />}
+          <img id="photo-preview-img" src="" style={{ display:"none", style={{ width:'100%', borderRadius:12, marginTop:8, maxHeight:160, objectFit:'cover' }} />}
         </div>
 
         {/* CEP */}
@@ -5211,7 +5211,7 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
 
           {/* FICAR ONLINE button */}
           <button
-            onClick={() => { const next=!online; setOnline(next); if(next){ setTimeout(()=>setNewOrder({category:"Encanador",location:"Guarulhos, SP",value:"150",description:"Torneira com vazamento na cozinha. Precisa trocar o reparo com urgência.",photo:photoPreview}),3000); }}}
+            onClick={() => { const next=!online; setOnline(next); if(next){ setTimeout(()=>setNewOrder({category:"Encanador",location:"Guarulhos, SP",value:"150",description:"Torneira com vazamento na cozinha. Precisa trocar o reparo com urgência.",photo:window._photoPreview||null}),3000); }}}
             className={online ? "pulse-online" : "pulse-offline"}
             style={{
               width:"100%", padding:"14px 0", borderRadius:16, border:"none", cursor:"pointer",
