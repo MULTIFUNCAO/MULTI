@@ -3,6 +3,9 @@ import CheckoutPagamento from './CheckoutPagamento';
 import ChatWidget from './ChatWidget';
 ﻿import { playNewOrderSound, stopNewOrderSound } from './newOrderSound';
 import { useState, useRef, useEffect } from "react";
+import { createClient } from '@supabase/supabase-js';
+const supabase=createClient('https://nlpfjkxqypveontunrxj.supabase.co','sb_publishable_xPCSGVYs-yI7TGS1F2EhFg_x7lMm30Q');
+
 import AdminDashboard from "./AdminDashboard";
 import {
   Search, MapPin, Bell, Star, Plus, ChevronRight,
