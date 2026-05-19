@@ -1747,7 +1747,7 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry })
         <span style={{ fontSize:28, fontWeight:900 }}>R$ {service.value}</span>
       </div>
 
-      {service.photo && <img src={service.photo} style={{ width:"100%", borderRadius:16, marginBottom:8, maxHeight:200, objectFit:"cover" }} />}
+      {(service.photos&&service.photos.length>0?service.photos:[service.photo]).filter(Boolean).length>0 && <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>{(service.photos&&service.photos.length>0?service.photos:[service.photo]).filter(Boolean).map((src,i)=><img key={i} src={src} style={{width:service.photos&&service.photos.length>1?"calc(50% - 4px)":"100%",borderRadius:16,maxHeight:200,objectFit:"cover"}} />)}</div>}
       {/* Stepper for in-progress jobs */}
       {phase >= 1 && (
         <div style={{ background:"white", borderRadius:20, padding:"16px 12px", boxShadow:"0 2px 12px rgba(0,0,0,.07)" }}>
