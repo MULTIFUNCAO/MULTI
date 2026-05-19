@@ -5172,7 +5172,7 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
 
           {/* FICAR ONLINE button */}
           <button
-            onClick={() => { const next=!online; setOnline(next); if(next){ setTimeout(()=>setNewOrder({category:"Encanador",location:"Guarulhos, SP",value:"150"}),3000); }}}
+            onClick={() => { const next=!online; setOnline(next); if(next){ setTimeout(()=>setNewOrder({category:"Encanador",location:"Guarulhos, SP",value:"150",description:"Torneira com vazamento na cozinha. Precisa trocar o reparo com urgência."}),3000); }}}
             className={online ? "pulse-online" : "pulse-offline"}
             style={{
               width:"100%", padding:"14px 0", borderRadius:16, border:"none", cursor:"pointer",
@@ -5182,7 +5182,7 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
               display:"flex", alignItems:"center", justifyContent:"center", gap:10,
               transition:"background .3s, color .3s",
             }}>
-            {newOrder && <NewOrderCard order={newOrder} onAccept={()=>{stopNewOrderSound();setNewOrder(null);setOnline(false);onAcceptOrder&&onAcceptOrder({id:Date.now(),title:newOrder.category,category:newOrder.category,clientName:"Cliente",location:newOrder.location,value:newOrder.value,status:"accepted",phase:1});}} onReject={()=>{stopNewOrderSound();setNewOrder(null);}} />}
+            {newOrder && <NewOrderCard order={newOrder} onAccept={()=>{stopNewOrderSound();setNewOrder(null);setOnline(false);onAcceptOrder&&onAcceptOrder({id:Date.now(),title:newOrder.category,category:newOrder.category,clientName:"Cliente",location:newOrder.location,value:newOrder.value,description:newOrder.description,status:"accepted",phase:1});}} onReject={()=>{stopNewOrderSound();setNewOrder(null);}} />}
             {/* radar icon */}
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <circle cx="12" cy="12" r="2"/>
