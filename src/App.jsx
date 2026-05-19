@@ -1229,7 +1229,7 @@ function PostServiceScreen({ onBack, onSuccess }) {
       </div>
 
       <button
-        onClick={() => { if (canPublish) ()=>{const c=document.createElement('canvas');const s=Math.min(1,maxW/i.width);c.width=i.width*s;c.height=i.height*s;c.getContext('2d').drawImage(i,0,0,c.width,c.height);r(c.toDataURL('image/jpeg',0.6));};i.src=b64;});
+            onClick={() => { if (canPublish) {
               supabase.from("pedidos").insert({cliente_id:safeGetUser().email||"anonimo",cliente_nome:safeGetUser().name||"Cliente",categoria:form.cat,descricao:form.desc,valor:Number(form.value),cep:form.cep,fotos:[],status:"aberto"}).then(({error})=>{if(error)console.warn("supabase:",error)});
               onSuccess({ cat:form.cat, desc:form.desc, value:Number(form.value), cep:form.cep, photos:window._photos||[],photo:(window._photos&&window._photos[0])||null, cepInfo, material:form.material }); }}
         style={{ padding:"15px 0", borderRadius:14, border:"none", cursor: canPublish ? "pointer" : "not-allowed", background: canPublish ? `linear-gradient(135deg,${O},#E64A19)` : "#E5E7EB", color: canPublish ? "white" : "#9CA3AF", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow: canPublish ? "0 5px 18px rgba(255,87,34,.30)" : "none", transition:"all .2s" }}>
