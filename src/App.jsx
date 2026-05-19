@@ -1736,6 +1736,7 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry })
         <span style={{ fontSize:28, fontWeight:900 }}>R$ {service.value}</span>
       </div>
 
+      {service.photo && <img src={service.photo} style={{ width:"100%", borderRadius:16, marginBottom:8, maxHeight:200, objectFit:"cover" }} />}
       {/* Stepper for in-progress jobs */}
       {phase >= 1 && (
         <div style={{ background:"white", borderRadius:20, padding:"16px 12px", boxShadow:"0 2px 12px rgba(0,0,0,.07)" }}>
