@@ -5093,7 +5093,7 @@ function GuestMural({ onSignup, allDocsVerified }) {
 }
 
 /* ───────────────────────── PROFESSIONAL HOME ────────────────────────────────── */
-function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet }) {
+function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet, onAcceptOrder }) {
   const [online,       setOnline]       = useState(false);
   const [newOrder, setNewOrder] = useState(null);
   const [activeFilter, setActiveFilter] = useState("all");
@@ -5182,7 +5182,7 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
               display:"flex", alignItems:"center", justifyContent:"center", gap:10,
               transition:"background .3s, color .3s",
             }}>
-            {newOrder && <NewOrderCard order={newOrder} onAccept={()=>{stopNewOrderSound();setNewOrder(null);showToast?.("🎉 Pedido aceito! Vá até o cliente.", "G");setOnline(false);setSelected({id:Date.now(),title:newOrder.category,category:newOrder.category,clientName:"Cliente",location:newOrder.location,value:newOrder.value,status:"accepted",phase:1});setScreen("service");}} onReject={()=>{stopNewOrderSound();setNewOrder(null);}} />}
+            {newOrder && <NewOrderCard order={newOrder} onAccept={()=>{stopNewOrderSound();setNewOrder(null);showToast?.("🎉 Pedido aceito! Vá até o cliente.", "G");setOnline(false);onAcceptOrder&&onAcceptOrder({id:Date.now(),title:newOrder.category,category:newOrder.category,clientName:"Cliente",location:newOrder.location,value:newOrder.value,status:"accepted",phase:1});}} onReject={()=>{stopNewOrderSound();setNewOrder(null);}} />}
             {/* radar icon */}
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <circle cx="12" cy="12" r="2"/>
@@ -6062,7 +6062,7 @@ export default function App() {
         userLocation={localStorage.getItem("multiLocation") || userLocation}
         allDocsVerified={allDocsVerified}
         docStatus={docStatus}
-        onGoToDocs={() => setScreen("profile")} onGoToOrders={() => setScreen("orders")} onGoToWallet={() => setScreen("wallet")}
+        onGoToDocs={() => setScreen("profile")} onGoToOrders={() => setScreen("orders")} onGoToWallet={() => setScreen("wallet")} onAcceptOrder={(order) => { setSelected(order); setScreen("service"); }}
       />
     );
   };
