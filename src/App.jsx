@@ -5211,7 +5211,7 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
           </div>
 
           {/* FICAR ONLINE button */}
-          <button
+            onClick={() => { const next=!online; setOnline(next); if(next){ setTimeout(()=>{ const p=pendingOrders[0]; if(p) setNewOrder({category:p.cat||p.category,location:p.loc||p.location||"Guarulhos, SP",value:String(p.value||"0"),description:p.desc||p.description||"",photo:p.photo||null}); },3000); }}}
             onClick={() => { const next=!online; setOnline(next); if(next){ setTimeout(()=>const p=pendingOrders[0]; if(p) setNewOrder({category:p.cat||p.category,location:p.loc||p.location||"Guarulhos, SP",value:String(p.value||"0"),description:p.desc||p.description||"",photo:p.photo||null}),3000); }}}
             className={online ? "pulse-online" : "pulse-offline"}
             style={{
