@@ -4953,7 +4953,7 @@ function RegisterScreen({ onBack, onComplete }) {
               📷 <span style={{ fontSize:13, color:'#888' }}>Tirar foto ou escolher da galeria</span>
             </label>
           </div>
-          <img id="photo-preview-img" src="" style={{ display:"none", style={{ width:'100%', borderRadius:12, marginTop:8, maxHeight:160, objectFit:'cover' }} />}
+          <img id="photo-preview-img" src="" style={{ display:"none", width:"100%", borderRadius:12, marginTop:8, maxHeight:160, objectFit:"cover" }} />
         </div>
 
         {/* CEP */}
