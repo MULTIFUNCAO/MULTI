@@ -1816,13 +1816,13 @@ function ProUpgrade({ onBack, onSubscribe }) {
   const [pixLoading,   setPixLoading]   = useState(false);
   const [pixCode,      setPixCode]      = useState("");
   const [qrBase64,     setQrBase64]     = useState("");
-  useEffect(() => { if (paymentStep === "pix" && showPaymentModal && !chatQrBase64) { setChatQrLoading(true); const sv = chat.dealValue || chat.proposalValue || "100"; fetch("https://web-production-e103b.up.railway.app/api/gerar-pix-servico", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ value: parseFloat(String(sv).replace(",",".")), name: userName||"Cliente", email: userEmail||"cliente@multi.com", phone: "11999999999" }) }).then(r => r.json()).then(d => { if (d.qrCodeBase64) { setChatQrBase64(d.qrCodeBase64); setChatQrKey(k => k+1); } }).catch(() => {}).finally(() => setChatQrLoading(false)); } }, [paymentStep, showPaymentModal]);
+  useEffect(() => { if (paymentStep === "pix" && showPaymentModal && !chatQrBase64) { setChatQrLoading(true); const sv = chat.dealValue || chat.proposalValue || "100"; fetch("https://multi-backend-lfwp.onrender.com/api/gerar-pix-servico", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ value: parseFloat(String(sv).replace(",",".")), name: userName||"Cliente", email: userEmail||"cliente@multi.com", phone: "11999999999" }) }).then(r => r.json()).then(d => { if (d.qrCodeBase64) { setChatQrBase64(d.qrCodeBase64); setChatQrKey(k => k+1); } }).catch(() => {}).finally(() => setChatQrLoading(false)); } }, [paymentStep, showPaymentModal]);
   const [paymentId,    setPaymentId]    = useState(null);
   const [pixError,     setPixError]     = useState("");
 
   const API_URL = typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL
     ? import.meta.env.VITE_API_URL
-    : "https://web-production-e103b.up.railway.app";
+    : "https://multi-backend-lfwp.onrender.com";
 
   const plans = [
     { id:"monthly",   label:"Mensal",     price:"29,90", period:"/mês",     badge:null,            value:29.90  },
@@ -2764,7 +2764,7 @@ function AdminAccessTrigger({ onOpenAdmin }) {
 }
 
 /* ───────────────────────── ENDEREÇOS DO CLIENTE ────────────────────────────── */
-const API_BASE = "https://web-production-e103b.up.railway.app";
+const API_BASE = "https://multi-backend-lfwp.onrender.com";
 
 function safeGetUser() {
   try { return JSON.parse(localStorage.getItem("multiUser") || "{}"); } catch { return {}; }
@@ -3104,7 +3104,7 @@ function SegurancaScreen({ onBack }) {
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const API = "https://web-production-e103b.up.railway.app";
+  const API = "https://multi-backend-lfwp.onrender.com";
   const email = user.email || "";
   const btn = { width:"100%", padding:14, background:"#007BFF", color:"white", border:"none", borderRadius:12, fontSize:16, fontWeight:700, cursor:"pointer", marginTop:8 };
   const inp = { width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:15, marginTop:6, marginBottom:16, boxSizing:"border-box" };
@@ -3726,7 +3726,7 @@ function PixQRChat({ valor }) {
   const [err, setErr] = useState('');
   useEffect(() => {
     const val = parseFloat(String(valor||'100').replace(',','.'));
-    fetch('https://web-production-e103b.up.railway.app/api/gerar-pix-servico', {
+    fetch('https://multi-backend-lfwp.onrender.com/api/gerar-pix-servico', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ value: val, name:'Cliente', email:'cliente@multi.com', phone:'11999999999' })
     }).then(r=>r.json()).then(d=>{
@@ -4638,7 +4638,7 @@ function ForgotPasswordScreen({ onBack, onComplete }) {
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const API = "https://web-production-e103b.up.railway.app";
+  const API = "https://multi-backend-lfwp.onrender.com";
   const box = { minHeight:"100vh", background:"#F5F6FA", display:"flex", alignItems:"center", justifyContent:"center", padding:24 };
   const card = { width:"100%", maxWidth:420, background:"white", borderRadius:20, padding:"32px 24px", boxShadow:"0 4px 24px rgba(0,0,0,.08)" };
   const inp = { width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:15, marginTop:6, marginBottom:16, boxSizing:"border-box" };
@@ -4665,7 +4665,7 @@ function ResetPasswordScreen({ onComplete }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
-  const API = "https://web-production-e103b.up.railway.app";
+  const API = "https://multi-backend-lfwp.onrender.com";
 
   const handleReset = async () => {
     if (!password || password.length < 6) return alert("Senha deve ter pelo menos 6 caracteres");
@@ -4715,7 +4715,7 @@ function LoginScreen({ onBack, onComplete, onRegister, onForgot }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const API = "https://web-production-e103b.up.railway.app";
+  const API = "https://multi-backend-lfwp.onrender.com";
 
   const handleLogin = async () => {
     if (!email || !password) return alert("Preencha email e senha");
@@ -4800,7 +4800,7 @@ function RegisterScreen({ onBack, onComplete }) {
     if (!validate()) return;
     setLoading(true);
     try {
-      const API = "https://web-production-e103b.up.railway.app";
+      const API = "https://multi-backend-lfwp.onrender.com";
       const r = await fetch(`${API}/api/auth/cadastro`, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ name, email: email.trim(), password, role }),
@@ -5791,7 +5791,7 @@ export default function App() {
     const sess = (() => { try { return JSON.parse(localStorage.getItem("multiUser")) || {}; } catch { return {}; } })();
     const email = sess.email || savedSession?.email || "";
     console.log("LOCATION EMAIL:", email); if (!email) { console.log("EMAIL VAZIO - multiUser:", JSON.stringify(JSON.parse(localStorage.getItem("multiUser")||"{}"))); return; }
-    fetch("https://web-production-e103b.up.railway.app/api/enderecos/" + encodeURIComponent(email))
+    fetch("https://multi-backend-lfwp.onrender.com/api/enderecos/" + encodeURIComponent(email))
       .then(r => r.json())
       .then(data => { console.log("ENDERECOS DATA:", JSON.stringify(data));
         if (Array.isArray(data) && data.length > 0) {
@@ -5809,7 +5809,7 @@ export default function App() {
     const sess = (() => { try { return JSON.parse(localStorage.getItem("multiUser")) || {}; } catch { return {}; } })();
     const email = sess.email || savedSession?.email || "";
     console.log("LOCATION EMAIL:", email); if (!email) { console.log("EMAIL VAZIO - multiUser:", JSON.stringify(JSON.parse(localStorage.getItem("multiUser")||"{}"))); return; }
-    fetch("https://web-production-e103b.up.railway.app/api/enderecos/" + encodeURIComponent(email))
+    fetch("https://multi-backend-lfwp.onrender.com/api/enderecos/" + encodeURIComponent(email))
       .then(r => r.json())
       .then(data => { console.log("ENDERECOS DATA:", JSON.stringify(data));
         if (Array.isArray(data) && data.length > 0) {
@@ -5835,7 +5835,7 @@ export default function App() {
   // URL do backend — troque para https://api.multifuncao.com.br em produção
   const API_URL = typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL
     ? import.meta.env.VITE_API_URL
-    : "https://web-production-e103b.up.railway.app";
+    : "https://multi-backend-lfwp.onrender.com";
 
   const sendWelcomeEmail = async ({ name, email, role }) => {
     const firstName = name?.trim().split(/\s+/)[0] || "Usuário";
