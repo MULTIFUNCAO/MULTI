@@ -258,6 +258,7 @@ function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua
           <div style={{ width:7, height:7, borderRadius:"50%", background:"#4ade80" }} />
           <span style={{ fontSize:11, color:"rgba(255,255,255,.7)", fontWeight:700 }}>Logado como Cliente</span>
           </div>
+          <button onClick={function(){var nr=role==="professional"?"client":"professional";setRole(nr);try{var s=JSON.parse(localStorage.getItem("multiSession")||"{}")||{};s.role=nr;localStorage.setItem("multiSession",JSON.stringify(s));}catch(ex){}}} style={{marginTop:6,padding:"6px 14px",borderRadius:16,border:"none",cursor:"pointer",background:role==="professional"?"rgba(255,255,255,.2)":"rgba(255,87,34,.85)",color:"white",fontWeight:700,fontSize:12}}>{role==="professional"?"Modo Cliente":"Modo Profissional"}</button>
       {isProfessional && (
         <div style={{ margin:"0 16px 12px", background:"rgba(255,87,34,.2)", border:"1px solid rgba(255,87,34,.3)", borderRadius:12, padding:"8px 14px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div style={{ display:"flex", alignItems:"center", gap:7 }}>
