@@ -4948,42 +4948,10 @@ function RegisterScreen({ onBack, onComplete }) {
             style={{ ...REG_INPUT, borderColor: errors.phone ? "#E53935" : undefined }} />
         </FormField>
 
-        {/* Foto do problema */}
-        <div>
-          <label style={{fontSize:12,color:"#555",marginBottom:4,display:"block"}}>Foto do problema (opcional)</label>
-          <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:4 }}>
-            <label style={{ flex:1, padding:'12px', borderRadius:12, border:'2px dashed #ddd', display:'flex', alignItems:'center', justifyContent:'center', gap:8, cursor:'pointer', background:'#fafafa' }}>
-              <input type='file' accept='image/*' capture='environment' style={{ display:'none' }} onChange={e => {
-                const file = e.target.files[0];
-                if(file) {
-                  const reader = new FileReader();
-                  reader.onload = ev => window._photoPreview=ev.target.result;document.getElementById("photo-preview-img") && (document.getElementById("photo-preview-img").src=ev.target.result);document.getElementById("photo-preview-span") && (document.getElementById("photo-preview-span").textContent="Foto adicionada ✓");
-                  reader.readAsDataURL(file);
-                }
-              }} />
-              📷 <span style={{ fontSize:13, color:'#888' }}>Tirar foto ou escolher da galeria</span>
-            </label>
-          </div>
-          <img id="photo-preview-img" src="" style={{ display:"none", width:"100%", borderRadius:12, marginTop:8, maxHeight:160, objectFit:"cover" }} />
+                  <img id="photo-preview-img" src="" style={{ display:"none", width:"100%", borderRadius:12, marginTop:8, maxHeight:160, objectFit:"cover" }} />
         </div>
 
-        {/* Foto do problema */}
-        <div>
-          <label style={{fontSize:12,color:"#666",display:"block"}}>Foto do problema <span style={{ textTransform:'none', fontWeight:400, letterSpacing:0, color:'#ccc' }}>(opcional)</span></label>
-          <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:4 }}>
-            <label style={{ flex:1, padding:'12px', borderRadius:12, border:'2px dashed #ddd', display:'flex', alignItems:'center', justifyContent:'center', gap:8, cursor:'pointer', background:'#fafafa' }}>
-              <input type='file' accept='image/*' capture='environment' style={{ display:'none' }} onChange={e => {
-                const file = e.target.files[0];
-                if(file) {
-                  const reader = new FileReader();
-                  reader.onload = ev => { window._photoPreview=ev.target.result; document.getElementById('foto-span') && (document.getElementById('foto-span').textContent='Foto adicionada ✓'); document.getElementById('foto-img') && Object.assign(document.getElementById('foto-img').style,{display:'block'},(document.getElementById('foto-img').src=ev.target.result,{})); };
-                  reader.readAsDataURL(file);
-                }
-              }} />
-              📷 <span id='foto-span' style={{ fontSize:13, color:'#888' }}>Tirar foto ou escolher da galeria</span>
-            </label>
-          </div>
-          <img id='foto-img' src='' style={{ display:'none', width:'100%', borderRadius:12, marginTop:8, maxHeight:160, objectFit:'cover' }} />
+                  <img id='foto-img' src='' style={{ display:'none', width:'100%', borderRadius:12, marginTop:8, maxHeight:160, objectFit:'cover' }} />
         </div>
 
         {/* CEP */}
