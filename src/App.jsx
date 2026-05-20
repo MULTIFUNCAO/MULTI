@@ -4955,7 +4955,7 @@ function RegisterScreen({ onBack, onComplete }) {
         </div>
 
         {/* CEP */}
-        <FormField IconComp={MapPin} label="CEP" error={errors.cep} hint={cepFound ? "📍 Localização encontrada!" : undefined}>
+        <FormField IconComp={MapPin} label="CEP" error={errors.cep} hint={cepFound ? "CEP encontrado" : ""}>
           <input autoComplete="postal-code" type="tel" placeholder="00000-000" value={cep}
             onChange={e => { setCep(maskCep(e.target.value)); if (errors.cep) setErrors(p => ({ ...p, cep:undefined })); }}
             style={{ ...REG_INPUT, borderColor: errors.cep ? "#E53935" : cepFound ? G : undefined }} />
