@@ -5769,7 +5769,7 @@ export default function App() {
         }
         setMyServicesLoading(false);
       }).catch(() => setMyServicesLoading(false));
-  }, [screen]);
+  }, [screen, userName]);
   const [notifications, setNotifications] = useState([]);
   const [activeChat,    setActiveChat]    = useState(null);
   const [userEmail,     setUserEmail]     = useState(savedSession?.email    || "");
