@@ -1063,7 +1063,7 @@ function PostServiceScreen({ onBack, onSuccess }) {
 
       {/* Categoria */}
       <div>
-        <label style={L}>Categoria</label>
+        <label style={{fontSize:12,color:"#666",display:"block"}}>Categoria</label>
         <div style={{ position:"relative" }}>
           <select style={{ ...F, paddingRight:36, appearance:"none", cursor:"pointer" }} value={form.cat} onChange={e => setForm({ ...form, cat:e.target.value })}>
             <option value="">Selecione...</option>
@@ -1075,13 +1075,13 @@ function PostServiceScreen({ onBack, onSuccess }) {
 
       {/* Descrição */}
       <div>
-        <label style={L}>Descrição do problema</label>
+        <label style={{fontSize:12,color:"#666",display:"block"}}>Descrição do problema</label>
         <textarea rows={4} placeholder="Seja detalhado sobre o que precisa…" style={{ ...F, resize:"none", lineHeight:1.6 }} value={form.desc} onChange={e => setForm({ ...form, desc:e.target.value })} />
       </div>
 
       {/* Foto do problema */}
         <div>
-          <label style={L}>Fotos do problema <span style={{ textTransform:'none', fontWeight:400, letterSpacing:0, color:'#ccc' }}>(opcional, até 5)</span></label>
+          <label style={{fontSize:12,color:"#666",display:"block"}}>Fotos do problema <span style={{ textTransform:'none', fontWeight:400, letterSpacing:0, color:'#ccc' }}>(opcional, até 5)</span></label>
           <label style={{ display:'flex', alignItems:'center', gap:8, marginTop:4, padding:'12px', borderRadius:12, border:'2px dashed #ddd', cursor:'pointer', background:'#fafafa', justifyContent:'center' }}>
             <input type='file' accept='image/*' multiple style={{ display:'none' }} onChange={e => {
               const files=Array.from(e.target.files).slice(0,5);
@@ -1125,7 +1125,7 @@ function PostServiceScreen({ onBack, onSuccess }) {
 
         {/* CEP */}
       <div>
-        <label style={L}>CEP do local do serviço</label>
+        <label style={{fontSize:12,color:"#666",display:"block"}}>CEP do local do serviço</label>
         <div style={{ position:"relative" }}>
           <input
             type="tel"
@@ -1197,7 +1197,7 @@ function PostServiceScreen({ onBack, onSuccess }) {
               </div>
       {/* Material */}
       <div>
-        <label style={L}>Material necessário</label>
+        <label style={{fontSize:12,color:"#666",display:"block"}}>Material necessário</label>
         <div style={{ background:"white", border:"1.5px solid #EBEBEB", borderRadius:14, overflow:"hidden" }}>
           {[
             { val: false, icon:"🧰", label:"Não precisa de material",   sub:"O profissional só precisa trazer ferramentas" },
@@ -1222,7 +1222,7 @@ function PostServiceScreen({ onBack, onSuccess }) {
 
       {/* Valor */}
       <div>
-        <label style={L}>Valor que posso pagar</label>
+        <label style={{fontSize:12,color:"#666",display:"block"}}>Valor que posso pagar</label>
         <div style={{ position:"relative" }}>
           <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", fontWeight:800, color:"#999", fontSize:13 }}>R$</span>
           <input type="number" placeholder="0,00" style={{ ...F, paddingLeft:38 }} value={form.value} onChange={e => setForm({ ...form, value:e.target.value })} />
@@ -4969,7 +4969,7 @@ function RegisterScreen({ onBack, onComplete }) {
 
         {/* Foto do problema */}
         <div>
-          <label style={L}>Foto do problema <span style={{ textTransform:'none', fontWeight:400, letterSpacing:0, color:'#ccc' }}>(opcional)</span></label>
+          <label style={{fontSize:12,color:"#666",display:"block"}}>Foto do problema <span style={{ textTransform:'none', fontWeight:400, letterSpacing:0, color:'#ccc' }}>(opcional)</span></label>
           <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:4 }}>
             <label style={{ flex:1, padding:'12px', borderRadius:12, border:'2px dashed #ddd', display:'flex', alignItems:'center', justifyContent:'center', gap:8, cursor:'pointer', background:'#fafafa' }}>
               <input type='file' accept='image/*' capture='environment' style={{ display:'none' }} onChange={e => {
