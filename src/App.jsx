@@ -5764,7 +5764,7 @@ export default function App() {
   useEffect(() => {
     const sess = (() => { try { return JSON.parse(localStorage.getItem("multiUser")) || {}; } catch { return {}; } })();
     const email = sess.email || savedSession?.email || "";
-    console.log("LOCATION EMAIL:", email); if (!email) { console.log("EMAIL VAZIO - multiUser:", JSON.stringify(JSON.parse(localStorage.getItem("multiUser")||"{}"))); return; }
+     if (!email) { console.log("EMAIL VAZIO - multiUser:", JSON.stringify(JSON.parse(localStorage.getItem("multiUser")||"{}"))); return; }
     fetch("https://multi-backend-lfwp.onrender.com/api/enderecos/" + encodeURIComponent(email))
       .then(r => r.json())
       .then(data => { console.log("ENDERECOS DATA:", JSON.stringify(data));
@@ -5782,7 +5782,7 @@ export default function App() {
   useEffect(() => {
     const sess = (() => { try { return JSON.parse(localStorage.getItem("multiUser")) || {}; } catch { return {}; } })();
     const email = sess.email || savedSession?.email || "";
-    console.log("LOCATION EMAIL:", email); if (!email) { console.log("EMAIL VAZIO - multiUser:", JSON.stringify(JSON.parse(localStorage.getItem("multiUser")||"{}"))); return; }
+     if (!email) { console.log("EMAIL VAZIO - multiUser:", JSON.stringify(JSON.parse(localStorage.getItem("multiUser")||"{}"))); return; }
     fetch("https://multi-backend-lfwp.onrender.com/api/enderecos/" + encodeURIComponent(email))
       .then(r => r.json())
       .then(data => { console.log("ENDERECOS DATA:", JSON.stringify(data));
