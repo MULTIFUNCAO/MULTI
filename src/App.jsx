@@ -270,7 +270,7 @@ function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua
           </span>
         </div>
       )}
-      <button onClick={()=>{ const newRole=activeRole==="professional"?"client":"professional"; if(onToggleRole)onToggleRole(newRole); setRole(newRole); try{ const s=JSON.parse(localStorage.getItem("multiSession")||"{}")||{}; s.role=newRole; localStorage.setItem("multiSession",JSON.stringify(s)); localStorage.setItem("multiMode",newRole); }catch(e){} }} style={{marginTop:8,padding:"8px 16px",borderRadius:20,border:"none",cursor:"pointer",background:activeRole==="professional"?"rgba(255,255,255,.15)":"rgba(255,87,34,.8)",color:"white",fontWeight:700,fontSize:12}}>{activeRole==="professional"?"Modo Cliente":"Modo Profissional"}</button>
+      
     </div>
   );
 }
