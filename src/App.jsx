@@ -5757,7 +5757,7 @@ export default function App() {
     const userEmail = safeGetUser().email || safeGetUser().whatsapp;
     if (!userEmail) return;
     setMyServicesLoading(true);
-    supabase.from("pedidos").select("*").eq("client_email", userEmail).order("created_at", { ascending: false })
+    supabase.from("pedidos").select("*").eq("cliente_id", userEmail).order("created_at", { ascending: false })
       .then(({ data }) => {
         if (data && data.length > 0) {
           setMyServices(data.map(p => ({
