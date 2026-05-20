@@ -488,10 +488,6 @@ function ChatScreen({ chat, onBack, onFinish }) {
     { id:3, from:"pro",    text:"Confirmado! Trarei todos os materiais necessários 🔧",       time:"10:04" },
   ]);
   const [finished, setFinished] = useState(false);
-  const [showRatingModal, setShowRatingModal] = useState(false);
-  const [ratingStars, setRatingStars] = useState(5);
-  const [ratingComment, setRatingComment] = useState("");
-  const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const endRef = useRef(null);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior:"smooth" }); }, [messages]);
@@ -511,28 +507,9 @@ function ChatScreen({ chat, onBack, onFinish }) {
   };
 
   const handleFinish = () => {
-    setShowRatingModal(true);
-  };
-
-  const handleSubmitRating = async () => {
-    const userEmail = safeGetUser().email || safeGetUser().whatsapp;
-    const proId = chat.proId || chat.profissionalId || null;
-    const proNome = chat.proName || chat.profissionalNome || "Profissional";
-    try {
-      await supabase.from("avaliacoes").insert({
-        cliente_id: userEmail,
-        profissional_id: proId,
-        profissional_nome: proNome,
-        estrelas: ratingStars,
-        comentario: ratingComment,
-        pedido_id: chat.pedidoId || null,
-        created_at: new Date().toISOString()
-      });
-    } catch(e) {}
-    setRatingSubmitted(true);
     setFinished(true);
     setMessages(m => [...m, { id: Date.now(), from:"system", text:"✅ Serviço finalizado! Obrigado por usar o Multi.", time:"" }]);
-    setTimeout(() => { setShowRatingModal(false); setRatingSubmitted(false); setRatingComment(""); setRatingStars(5); onFinish && onFinish(); }, 2000);
+    setTimeout(onFinish, 2000);
   };
 
   const quickActions = [
@@ -6293,40 +6270,4 @@ export default function App() {
   );
 }
 // deploy Sun Apr 26 23:30:18     2026
-// utf8-fix{showRatingModal && (
-      <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center" }}>
-        <div style={{ background:"white", borderRadius:20, padding:32, width:"90%", maxWidth:380, textAlign:"center" }}>
-          {ratingSubmitted ? (
-            <div>
-              <div style={{ fontSize:48 }}>🎉</div>
-              <div style={{ fontSize:20, fontWeight:700, color:"#1a1a2e", marginTop:8 }}>Obrigado!</div>
-              <div style={{ color:"#666", marginTop:4 }}>Sua avaliação foi enviada.</div>
-            </div>
-          ) : (
-            <>
-              <div style={{ fontSize:32, marginBottom:4 }}>⭐</div>
-              <div style={{ fontSize:18, fontWeight:700, color:"#1a1a2e" }}>Avalie o profissional</div>
-              <div style={{ color:"#666", fontSize:13, marginBottom:20 }}>Como foi a experiência?</div>
-              <div style={{ display:"flex", justifyContent:"center", gap:8, marginBottom:20 }}>
-                {[1,2,3,4,5].map(s => (
-                  <span key={s} onClick={() => setRatingStars(s)} style={{ fontSize:36, cursor:"pointer", opacity: s <= ratingStars ? 1 : 0.3 }}>★</span>
-                ))}
-              </div>
-              <textarea
-                placeholder="Deixe um comentário (opcional)..."
-                value={ratingComment}
-                onChange={e => setRatingComment(e.target.value)}
-                style={{ width:"100%", borderRadius:10, border:"1px solid #ddd", padding:10, fontSize:14, resize:"none", height:80, boxSizing:"border-box", marginBottom:16 }}
-              />
-              <button onClick={handleSubmitRating} style={{ width:"100%", padding:"14px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#F9A825,#E65100)", color:"white", fontWeight:700, fontSize:16, cursor:"pointer" }}>
-                Enviar Avaliação ⭐
-              </button>
-              <button onClick={() => setShowRatingModal(false)} style={{ width:"100%", padding:"10px 0", borderRadius:12, border:"none", background:"transparent", color:"#999", fontSize:14, cursor:"pointer", marginTop:8 }}>
-                Pular
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    )}
-    
+// utf8-fix
