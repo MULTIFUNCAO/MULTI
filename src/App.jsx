@@ -4947,13 +4947,6 @@ function RegisterScreen({ onBack, onComplete }) {
             onChange={e => { setPhone(maskPhone(e.target.value)); if (errors.phone) setErrors(p => ({ ...p, phone:undefined })); }}
             style={{ ...REG_INPUT, borderColor: errors.phone ? "#E53935" : undefined }} />
         </FormField>
-
-                  <img id="photo-preview-img" src="" style={{ display:"none", width:"100%", borderRadius:12, marginTop:8, maxHeight:160, objectFit:"cover" }} />
-        </div>
-
-                  <img id='foto-img' src='' style={{ display:'none', width:'100%', borderRadius:12, marginTop:8, maxHeight:160, objectFit:'cover' }} />
-        </div>
-
         {/* CEP */}
         <FormField IconComp={MapPin} label="CEP" error={errors.cep} hint={cepFound ? "CEP encontrado" : ""}>
           <input autoComplete="postal-code" type="tel" placeholder="00000-000" value={cep}
