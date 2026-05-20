@@ -5754,7 +5754,7 @@ export default function App() {
   const [myServices, setMyServices] = useState([]);
   const [myServicesLoading, setMyServicesLoading] = useState(false);
   useEffect(() => {
-    const userEmail = safeGetUser().email || safeGetUser().whatsapp;
+    const userEmail = safeGetUser().email || safeGetUser().whatsapp; console.log("[PEDIDOS] userEmail:",userEmail,"user:",JSON.stringify(safeGetUser()));
     if (!userEmail) return;
     setMyServicesLoading(true);
     supabase.from("pedidos").select("*").eq("cliente_id", userEmail).order("created_at", { ascending: false })
