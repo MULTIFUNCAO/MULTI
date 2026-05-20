@@ -409,7 +409,7 @@ function ProposalModal({ service, onClose, onSend }) {
           <button onClick={onClose} style={{ padding:"13px 0", borderRadius:12, border:"1.5px solid #E8E8E8", background:"white", color:"#888", fontWeight:800, fontSize:13, cursor:"pointer" }}>
             Cancelar
           </button>
-          <button onClick={handleSend} style={{ padding:"13px 0", borderRadius:12, border:"none", background:`linear-gradient(135deg,${O},#E64A19)`, color:"white", fontWeight:800, fontSize:13, cursor:"pointer", boxShadow:"0 4px 14px rgba(255,87,34,.3)" }}>
+          <button onClick={handleSend} style={{ padding:"13px 0", borderRadius:12, border:"none", background:`linear-gradient(135deg,#FF7043,#E64A19)`, color:"white", fontWeight:800, fontSize:13, cursor:"pointer", boxShadow:"0 4px 14px rgba(255,87,34,.3)" }}>
             Enviar Proposta
           </button>
         </div>
@@ -2093,7 +2093,7 @@ const CheckoutScreen = () => {
         <div style={{ background:"white", borderRadius:20, overflow:"hidden", boxShadow:"0 4px 18px rgba(0,122,255,.12)", border:`2px solid ${B}` }}>
 
           {/* recommended ribbon */}
-          <div style={{ background:`linear-gradient(135deg,${B},#0055d4)`, padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div style={{ background:`linear-gradient(135deg,#1976D2,#0055d4)`, padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
               <span style={{ fontSize:13 }}>⚡</span>
               <span style={{ fontSize:12, fontWeight:900, color:"white" }}>RECOMENDADO</span>
@@ -4950,7 +4950,7 @@ function RegisterScreen({ onBack, onComplete }) {
 
         {/* Foto do problema */}
         <div>
-          <label style={L}>Foto do problema (opcional)</label>
+          <label style={{fontSize:12,color:"#555",marginBottom:4,display:"block"}}>Foto do problema (opcional)</label>
           <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:4 }}>
             <label style={{ flex:1, padding:'12px', borderRadius:12, border:'2px dashed #ddd', display:'flex', alignItems:'center', justifyContent:'center', gap:8, cursor:'pointer', background:'#fafafa' }}>
               <input type='file' accept='image/*' capture='environment' style={{ display:'none' }} onChange={e => {
