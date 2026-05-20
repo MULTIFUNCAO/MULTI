@@ -5751,11 +5751,25 @@ export default function App() {
   const [userName,      setUserName]      = useState(savedSession?.name      || "");
 
   // SHARED STATE
-  const [myServices, setMyServices] = useState([
-    { id:10, cat:"encanador", title:"Instalação de chuveiro",  desc:"Trocar chuveiro elétrico por a gás.", value:200, candidates:3, status:"open",       time:"Há 1h",  urgent:false, loc:"sua região", client:"Você", rating:5.0 },
-    { id:11, cat:"pintor",    title:"Pintura do quarto",       desc:"Quarto 12m² cor azul claro.",         value:350, candidates:7, status:"inprogress", time:"Ontem",  urgent:false, loc:"sua região", client:"Você", rating:5.0, photo:(typeof photo!=="undefined"?photo:null), pro:"Carlos Pintor",   proRating:4.7, proposalValue:320, contactUnlocked:true },
-    { id:12, cat:"pedreiro",  title:"Reforma calçada frente",  desc:"Calçada 20m² com pedras irregulares.",value:600, candidates:2, status:"done",       time:"Semana passada", urgent:false, loc:"sua região", client:"Você", rating:5.0, photo:(typeof photo!=="undefined"?photo:null), pro:"Pedro Mestre", proRating:4.9, clientRating:5 },
-  ]);
+  const [myServices, setMyServices] = useState([]);
+  const [myServicesLoading, setMyServicesLoading] = useState(false);
+  useEffect(() => {
+    const userEmail = safeGetUser().email || safeGetUser().whatsapp;
+    if (!userEmail) return;
+    setMyServicesLoading(true);
+    supabase.from("pedidos").select("*").eq("client_email", userEmail).order("created_at", { ascending: false })
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setMyServices(data.map(p => ({
+            id: p.id, cat: p.category || "servico", title: p.title || p.description?.slice(0,40) || "Serviço",
+            desc: p.description || "", value: p.value || 0, status: p.status || "open",
+            time: p.created_at ? new Date(p.created_at).toLocaleDateString("pt-BR") : "",
+            pro: p.pro_name || null, loc: p.city || "sua região", payment_id: p.payment_id
+          })));
+        }
+        setMyServicesLoading(false);
+      }).catch(() => setMyServicesLoading(false));
+  }, [screen]);
   const [notifications, setNotifications] = useState([]);
   const [activeChat,    setActiveChat]    = useState(null);
   const [userEmail,     setUserEmail]     = useState(savedSession?.email    || "");
