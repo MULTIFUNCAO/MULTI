@@ -6017,7 +6017,6 @@ export default function App() {
         return <ProfessionalFeed isPro={isPro} feedServices={feedServices} onViewService={handleProFeedAction} />;
       }
       if (screen === "post")   return <PostServiceScreen onBack={() => setScreen("home")} onSuccess={handlePostService} />;
-      if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onFound={(pro, svc) => { setSelectedPro({pro, svc}); }} />;
       if (selectedPro) return (
     <div style={{minHeight:"100vh",background:"#f5f5f5"}}>
       <div style={{background:"linear-gradient(135deg,#1565C0,#0D47A1)",padding:"40px 20px 60px",textAlign:"center",position:"relative"}}>
@@ -6050,7 +6049,9 @@ export default function App() {
       </div>
     </div>
   );
-  if (screen === "alerts") return <AlertsScreen notifications={notifications} onAccept={handleAcceptProposal} onOpenChat={openChatFromNotif} />;
+  
+  if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onFound={(pro, svc) => { setSelectedPro({pro, svc}); }} />;
+      if (screen === "alerts") return <AlertsScreen notifications={notifications} onAccept={handleAcceptProposal} onOpenChat={openChatFromNotif} />;
       if (screen === "chat")   return <ChatInbox myServices={myServices} onOpenChat={openChatFromService} />;
       if (screen === "orders") return <MyServicesScreen initialTab={screen === "orders" && role === "professional" ? "done" : "open"} myServices={myServices} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} isPro={isPro} />;
       if (screen === "profile") {
