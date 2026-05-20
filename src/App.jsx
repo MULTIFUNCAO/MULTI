@@ -268,7 +268,8 @@ function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua
           <span style={{ fontSize:10, fontWeight:800, color:O, background:"rgba(255,87,34,.25)", borderRadius:99, padding:"2px 8px" }}>
             {isPro ? "PRO ✓" : "Free"}
           </span>
-        </div>
+       <button onClick={function(){var nr=role==="professional"?"client":"professional";setRole(nr);try{var s=JSON.parse(localStorage.getItem("multiSession")||"{}")||{};s.role=nr;localStorage.setItem("multiSession",JSON.stringify(s));}catch(x){}}} style={{display:"block",margin:"6px auto 0",padding:"6px 16px",borderRadius:16,border:"none",cursor:"pointer",background:role==="professional"?"rgba(255,255,255,.2)":"rgba(255,87,34,.85)",color:"white",fontWeight:700,fontSize:12}}>{role==="professional"?"Modo Cliente":"Modo Profissional"}</button>
+   </div>
       )}
       
     </div>
