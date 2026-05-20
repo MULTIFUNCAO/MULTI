@@ -5700,6 +5700,7 @@ function NewOrderCard({ order, onAccept, onReject }) {
 
 
 export default function App() {
+  const [selectedPro, setSelectedPro] = useState(null);
   const [role,      setRole]      = useState(() => {
     try { return JSON.parse(localStorage.getItem("multiSession") || "null")?.role || "client";
   useEffect(function(){var b=document.getElementById("multi-toggle-btn");if(!b){b=document.createElement("button");b.id="multi-toggle-btn";b.style.cssText="position:fixed;bottom:80px;right:16px;z-index:9999;padding:8px 16px;border-radius:20px;border:none;cursor:pointer;background:#ff5722;color:white;font-weight:700;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.3);";document.body.appendChild(b);}var r=localStorage.getItem("multiMode")||"client";b.textContent=r==="professional"?"Modo Cliente":"Modo Profissional";b.onclick=function(){var nr=r==="professional"?"client":"professional";localStorage.setItem("multiMode",nr);try{var s=JSON.parse(localStorage.getItem("multiSession")||"{}")||{};s.role=nr;localStorage.setItem("multiSession",JSON.stringify(s));}catch(x){}window.location.reload();};},[role]); } catch { return "client"; }
@@ -6016,8 +6017,40 @@ export default function App() {
         return <ProfessionalFeed isPro={isPro} feedServices={feedServices} onViewService={handleProFeedAction} />;
       }
       if (screen === "post")   return <PostServiceScreen onBack={() => setScreen("home")} onSuccess={handlePostService} />;
-      if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onFound={(pro, svc) => { openChatFromService({ ...svc, pro:pro.name, proposalValue:pro.value, contactUnlocked:true, status:"inprogress" }); }} />;
-      if (screen === "alerts") return <AlertsScreen notifications={notifications} onAccept={handleAcceptProposal} onOpenChat={openChatFromNotif} />;
+      if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onFound={(pro, svc) => { setSelectedPro({pro, svc}); }} />;
+      if (selectedPro) return (
+    <div style={{minHeight:"100vh",background:"#f5f5f5"}}>
+      <div style={{background:"linear-gradient(135deg,#1565C0,#0D47A1)",padding:"40px 20px 60px",textAlign:"center",position:"relative"}}>
+        <button onClick={()=>setSelectedPro(null)} style={{position:"absolute",top:16,left:16,background:"rgba(255,255,255,.2)",border:"none",borderRadius:20,padding:"6px 14px",color:"white",cursor:"pointer",fontSize:14}}>← Voltar</button>
+        <div style={{width:80,height:80,borderRadius:"50%",background:"rgba(255,255,255,.2)",margin:"0 auto 12px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:36}}>{selectedPro.pro.avatar||"👷"}</div>
+        <h2 style={{color:"white",margin:"0 0 4px",fontSize:22}}>{selectedPro.pro.name}</h2>
+        <div style={{color:"rgba(255,255,255,.8)",fontSize:13}}>{selectedPro.pro.specialty||"Profissional verificado"} · {selectedPro.pro.jobs||0} serviços</div>
+        <div style={{marginTop:8}}>{"⭐".repeat(Math.round(selectedPro.pro.rating||5))}<span style={{color:"rgba(255,255,255,.9)",fontSize:13,marginLeft:4}}>{selectedPro.pro.rating||"5.0"}</span></div>
+      </div>
+      <div style={{padding:"16px",marginTop:-20}}>
+        <div style={{background:"white",borderRadius:16,padding:"16px",marginBottom:12,boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}>
+          <h3 style={{margin:"0 0 8px",fontSize:15,color:"#333"}}>Proposta</h3>
+          <div style={{fontSize:24,fontWeight:800,color:"#1565C0"}}>R$ {selectedPro.pro.value}</div>
+          <div style={{fontSize:12,color:"#888",marginTop:4}}>Valor proposto para este serviço</div>
+        </div>
+        <div style={{background:"white",borderRadius:16,padding:"16px",marginBottom:12,boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}>
+          <h3 style={{margin:"0 0 8px",fontSize:15,color:"#333"}}>Sobre o profissional</h3>
+          <p style={{margin:0,fontSize:13,color:"#555",lineHeight:1.6}}>{selectedPro.pro.bio||"Profissional experiente e dedicado, com histórico comprovado de excelência no serviço."}</p>
+        </div>
+        <div style={{background:"white",borderRadius:16,padding:"16px",marginBottom:20,boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}>
+          <h3 style={{margin:"0 0 12px",fontSize:15,color:"#333"}}>Avaliações recentes</h3>
+          {[{name:"Maria S.",text:"Ótimo profissional, muito pontual!",rating:5},{name:"João P.",text:"Serviço impecável, recomendo.",rating:5}].map((r,i)=>(
+            <div key={i} style={{borderBottom:i===0?"1px solid #f0f0f0":"none",paddingBottom:i===0?12:0,marginBottom:i===0?12:0}}>
+              <div style={{fontWeight:600,fontSize:13}}>{r.name} {"⭐".repeat(r.rating)}</div>
+              <div style={{fontSize:12,color:"#666",marginTop:2}}>{r.text}</div>
+            </div>
+          ))}
+        </div>
+        <button onClick={()=>{openChatFromService({...selectedPro.svc,pro:selectedPro.pro.name,proposalValue:selectedPro.pro.value,contactUnlocked:true,status:"inprogress"});setSelectedPro(null);}} style={{width:"100%",padding:"16px",borderRadius:16,border:"none",background:"linear-gradient(135deg,#1565C0,#0D47A1)",color:"white",fontWeight:800,fontSize:16,cursor:"pointer",boxShadow:"0 4px 12px rgba(21,101,192,.4)"}}>💬 Abrir Chat</button>
+      </div>
+    </div>
+  );
+  if (screen === "alerts") return <AlertsScreen notifications={notifications} onAccept={handleAcceptProposal} onOpenChat={openChatFromNotif} />;
       if (screen === "chat")   return <ChatInbox myServices={myServices} onOpenChat={openChatFromService} />;
       if (screen === "orders") return <MyServicesScreen initialTab={screen === "orders" && role === "professional" ? "done" : "open"} myServices={myServices} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} isPro={isPro} />;
       if (screen === "profile") {
