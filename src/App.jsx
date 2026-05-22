@@ -492,6 +492,10 @@ function ChatScreen({ chat, onBack, onFinish }) {
   const [ratingStars, setRatingStars] = useState(5);
   const [ratingComment, setRatingComment] = useState("");
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingStars, setRatingStars] = useState(5);
+  const [ratingComment, setRatingComment] = useState("");
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const endRef = useRef(null);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior:"smooth" }); }, [messages]);
@@ -1038,6 +1042,18 @@ function PostServiceScreen({ onBack, onSuccess }) {
     });
     e.target.value = "";
   };
+  useEffect(() => {
+    let div = document.getElementById('rating-modal-portal');
+    if (!div) { div = document.createElement('div'); div.id = 'rating-modal-portal'; document.body.appendChild(div); }
+    if (showRatingModal) {
+      div.innerHTML = '';
+      div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center';
+      div.onclick = (e) => { if(e.target===div) setShowRatingModal(false); };
+    } else {
+      div.style.display = 'none';
+    }
+  }, [showRatingModal]);
+
 
   const handleCepChange = async (raw) => {
     const cep = raw.replace(/\D/g,"").slice(0,8);
