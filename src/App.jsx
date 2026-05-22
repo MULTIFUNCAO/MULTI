@@ -5328,7 +5328,9 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
                     e.stopPropagation();
                     if (!allDocsVerified) { setShowDocBlock(true); return; }
                     if (isLocked) { onUpgrade(); return; }
-                    onViewService({ _notify:{ serviceId:s.id, serviceTitle:s.title, value:s.value, proName:"Profissional" } });
+                  const proUser=safeGetUser();
+                  supabase.from("propostas").upsert({pedido_id:s.id,profissional_id:proUser.email||proUser.whatsapp,profissional_nome:proUser.name||"Profissional",profissional_email:proUser.email||proUser.whatsapp,valor:s.value||0,mensagem:"Tenho interesse neste serviço!",status:"pendente"},{onConflict:"pedido_id,profissional_id"}).then(()=>{}).catch(()=>{});
+                  onViewService({ _notify:{ serviceId:s.id, serviceTitle:s.title, value:s.value, proName:proUser.name||"Profissional" } });
                   }}
                   style={{ padding:"11px 0", borderRadius:12, border:"none", cursor:"pointer", fontWeight:900, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:7,
                     background: !allDocsVerified ? "#F5F6FA" : isLocked ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : `linear-gradient(135deg,${O},#E64A19)`,
