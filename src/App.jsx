@@ -5361,7 +5361,7 @@ if(userEmail){
                     if (!allDocsVerified) { setShowDocBlock(true); return; }
                     if (isLocked) { onUpgrade(); return; }
                   const proUser=safeGetUser();
-                  supabase.from("propostas").upsert({pedido_id:s.id,profissional_id:proUser.email||proUser.whatsapp,profissional_nome:proUser.name||"Profissional",profissional_email:proUser.email||proUser.whatsapp,valor:s.value||0,mensagem:"Tenho interesse neste serviço!",status:"pendente"}).then(()=>{}).catch(()=>{});
+                  supabase.from("propostas").upsert({pedido_id:s.id,profissional_id:proUser.email||proUser.whatsapp,profissional_nome:proUser.name||"Profissional",profissional_email:proUser.email||proUser.whatsapp,valor:s.value||0,mensagem:"Tenho interesse neste serviço!",status:"pendente",cliente_email:s.cliente_email||s.user_id||""}).then(()=>{}).catch(()=>{});
                   onViewService({ _notify:{ serviceId:s.id, serviceTitle:s.title, value:s.value, proName:proUser.name||"Profissional" } });
                   }}
                   style={{ padding:"11px 0", borderRadius:12, border:"none", cursor:"pointer", fontWeight:900, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:7,
