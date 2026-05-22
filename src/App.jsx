@@ -320,7 +320,7 @@ function GuestHeader({ onToggleRole, activeRole = "client" }) {
 /* Public façade — picks the right header, nothing shared between them */
 function Header({ isPro, notifCount, isLoggedIn, userRole, onAlerts, userLocation, onToggleRole, activeRole }) {
   if (isLoggedIn) {
-    return <AuthHeader isPro={isPro} notifCount={notifCount} userRole={userRole} onToggleRole={setGuestRole} onAlerts={onAlerts} userLocation={localStorage.getItem("multiLocation") || userLocation} />;
+    return <AuthHeader isPro={isPro} notifCount={notifCount} userRole={userRole} onToggleRole={onToggleRole} onAlerts={onAlerts} userLocation={localStorage.getItem("multiLocation") || userLocation} />;
   }
   return <GuestHeader onToggleRole={onToggleRole} activeRole={activeRole} />;
 }
