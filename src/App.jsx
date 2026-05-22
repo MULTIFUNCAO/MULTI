@@ -1770,6 +1770,17 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry })
         <div style={{ background:"white", borderRadius:20, padding:"16px 12px", boxShadow:"0 2px 12px rgba(0,0,0,.07)" }}>
           <p style={{ fontSize:12, fontWeight:800, color:"#1a1a2e", margin:"0 0 14px" }}>Progresso do Job</p>
           <ServiceStatusStepper phase={phase} />
+          {phase < 3 && (
+            <button onClick={()=>{
+              const nextStatus=["aberto","em_andamento","executando","concluido"][Math.min(phase+1,3)];
+              supabase.from("pedidos").update({status:nextStatus,updated_at:new Date().toISOString()}).eq("id",service.id).then(()=>{
+                showToast&&showToast("Status: "+nextStatus);
+                onBack&&onBack();
+              }).catch(()=>{});
+            }} style={{marginTop:12,width:"100%",padding:"12px",background:"#007BFF",color:"white",border:"none",borderRadius:12,fontWeight:700,fontSize:15,cursor:"pointer"}}>
+              {["Iniciar Serviço","Marcar Em Execução","Concluir Serviço"][phase]||"Avançar"}
+            </button>
+          )}
         </div>
       )}
 
