@@ -3883,7 +3883,24 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
           <button onClick={handleFinish} style={{ padding:"14px 0", borderRadius:14, border:"none", background:"linear-gradient(135deg,#F9A825,#E65100)", color:"white", fontWeight:800, fontSize:14, cursor:"pointer", boxShadow:"0 4px 14px rgba(249,168,37,.3)" }}>⭐ Avaliar</button>
         </div>
       </div>
-    );
+
+    {showRatingModal && (
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <div style={{background:"white",borderRadius:20,padding:32,width:"90%",maxWidth:380,textAlign:"center"}}>
+          {ratingSubmitted ? (<div><div style={{fontSize:48}}>🎉</div><div style={{fontSize:20,fontWeight:700,marginTop:8}}>Obrigado!</div><div style={{color:"#666",marginTop:4}}>Avaliação enviada!</div></div>) : (<>
+            <div style={{fontSize:32,marginBottom:4}}>⭐</div>
+            <div style={{fontSize:18,fontWeight:700,color:"#1a1a2e"}}>Avalie o profissional</div>
+            <div style={{color:"#666",fontSize:13,marginBottom:20}}>Como foi a experiência?</div>
+            <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:20}}>
+              {[1,2,3,4,5].map(s=><span key={s} onClick={()=>setRatingStars(s)} style={{fontSize:36,cursor:"pointer",opacity:s<=ratingStars?1:0.3}}>★</span>)}
+            </div>
+            <textarea placeholder="Comentário (opcional)..." value={ratingComment} onChange={e=>setRatingComment(e.target.value)} style={{width:"100%",borderRadius:10,border:"1px solid #ddd",padding:10,fontSize:14,resize:"none",height:80,boxSizing:"border-box",marginBottom:16}}/>
+            <button onClick={handleSubmitRating} style={{width:"100%",padding:"14px 0",borderRadius:12,border:"none",background:"linear-gradient(135deg,#F9A825,#E65100)",color:"white",fontWeight:700,fontSize:16,cursor:"pointer"}}>Enviar Avaliação ⭐</button>
+            <button onClick={()=>setShowRatingModal(false)} style={{width:"100%",padding:"10px 0",borderRadius:12,border:"none",background:"transparent",color:"#999",fontSize:14,cursor:"pointer",marginTop:8}}>Pular</button>
+          </>)}
+        </div>
+      </div>
+    )}    );
   }
 
   // ── PAYMENT MODAL ────────────────────────────────────────────────────────
