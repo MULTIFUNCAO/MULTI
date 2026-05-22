@@ -188,7 +188,7 @@ function Logo({ size = 28, white = false }) {
    isLoggedIn=true   → AuthHeader  (NO toggle, ever, for any reason)
 ───────────────────────────────────────────────────────────────────────────── */
 
-function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua localização" }) {
+function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua localização", onToggleRole }) {
   const isProfessional = userRole === "professional";
   return (
     <div style={{
