@@ -509,7 +509,20 @@ function ChatScreen({ chat, onBack, onFinish }) {
     }
   };
 
-  const handleFinish = () => { setShowRatingModal(true); };
+  const handleFinish = () => {
+    var div = document.getElementById('rating-portal') || document.createElement('div');
+    div.id='rating-portal';
+    div.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center';
+    div.innerHTML='<div style="background:white;border-radius:20px;padding:32px;width:90%;max-width:380px;text-align:center"><div style="font-size:32px;margin-bottom:8px">⭐</div><div style="font-size:18px;font-weight:700;color:#1a1a2e">Avalie o profissional</div><div style="color:#666;font-size:13px;margin-bottom:20px">Como foi a experiência?</div><div id="stars" style="display:flex;justify-content:center;gap:8px;margin-bottom:20px;font-size:36px">★★★★★</div><textarea id="rating-comment" placeholder="Comentário (opcional)..." style="width:100%;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:14px;resize:none;height:80px;box-sizing:border-box;margin-bottom:16px"></textarea><button id="rating-submit" style="width:100%;padding:14px 0;border-radius:12px;border:none;background:linear-gradient(135deg,#F9A825,#E65100);color:white;font-weight:700;font-size:16px;cursor:pointer">Enviar Avaliação ⭐</button><button id="rating-skip" style="width:100%;padding:10px 0;border-radius:12px;border:none;background:transparent;color:#999;font-size:14px;cursor:pointer;margin-top:8px">Pular</button></div>';
+    document.body.appendChild(div);
+    document.getElementById('rating-skip').onclick=()=>document.body.removeChild(div);
+    document.getElementById('rating-submit').onclick=()=>{
+      div.innerHTML='<div style="background:white;border-radius:20px;padding:32px;text-align:center"><div style="font-size:48px">🎉</div><div style="font-size:20px;font-weight:700;margin-top:8px">Obrigado!</div><div style="color:#666;margin-top:4px">Avaliação enviada!</div></div>';
+      setFinished(true);
+      setMessages(m=>[...m,{id:Date.now(),from:'system',text:'✅ Serviço finalizado! Obrigado por usar o Multi.',time:''}]);
+      setTimeout(()=>{document.body.removeChild(div);onFinish&&onFinish();},2000);
+    };
+  };
   const handleSubmitRating = async () => {
     const userEmail = safeGetUser().email || safeGetUser().whatsapp;
     try { await supabase.from("avaliacoes").insert({ cliente_id: userEmail, profissional_nome: chat.proName||"Profissional", estrelas: ratingStars, comentario: ratingComment, created_at: new Date().toISOString() }); } catch(e) {}
@@ -1037,17 +1050,6 @@ function PostServiceScreen({ onBack, onSuccess }) {
     });
     e.target.value = "";
   };
-  useEffect(() => {
-    let div = document.getElementById('rating-modal-portal');
-    if (!div) { div = document.createElement('div'); div.id = 'rating-modal-portal'; document.body.appendChild(div); }
-    if (showRatingModal) {
-      div.innerHTML = '';
-      div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center';
-      div.onclick = (e) => { if(e.target===div) setShowRatingModal(false); };
-    } else {
-      div.style.display = 'none';
-    }
-  }, [showRatingModal]);
 
 
   const handleCepChange = async (raw) => {
