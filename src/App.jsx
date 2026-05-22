@@ -320,7 +320,7 @@ function GuestHeader({ onToggleRole, activeRole = "client" }) {
 /* Public façade — picks the right header, nothing shared between them */
 function Header({ isPro, notifCount, isLoggedIn, userRole, onAlerts, userLocation, onToggleRole, activeRole }) {
   if (isLoggedIn) {
-    return <AuthHeader isPro={isPro} notifCount={notifCount} userRole={userRole} onAlerts={onAlerts} userLocation={localStorage.getItem("multiLocation") || userLocation} />;
+    return <AuthHeader isPro={isPro} notifCount={notifCount} userRole={userRole} onToggleRole={setGuestRole} onAlerts={onAlerts} userLocation={localStorage.getItem("multiLocation") || userLocation} />;
   }
   return <GuestHeader onToggleRole={onToggleRole} activeRole={activeRole} />;
 }
@@ -2110,7 +2110,7 @@ const CheckoutScreen = () => {
         <div style={{ background:"white", borderRadius:20, overflow:"hidden", boxShadow:"0 4px 18px rgba(0,122,255,.12)", border:`2px solid ${B}` }}>
 
           {/* recommended ribbon */}
-          <div style={{ background:`linear-gradient(135deg,#1976D2,#0055d4)`, padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div style={{ background:`linear-gradient(135deg,#1976D2,#0055d4)`, padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer" }} onClick={()=>onToggleRole&&onToggleRole("client")}>
             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
               <span style={{ fontSize:13 }}>⚡</span>
               <span style={{ fontSize:12, fontWeight:900, color:"white" }}>RECOMENDADO</span>
