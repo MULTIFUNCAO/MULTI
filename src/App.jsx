@@ -5181,10 +5181,8 @@ if(userEmail){
     .on("postgres_changes",{event:"INSERT",schema:"public",table:"propostas"},
       (payload)=>{
         const p=payload.new;
-        // Buscar se o pedido pertence ao cliente logado
-        supabase.from("pedidos").select("cliente_email").eq("id",p.pedido_id).single()
-          .then(({data})=>{
-            if(data&&data.cliente_email===userEmail){
+        // Verificar se proposta é para pedido do cliente logado via campo cliente_email
+        if(p.cliente_email===userEmail||!p.cliente_email){
               setNotifications(n=>[{
                 id:Date.now(),
                 title:"Nova proposta recebida!",
@@ -5199,8 +5197,7 @@ if(userEmail){
               toast.style.cssText="position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#007BFF;color:white;padding:12px 20px;border-radius:12px;font-weight:700;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2);";
               document.body.appendChild(toast);
               setTimeout(()=>toast.remove(),4000);
-            }
-          });
+        }
       })
     .subscribe();
 }
