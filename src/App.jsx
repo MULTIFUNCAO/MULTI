@@ -1842,6 +1842,9 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry })
 
 /* ───────────────────────── PRO UPGRADE ──────────────────────────────────────── */
 function ProUpgrade({ onBack, onSubscribe }) {
+  const [paymentStep, setPaymentStep] = useState("choose");
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [chatQrBase64, setChatQrBase64] = useState("");
   const [sel,          setSel]          = useState("monthly");
   const [step,         setStep]         = useState("plans"); // "plans" | "pix" | "done"
   const [seconds,      setSeconds]      = useState(1800);   // 30min real PIX
