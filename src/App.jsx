@@ -3532,7 +3532,7 @@ function ProfileScreen({ role, isPro, userName: initialUserName, showRankingGlob
 }
 
 /* ───────────────────────── MY SERVICES SCREEN ───────────────────────────────── */
-function MyServicesScreen({ myServices, onOpenService, onOpenChat, isPro, initialTab = "open" }) {
+function MyServicesScreen({ myServices, onOpenService, onOpenChat, isPro, initialTab = "open" }, onViewPropostas }) {
   const [tab, setTab] = useState(initialTab);
 
   const tabs = [
