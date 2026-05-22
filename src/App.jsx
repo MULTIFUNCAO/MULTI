@@ -6034,7 +6034,59 @@ export default function App() {
   const notifCount = notifications.filter(n => n.status === "pending").length;
 
   // ── SCREEN ROUTER ───────────────────────────────────────────────────────────
-  const renderContent = () => {
+  function PropostasScreen({ pedido, onBack, onAceitarProposta }) {
+  const [propostas, setPropostas] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  React.useEffect(()=>{
+    if(!pedido) return;
+    supabase.from("propostas").select("*").eq("pedido_id",pedido.id).order("created_at",{ascending:false})
+      .then(({data})=>{ setPropostas(data||[]); setLoading(false); }).catch(()=>setLoading(false));
+  },[pedido?.id]);
+  return (
+    <div style={{padding:"16px",maxWidth:480,margin:"0 auto"}}>
+      <button onClick={onBack} style={{background:"none",border:"none",fontSize:16,cursor:"pointer",marginBottom:12}}>← Voltar</button>
+      <h2 style={{fontSize:18,fontWeight:800,marginBottom:16}}>Propostas recebidas</h2>
+      {loading && <p>Carregando...</p>}
+      {!loading && propostas.length===0 && <p style={{color:"#888"}}>Nenhuma proposta ainda.</p>}
+      {propostas.map(p=>(
+        <div key={p.id} style={{background:"white",borderRadius:12,padding:16,marginBottom:12,boxShadow:"0 2px 8px rgba(0,0,0,.08)"}}>
+          <div style={{fontWeight:700,fontSize:15}}>{p.profissional_nome||"Profissional"}</div>
+          <div style={{color:"#007BFF",fontWeight:800,fontSize:18,margin:"6px 0"}}>R$ {p.valor||0}</div>
+          <div style={{color:"#666",fontSize:13,marginBottom:12}}>{p.mensagem||""}</div>
+          <button onClick={()=>onAceitarProposta&&onAceitarProposta(p)} style={{width:"100%",padding:"12px",background:"#22c55e",color:"white",border:"none",borderRadius:10,fontWeight:800,fontSize:14,cursor:"pointer"}}>✅ Aceitar Proposta</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PropostasScreen({ pedido, onBack, onAceitarProposta }) {
+  const [propostas, setPropostas] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  React.useEffect(()=>{
+    if(!pedido) return;
+    supabase.from("propostas").select("*").eq("pedido_id",pedido.id).order("created_at",{ascending:false})
+      .then(({data})=>{ setPropostas(data||[]); setLoading(false); }).catch(()=>setLoading(false));
+  },[pedido?.id]);
+  return (
+    <div style={{padding:"16px",maxWidth:480,margin:"0 auto"}}>
+      <button onClick={onBack} style={{background:"none",border:"none",fontSize:16,cursor:"pointer",marginBottom:12}}>← Voltar</button>
+      <h2 style={{fontSize:18,fontWeight:800,marginBottom:16}}>Propostas recebidas</h2>
+      {loading && <p>Carregando...</p>}
+      {!loading && propostas.length===0 && <p style={{color:"#888"}}>Nenhuma proposta ainda.</p>}
+      {propostas.map(p=>(
+        <div key={p.id} style={{background:"white",borderRadius:12,padding:16,marginBottom:12,boxShadow:"0 2px 8px rgba(0,0,0,.08)"}}>
+          <div style={{fontWeight:700,fontSize:15}}>{p.profissional_nome||"Profissional"}</div>
+          <div style={{color:"#007BFF",fontWeight:800,fontSize:18,margin:"6px 0"}}>R$ {p.valor||0}</div>
+          <div style={{color:"#666",fontSize:13,marginBottom:12}}>{p.mensagem||""}</div>
+          <button onClick={()=>onAceitarProposta&&onAceitarProposta(p)} style={{width:"100%",padding:"12px",background:"#22c55e",color:"white",border:"none",borderRadius:10,fontWeight:800,fontSize:14,cursor:"pointer"}}>✅ Aceitar Proposta</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const renderContent = () => {
     if (screen === "activechat" && activeChat) {
       return (
         <EnhancedChatScreen
