@@ -6284,10 +6284,3 @@ export default function App() {
       
     </>
 
-  );
-}
-            <button onClick={()=>setShowRatingModal(false)} style={{width:"100%",padding:"10px 0",borderRadius:12,border:"none",background:"transparent",color:"#999",fontSize:14,cursor:"pointer",marginTop:8}}>Pular</button>
-          </>)}
-        </div>
-      </div>
-    )}
