@@ -5156,7 +5156,7 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
     { id:"topPay", label:"Melhor Pagamento", emoji:"💰" },
   ];
 
-  const filtered = feedServices.filter(s => {
+  const filtered = realPedidos.filter(s => {
     if (activeFilter === "urgent") return s.urgent;
     if (activeFilter === "topPay") return s.value >= 400;
     return true;
