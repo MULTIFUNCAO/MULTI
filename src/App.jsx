@@ -3604,7 +3604,8 @@ function MyServicesScreen({ myServices, onOpenService, onOpenChat, isPro, initia
                       <p style={{ fontSize:11, color:"#aaa" }}>Profissional ativo</p>
                     </div>
                   </div>
-                  <button onClick={() => onOpenChat(s)} style={{ padding:"8px 14px", borderRadius:10, border:"none", background:`linear-gradient(135deg,${B},#0056c7)`, color:"white", fontSize:12, fontWeight:800, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}>
+                  <button onClick={() => onOpenService(s)} style={{ padding:"8px 12px", borderRadius:10, border:"1px solid #007BFF", background:"white", color:"#007BFF", fontWeight:700, fontSize:13, cursor:"pointer", marginRight:8 }}>📊 Progresso</button>
+                <button onClick={() => onOpenChat(s)} style={{ padding:"8px 14px", borderRadius:10, border:"none", background:`linear-gradient(135deg,${B},#0056c7)`, color:"white", fontSize:12, fontWeight:800, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}>
                     <MessageCircle size={13} /> Chat
                   </button>
                 </div>
