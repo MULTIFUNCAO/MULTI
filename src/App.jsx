@@ -3591,7 +3591,7 @@ function MyServicesScreen({ myServices, onOpenService, onOpenChat, isPro, initia
               {s.status === "open" && (
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                   <span style={{ fontSize:12, color:"#aaa" }}>👥 {s.candidates} candidatos</span>
-                  <button onClick={() => onOpenService(s)} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${B}`, background:"white", color:B, fontSize:12, fontWeight:800, cursor:"pointer" }}>Ver Propostas</button>
+                  <button onClick={() => { setSelected(s); setScreen("propostas"); }} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${B}`, background:"white", color:B, fontSize:12, fontWeight:800, cursor:"pointer" }}>Ver Propostas</button>
                 </div>
               )}
 
@@ -6091,6 +6091,7 @@ export default function App() {
         if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
         return <ProfileScreen role="client" userName={userName} isPro={false} showRankingGlobal={showRankingGlobal} onClearRankingGlobal={() => setShowRankingGlobal(false)} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenAdmin={() => setShowAdmin(true)} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} setScreen("home"); }} />;
       }
+      if (screen === "propostas" && selected) return <PropostasScreen pedido={selected} onBack={()=>setScreen("orders")} onAceitarProposta={(prop)=>{ openChatFromService && openChatFromService({id:selected.id,title:selected.title,proId:prop.profissional_id,proName:prop.profissional_nome,value:prop.valor}); setScreen("chat"); }} />;
       if (screen === "service" && selected) return <ServiceDetailClient service={selected} onBack={() => setScreen("orders")} onStatusChange={(id, newStatus) => { setMyServices(s => s.map(x => x.id === id ? { ...x, status: newStatus } : x)); }} showToast={showToast} />;
 
       // ── GUEST TOGGLE: show professional mural preview when guest selects "Profissional"
