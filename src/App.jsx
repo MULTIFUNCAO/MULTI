@@ -5173,6 +5173,37 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
   supabase.channel("pedidos_novos").on("postgres_changes",{event:"*",schema:"public",table:"pedidos"},(payload)=>{
     const p=payload.new;if(!p||!p.fotos||p.fotos.length===0)return;setNewOrder({category:p.categoria,location:p.cidade||"Guarulhos, SP",value:String(p.valor||"0"),description:p.descricao||"",photos:(()=>{try{const f=p.fotos;return Array.isArray(f)?f:(typeof f==="string"?JSON.parse(f):[]);}catch(e){return [];}})(),photo:(()=>{try{const f=p.fotos;const arr=Array.isArray(f)?f:(typeof f==="string"?JSON.parse(f):[]);return arr[0]||null;}catch(e){return null;}})()});
   }).subscribe();
+
+// Realtime: notificar cliente quando proposta chegar
+const userEmail=localStorage.getItem("multiUserEmail");
+if(userEmail){
+  supabase.channel("propostas_realtime")
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"propostas"},
+      (payload)=>{
+        const p=payload.new;
+        // Buscar se o pedido pertence ao cliente logado
+        supabase.from("pedidos").select("cliente_email").eq("id",p.pedido_id).single()
+          .then(({data})=>{
+            if(data&&data.cliente_email===userEmail){
+              setNotifications(n=>[{
+                id:Date.now(),
+                title:"Nova proposta recebida!",
+                body:p.profissional_nome+" quer fazer seu serviço por R$"+p.valor,
+                pedido_id:p.pedido_id,
+                read:false,
+                time:"Agora"
+              },...n]);
+              // Toast visual
+              const toast=document.createElement("div");
+              toast.innerHTML="🔔 Nova proposta de "+p.profissional_nome+"!";
+              toast.style.cssText="position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#007BFF;color:white;padding:12px 20px;border-radius:12px;font-weight:700;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2);";
+              document.body.appendChild(toast);
+              setTimeout(()=>toast.remove(),4000);
+            }
+          });
+      })
+    .subscribe();
+}
 }else{supabase.removeAllChannels();}};
   return (
     <div style={{ display:"flex", flexDirection:"column", background:"#F0F2F5", minHeight:"100vh", paddingBottom:100 }}>
