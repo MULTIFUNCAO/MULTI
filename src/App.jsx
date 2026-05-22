@@ -3591,7 +3591,7 @@ function MyServicesScreen({ myServices, onOpenService, onOpenChat, isPro, initia
               {s.status === "open" && (
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                   <span style={{ fontSize:12, color:"#aaa" }}>👥 {s.candidates} candidatos</span>
-                  <button onClick={() => { setSelected(s); setScreen("propostas"); }} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${B}`, background:"white", color:B, fontSize:12, fontWeight:800, cursor:"pointer" }}>Ver Propostas</button>
+                  <button onClick={() => { onOpenService(s); }} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${B}`, background:"white", color:B, fontSize:12, fontWeight:800, cursor:"pointer" }}>Ver Propostas</button>
                 </div>
               )}
 
