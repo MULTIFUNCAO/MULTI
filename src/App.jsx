@@ -5721,8 +5721,6 @@ function NewOrderCard({ order, onAccept, onReject }) {
 
 export default function App() {
   const [selectedPro, setSelectedPro] = useState(null);
-  const [realPedidos, setRealPedidos] = useState([]);
-  useEffect(()=>{ supabase.from("pedidos").select("*").eq("status","aberto").order("created_at",{ascending:false}).limit(50).then(({data})=>{ if(data&&data.length>0) setRealPedidos(data.map(p=>({id:p.id,cat:p.categoria||"servico",title:(p.descricao||p.categoria||"Serviço").slice(0,40),desc:p.descricao||"",value:p.valor||0,loc:p.cidade||"Guarulhos, SP",time:"Agora",client:p.cliente_nome||"Cliente",rating:4.5,urgent:false,emoji:"🔧",bg:"#FFF8E1",photo:null,photos:p.fotos}))); }).catch(()=>{}); },[]);
   const [role,      setRole]      = useState(() => {
     try { return JSON.parse(localStorage.getItem("multiSession") || "null")?.role || "client";
   useEffect(function(){var b=document.getElementById("multi-toggle-btn");if(!b){b=document.createElement("button");b.id="multi-toggle-btn";b.style.cssText="position:fixed;bottom:80px;right:16px;z-index:9999;padding:8px 16px;border-radius:20px;border:none;cursor:pointer;background:#ff5722;color:white;font-weight:700;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.3);";document.body.appendChild(b);}var r=localStorage.getItem("multiMode")||"client";b.textContent=r==="professional"?"Modo Cliente":"Modo Profissional";b.onclick=function(){var nr=r==="professional"?"client":"professional";localStorage.setItem("multiMode",nr);try{var s=JSON.parse(localStorage.getItem("multiSession")||"{}")||{};s.role=nr;localStorage.setItem("multiSession",JSON.stringify(s));}catch(x){}window.location.reload();};},[role]); } catch { return "client"; }
@@ -5833,6 +5831,8 @@ export default function App() {
       }).catch(() => {});
   }, []);
 
+  const [realPedidos, setRealPedidos] = useState([]);
+  useEffect(()=>{ supabase.from("pedidos").select("*").eq("status","aberto").order("created_at",{ascending:false}).limit(50).then(({data})=>{ if(data&&data.length>0) setRealPedidos(data.map(p=>({id:p.id,cat:p.categoria||"servico",title:(p.descricao||p.categoria||"Serviço").slice(0,40),desc:p.descricao||"",value:p.valor||0,loc:p.cidade||"Guarulhos, SP",time:"Agora",client:p.cliente_nome||"Cliente",rating:4.5,urgent:false,emoji:"🔧",bg:"#FFF8E1",photo:null,photos:p.fotos}))); }).catch(()=>{}); },[]);
   const feedServices = [...(realPedidos.length>0?realPedidos:SEED_FEED), ...myServices.filter(s => s.status === "open")];
 
   const showToast = (msg, color = G) => {
