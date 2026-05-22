@@ -6294,8 +6294,6 @@ export default function App() {
           </>)}
         </div>
       </div>
-    )}
-    
     {showRatingModal && (
       <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}}>
         <div style={{background:"white",borderRadius:20,padding:32,width:"90%",maxWidth:380,textAlign:"center"}}>
@@ -6313,3 +6311,5 @@ export default function App() {
         </div>
       </div>
     )}
+    )}
+    
