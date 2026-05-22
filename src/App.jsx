@@ -5919,7 +5919,7 @@ export default function App() {
       const session = { name: firstName, email, whatsapp, location, role: resolvedRole };
       localStorage.setItem("multiSession", JSON.stringify(session));
       localStorage.setItem("multiUser",    JSON.stringify(session));
-        try { supabase.from("usuarios").upsert({ email: session.email, name: session.name, whatsapp: session.whatsapp||null, role: session.role||"client", city: session.location||null }, { onConflict: "email" }); } catch(e) {}
+        supabase.from("usuarios").upsert({ email: session.email, name: session.name, whatsapp: session.whatsapp||null, role: session.role||"client", city: session.location||null }, { onConflict: "email" }).then(()=>{}).catch(()=>{});
     } catch {}
 
     setScreen("home");
