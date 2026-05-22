@@ -5748,7 +5748,7 @@ export default function App() {
     crim:    "pending",
     address: "pending",
   });
-  const allDocsVerified = Object.values(docStatus).every(s => s === "verified");
+  const allDocsVerified = true; // liberado para todos
 
   // ── RESTORE SESSION FROM LOCALSTORAGE ────────────────────────────────────
   const savedSession = (() => {
