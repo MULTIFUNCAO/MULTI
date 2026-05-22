@@ -5782,8 +5782,8 @@ export default function App() {
       .then(({ data }) => {
         if (data && data.length > 0) {
           setMyServices(data.map(p => ({
-            id: p.id, cat: p.category || "servico", title: p.descricao?.slice(0,40) || p.categoria || "Serviço",
-            desc: p.description || "", value: p.valor || 0, status: p.status === "aberto" ? "open" : p.status === "em_andamento" ? "inprogress" : p.status === "concluido" ? "done" : p.status || "open",
+            id: p.id, cat: p.categoria || "servico", title: p.descricao?.slice(0,40) || p.categoria || "Serviço",
+            desc: p.descricao || "", value: p.valor || 0, status: p.status === "aberto" ? "open" : p.status === "em_andamento" ? "inprogress" : p.status === "concluido" ? "done" : p.status || "open",
             time: p.created_at ? new Date(p.created_at).toLocaleDateString("pt-BR") : "",
             pro: p.pro_name || null, loc: p.city || "sua região", payment_id: p.payment_id
           })));
