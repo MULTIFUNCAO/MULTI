@@ -5144,6 +5144,31 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
   const [online,       setOnline]       = useState(false);
   const [newOrder, setNewOrder] = useState(null);
   const [activeFilter, setActiveFilter] = useState("all");
+  const [realPedidos, setRealPedidos] = useState([]);
+  useEffect(() => {
+    supabase.from('pedidos').select('*').eq('status','aberto').order('created_at',{ascending:false}).limit(50)
+      .then(({data}) => {
+        if(data && data.length>0) {
+          setRealPedidos(data.map(p => ({
+            id: p.id,
+            cat: p.categoria||'servico',
+            title: p.descricao?.slice(0,40)||p.categoria||'Serviço',
+            desc: p.descricao||'',
+            value: p.valor||0,
+            loc: p.cidade||'Guarulhos, SP',
+            time: 'Agora',
+            client: p.cliente_nome||'Cliente',
+            rating: 4.5,
+            urgent: false,
+            emoji: '🔧',
+            bg: '#FFF8E1',
+            photo: null,
+            photos: p.fotos
+          })));
+        }
+      }).catch(()=>{});
+  }, []);
+
   const [showDocBlock, setShowDocBlock] = useState(false); // pop-up modal
 
   const filters = [
@@ -5830,7 +5855,7 @@ export default function App() {
       }).catch(() => {});
   }, []);
 
-  const feedServices = [...SEED_FEED, ...myServices.filter(s => s.status === "open")];
+  const feedServices = [...(realPedidos.length>0?realPedidos:SEED_FEED), ...myServices.filter(s => s.status === "open")];
 
   const showToast = (msg, color = G) => {
     setToast({ msg, color });
