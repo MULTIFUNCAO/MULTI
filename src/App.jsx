@@ -5144,6 +5144,8 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
   const [online,       setOnline]       = useState(false);
   const [newOrder, setNewOrder] = useState(null);
   const [activeFilter, setActiveFilter] = useState("all");
+  const [realPedidos, setRealPedidos] = useState(SEED_FEED);
+  useEffect(()=>{ supabase.from("pedidos").select("*").eq("status","aberto").order("created_at",{ascending:false}).limit(50).then(({data})=>{ if(data&&data.length>0) setRealPedidos(data.map(p=>({id:p.id,cat:p.categoria||"servico",title:(p.descricao||p.categoria||"Serviço").slice(0,40),desc:p.descricao||"",value:p.valor||0,loc:p.cidade||"sua região",time:new Date(p.created_at).toLocaleDateString("pt-BR"),client:p.cliente_nome||"Cliente",rating:4.5,urgent:false,emoji:"🔧",bg:"#FFF8E1",photo:null,photos:p.fotos}))); }).catch(()=>{}); },[]);
   
   const [showDocBlock, setShowDocBlock] = useState(false); // pop-up modal
 
