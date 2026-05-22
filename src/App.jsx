@@ -6170,7 +6170,16 @@ const renderContent = () => {
         if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
         return <ProfileScreen role="client" userName={userName} isPro={false} showRankingGlobal={showRankingGlobal} onClearRankingGlobal={() => setShowRankingGlobal(false)} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenAdmin={() => setShowAdmin(true)} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} setScreen("home"); }} />;
       }
-      if (screen === "propostas" && selected) return <PropostasScreen pedido={selected} onBack={()=>setScreen("orders")} onAceitarProposta={(prop)=>{ openChatFromService && openChatFromService({id:selected.id,title:selected.title,proId:prop.profissional_id,proName:prop.profissional_nome,value:prop.valor}); setScreen("chat"); }} />;
+      if (screen === "propostas" && selected) return <PropostasScreen pedido={selected} onBack={()=>setScreen("orders")} onAceitarProposta={(prop)=>{
+  // 1. Atualizar proposta para aceita
+  supabase.from("propostas").update({status:"aceita"}).eq("id",prop.id).then(()=>{});
+  // 2. Atualizar pedido para em_andamento
+  supabase.from("pedidos").update({status:"em_andamento",profissional_aceito:prop.profissional_id,profissional_nome:prop.profissional_nome}).eq("id",selected.id).then(()=>{});
+  // 3. Abrir chat com profissional
+  openChatFromService && openChatFromService({id:selected.id,title:selected.title,proId:prop.profissional_id,proName:prop.profissional_nome,value:prop.valor});
+  setScreen("chat");
+  alert("Proposta aceita! Entrando em contato com "+prop.profissional_nome);
+}} />;
       if (screen === "service" && selected) return <ServiceDetailClient service={selected} onBack={() => setScreen("orders")} onStatusChange={(id, newStatus) => { setMyServices(s => s.map(x => x.id === id ? { ...x, status: newStatus } : x)); supabase.from("pedidos").update({status:newStatus,updated_at:new Date().toISOString()}).eq("id",id).then(()=>{}).catch(()=>{}); }} showToast={showToast} />;
 
       // ── GUEST TOGGLE: show professional mural preview when guest selects "Profissional"
