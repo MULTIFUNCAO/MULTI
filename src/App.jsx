@@ -5807,7 +5807,7 @@ export default function App() {
   useEffect(() => {
     if (!userEmail) return;
     setMyServicesLoading(true);
-    supabase.from("pedidos").select("*").eq("cliente_id", userEmail).order("created_at", { ascending: false })
+    supabase.from("pedidos").select("*").eq("cliente_id", userEmail).order("criado_em", { ascending: false })
       .then(({ data }) => {
         if (data && data.length > 0) {
           setMyServices(data.map(p => ({
