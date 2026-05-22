@@ -1571,6 +1571,24 @@ function ServiceDetailPinEntry({ service, onBack, onStatusChange, showToast }) {
       {/* stepper */}
       <div style={{ background:"white", borderRadius:20, padding:"16px 12px", boxShadow:"0 2px 12px rgba(0,0,0,.07)" }}>
         <ServiceStatusStepper phase={phase >= 2 ? phase : 2} />
+          {/* Botao Contestar - visivel 48h após conclusão */}
+          {service.status==="concluido" && service.concluido_em && (new Date()-new Date(service.concluido_em))<172800000 && service.status!=="em_disputa" && (
+            <button onClick={()=>{
+              const motivo=prompt("Descreva o problema com o serviço:");
+              if(!motivo) return;
+              supabase.from("pedidos").update({status:"em_disputa",contestado_em:new Date().toISOString(),contestacao_motivo:motivo}).eq("id",service.id).then(()=>{
+                alert("Contestação registrada! O Multi vai analisar em até 24h.");
+              });
+            }} style={{marginTop:12,width:"100%",padding:"12px",background:"#FF5722",color:"white",border:"none",borderRadius:12,fontWeight:700,fontSize:14,cursor:"pointer"}}>
+              ⚠️ Contestar Serviço (até 48h)
+            </button>
+          )}
+          {service.status==="em_disputa" && (
+            <div style={{marginTop:12,padding:"12px",background:"#FFF3E0",borderRadius:12,border:"2px solid #FF5722",textAlign:"center"}}>
+              <p style={{margin:0,fontWeight:700,color:"#FF5722"}}>⚠️ Serviço em disputa</p>
+              <p style={{margin:"4px 0 0",fontSize:12,color:"#666"}}>O Multi está analisando. Resposta em até 24h.</p>
+            </div>
+          )}
       </div>
 
       {!confirmed ? (
@@ -1772,8 +1790,8 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry })
           <ServiceStatusStepper phase={phase} />
           {phase < 3 && (
             <button onClick={()=>{
-              const nextStatus=["aberto","em_andamento","executando","concluido"][Math.min(phase+1,3)];
-              supabase.from("pedidos").update({status:nextStatus,updated_at:new Date().toISOString()}).eq("id",service.id).then(()=>{
+              const nextStatus=["aberto","em_andamento","executando","concluido"][Math.min(phase+1,3)];const extraFields=nextStatus==="concluido"?{concluido_em:new Date().toISOString()}:{};
+              supabase.from("pedidos").update({status:nextStatus,updated_at:new Date().toISOString(),...extraFields}).eq("id",service.id).then(()=>{
                 showToast&&showToast("Status: "+nextStatus);
                 onBack&&onBack();
               }).catch(()=>{});
