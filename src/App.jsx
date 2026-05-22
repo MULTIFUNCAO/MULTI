@@ -6048,11 +6048,6 @@ export default function App() {
     }
 
     if (role === "client") {
-      // Route guard: logged-in professionals must never see ClientHome
-      if (isLoggedIn && userRole === "professional") {
-        setTimeout(() => { setRole("professional"); setScreen("home"); }, 0);
-        return <ProfessionalFeed isPro={isPro} feedServices={feedServices} onViewService={handleProFeedAction} />;
-      }
       if (screen === "post")   return <PostServiceScreen onBack={() => setScreen("home")} onSuccess={handlePostService} />;
       if (selectedPro) return (
     <div style={{minHeight:"100vh",background:"#f5f5f5"}}>
