@@ -490,11 +490,6 @@ function ChatScreen({ chat, onBack, onFinish }) {
   const [finished, setFinished] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [ratingStars, setRatingStars] = useState(5);
-  const [ratingComment, setRatingComment] = useState("");
-  const [ratingSubmitted, setRatingSubmitted] = useState(false);
-  const [showRatingModal, setShowRatingModal] = useState(false);
-  const [ratingStars, setRatingStars] = useState(5);
-  const [ratingComment, setRatingComment] = useState("");
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const endRef = useRef(null);
 
