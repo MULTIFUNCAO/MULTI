@@ -6035,9 +6035,9 @@ export default function App() {
 
   // ── SCREEN ROUTER ───────────────────────────────────────────────────────────
   function PropostasScreen({ pedido, onBack, onAceitarProposta }) {
-  const [propostas, setPropostas] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
-  React.useEffect(()=>{
+  const [propostas, setPropostas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(()=>{
     if(!pedido) return;
     supabase.from("propostas").select("*").eq("pedido_id",pedido.id).order("created_at",{ascending:false})
       .then(({data})=>{ setPropostas(data||[]); setLoading(false); }).catch(()=>setLoading(false));
