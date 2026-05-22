@@ -5298,8 +5298,8 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
           </div>
         ) : filtered.map((s, idx) => {
           const cat       = CATS.find(c => c.id === s.cat);
-          const isLocked  = !isPro;          // non-PRO sees locked overlay
-          const isBlurred = isLocked && idx > 0; // first card always fully visible as preview
+          const isLocked  = false;          // lock removido - todos podem se candidatar
+          const isBlurred = false; // first card always fully visible as preview
 
           return (
             <div key={s.id} style={{ position:"relative", borderRadius:20, overflow:"hidden", boxShadow:"0 3px 14px rgba(0,0,0,.09)" }}>
