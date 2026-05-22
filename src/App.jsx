@@ -5175,7 +5175,7 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
   }).subscribe();
 
 // Realtime: notificar cliente quando proposta chegar
-const userEmail=localStorage.getItem("multiUserEmail");
+const _mu=localStorage.getItem("multiUser");const userEmail=_mu?JSON.parse(_mu).email||JSON.parse(_mu).whatsapp||"":"";
 if(userEmail){
   supabase.channel("propostas_realtime")
     .on("postgres_changes",{event:"INSERT",schema:"public",table:"propostas"},
