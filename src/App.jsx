@@ -5785,11 +5785,11 @@ function NewOrderCard({ order, onAccept, onReject }) {
 export default 
 // ===== AVALIACAO SCREEN =====
 function AvaliacaoScreen({ service, onBack, userEmail, showToast }) {
-  const [nota, setNota] = React.useState(0);
-  const [hover, setHover] = React.useState(0);
-  const [comentario, setComentario] = React.useState("");
-  const [enviado, setEnviado] = React.useState(false);
-  const [loading, setLoading] = React.useState(false);
+  const [nota, setNota] = useState(0);
+  const [hover, setHover] = useState(0);
+  const [comentario, setComentario] = useState("");
+  const [enviado, setEnviado] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const enviarAvaliacao = async () => {
     if(nota===0) return showToast&&showToast("Selecione uma nota!");
