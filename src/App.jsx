@@ -5789,6 +5789,7 @@ function NewOrderCard({ order, onAccept, onReject }) {
 export default 
 // ===== AVALIACAO SCREEN =====
 function AvaliacaoScreen({ service, onBack, setScreen, userEmail, showToast }) {
+  if(!service) { if(setScreen) setScreen("orders"); return null; }
   const [nota, setNota] = useState(0);
   const [hover, setHover] = useState(0);
   const [comentario, setComentario] = useState("");
