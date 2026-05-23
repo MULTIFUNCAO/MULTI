@@ -5789,7 +5789,7 @@ function NewOrderCard({ order, onAccept, onReject }) {
 export default 
 // ===== AVALIACAO SCREEN =====
 function AvaliacaoScreen({ service, onBack, setScreen, userEmail, showToast }) {
-  if(!service) { if(setScreen) setScreen("orders"); return null; }
+  if(!service) return null;
   const [nota, setNota] = useState(0);
   const [hover, setHover] = useState(0);
   const [comentario, setComentario] = useState("");
@@ -6336,7 +6336,7 @@ const renderContent = () => {
     }
 
     // Professional screens
-    if (screen === "avaliacao") return <AvaliacaoScreen service={avaliacaoSvc} onBack={()=>setScreen("orders")} setScreen={setScreen} userEmail={userEmail} showToast={showToast} />;
+    if (screen === "avaliacao" && avaliacaoSvc) return <AvaliacaoScreen service={avaliacaoSvc} onBack={()=>setScreen("orders")} setScreen={setScreen} userEmail={userEmail} showToast={showToast} />;
   if (screen === "upgrade") return <ProUpgrade onBack={() => setScreen("home")} onSubscribe={() => { setIsPro(true); setScreen("home"); showToast("🎉 Você agora é Multi PRO! Contatos desbloqueados."); }} />;
     if (screen === "wallet") return <WalletScreen onBack={() => setScreen("profile")} showToast={showToast} walletBalance={walletBalance} setWalletBalance={setWalletBalance} />;
     if (screen === "profile") {
