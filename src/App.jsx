@@ -1591,7 +1591,11 @@ function ServiceDetailPinEntry({ service, onBack, onStatusChange, showToast }) {
           )}
       </div>
 
-      {!confirmed ? (
+      
+          {service.status==="concluido" && (
+            <button onClick={()=>onAvaliar&&onAvaliar(service)} style={{marginTop:12,width:"100%",padding:"12px",background:"#FF9500",color:"white",border:"none",borderRadius:12,fontWeight:700,fontSize:15,cursor:"pointer"}}>⭐ Avaliar Profissional</button>
+          )}
+          {!confirmed ? (
         <div style={{ background:"white", borderRadius:20, overflow:"hidden", boxShadow:"0 4px 18px rgba(0,0,0,.10)" }}>
           <div style={{ background:"linear-gradient(135deg,#1a1a2e,#2d2d44)", padding:"16px", display:"flex", alignItems:"center", gap:10 }}>
             <KeyRound size={20} color={O} />
