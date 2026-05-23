@@ -6216,6 +6216,9 @@ function PropostasScreen({ pedido, onBack, onAceitarProposta }) {
       ))}
     </div>
   );
+      if (screen==="avaliacao" && avaliacaoSvc) return <AvaliacaoScreen service={avaliacaoSvc} onBack={()=>setScreen("orders")} setScreen={setScreen} userEmail={userEmail} showToast={showToast} />;
+      if (screen==="upgrade") return <ProUpgrade onBack={()=>setScreen("home")} onSubscribe={()=>{setIsPro(true);setScreen("home");showToast("PRO ativado!");}} />;
+      if (screen==="wallet") return <WalletScreen onBack={()=>setScreen("profile")} showToast={showToast} walletBalance={walletBalance} setWalletBalance={setWalletBalance} />;
 }
 
 const renderContent = () => {
@@ -6319,9 +6322,6 @@ const renderContent = () => {
           </button>
         </div>
       );
-      if (screen === "avaliacao" && avaliacaoSvc) return <AvaliacaoScreen service={avaliacaoSvc} onBack={()=>setScreen("orders")} setScreen={setScreen} userEmail={userEmail} showToast={showToast} />;
-      if (screen === "upgrade") return <ProUpgrade onBack={()=>setScreen("home")} onSubscribe={()=>{ setIsPro(true); setScreen("home"); showToast("Voce agora e Multi PRO!"); }} />;
-      if (screen === "wallet") return <WalletScreen onBack={()=>setScreen("profile")} showToast={showToast} walletBalance={walletBalance} setWalletBalance={setWalletBalance} />;
     }
 
     // Route guard: logged-in clients must never see the professional feed.
