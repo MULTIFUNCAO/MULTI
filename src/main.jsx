@@ -2,14 +2,16 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
 
-window.onerror = function(msg, src, line, col, err) {
-  document.getElementById('root').innerHTML = '<pre style="color:red;padding:20px;font-size:12px">ERRO: ' + msg + '\nLinha: ' + line + '\n' + (err ? err.stack : '') + '</pre>';
-};
-
-window.onunhandledrejection = function(e) {
-  document.getElementById('root').innerHTML = '<pre style="color:red;padding:20px;font-size:12px">PROMISE ERROR: ' + e.reason + '</pre>';
-};
-
-createRoot(document.getElementById('root')).render(
-  <StrictMode><App /></StrictMode>
-)
+try {
+  createRoot(document.getElementById('root')).render(
+    <StrictMode><App /></StrictMode>
+  )
+  setTimeout(()=>{
+    var root = document.getElementById('root');
+    var html = root ? root.innerHTML.slice(0,200) : 'root nao encontrado';
+    document.title = 'DBG:' + html;
+    console.log('ROOT HTML:', html);
+  }, 2000);
+} catch(e) {
+  document.getElementById('root').innerHTML = '<pre style="color:red;padding:20px">' + e.message + '\n' + e.stack + '</pre>';
+}
