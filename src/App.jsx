@@ -1,3 +1,4 @@
+// build: 1779567148137
 import CheckoutPagamento from './CheckoutPagamento';
 //already from "./PixQRCode";
 import ChatWidget from './ChatWidget';
