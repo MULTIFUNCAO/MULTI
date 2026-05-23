@@ -5782,7 +5782,68 @@ function NewOrderCard({ order, onAccept, onReject }) {
 
 
 
-export default function App() {
+export default 
+// ===== AVALIACAO SCREEN =====
+function AvaliacaoScreen({ service, onBack, userEmail, showToast }) {
+  const [nota, setNota] = React.useState(0);
+  const [hover, setHover] = React.useState(0);
+  const [comentario, setComentario] = React.useState("");
+  const [enviado, setEnviado] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+
+  const enviarAvaliacao = async () => {
+    if(nota===0) return showToast&&showToast("Selecione uma nota!");
+    setLoading(true);
+    const {error} = await supabase.from("avaliacoes").insert({
+      pedido_id: service.id,
+      cliente_id: userEmail,
+      profissional_id: service.profissional_aceito,
+      nota,
+      comentario
+    });
+    setLoading(false);
+    if(!error){ setEnviado(true); showToast&&showToast("Avaliação enviada! ⭐"); }
+    else{ showToast&&showToast("Erro ao enviar avaliação"); }
+  };
+
+  if(enviado) return (
+    <div style={{minHeight:"100vh",background:"#F5F6FA",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24}}>
+      <div style={{fontSize:64}}>⭐</div>
+      <h2 style={{fontWeight:900,fontSize:22,color:"#1a1a2e",margin:"16px 0 8px"}}>Obrigado!</h2>
+      <p style={{color:"#666",textAlign:"center",marginBottom:24}}>Sua avaliação ajuda outros clientes a encontrar bons profissionais.</p>
+      <button onClick={onBack} style={{padding:"14px 32px",background:"#007BFF",color:"white",border:"none",borderRadius:14,fontWeight:800,fontSize:16,cursor:"pointer"}}>Voltar</button>
+    </div>
+  );
+
+  return (
+    <div style={{minHeight:"100vh",background:"#F5F6FA",padding:"20px 16px"}}>
+      <button onClick={onBack} style={{background:"none",border:"none",fontSize:24,cursor:"pointer",marginBottom:16}}>←</button>
+      <h2 style={{fontWeight:900,fontSize:22,color:"#1a1a2e",marginBottom:4}}>Avaliar Profissional</h2>
+      <p style={{color:"#666",fontSize:14,marginBottom:24}}>Como foi o serviço?</p>
+      <div style={{background:"white",borderRadius:20,padding:24,marginBottom:16,boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
+        <p style={{fontWeight:700,fontSize:15,marginBottom:16,color:"#1a1a2e"}}>Sua nota:</p>
+        <div style={{display:"flex",gap:8,justifyContent:"center",marginBottom:24}}>
+          {[1,2,3,4,5].map(s=>(
+            <span key={s} onClick={()=>setNota(s)} onMouseEnter={()=>setHover(s)} onMouseLeave={()=>setHover(0)}
+              style={{fontSize:44,cursor:"pointer",transition:"transform .15s",transform:(hover||nota)>=s?"scale(1.2)":"scale(1)",filter:(hover||nota)>=s?"none":"grayscale(1)"}}>⭐</span>
+          ))}
+        </div>
+        <p style={{textAlign:"center",fontWeight:700,color:"#007BFF",fontSize:14,marginBottom:16}}>
+          {["","Ruim","Regular","Bom","Muito bom","Excelente!"][hover||nota]||"Toque para avaliar"}
+        </p>
+        <textarea value={comentario} onChange={e=>setComentario(e.target.value)}
+          placeholder="Conte como foi a experiência (opcional)..."
+          style={{width:"100%",minHeight:100,borderRadius:12,border:"1.5px solid #eee",padding:12,fontSize:14,fontFamily:"Nunito",resize:"none",boxSizing:"border-box"}} />
+      </div>
+      <button onClick={enviarAvaliacao} disabled={loading||nota===0}
+        style={{width:"100%",padding:"14px",background:nota===0?"#ccc":"#007BFF",color:"white",border:"none",borderRadius:14,fontWeight:800,fontSize:16,cursor:nota===0?"not-allowed":"pointer"}}>
+        {loading?"Enviando...":"Enviar Avaliação ⭐"}
+      </button>
+    </div>
+  );
+}
+
+function App() {
   const [selectedPro, setSelectedPro] = useState(null);
   const [role,      setRole]      = useState(() => {
     try { return JSON.parse(localStorage.getItem("multiSession") || "null")?.role || "client";
