@@ -5852,6 +5852,7 @@ function App() {
   const [guestRole, setGuestRole] = useState("client"); // drives the header toggle for guests
   const [screen,    setScreen]    = useState("home");
   const [selected,  setSelected]  = useState(null);
+  const [avaliacaoSvc, setAvaliacaoSvc] = useState(null);
   const [isPro,     setIsPro]     = useState(false);
   const [toast,     setToast]     = useState(null);
   const [ratingTarget, setRatingTarget] = useState(null);
