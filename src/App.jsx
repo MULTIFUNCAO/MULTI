@@ -6330,7 +6330,7 @@ const renderContent = () => {
     }
 
     // Professional screens
-    if (screen === "avaliacao") return <AvaliacaoScreen service={selected} onBack={()=>setScreen("orders")} userEmail={userEmail} showToast={showToast} />;
+    if (screen === "avaliacao") return <AvaliacaoScreen service={selected} onBack={()=>setScreen("myorders")} userEmail={userEmail} showToast={showToast} />;
   if (screen === "upgrade") return <ProUpgrade onBack={() => setScreen("home")} onSubscribe={() => { setIsPro(true); setScreen("home"); showToast("🎉 Você agora é Multi PRO! Contatos desbloqueados."); }} />;
     if (screen === "wallet") return <WalletScreen onBack={() => setScreen("profile")} showToast={showToast} walletBalance={walletBalance} setWalletBalance={setWalletBalance} />;
     if (screen === "profile") {
