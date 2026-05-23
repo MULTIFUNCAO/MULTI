@@ -1950,7 +1950,8 @@ function ProUpgrade({ onBack, onSubscribe }) {
   };
 
   /* ── DONE SCREEN ── */
-  if (step === "done") {
+  if (step==="plans") return (<div style={{minHeight:"100vh",background:"#F5F6FA",padding:"20px 16px"}}><button onClick={onBack} style={{background:"none",border:"none",fontSize:24,cursor:"pointer"}}>←</button><h2 style={{textAlign:"center",fontWeight:900,fontSize:22,color:"#1a1a2e"}}>Assine o Multi PRO</h2><p style={{textAlign:"center",color:"#666",fontSize:14,marginBottom:24}}>Acesse contatos, chat e todos os serviços</p>{[{label:"Mensal",price:"R$29,90",id:"mensal"},{label:"Trimestral",price:"R$79,90",id:"trim"},{label:"Anual",price:"R$249,90",id:"anual"}].map(p=>(<div key={p.id} onClick={()=>{setSel(p.id);setStep("pix");}} style={{background:"white",borderRadius:16,padding:"16px 20px",marginBottom:12,border:sel===p.id?"2px solid #007BFF":"2px solid #eee",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}><p style={{fontWeight:800,margin:0}}>{p.label}</p><p style={{fontWeight:900,color:"#007BFF",margin:0}}>{p.price}</p></div>))}<button onClick={()=>setStep("pix")} style={{marginTop:16,padding:"14px",background:"#007BFF",color:"white",border:"none",borderRadius:14,fontWeight:800,fontSize:16,cursor:"pointer",width:"100%"}}>Continuar →</button></div>);
+  if (step==="done") {
     return (
       <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#0F3460,#7C3AED)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:32, textAlign:"center" }}>
         <style>{`@keyframes pop-in{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}} .pop{animation:pop-in .5s ease-out forwards;}`}</style>
