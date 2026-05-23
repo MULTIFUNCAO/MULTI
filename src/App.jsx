@@ -5817,7 +5817,7 @@ function AvaliacaoScreen({ service, onBack, userEmail, showToast }) {
 
   return (
     <div style={{minHeight:"100vh",background:"#F5F6FA",padding:"20px 16px"}}>
-      <button onClick={onBack} style={{background:"none",border:"none",fontSize:24,cursor:"pointer",marginBottom:16}}>←</button>
+      <button onClick={()=>{console.log("onBack chamado",typeof onBack);onBack&&onBack();}} style={{background:"none",border:"none",fontSize:24,cursor:"pointer",marginBottom:16}}>←</button>
       <h2 style={{fontWeight:900,fontSize:22,color:"#1a1a2e",marginBottom:4}}>Avaliar Profissional</h2>
       <p style={{color:"#666",fontSize:14,marginBottom:24}}>Como foi o serviço?</p>
       <div style={{background:"white",borderRadius:20,padding:24,marginBottom:16,boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
