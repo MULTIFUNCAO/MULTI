@@ -14,4 +14,4 @@ try {
   }, 2000);
 } catch(e) {
   document.getElementById('root').innerHTML = '<pre style="color:red;padding:20px">' + e.message + '\n' + e.stack + '</pre>';
-}
+}import './buildtime.js';
