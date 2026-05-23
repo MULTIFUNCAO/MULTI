@@ -6273,7 +6273,7 @@ const renderContent = () => {
   setScreen("chat");
   alert("Proposta aceita! Entrando em contato com "+prop.profissional_nome);
 }} />;
-      if (screen === "service" && selected) return <ServiceDetailClient service={selected} onBack={() => setScreen("orders")} onStatusChange={(id, newStatus) => { setMyServices(s => s.map(x => x.id === id ? { ...x, status: newStatus } : x)); supabase.from("pedidos").update({status:newStatus,updated_at:new Date().toISOString()}).eq("id",id).then(()=>{}).catch(()=>{}); }} showToast={showToast} />;
+      if (screen === "service" && selected) return <ServiceDetailClient service={selected} onBack={() => setScreen("orders")} onStatusChange={(id, newStatus) => { setMyServices(s => s.map(x => x.id === id ? { ...x, status: newStatus } : x)); supabase.from("pedidos").update({status:newStatus,updated_at:new Date().toISOString()}).eq("id",id).then(()=>{}).catch(()=>{}); }} showToast={showToast} onAvaliar={(svc)=>{ setSelected(svc); setScreen("avaliacao"); }} />;
 
       // ── GUEST TOGGLE: show professional mural preview when guest selects "Profissional"
       if (!isLoggedIn && guestRole === "professional") {
@@ -6330,7 +6330,8 @@ const renderContent = () => {
     }
 
     // Professional screens
-    if (screen === "upgrade") return <ProUpgrade onBack={() => setScreen("home")} onSubscribe={() => { setIsPro(true); setScreen("home"); showToast("🎉 Você agora é Multi PRO! Contatos desbloqueados."); }} />;
+    if (screen === "avaliacao") return <AvaliacaoScreen service={selected} onBack={()=>setScreen("orders")} userEmail={userEmail} showToast={showToast} />;
+  if (screen === "upgrade") return <ProUpgrade onBack={() => setScreen("home")} onSubscribe={() => { setIsPro(true); setScreen("home"); showToast("🎉 Você agora é Multi PRO! Contatos desbloqueados."); }} />;
     if (screen === "wallet") return <WalletScreen onBack={() => setScreen("profile")} showToast={showToast} walletBalance={walletBalance} setWalletBalance={setWalletBalance} />;
     if (screen === "profile") {
       if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
