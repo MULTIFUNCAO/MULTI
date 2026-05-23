@@ -1850,6 +1850,7 @@ function ProUpgrade({ onBack, onSubscribe }) {
   const [seconds,      setSeconds]      = useState(1800);   // 30min real PIX
   const [copied,       setCopied]       = useState(false);
   const [showCardForm, setShowCardForm] = useState(false);
+  const serviceValue = sel==="mensal"?"29,90":sel==="trim"?"79,90":"249,90";
   const [form, setForm] = useState({ label:'', number:'', expiry:'', cvv:'', cpf:'', brand:'Visa', type:'credit' });
   const [saving, setSaving] = useState(false);
   const handleCardPayment = async () => {
