@@ -6429,6 +6429,7 @@ const renderContent = () => {
     return wrapper(<AdminDashboard onExit={() => setShowAdmin(false)} />);
   }
 
+    console.log("APP_RENDER: chegou no return wrapper");
   return wrapper(
     <>
       {ratingTarget && (
