@@ -1,3 +1,4 @@
+import { APP_VERSION } from "./AppVersion.js";
 // BUILD_V4: 1779569710293 /* REBUILD_1779588782385 */
 import CheckoutPagamento from './CheckoutPagamento';
 //already from "./PixQRCode";
