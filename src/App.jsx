@@ -6480,7 +6480,7 @@ const renderContent = () => {
           );
         })}
       </div>
-    <ChatWidget />
+    <ChatWidget key="v5" />
       
     </>
 
