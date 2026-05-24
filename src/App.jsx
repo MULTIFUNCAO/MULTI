@@ -1,4 +1,4 @@
-// build: 1779569710293
+// BUILD_V4: 1779569710293
 import CheckoutPagamento from './CheckoutPagamento';
 //already from "./PixQRCode";
 import ChatWidget from './ChatWidget';
