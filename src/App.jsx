@@ -6341,6 +6341,7 @@ const renderContent = () => {
           </button>
         </div>
       );
+    return <ClientHome screen={screen} setScreen={setScreen} userEmail={userEmail} userName={userName} isPro={isPro} isLoggedIn={isLoggedIn} showToast={showToast} notifCount={notifCount} onViewService={(s)=>{setSelected(s);setScreen("service");}} />;
     }
 
     // Professional screens
@@ -6375,7 +6376,6 @@ const renderContent = () => {
     // Client-only gated tabs
     if (["orders","chat","alerts"].includes(id) && !isLoggedIn) {
       requireAuth(id, () => setScreen(id));
-    return <ClientHome screen={screen} setScreen={setScreen} userEmail={userEmail} userName={userName} isPro={isPro} isLoggedIn={isLoggedIn} showToast={showToast} notifCount={notifCount} onViewService={(s)=>{setSelected(s);setScreen("service");}} />;
       return;
     }
     // If pro is navigating to home, ensure role is set correctly
