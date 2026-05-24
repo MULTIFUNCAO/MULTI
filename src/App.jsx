@@ -6223,7 +6223,7 @@ function PropostasScreen({ pedido, onBack, onAceitarProposta }) {
 }
 
 const renderContent = () => {
-    const __CACHE_BUST__ = "MULTIFUNCAO_V2_BUILD_1779590755"; console.log("BOOT:",__CACHE_BUST__,role,authScreen); return <ClientHome screen={screen} setScreen={setScreen} userEmail={userEmail} userName={userName} isPro={isPro} isLoggedIn={isLoggedIn} showToast={showToast} notifCount={notifCount} onViewService={(s)=>{setSelected(s);setScreen("service");}} />;
+  console.log("RENDER:", role, authScreen, screen);
     if (screen === "activechat" && activeChat) {
       return (
         <EnhancedChatScreen
