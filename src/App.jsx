@@ -6222,7 +6222,7 @@ function PropostasScreen({ pedido, onBack, onAceitarProposta }) {
 }
 
 const renderContent = () => {
-    return <ClientHome screen={screen} setScreen={setScreen} userEmail={userEmail} userName={userName} isPro={isPro} isLoggedIn={isLoggedIn} showToast={showToast} notifCount={notifCount} onViewService={(s)=>{setSelected(s);setScreen("service");}} />;
+    console.log("RENDER:", {role, authScreen, screen}); return <ClientHome screen={screen} setScreen={setScreen} userEmail={userEmail} userName={userName} isPro={isPro} isLoggedIn={isLoggedIn} showToast={showToast} notifCount={notifCount} onViewService={(s)=>{setSelected(s);setScreen("service");}} />;
     if (screen === "activechat" && activeChat) {
       return (
         <EnhancedChatScreen
