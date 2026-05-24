@@ -5,7 +5,9 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        entryFileNames: "assets/app-mpj6t021-[hash].js"
+        entryFileNames: "assets/multi-mpj6yrqo.js",
+        chunkFileNames: "assets/chunk-[hash].js",
+        assetFileNames: "assets/[name]-[hash][extname]"
       }
     }
   }
