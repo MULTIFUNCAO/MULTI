@@ -13,4 +13,4 @@ window.onunhandledrejection = function(e){
   document.getElementById("root").innerHTML = "<pre style=color:red>PROMISE: "+e.reason+"</pre>";
 };
 
-createRoot(document.getElementById("root")).render(<StrictMode><App /></StrictMode>)
+const root=createRoot(document.getElementById("root"));setTimeout(()=>{console.log("ROOT HTML:",document.getElementById("root").innerHTML.slice(0,500));},2000);root.render(<StrictMode><App /></StrictMode>)
