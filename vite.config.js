@@ -6,8 +6,8 @@ export default defineConfig({
     outDir: "dist",
     rollupOptions: {
       output: {
-        entryFileNames: "assets/multi-[hash].js",
-        chunkFileNames: "assets/chunk-[hash].js"
+        entryFileNames: "assets/mf-[hash].js",
+        chunkFileNames: "assets/ck-[hash].js"
       }
     }
   }
