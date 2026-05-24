@@ -6222,6 +6222,7 @@ function PropostasScreen({ pedido, onBack, onAceitarProposta }) {
 }
 
 const renderContent = () => {
+    if (!role || role === "client") return <ClientHome screen={screen} setScreen={setScreen} userEmail={userEmail} userName={userName} isPro={isPro} isLoggedIn={isLoggedIn} showToast={showToast} notifCount={notifCount} onViewService={(s)=>{setSelected(s);setScreen("service");}} />;
     if (screen === "activechat" && activeChat) {
       return (
         <EnhancedChatScreen
@@ -6341,7 +6342,6 @@ const renderContent = () => {
           </button>
         </div>
       );
-    return <ClientHome screen={screen} setScreen={setScreen} userEmail={userEmail} userName={userName} isPro={isPro} isLoggedIn={isLoggedIn} showToast={showToast} notifCount={notifCount} onViewService={(s)=>{setSelected(s);setScreen("service");}} />;
     }
 
     // Professional screens
