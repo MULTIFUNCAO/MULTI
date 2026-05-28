@@ -6236,6 +6236,7 @@ const renderContent = () => {
       );
     }
 
+  if (!role && !authScreen) { setAuthScreen("welcome"); return null; }
     if (role === "client") {
       if (screen === "post")   return <PostServiceScreen onBack={() => setScreen("home")} onSuccess={handlePostService} />;
       if (selectedPro) return (
