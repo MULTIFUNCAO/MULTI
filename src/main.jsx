@@ -1,20 +1,12 @@
-import React from "react"
 import { createRoot } from "react-dom/client"
-import App from "./App.jsx"
 
-class EB extends React.Component {
-  constructor(p) { super(p); this.state = { err: null }; }
-  static getDerivedStateFromError(e) { return { err: e }; }
-  render() {
-    if (this.state.err) return (
-      <div style={{color:'red',padding:20,fontFamily:'monospace',whiteSpace:'pre-wrap'}}>
-        <b>ERRO:</b> {this.state.err.message}<br/>{this.state.err.stack}
-      </div>
-    );
-    return this.props.children;
-  }
+const root = document.getElementById("root")
+root.innerHTML = "<h1 style='color:blue'>JS FUNCIONANDO</h1>"
+
+try {
+  const { default: App } = await import("./App.jsx")
+  root.innerHTML = ""
+  createRoot(root).render(App ? "<div>App carregado</div>" : "<div>App undefined</div>")
+} catch(e) {
+  root.innerHTML = "<pre style='color:red'>ERRO NO IMPORT: " + e.message + "\n" + e.stack + "</pre>"
 }
-
-createRoot(document.getElementById("root")).render(
-  <EB><App /></EB>
-)
