@@ -2526,7 +2526,6 @@ function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
       )}
     </div>
   );
-}
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 /* ── Autonomy term card for professional profile ── */
