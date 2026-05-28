@@ -5,7 +5,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        entryFileNames: "assets/multi-mpplc40s.js",
+        entryFileNames: "assets/multi-mppleuru.js",
         chunkFileNames: "assets/chunk-[hash].js",
         assetFileNames: "assets/[name]-[hash][extname]"
       }
