@@ -1,22 +1,4 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "routes": [
-    {
-      "src": "/assets/(.*)",
-      "dest": "/assets/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ],
-  "redirects": [
-    {
-      "source": "/:path*",
-      "has": [{ "type": "host", "value": "www.multifuncao.com.br" }],
-      "destination": "https://multifuncao.com.br/:path*",
-      "permanent": true
-    }
-  ]
+  "outputDirectory": "dist"
 }
