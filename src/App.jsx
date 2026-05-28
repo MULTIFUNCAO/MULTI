@@ -5889,7 +5889,7 @@ function App() {
   })();
   // Auth: starts as guest, modal layers appear on demand
   const [isLoggedIn,    setIsLoggedIn]    = useState(!!savedSession);
-  const [authScreen,    setAuthScreen]    = useState(null);
+  const [authScreen,    setAuthScreen]   = useState("welcome");
   // Detect password reset link from email
   useEffect(() => {
     const hash = window.location.hash;
