@@ -16,3 +16,15 @@ create table if not exists empresas (
 -- 2. Coluna "empresa_id" na tabela "usuarios" existente
 alter table usuarios
   add column if not exists empresa_id uuid references empresas(id);
+
+-- 3. RLS: permite leitura pública (anon + authenticated) de empresas ativas.
+-- Sem isso, se RLS estiver habilitado na tabela e não houver nenhuma policy
+-- de SELECT, toda leitura via chave anon retorna sempre 0 linhas, sem erro.
+alter table empresas enable row level security;
+
+drop policy if exists "Leitura publica de empresas ativas" on empresas;
+create policy "Leitura publica de empresas ativas"
+  on empresas
+  for select
+  to anon, authenticated
+  using (ativo = true);
