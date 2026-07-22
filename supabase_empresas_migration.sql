@@ -28,3 +28,22 @@ create policy "Leitura publica de empresas ativas"
   for select
   to anon, authenticated
   using (ativo = true);
+
+-- 4. Colunas para o cadastro de empresa parceira (CadastroEmpresaScreen).
+-- "cnpj" já existe (item 1). "nome" já existe e passa a representar o
+-- nome fantasia (é o que aparece nos cards/perfil público).
+alter table empresas
+  add column if not exists razao_social text,
+  add column if not exists email text,
+  add column if not exists user_id uuid references auth.users(id);
+
+-- 5. RLS: permite que o cadastro público (chave anon, sem sessão logada -
+-- o fluxo de cadastro deste app não usa sessão real do Supabase Auth no
+-- frontend) crie a linha da empresa. Sem isso, o INSERT do cadastro é
+-- silenciosamente bloqueado por RLS assim que ela foi habilitada no item 3.
+drop policy if exists "Cadastro publico de empresas" on empresas;
+create policy "Cadastro publico de empresas"
+  on empresas
+  for insert
+  to anon, authenticated
+  with check (true);

@@ -4528,7 +4528,7 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
 }
 
 /* ───────────────────────── AUTH: WELCOME SCREEN ──────────────────────────────── */
-function WelcomeScreen({ onGoogle, onEmail, onBack }) {
+function WelcomeScreen({ onGoogle, onEmail, onBack, onEmpresa }) {
   return (
     <div style={{ minHeight:"100vh", background:"#F8F9FA", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"space-between", padding:"0 0 48px" }}>
 
@@ -4620,6 +4620,11 @@ function WelcomeScreen({ onGoogle, onEmail, onBack }) {
         <p style={{ fontSize:12, color:"#9CA3AF", marginTop:20, textAlign:"center" }}>
           Já tem conta? <button onClick={onEmail} style={{ color:B, fontWeight:800, background:"none", border:"none", cursor:"pointer", fontSize:12 }}>Entrar</button>
         </p>
+        {onEmpresa && (
+          <p style={{ fontSize:12, color:"#9CA3AF", marginTop:8, textAlign:"center" }}>
+            É uma empresa parceira? <button onClick={onEmpresa} style={{ color:B, fontWeight:800, background:"none", border:"none", cursor:"pointer", fontSize:12 }}>Cadastre-se aqui</button>
+          </p>
+        )}
       </div>
     </div>
   );
@@ -5131,6 +5136,252 @@ function RegisterScreen({ onBack, onComplete }) {
   );
 }
 
+/* ───────────────────────── CNPJ helpers ──────────────────────────────────────── */
+function maskCnpj(v) {
+  const d = v.replace(/\D/g, "").slice(0, 14);
+  if (d.length <= 2)  return d;
+  if (d.length <= 5)  return `${d.slice(0,2)}.${d.slice(2)}`;
+  if (d.length <= 8)  return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5)}`;
+  if (d.length <= 12) return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8)}`;
+  return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12)}`;
+}
+
+function isValidCnpj(value) {
+  const cnpj = value.replace(/\D/g, "");
+  if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
+  const calc = (len) => {
+    const weights = len === 12 ? [5,4,3,2,9,8,7,6,5,4,3,2] : [6,5,4,3,2,9,8,7,6,5,4,3,2];
+    const sum = cnpj.slice(0, len).split("").reduce((acc, ch, i) => acc + Number(ch) * weights[i], 0);
+    const rest = sum % 11;
+    return rest < 2 ? 0 : 11 - rest;
+  };
+  return calc(12) === Number(cnpj[12]) && calc(13) === Number(cnpj[13]);
+}
+
+/* ───────────────────────── AUTH: CADASTRO EMPRESA PARCEIRA ────────────────────── */
+function CadastroEmpresaScreen({ onBack }) {
+  const [step, setStep] = useState("form"); // form | success
+  const [cnpj, setCnpj] = useState("");
+  const [razaoSocial, setRazaoSocial] = useState("");
+  const [nomeFantasia, setNomeFantasia] = useState("");
+  const [categoria, setCategoria] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [descricao, setDescricao] = useState("");
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+
+  const handleLogoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+  };
+
+  const validate = () => {
+    const e = {};
+    if (!isValidCnpj(cnpj)) e.cnpj = "CNPJ inválido";
+    if (!razaoSocial.trim()) e.razaoSocial = "Informe a razão social";
+    if (!nomeFantasia.trim()) e.nomeFantasia = "Informe o nome fantasia";
+    if (!categoria) e.categoria = "Selecione a categoria de serviço";
+    if (phone.replace(/\D/g,"").length < 11) e.phone = "Telefone incompleto";
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) e.email = "E-mail inválido";
+    if (password.length < 6) e.password = "Mínimo 6 caracteres";
+    const wrapper = document.getElementById("terms-checkbox-wrapper");
+    if (!wrapper || wrapper.dataset.checked !== "1") e.terms = "Aceite obrigatório";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (!validate()) return;
+    setLoading(true);
+    try {
+      // 1. Upload do logo (opcional)
+      let logoUrl = null;
+      if (logoFile) {
+        const ext = logoFile.type.includes("png") ? "png" : "jpg";
+        const path = `empresas_logo_${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, logoFile, { contentType: logoFile.type, upsert: true });
+        if (!upErr) logoUrl = supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl;
+      }
+
+      // 2. Cria a conta de login (mesmo endpoint/lógica do cadastro de profissional, role "empresa")
+      const API = "https://multi-backend-lfwp.onrender.com";
+      const r = await fetch(`${API}/api/auth/cadastro`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: nomeFantasia.trim(), email: email.trim(), password, role: "empresa" }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Erro ao criar conta");
+      const userId = d.user?.id || null;
+
+      // 3. Cria a empresa
+      const { data: empresaRow, error: empresaErr } = await supabase.from("empresas").insert({
+        nome: nomeFantasia.trim(),
+        razao_social: razaoSocial.trim(),
+        cnpj: cnpj,
+        categoria_servico: categoria,
+        telefone_contato: phone.replace(/\D/g, ""),
+        email: email.trim(),
+        descricao: descricao.trim() || null,
+        logo_url: logoUrl,
+        ativo: true,
+        user_id: userId,
+      }).select().maybeSingle();
+      if (empresaErr) throw empresaErr;
+
+      // 4. Vincula o usuário criado à empresa (mesmo padrão de profissionais em "usuarios")
+      await supabase.from("usuarios").upsert({
+        email: email.trim(), name: nomeFantasia.trim(), role: "empresa",
+        empresa_id: empresaRow?.id || null,
+      }, { onConflict: "email" });
+
+      setLoading(false);
+      setStep("success");
+    } catch (e) {
+      setLoading(false);
+      alert(e.message || "Erro ao cadastrar empresa");
+    }
+  };
+
+  if (step === "success") {
+    return (
+      <div style={{ minHeight:"100vh", background:"#F8F9FA", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:32, textAlign:"center" }}>
+        <div style={{ width:88, height:88, borderRadius:"50%", background:`linear-gradient(135deg,${B},#0055d4)`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:24, boxShadow:`0 8px 28px ${B}44` }}>
+          <Check size={40} color="white" strokeWidth={3} />
+        </div>
+        <h2 style={{ fontSize:24, fontWeight:900, color:"#1a1a2e", margin:"0 0 10px" }}>Empresa cadastrada!</h2>
+        <p style={{ fontSize:14, color:"#6B7280", lineHeight:1.7, margin:"0 0 28px" }}>
+          <strong style={{ color:"#1a1a2e" }}>{nomeFantasia}</strong> já está ativa e vai aparecer nas buscas de clientes da categoria selecionada.
+        </p>
+        <button onClick={onBack} style={{ width:"100%", padding:"16px 0", borderRadius:18, border:"none", color:"white", fontWeight:900, fontSize:15, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:10, boxShadow:`0 6px 24px ${B}44`, background:`linear-gradient(135deg,${B},#0055d4)` }}>
+          <Home size={17} /> Voltar ao início
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#F8F9FA", display:"flex", flexDirection:"column" }}>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+
+      <div style={{ background:`linear-gradient(160deg,${B} 0%,#0055d4 100%)`, padding:"16px 20px 28px", borderRadius:"0 0 32px 32px" }}>
+        <button onClick={onBack} style={{ background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:36, height:36, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:18 }}>
+          <ArrowLeft size={18} color="white" />
+        </button>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <Logo size={30} white />
+          <div>
+            <p style={{ fontSize:20, fontWeight:900, color:"white", margin:0, lineHeight:1 }}>Cadastrar Empresa Parceira</p>
+            <p style={{ fontSize:12, color:"rgba(255,255,255,.65)", margin:"2px 0 0" }}>Apareça nas buscas de clientes da sua categoria</p>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ flex:1, padding:"24px 24px 48px", overflowY:"auto" }}>
+
+        {/* LOGO */}
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", marginBottom:22 }}>
+          <label htmlFor="empresa-logo-input" style={{ width:84, height:84, borderRadius:20, background:"#F0F2F5", border:"1.5px dashed #D1D5DB", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", overflow:"hidden" }}>
+            {logoPreview
+              ? <img src={logoPreview} alt="Logo" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+              : <Briefcase size={28} color="#9CA3AF" />}
+          </label>
+          <input id="empresa-logo-input" type="file" accept="image/*" onChange={handleLogoChange} style={{ display:"none" }} />
+          <p style={{ fontSize:11, color:"#9CA3AF", fontWeight:700, marginTop:8 }}>Logo da empresa (opcional)</p>
+        </div>
+
+        {/* CNPJ */}
+        <FormField IconComp={FileText} label="CNPJ" error={errors.cnpj}>
+          <input inputMode="numeric" placeholder="00.000.000/0000-00" value={cnpj}
+            onChange={e => { setCnpj(maskCnpj(e.target.value)); if (errors.cnpj) setErrors(p => ({ ...p, cnpj:undefined })); }}
+            style={{ ...REG_INPUT, borderColor: errors.cnpj ? "#E53935" : undefined }} />
+        </FormField>
+
+        {/* RAZAO SOCIAL */}
+        <FormField IconComp={Briefcase} label="Razão Social" error={errors.razaoSocial}>
+          <input type="text" placeholder="Ex: Hidráulica Silva Ltda" value={razaoSocial}
+            onChange={e => { setRazaoSocial(e.target.value); if (errors.razaoSocial) setErrors(p => ({ ...p, razaoSocial:undefined })); }}
+            style={{ ...REG_INPUT, borderColor: errors.razaoSocial ? "#E53935" : undefined }} />
+        </FormField>
+
+        {/* NOME FANTASIA */}
+        <FormField IconComp={Briefcase} label="Nome Fantasia" error={errors.nomeFantasia}>
+          <input type="text" placeholder="Ex: Hidráulica Silva" value={nomeFantasia}
+            onChange={e => { setNomeFantasia(e.target.value); if (errors.nomeFantasia) setErrors(p => ({ ...p, nomeFantasia:undefined })); }}
+            style={{ ...REG_INPUT, borderColor: errors.nomeFantasia ? "#E53935" : undefined }} />
+        </FormField>
+
+        {/* CATEGORIA */}
+        <div style={{ marginBottom: errors.categoria ? 6 : 18 }}>
+          <label style={{ display:"block", fontSize:11, fontWeight:800, color: errors.categoria ? "#E53935" : "#6B7280", textTransform:"uppercase", letterSpacing:1.1, marginBottom:7 }}>Categoria de Serviço</label>
+          <select value={categoria} onChange={e => { setCategoria(e.target.value); if (errors.categoria) setErrors(p => ({ ...p, categoria:undefined })); }}
+            style={{ ...REG_INPUT, paddingLeft:14, appearance:"none", cursor:"pointer", borderColor: errors.categoria ? "#E53935" : undefined }}>
+            <option value="">Selecione...</option>
+            {CATS.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+          </select>
+          {errors.categoria && <p style={{ fontSize:11, color:"#E53935", margin:"5px 0 0", fontWeight:700 }}>{errors.categoria}</p>}
+        </div>
+
+        {/* TELEFONE */}
+        <FormField IconComp={WA_ICON} label="Telefone de Contato" error={errors.phone}>
+          <input autoComplete="tel" type="tel" placeholder="(00) 00000-0000" value={phone}
+            onChange={e => { setPhone(maskPhone(e.target.value)); if (errors.phone) setErrors(p => ({ ...p, phone:undefined })); }}
+            style={{ ...REG_INPUT, borderColor: errors.phone ? "#E53935" : undefined }} />
+        </FormField>
+
+        {/* EMAIL */}
+        <FormField IconComp={({ size, color }) => (
+          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display:"block", flexShrink:0 }}>
+            <rect x="2" y="4" width="20" height="16" rx="2"/>
+            <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+          </svg>
+        )} label="E-mail" error={errors.email}>
+          <input autoComplete="email" type="email" placeholder="contato@empresa.com" value={email}
+            onChange={e => { setEmail(e.target.value); if (errors.email) setErrors(p => ({ ...p, email:undefined })); }}
+            style={{ ...REG_INPUT, borderColor: errors.email ? "#E53935" : undefined }} />
+        </FormField>
+
+        {/* SENHA */}
+        <FormField IconComp={KeyRound} label="Senha" error={errors.password}>
+          <input autoComplete="new-password" type="password" placeholder="Mínimo 6 caracteres" value={password}
+            onChange={e => { setPassword(e.target.value); if (errors.password) setErrors(p => ({ ...p, password:undefined })); }}
+            style={{ ...REG_INPUT, borderColor: errors.password ? "#E53935" : undefined }} />
+        </FormField>
+
+        {/* DESCRICAO */}
+        <div style={{ marginBottom:18 }}>
+          <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#6B7280", textTransform:"uppercase", letterSpacing:1.1, marginBottom:7 }}>Descrição (opcional)</label>
+          <textarea value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Conte um pouco sobre os serviços da sua empresa"
+            style={{ width:"100%", minHeight:90, border:"1.5px solid #E5E7EB", borderRadius:14, padding:"13px 14px", fontSize:14, color:"#1a1a2e", outline:"none", fontFamily:"inherit", boxSizing:"border-box", resize:"none" }} />
+        </div>
+
+        {/* TERMS */}
+        <TermsCheckbox errors={errors} setErrors={setErrors} />
+
+        {/* SUBMIT */}
+        <button type="button" onClick={handleSubmit} disabled={loading} style={{
+          width:"100%", padding:"16px 0", borderRadius:18, border:"none",
+          background: loading ? "#93C5FD" : `linear-gradient(135deg,${B},#0055d4)`,
+          color:"white", fontWeight:900, fontSize:15,
+          cursor: loading ? "default" : "pointer",
+          display:"flex", alignItems:"center", justifyContent:"center", gap:10,
+          boxShadow: loading ? "none" : `0 6px 24px ${B}44`,
+        }}>
+          {loading ? (
+            <><span style={{ width:18, height:18, border:"2.5px solid white", borderTopColor:"transparent", borderRadius:"50%", display:"inline-block", animation:"spin .7s linear infinite" }} /> Cadastrando…</>
+          ) : (
+            <><Check size={17} /> Cadastrar Empresa</>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 /* ───────────────────────── GUEST MURAL (professional preview) ───────────────── */
 function GuestMural({ onSignup, allDocsVerified }) {
@@ -6470,6 +6721,7 @@ const renderContent = () => {
         onGoogle={() => alert("Login com Google em breve! Use o cadastro por e-mail.")}
         onEmail={() => setAuthScreen("login")}
         onBack={() => { setAuthScreen(null); setPendingIntent(null); }}
+        onEmpresa={() => setAuthScreen("cadastro-empresa")}
       />
     );
   }
@@ -6477,6 +6729,12 @@ const renderContent = () => {
   if (authScreen === "register") {
     return wrapper(
       <RegisterScreen onBack={() => setAuthScreen("welcome")} onComplete={handleLoginComplete} />
+    );
+  }
+
+  if (authScreen === "cadastro-empresa") {
+    return wrapper(
+      <CadastroEmpresaScreen onBack={() => setAuthScreen("welcome")} />
     );
   }
   if (authScreen === "reset-password") {
