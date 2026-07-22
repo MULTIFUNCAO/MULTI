@@ -1296,10 +1296,6 @@ function PostServiceScreen({ onBack, onSuccess }) {
             style={{ padding:"15px 0", borderRadius:14, border:"none", cursor: canPublish ? "pointer" : "not-allowed", background: canPublish ? `linear-gradient(135deg,${0},#E64A19)` : "#9CA3AF", color: canPublish ? "white" : "#4B5563", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow: canPublish ? "0 5px 18px rgba(255,87,34,.30)" : "none", transition:"all .2s" }}>
             <Send size={15} /> Publicar Serviço
           </button>
-
-      if (screen === "avaliacao" && avaliacaoSvc) return <AvaliacaoScreen service={avaliacaoSvc} onBack={()=>setScreen("orders")} setScreen={setScreen} userEmail={userEmail} showToast={showToast} />;
-      if (screen === "upgrade") return <ProUpgrade onBack={()=>setScreen("home")} onSubscribe={()=>{ setIsPro(true); setScreen("home"); showToast("Voce agora e Multi PRO!"); }} />;
-      if (screen === "wallet") return <WalletScreen onBack={()=>setScreen("profile")} showToast={showToast} walletBalance={walletBalance} setWalletBalance={setWalletBalance} />;
         </div>
       );
     }
