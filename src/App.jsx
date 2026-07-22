@@ -5948,8 +5948,8 @@ export default function App() {
   console.log("APP FUNCTION START");
   const [selectedPro, setSelectedPro] = useState(null);
   const [role,      setRole]      = useState(() => {
-    try { return JSON.parse(localStorage.getItem("multiSession") || "null")?.role || "client";
-  useEffect(function(){var b=document.getElementById("multi-toggle-btn");if(!b){b=document.createElement("button");b.id="multi-toggle-btn";b.style.cssText="position:fixed;bottom:80px;right:16px;z-index:9999;padding:8px 16px;border-radius:20px;border:none;cursor:pointer;background:#ff5722;color:white;font-weight:700;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.3);";document.body.appendChild(b);}var r=localStorage.getItem("multiMode")||"client";b.textContent=r==="professional"?"Modo Cliente":"Modo Profissional";b.onclick=function(){var nr=r==="professional"?"client":"professional";localStorage.setItem("multiMode",nr);try{var s=JSON.parse(localStorage.getItem("multiSession")||"{}")||{};s.role=nr;localStorage.setItem("multiSession",JSON.stringify(s));}catch(x){}window.location.reload();};},[role]); } catch { return "client"; }
+    try { return JSON.parse(localStorage.getItem("multiSession") || "null")?.role || "client"; }
+    catch { return "client"; }
   });
   const [guestRole, setGuestRole] = useState("client"); // drives the header toggle for guests
   const [screen,    setScreen]    = useState("home");
@@ -6282,35 +6282,6 @@ export default function App() {
       ))}
     </div>
   );
-}
-
-function PropostasScreen({ pedido, onBack, onAceitarProposta }) {
-  const [propostas, setPropostas] = useState([]);
-  const [loading, setLoading] = useState(true);
-  useEffect(()=>{
-    if(!pedido) return;
-    supabase.from("propostas").select("*").eq("pedido_id",pedido.id).order("created_at",{ascending:false})
-      .then(({data})=>{ setPropostas(data||[]); setLoading(false); }).catch(()=>setLoading(false));
-  },[pedido?.id]);
-  return (
-    <div style={{padding:"16px",maxWidth:480,margin:"0 auto"}}>
-      <button onClick={onBack} style={{background:"none",border:"none",fontSize:16,cursor:"pointer",marginBottom:12}}>← Voltar</button>
-      <h2 style={{fontSize:18,fontWeight:800,marginBottom:16}}>Propostas recebidas</h2>
-      {loading && <p>Carregando...</p>}
-      {!loading && propostas.length===0 && <p style={{color:"#888"}}>Nenhuma proposta ainda.</p>}
-      {propostas.map(p=>(
-        <div key={p.id} style={{background:"white",borderRadius:12,padding:16,marginBottom:12,boxShadow:"0 2px 8px rgba(0,0,0,.08)"}}>
-          <div style={{fontWeight:700,fontSize:15}}>{p.profissional_nome||"Profissional"}</div>
-          <div style={{color:"#007BFF",fontWeight:800,fontSize:18,margin:"6px 0"}}>R$ {p.valor||0}</div>
-          <div style={{color:"#666",fontSize:13,marginBottom:12}}>{p.mensagem||""}</div>
-          <button onClick={()=>onAceitarProposta&&onAceitarProposta(p)} style={{width:"100%",padding:"12px",background:"#22c55e",color:"white",border:"none",borderRadius:10,fontWeight:800,fontSize:14,cursor:"pointer"}}>✅ Aceitar Proposta</button>
-        </div>
-      ))}
-    </div>
-  );
-      if (screen==="avaliacao" && avaliacaoSvc) return <AvaliacaoScreen service={avaliacaoSvc} onBack={()=>setScreen("orders")} setScreen={setScreen} userEmail={userEmail} showToast={showToast} />;
-      if (screen==="upgrade") return <ProUpgrade onBack={()=>setScreen("home")} onSubscribe={()=>{setIsPro(true);setScreen("home");showToast("PRO ativado!");}} />;
-      if (screen==="wallet") return <WalletScreen onBack={()=>setScreen("profile")} showToast={showToast} walletBalance={walletBalance} setWalletBalance={setWalletBalance} />;
 }
 
 const renderContent = () => {
