@@ -648,11 +648,52 @@ const MOCK_PROS = [
   { id:7, name:"Sandra Costa",   cat:"Encanadora", rating:4.4, jobs:62,  value:155, verified:true,  avatar:"👩", tag:"" },
 ];
 /* ───────────────────────── RADAR SCREEN ────────────────────────────────────── */
+/* ───────────────────────── EMPRESA PROFILE SCREEN ───────────────────────────── */
+function EmpresaProfileScreen({ empresa, onBack }) {
+  const cat = CATS.find(c => c.id === empresa.categoria_servico?.toLowerCase())
+    || CATS.find(c => c.label?.toLowerCase() === empresa.categoria_servico?.toLowerCase());
+  return (
+    <div style={{ minHeight:"100vh", background:"#f5f5f5" }}>
+      <div style={{ background:"linear-gradient(135deg,#1565C0,#0D47A1)", padding:"40px 20px 60px", textAlign:"center", position:"relative" }}>
+        <button onClick={onBack} style={{ position:"absolute", top:16, left:16, background:"rgba(255,255,255,.2)", border:"none", borderRadius:20, padding:"6px 14px", color:"white", cursor:"pointer", fontSize:14 }}>← Voltar</button>
+        <div style={{ width:80, height:80, borderRadius:"50%", overflow:"hidden", background:"rgba(255,255,255,.2)", margin:"0 auto 12px", display:"flex", alignItems:"center", justifyContent:"center", fontSize:36 }}>
+          {empresa.logo_url
+            ? <img src={empresa.logo_url} alt={empresa.nome} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+            : <Briefcase size={36} color="white" />}
+        </div>
+        <h2 style={{ color:"white", margin:"0 0 8px", fontSize:22 }}>{empresa.nome}</h2>
+        <div style={{ display:"inline-flex", alignItems:"center", gap:4, background:"rgba(255,255,255,.18)", borderRadius:99, padding:"4px 10px" }}>
+          <ShieldCheck size={12} color="white" />
+          <span style={{ color:"white", fontSize:12, fontWeight:700 }}>Empresa Parceira</span>
+        </div>
+      </div>
+      <div style={{ padding:"16px", marginTop:-20 }}>
+        {empresa.descricao && (
+          <div style={{ background:"white", borderRadius:16, padding:"16px", marginBottom:12, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
+            <h3 style={{ margin:"0 0 8px", fontSize:15, color:"#333" }}>Sobre a empresa</h3>
+            <p style={{ margin:0, fontSize:13, color:"#555", lineHeight:1.6 }}>{empresa.descricao}</p>
+          </div>
+        )}
+        <div style={{ background:"white", borderRadius:16, padding:"16px", marginBottom:20, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
+          <h3 style={{ margin:"0 0 8px", fontSize:15, color:"#333" }}>Categoria</h3>
+          <div style={{ fontSize:14, color:"#1565C0", fontWeight:700 }}>{cat?.emoji} {cat?.label || empresa.categoria_servico}</div>
+        </div>
+        {empresa.telefone_contato && (
+          <a href={`https://wa.me/55${empresa.telefone_contato.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:"16px", borderRadius:16, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:16, cursor:"pointer", boxShadow:"0 4px 12px rgba(37,211,102,.4)", textDecoration:"none", boxSizing:"border-box" }}>
+            <MessageCircle size={18} /> Chamar no WhatsApp
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function RadarSearchScreen({ service, onFound }) {
   const [phase, setPhase] = useState(0); // 0=searching, 1=found // v3
   const [raio, setRaio] = useState(2);
   const [expandMsg, setExpandMsg] = useState('');
   const [empresas, setEmpresas] = useState([]);
+  const [viewingEmpresa, setViewingEmpresa] = useState(null);
 
   useEffect(() => {
     const t1 = setTimeout(() => { setRaio(5); setExpandMsg('Expandindo para 5km...'); }, 8000);
@@ -670,6 +711,10 @@ function RadarSearchScreen({ service, onFound }) {
       })
       .catch((err) => { console.error("EMPRESAS PARCEIRAS erro:", err); setEmpresas([]); });
   }, [service?.cat]);
+
+  if (viewingEmpresa) {
+    return <EmpresaProfileScreen empresa={viewingEmpresa} onBack={() => setViewingEmpresa(null)} />;
+  }
 
   const cat = CATS.find(c => c.id === service.cat);
 
@@ -787,11 +832,16 @@ function RadarSearchScreen({ service, onFound }) {
                       {emp.descricao && <p style={{ fontSize:12, color:"#888", margin:0 }}>{emp.descricao}</p>}
                     </div>
                   </div>
-                  {emp.telefone_contato && (
-                    <a href={`https://wa.me/55${emp.telefone_contato.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{ textDecoration:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"12px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:13 }}>
-                      <MessageCircle size={15} /> Chamar no WhatsApp
-                    </a>
-                  )}
+                  <div style={{ display:"grid", gridTemplateColumns: emp.telefone_contato ? "1fr 1fr" : "1fr", gap:9 }}>
+                    <button onClick={() => setViewingEmpresa(emp)} style={{ padding:"12px 0", borderRadius:12, border:`1.5px solid ${B}`, background:"white", color:B, fontWeight:800, fontSize:12, cursor:"pointer" }}>
+                      VER PERFIL
+                    </button>
+                    {emp.telefone_contato && (
+                      <a href={`https://wa.me/55${emp.telefone_contato.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{ textDecoration:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"12px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:12 }}>
+                        <MessageCircle size={14} /> Chamar no WhatsApp
+                      </a>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
