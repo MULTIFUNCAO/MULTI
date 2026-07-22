@@ -5791,9 +5791,6 @@ function NewOrderCard({ order, onAccept, onReject }) {
   );
 }
 
-
-
-export default 
 // ===== AVALIACAO SCREEN =====
 function AvaliacaoScreen({ service, onBack, setScreen, userEmail, showToast }) {
   if(!service) return null;
@@ -5855,7 +5852,7 @@ function AvaliacaoScreen({ service, onBack, setScreen, userEmail, showToast }) {
   );
 }
 
-function App() {
+export default function App() {
   console.log("APP FUNCTION START");
   const [selectedPro, setSelectedPro] = useState(null);
   const [role,      setRole]      = useState(() => {
