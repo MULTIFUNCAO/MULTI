@@ -47,3 +47,17 @@ create policy "Cadastro publico de empresas"
   for insert
   to anon, authenticated
   with check (true);
+
+-- 6. RLS: permite que a empresa edite seu próprio cadastro (telefone,
+-- descrição, logo) na EmpresaHomeScreen. Mesma ressalva do item 5: como
+-- o app não usa sessão real do Supabase Auth no frontend (só a chave
+-- anon), não dá pra restringir via auth.uid() = user_id de verdade —
+-- a policy fica permissiva, igual ao INSERT do item 5. Sem isso, o botão
+-- "Salvar alterações" falha silenciosamente (RLS bloqueia sem erro).
+drop policy if exists "Edicao publica de empresas" on empresas;
+create policy "Edicao publica de empresas"
+  on empresas
+  for update
+  to anon, authenticated
+  using (true)
+  with check (true);

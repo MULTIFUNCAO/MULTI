@@ -704,15 +704,62 @@ function EmpresaProfileScreen({ empresa, onBack, onLogout }) {
   );
 }
 
+/* Card de empresa parceira — usado no RadarSearchScreen (resultado de busca) e
+   no preview "Como você aparece pros clientes" do EmpresaHomeScreen. */
+function EmpresaCard({ emp, onVerPerfil }) {
+  return (
+    <div style={{ background:"white", borderRadius:20, overflow:"hidden", boxShadow:"0 4px 20px rgba(0,0,0,.08)", border:"1px solid #F0F0F0", padding:"14px 16px" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
+        <div style={{ width:52, height:52, borderRadius:16, overflow:"hidden", background:"#F8F9FA", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+          {emp.logo_url
+            ? <img src={emp.logo_url} alt={emp.nome} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+            : <Briefcase size={24} color="#aaa" />}
+        </div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:3, flexWrap:"wrap" }}>
+            <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:0 }}>{emp.nome}</p>
+            <span style={{ display:"flex", alignItems:"center", gap:3, background:"#E8F4FF", border:"1px solid #B8DBFF", borderRadius:99, padding:"2px 8px" }}>
+              <ShieldCheck size={11} color={B} />
+              <span style={{ fontSize:10, fontWeight:800, color:B }}>Empresa Parceira</span>
+            </span>
+          </div>
+          {emp.descricao && <p style={{ fontSize:12, color:"#888", margin:0 }}>{emp.descricao}</p>}
+        </div>
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns: emp.telefone_contato ? "1fr 1fr" : "1fr", gap:9 }}>
+        <button onClick={() => onVerPerfil?.(emp)} style={{ padding:"12px 0", borderRadius:12, border:`1.5px solid ${B}`, background:"white", color:B, fontWeight:800, fontSize:12, cursor:"pointer" }}>
+          VER PERFIL
+        </button>
+        {emp.telefone_contato && (
+          <a href={`https://wa.me/55${emp.telefone_contato.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{ textDecoration:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"12px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:12 }}>
+            <MessageCircle size={14} /> Chamar no WhatsApp
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ───────────────────────── EMPRESA HOME (área logada, somente leitura) ─────────── */
-function EmpresaHomeScreen({ userEmail, onLogout }) {
+function EmpresaHomeScreen({ userEmail, onLogout, showToast }) {
   const [empresa, setEmpresa] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [phone, setPhone] = useState("");
+  const [descricao, setDescricao] = useState("");
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [showFullPreview, setShowFullPreview] = useState(false);
 
   useEffect(() => {
     if (!userEmail) { setLoading(false); return; }
     supabase.from("empresas").select("*").eq("email", userEmail).maybeSingle()
-      .then(({ data }) => { setEmpresa(data || null); setLoading(false); })
+      .then(({ data }) => {
+        setEmpresa(data || null);
+        setPhone(maskPhone(data?.telefone_contato || ""));
+        setDescricao(data?.descricao || "");
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, [userEmail]);
 
@@ -734,7 +781,128 @@ function EmpresaHomeScreen({ userEmail, onLogout }) {
     );
   }
 
-  return <EmpresaProfileScreen empresa={empresa} onLogout={onLogout} />;
+  const previewEmpresa = { ...empresa, telefone_contato: phone.replace(/\D/g, ""), descricao, logo_url: logoPreview || empresa.logo_url };
+
+  if (showFullPreview) {
+    return <EmpresaProfileScreen empresa={previewEmpresa} onBack={() => setShowFullPreview(false)} />;
+  }
+
+  const handleLogoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      let logoUrl = empresa.logo_url;
+      if (logoFile) {
+        const ext = logoFile.type.includes("png") ? "png" : "jpg";
+        const path = `empresas_logo_${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, logoFile, { contentType: logoFile.type, upsert: true });
+        if (upErr) throw upErr;
+        logoUrl = supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl;
+      }
+      const updates = { telefone_contato: phone.replace(/\D/g, ""), descricao: descricao.trim() || null, logo_url: logoUrl };
+      const { error } = await supabase.from("empresas").update(updates).eq("id", empresa.id);
+      if (error) throw error;
+      setEmpresa(e => ({ ...e, ...updates }));
+      setLogoFile(null);
+      setLogoPreview(null);
+      showToast?.("✅ Alterações salvas!", G);
+    } catch (e) {
+      showToast?.("❌ Erro ao salvar: " + (e.message || ""), "#DC2626");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#f5f5f5", paddingBottom:40 }}>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+
+      <div style={{ background:"linear-gradient(135deg,#1565C0,#0D47A1)", padding:"32px 20px 48px", textAlign:"center" }}>
+        <label htmlFor="empresa-home-logo-input" style={{ width:80, height:80, borderRadius:"50%", overflow:"hidden", background:"rgba(255,255,255,.2)", margin:"0 auto 10px", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", position:"relative" }}>
+          {(logoPreview || empresa.logo_url)
+            ? <img src={logoPreview || empresa.logo_url} alt={empresa.nome} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+            : <Briefcase size={32} color="white" />}
+          <div style={{ position:"absolute", bottom:0, right:0, width:24, height:24, background:O, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", border:"2px solid white" }}>
+            <Camera size={12} color="white" />
+          </div>
+        </label>
+        <input id="empresa-home-logo-input" type="file" accept="image/*" onChange={handleLogoChange} style={{ display:"none" }} />
+        <h2 style={{ color:"white", margin:"0 0 8px", fontSize:22 }}>{empresa.nome}</h2>
+        <div style={{ display:"inline-flex", alignItems:"center", gap:4, background:"rgba(255,255,255,.18)", borderRadius:99, padding:"4px 10px" }}>
+          <ShieldCheck size={12} color="white" />
+          <span style={{ color:"white", fontSize:12, fontWeight:700 }}>Empresa Parceira</span>
+        </div>
+      </div>
+
+      <div style={{ padding:"16px", marginTop:-24 }}>
+
+        {/* dados fixos, somente leitura */}
+        <div style={{ background:"white", borderRadius:16, padding:"16px", marginBottom:12, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
+          <h3 style={{ margin:"0 0 10px", fontSize:15, color:"#333" }}>Dados cadastrais</h3>
+          <div style={{ marginBottom:8 }}>
+            <p style={{ margin:0, fontSize:10, fontWeight:800, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1 }}>Razão Social</p>
+            <p style={{ margin:0, fontSize:13, color:"#333", fontWeight:600 }}>{empresa.razao_social || "—"}</p>
+          </div>
+          <div style={{ marginBottom:8 }}>
+            <p style={{ margin:0, fontSize:10, fontWeight:800, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1 }}>CNPJ</p>
+            <p style={{ margin:0, fontSize:13, color:"#333", fontWeight:600 }}>{empresa.cnpj || "—"}</p>
+          </div>
+          <div>
+            <p style={{ margin:0, fontSize:10, fontWeight:800, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1 }}>Categoria de Serviço</p>
+            <p style={{ margin:0, fontSize:13, color:"#333", fontWeight:600 }}>{CATS.find(c => c.id === empresa.categoria_servico?.toLowerCase())?.label || empresa.categoria_servico || "—"}</p>
+          </div>
+        </div>
+
+        {/* campos editáveis */}
+        <div style={{ background:"white", borderRadius:16, padding:"16px", marginBottom:12, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
+          <h3 style={{ margin:"0 0 12px", fontSize:15, color:"#333" }}>Editar informações</h3>
+          <FormField IconComp={WA_ICON} label="Telefone de Contato">
+            <input autoComplete="tel" type="tel" placeholder="(00) 00000-0000" value={phone}
+              onChange={e => setPhone(maskPhone(e.target.value))}
+              style={REG_INPUT} />
+          </FormField>
+          <div>
+            <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#6B7280", textTransform:"uppercase", letterSpacing:1.1, marginBottom:7 }}>Descrição</label>
+            <textarea value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Conte um pouco sobre os serviços da sua empresa"
+              style={{ width:"100%", minHeight:90, border:"1.5px solid #E5E7EB", borderRadius:14, padding:"13px 14px", fontSize:14, color:"#1a1a2e", outline:"none", fontFamily:"inherit", boxSizing:"border-box", resize:"none" }} />
+          </div>
+        </div>
+
+        {/* preview exato do card de busca */}
+        <div style={{ marginBottom:12 }}>
+          <p style={{ fontSize:12, fontWeight:800, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1.2, margin:"0 0 10px" }}>Como você aparece pros clientes</p>
+          <EmpresaCard emp={previewEmpresa} onVerPerfil={() => setShowFullPreview(true)} />
+        </div>
+
+        {/* salvar */}
+        <button onClick={handleSave} disabled={saving} style={{
+          width:"100%", padding:"15px 0", borderRadius:16, border:"none", marginBottom:12,
+          background: saving ? "#93C5FD" : `linear-gradient(135deg,${B},#0055d4)`,
+          color:"white", fontWeight:900, fontSize:14, cursor: saving ? "default" : "pointer",
+          display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+          boxShadow: saving ? "none" : `0 4px 12px ${B}44`,
+        }}>
+          {saving
+            ? <><span style={{ width:16, height:16, border:"2px solid white", borderTopColor:"transparent", borderRadius:"50%", display:"inline-block", animation:"spin .7s linear infinite" }} /> Salvando…</>
+            : <><Check size={16} /> Salvar alterações</>}
+        </button>
+
+        {/* sair */}
+        <div onClick={onLogout} style={{ display:"flex", alignItems:"center", gap:13, padding:"13px 16px", cursor:"pointer", background:"white", borderRadius:16, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
+          <span style={{ width:36, height:36, borderRadius:11, background:"#FFF0F0", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            <LogOut size={17} color="#E53935" />
+          </span>
+          <p style={{ fontSize:13, fontWeight:800, color:"#E53935", margin:0 }}>Sair da Conta</p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function RadarSearchScreen({ service, onFound }) {
@@ -863,35 +1031,7 @@ function RadarSearchScreen({ service, onFound }) {
             <p style={{ fontSize:12, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.2, margin:"0 0 12px" }}>Empresas Parceiras</p>
             <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
               {empresas.map(emp => (
-                <div key={emp.id} style={{ background:"white", borderRadius:20, overflow:"hidden", boxShadow:"0 4px 20px rgba(0,0,0,.08)", border:"1px solid #F0F0F0", padding:"14px 16px" }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
-                    <div style={{ width:52, height:52, borderRadius:16, overflow:"hidden", background:"#F8F9FA", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                      {emp.logo_url
-                        ? <img src={emp.logo_url} alt={emp.nome} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-                        : <Briefcase size={24} color="#aaa" />}
-                    </div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:3, flexWrap:"wrap" }}>
-                        <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:0 }}>{emp.nome}</p>
-                        <span style={{ display:"flex", alignItems:"center", gap:3, background:"#E8F4FF", border:"1px solid #B8DBFF", borderRadius:99, padding:"2px 8px" }}>
-                          <ShieldCheck size={11} color={B} />
-                          <span style={{ fontSize:10, fontWeight:800, color:B }}>Empresa Parceira</span>
-                        </span>
-                      </div>
-                      {emp.descricao && <p style={{ fontSize:12, color:"#888", margin:0 }}>{emp.descricao}</p>}
-                    </div>
-                  </div>
-                  <div style={{ display:"grid", gridTemplateColumns: emp.telefone_contato ? "1fr 1fr" : "1fr", gap:9 }}>
-                    <button onClick={() => setViewingEmpresa(emp)} style={{ padding:"12px 0", borderRadius:12, border:`1.5px solid ${B}`, background:"white", color:B, fontWeight:800, fontSize:12, cursor:"pointer" }}>
-                      VER PERFIL
-                    </button>
-                    {emp.telefone_contato && (
-                      <a href={`https://wa.me/55${emp.telefone_contato.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{ textDecoration:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"12px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:12 }}>
-                        <MessageCircle size={14} /> Chamar no WhatsApp
-                      </a>
-                    )}
-                  </div>
-                </div>
+                <EmpresaCard key={emp.id} emp={emp} onVerPerfil={setViewingEmpresa} />
               ))}
             </div>
           </div>
@@ -6691,7 +6831,7 @@ const renderContent = () => {
 
     // Empresa parceira — home própria, somente leitura por enquanto.
     if (role === "empresa") {
-      return <EmpresaHomeScreen userEmail={userEmail} onLogout={handleLogout} />;
+      return <EmpresaHomeScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} />;
     }
 
     // Route guard: logged-in clients must never see the professional feed.
