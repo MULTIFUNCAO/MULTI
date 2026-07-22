@@ -5856,6 +5856,7 @@ function AvaliacaoScreen({ service, onBack, setScreen, userEmail, showToast }) {
 }
 
 function App() {
+  console.log("APP FUNCTION START");
   const [selectedPro, setSelectedPro] = useState(null);
   const [role,      setRole]      = useState(() => {
     try { return JSON.parse(localStorage.getItem("multiSession") || "null")?.role || "client";
@@ -6433,6 +6434,7 @@ const renderContent = () => {
   }
 
     console.log("APP_RENDER: chegou no return wrapper");
+    console.log("APP RENDER END");
   return wrapper(
     <>
       {ratingTarget && (
