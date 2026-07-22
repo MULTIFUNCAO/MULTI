@@ -6434,7 +6434,6 @@ const renderContent = () => {
   }
 
     console.log("APP_RENDER: chegou no return wrapper");
-    console.log("APP RENDER END");
   return wrapper(
     <>
       {ratingTarget && (
