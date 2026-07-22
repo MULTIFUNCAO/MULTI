@@ -6574,38 +6574,50 @@ export default function App() {
   };
 
   const handleLoginComplete = (name = "", email = "", isNewAccount = false, location = "", registeredRole = "", whatsapp = "") => {
-    setIsLoggedIn(true);
-    setAuthScreen(null);
     const firstName = name.trim().split(/\s+/)[0];
-    if (name)     setUserName(firstName);
-    if (email)    setUserEmail(email);
-    if (location && location !== "sua região") setUserLocation(location);
-    const resolvedRole = registeredRole || userRole;
-    setUserRole(resolvedRole);
-    setRole(resolvedRole);
 
-    // Save session to localStorage — persists across page reloads
-    try {
-      const session = { name: firstName, email, whatsapp, location, role: resolvedRole };
-      localStorage.setItem("multiSession", JSON.stringify(session));
-      localStorage.setItem("multiUser",    JSON.stringify(session));
+    const finishLogin = (resolvedRole) => {
+      setIsLoggedIn(true);
+      setAuthScreen(null);
+      if (name)     setUserName(firstName);
+      if (email)    setUserEmail(email);
+      if (location && location !== "sua região") setUserLocation(location);
+      setUserRole(resolvedRole);
+      setRole(resolvedRole);
+
+      // Save session to localStorage — persists across page reloads
+      try {
+        const session = { name: firstName, email, whatsapp, location, role: resolvedRole };
+        localStorage.setItem("multiSession", JSON.stringify(session));
+        localStorage.setItem("multiUser",    JSON.stringify(session));
         supabase.from("usuarios").upsert({ email: session.email, name: session.name, whatsapp: session.whatsapp||null, role: session.role||"client", city: session.location||null }, { onConflict: "email" }).then(()=>{}).catch(()=>{});
-    } catch {}
+      } catch {}
 
-    setScreen("home");
-    // 7-day PRO trial for new professional sign-ups
-    if (isNewAccount && resolvedRole === "professional") {
-      setIsPro(true);
-      setTimeout(() => showToast("🎁 7 dias de Multi PRO ativados! Explore tudo.", "#7C3AED"), 600);
-    }
-    if (isNewAccount) {
-      setTimeout(() => sendWelcomeEmail({ name, email, role: resolvedRole }), 400);
-    }
-    if (pendingIntent?.fn) {
-      const fn = pendingIntent.fn;
-      setPendingIntent(null);
-      setTimeout(fn, 80);
-    }
+      setScreen("home");
+      // 7-day PRO trial for new professional sign-ups
+      if (isNewAccount && resolvedRole === "professional") {
+        setIsPro(true);
+        setTimeout(() => showToast("🎁 7 dias de Multi PRO ativados! Explore tudo.", "#7C3AED"), 600);
+      }
+      if (isNewAccount) {
+        setTimeout(() => sendWelcomeEmail({ name, email, role: resolvedRole }), 400);
+      }
+      if (pendingIntent?.fn) {
+        const fn = pendingIntent.fn;
+        setPendingIntent(null);
+        setTimeout(fn, 80);
+      }
+    };
+
+    const fallbackRole = registeredRole || userRole;
+    if (!email) { finishLogin(fallbackRole); return; }
+
+    // Uma conta com empresa_id vinculado é sempre "empresa", mesmo que o role
+    // devolvido pelo login/cadastro diga outra coisa — evita que login/registro
+    // regrave "client"/"professional" por cima de uma conta de empresa parceira.
+    supabase.from("usuarios").select("empresa_id").eq("email", email).maybeSingle()
+      .then(({ data }) => finishLogin(data?.empresa_id ? "empresa" : fallbackRole))
+      .catch(() => finishLogin(fallbackRole));
   };
 
   // ── SERVICE HANDLERS ────────────────────────────────────────────────────────
