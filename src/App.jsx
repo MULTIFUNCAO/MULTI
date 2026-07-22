@@ -663,7 +663,7 @@ function RadarSearchScreen({ service, onFound }) {
 
   useEffect(() => {
     if (!service?.cat) return;
-    supabase.from("empresas").select("*").eq("categoria_servico", service.cat).eq("ativo", true)
+    supabase.from("empresas").select("*").ilike("categoria_servico", service.cat).eq("ativo", true)
       .then(({ data }) => setEmpresas(data || []))
       .catch(() => setEmpresas([]));
   }, [service?.cat]);
