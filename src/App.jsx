@@ -649,13 +649,15 @@ const MOCK_PROS = [
 ];
 /* ───────────────────────── RADAR SCREEN ────────────────────────────────────── */
 /* ───────────────────────── EMPRESA PROFILE SCREEN ───────────────────────────── */
-function EmpresaProfileScreen({ empresa, onBack }) {
+function EmpresaProfileScreen({ empresa, onBack, onLogout }) {
   const cat = CATS.find(c => c.id === empresa.categoria_servico?.toLowerCase())
     || CATS.find(c => c.label?.toLowerCase() === empresa.categoria_servico?.toLowerCase());
   return (
     <div style={{ minHeight:"100vh", background:"#f5f5f5" }}>
       <div style={{ background:"linear-gradient(135deg,#1565C0,#0D47A1)", padding:"40px 20px 60px", textAlign:"center", position:"relative" }}>
-        <button onClick={onBack} style={{ position:"absolute", top:16, left:16, background:"rgba(255,255,255,.2)", border:"none", borderRadius:20, padding:"6px 14px", color:"white", cursor:"pointer", fontSize:14 }}>← Voltar</button>
+        {onBack && (
+          <button onClick={onBack} style={{ position:"absolute", top:16, left:16, background:"rgba(255,255,255,.2)", border:"none", borderRadius:20, padding:"6px 14px", color:"white", cursor:"pointer", fontSize:14 }}>← Voltar</button>
+        )}
         <div style={{ width:80, height:80, borderRadius:"50%", overflow:"hidden", background:"rgba(255,255,255,.2)", margin:"0 auto 12px", display:"flex", alignItems:"center", justifyContent:"center", fontSize:36 }}>
           {empresa.logo_url
             ? <img src={empresa.logo_url} alt={empresa.nome} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
@@ -674,18 +676,65 @@ function EmpresaProfileScreen({ empresa, onBack }) {
             <p style={{ margin:0, fontSize:13, color:"#555", lineHeight:1.6 }}>{empresa.descricao}</p>
           </div>
         )}
-        <div style={{ background:"white", borderRadius:16, padding:"16px", marginBottom:20, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
+        <div style={{ background:"white", borderRadius:16, padding:"16px", marginBottom:12, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
           <h3 style={{ margin:"0 0 8px", fontSize:15, color:"#333" }}>Categoria</h3>
           <div style={{ fontSize:14, color:"#1565C0", fontWeight:700 }}>{cat?.emoji} {cat?.label || empresa.categoria_servico}</div>
         </div>
-        {empresa.telefone_contato && (
+        {empresa.cnpj && (
+          <div style={{ background:"white", borderRadius:16, padding:"16px", marginBottom:20, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
+            <h3 style={{ margin:"0 0 8px", fontSize:15, color:"#333" }}>CNPJ</h3>
+            <div style={{ fontSize:14, color:"#555", fontWeight:700 }}>{empresa.cnpj}</div>
+          </div>
+        )}
+        {empresa.telefone_contato && !onLogout && (
           <a href={`https://wa.me/55${empresa.telefone_contato.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:"16px", borderRadius:16, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:16, cursor:"pointer", boxShadow:"0 4px 12px rgba(37,211,102,.4)", textDecoration:"none", boxSizing:"border-box" }}>
             <MessageCircle size={18} /> Chamar no WhatsApp
           </a>
         )}
+        {onLogout && (
+          <div onClick={onLogout} style={{ display:"flex", alignItems:"center", gap:13, padding:"13px 16px", cursor:"pointer", background:"white", borderRadius:16, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
+            <span style={{ width:36, height:36, borderRadius:11, background:"#FFF0F0", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              <LogOut size={17} color="#E53935" />
+            </span>
+            <p style={{ fontSize:13, fontWeight:800, color:"#E53935", margin:0 }}>Sair da Conta</p>
+          </div>
+        )}
       </div>
     </div>
   );
+}
+
+/* ───────────────────────── EMPRESA HOME (área logada, somente leitura) ─────────── */
+function EmpresaHomeScreen({ userEmail, onLogout }) {
+  const [empresa, setEmpresa] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userEmail) { setLoading(false); return; }
+    supabase.from("empresas").select("*").eq("email", userEmail).maybeSingle()
+      .then(({ data }) => { setEmpresa(data || null); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [userEmail]);
+
+  if (loading) {
+    return (
+      <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#f5f5f5" }}>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        <span style={{ width:32, height:32, border:`3px solid ${B}33`, borderTopColor:B, borderRadius:"50%", display:"inline-block", animation:"spin .7s linear infinite" }} />
+      </div>
+    );
+  }
+
+  if (!empresa) {
+    return (
+      <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"#f5f5f5", padding:32, textAlign:"center" }}>
+        <p style={{ fontSize:14, color:"#6B7280", marginBottom:20 }}>Não encontramos os dados da sua empresa.</p>
+        <button onClick={onLogout} style={{ padding:"12px 24px", borderRadius:14, border:"none", background:"#E53935", color:"white", fontWeight:800, fontSize:13, cursor:"pointer" }}>Sair da Conta</button>
+      </div>
+    );
+  }
+
+  return <EmpresaProfileScreen empresa={empresa} onLogout={onLogout} />;
 }
 
 function RadarSearchScreen({ service, onFound }) {
@@ -6638,6 +6687,11 @@ const renderContent = () => {
           </button>
         </div>
       );
+    }
+
+    // Empresa parceira — home própria, somente leitura por enquanto.
+    if (role === "empresa") {
+      return <EmpresaHomeScreen userEmail={userEmail} onLogout={handleLogout} />;
     }
 
     // Route guard: logged-in clients must never see the professional feed.
