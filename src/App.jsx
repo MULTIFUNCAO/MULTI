@@ -652,6 +652,7 @@ function RadarSearchScreen({ service, onFound }) {
   const [phase, setPhase] = useState(0); // 0=searching, 1=found // v3
   const [raio, setRaio] = useState(2);
   const [expandMsg, setExpandMsg] = useState('');
+  const [empresas, setEmpresas] = useState([]);
 
   useEffect(() => {
     const t1 = setTimeout(() => { setRaio(5); setExpandMsg('Expandindo para 5km...'); }, 8000);
@@ -659,6 +660,13 @@ function RadarSearchScreen({ service, onFound }) {
     const t3 = setTimeout(() => setPhase(1), 24000);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, []);
+
+  useEffect(() => {
+    if (!service?.cat) return;
+    supabase.from("empresas").select("*").eq("categoria_servico", service.cat).eq("ativo", true)
+      .then(({ data }) => setEmpresas(data || []))
+      .catch(() => setEmpresas([]));
+  }, [service?.cat]);
 
   const cat = CATS.find(c => c.id === service.cat);
 
@@ -809,6 +817,41 @@ function RadarSearchScreen({ service, onFound }) {
             </div>
           ))}
         </div>
+
+        {/* empresas parceiras */}
+        {empresas.length > 0 && (
+          <div style={{ padding:"22px 16px 0" }}>
+            <p style={{ fontSize:12, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.2, margin:"0 0 12px" }}>Empresas Parceiras</p>
+            <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+              {empresas.map(emp => (
+                <div key={emp.id} style={{ background:"white", borderRadius:20, overflow:"hidden", boxShadow:"0 4px 20px rgba(0,0,0,.08)", border:"1px solid #F0F0F0", padding:"14px 16px" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
+                    <div style={{ width:52, height:52, borderRadius:16, overflow:"hidden", background:"#F8F9FA", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                      {emp.logo_url
+                        ? <img src={emp.logo_url} alt={emp.nome} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                        : <Briefcase size={24} color="#aaa" />}
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:3, flexWrap:"wrap" }}>
+                        <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:0 }}>{emp.nome}</p>
+                        <span style={{ display:"flex", alignItems:"center", gap:3, background:"#E8F4FF", border:"1px solid #B8DBFF", borderRadius:99, padding:"2px 8px" }}>
+                          <ShieldCheck size={11} color={B} />
+                          <span style={{ fontSize:10, fontWeight:800, color:B }}>Empresa Parceira</span>
+                        </span>
+                      </div>
+                      {emp.descricao && <p style={{ fontSize:12, color:"#888", margin:0 }}>{emp.descricao}</p>}
+                    </div>
+                  </div>
+                  {emp.telefone_contato && (
+                    <a href={`https://wa.me/55${emp.telefone_contato.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{ textDecoration:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"12px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:13 }}>
+                      <MessageCircle size={15} /> Chamar no WhatsApp
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
