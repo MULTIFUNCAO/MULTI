@@ -709,12 +709,7 @@ function EmpresaProfileScreen({ empresa, onBack, onLogout }) {
 function EmpresaCard({ emp, onVerPerfil }) {
   const isOnline = emp.status === true;
   return (
-    <div style={{ background:"white", borderRadius:20, overflow:"hidden", boxShadow:"0 4px 20px rgba(0,0,0,.08)", border:"1px solid #F0F0F0", padding:"14px 16px", position:"relative", opacity: isOnline ? 1 : .6 }}>
-      {!isOnline && (
-        <span style={{ position:"absolute", top:10, right:10, zIndex:1, background:"rgba(17,17,17,.75)", color:"white", fontSize:10, fontWeight:800, borderRadius:99, padding:"4px 10px" }}>
-          Fechado no momento
-        </span>
-      )}
+    <div style={{ background:"white", borderRadius:20, overflow:"hidden", boxShadow:"0 4px 20px rgba(0,0,0,.08)", border:"1px solid #F0F0F0", padding:"14px 16px", opacity: isOnline ? 1 : .7 }}>
       <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
         <div style={{ width:52, height:52, borderRadius:16, overflow:"hidden", background:"#F8F9FA", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
           {emp.logo_url
@@ -728,6 +723,11 @@ function EmpresaCard({ emp, onVerPerfil }) {
               <ShieldCheck size={11} color={B} />
               <span style={{ fontSize:10, fontWeight:800, color:B }}>Empresa Parceira</span>
             </span>
+            {!isOnline && (
+              <span style={{ background:"#F3F4F6", border:"1px solid #E5E7EB", color:"#6B7280", fontSize:10, fontWeight:800, borderRadius:99, padding:"2px 8px" }}>
+                Fechado no momento
+              </span>
+            )}
           </div>
           {emp.descricao && <p style={{ fontSize:12, color:"#888", margin:0 }}>{emp.descricao}</p>}
         </div>
@@ -821,46 +821,37 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast }) {
         .pulse-offline { animation: radar-pulse-off 2.4s ease-out infinite; }
       `}</style>
 
-      <div style={{ background:"linear-gradient(135deg,#1565C0,#0D47A1)", padding:"32px 20px 48px", textAlign:"center" }}>
-        <div style={{ width:80, height:80, borderRadius:"50%", overflow:"hidden", background:"rgba(255,255,255,.2)", margin:"0 auto 10px", display:"flex", alignItems:"center", justifyContent:"center" }}>
-          {empresa.logo_url
-            ? <img src={empresa.logo_url} alt={empresa.nome} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-            : <Briefcase size={32} color="white" />}
-        </div>
-        <h2 style={{ color:"white", margin:"0 0 8px", fontSize:22 }}>{empresa.nome}</h2>
-        <div style={{ display:"inline-flex", alignItems:"center", gap:4, background:"rgba(255,255,255,.18)", borderRadius:99, padding:"4px 10px" }}>
-          <ShieldCheck size={12} color="white" />
-          <span style={{ color:"white", fontSize:12, fontWeight:700 }}>Empresa Parceira</span>
-        </div>
-      </div>
+      <div style={{ padding:"16px 16px 0" }}>
 
-      <div style={{ padding:"16px", marginTop:-24 }}>
+        {/* ── CARD DE DESTAQUE — tom grafite/corporativo, compacto, logo ao lado do nome ── */}
+        <div style={{ borderRadius:20, overflow:"hidden", position:"relative", boxShadow:"0 8px 24px rgba(15,23,42,.22)", marginBottom:16 }}>
+          <div style={{ position:"absolute", inset:0, background:"linear-gradient(135deg,#1F2937 0%,#374151 100%)" }} />
 
-        {/* ── BUSINESS CARD BANNER — mesmo padrão visual do ProfessionalHome ── */}
-        <div style={{ borderRadius:24, overflow:"hidden", position:"relative", boxShadow:"0 10px 32px rgba(0,0,0,.22)", marginBottom:16 }}>
-          <div style={{ position:"absolute", inset:0, background:"linear-gradient(140deg,#1a1a2e 0%,#2d2d44 55%,#3a2418 100%)" }} />
-          <div style={{ position:"absolute", top:-24, right:-24, width:140, height:140, borderRadius:"50%", background:"rgba(255,87,34,.12)" }} />
-          <div style={{ position:"absolute", top:14, right:18, fontSize:44, opacity:.18 }}>🏢</div>
-          <div style={{ position:"absolute", bottom:14, right:22, fontSize:26, opacity:.25 }}>✅</div>
-
-          <div style={{ position:"relative", zIndex:1, padding:"22px 22px 18px" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
-              <div style={{ width:7, height:7, borderRadius:"50%", background: isOnline ? G : "#6B7280" }} />
-              <span style={{ fontSize:10, fontWeight:800, color: isOnline ? G : "#9CA3AF", textTransform:"uppercase", letterSpacing:1.5 }}>
-                {isOnline ? "Online — Recebendo pedidos" : "Offline"}
-              </span>
-            </div>
-            <h3 style={{ fontSize:19, fontWeight:900, color:"white", lineHeight:1.3, margin:"0 0 10px" }}>
-              Olá, {empresa.nome}!
-            </h3>
-            <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:16 }}>
-              <span style={{ fontSize:12, fontWeight:700, color:"rgba(255,255,255,.75)" }}>
-                {cat?.emoji} {cat?.label || empresa.categoria_servico}
-              </span>
-              <span style={{ display:"inline-flex", alignItems:"center", gap:4, background:"rgba(255,255,255,.12)", borderRadius:99, padding:"3px 9px" }}>
-                <ShieldCheck size={11} color="#4ade80" />
-                <span style={{ color:"#4ade80", fontSize:11, fontWeight:800 }}>Perfil Verificado</span>
-              </span>
+          <div style={{ position:"relative", zIndex:1, padding:"16px 18px" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:14 }}>
+              <div style={{ width:44, height:44, borderRadius:12, overflow:"hidden", background:"rgba(255,255,255,.1)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                {empresa.logo_url
+                  ? <img src={empresa.logo_url} alt={empresa.nome} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                  : <Briefcase size={20} color="rgba(255,255,255,.7)" />}
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <p style={{ fontSize:16, fontWeight:800, color:"white", margin:"0 0 4px", lineHeight:1.25 }}>{empresa.nome}</p>
+                <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+                  <span style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,.6)" }}>
+                    {cat?.emoji} {cat?.label || empresa.categoria_servico}
+                  </span>
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:3, background:"rgba(255,255,255,.1)", borderRadius:99, padding:"2px 7px" }}>
+                    <ShieldCheck size={10} color="#4ade80" />
+                    <span style={{ color:"#4ade80", fontSize:10, fontWeight:800 }}>Verificado</span>
+                  </span>
+                </div>
+              </div>
+              <div style={{ display:"flex", alignItems:"center", gap:5, flexShrink:0 }}>
+                <div style={{ width:7, height:7, borderRadius:"50%", background: isOnline ? G : "#6B7280" }} />
+                <span style={{ fontSize:10, fontWeight:800, color: isOnline ? G : "#9CA3AF", textTransform:"uppercase", letterSpacing:1 }}>
+                  {isOnline ? "Online" : "Offline"}
+                </span>
+              </div>
             </div>
 
             <button
@@ -868,14 +859,14 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast }) {
               disabled={togglingStatus}
               className={isOnline ? "pulse-online" : "pulse-offline"}
               style={{
-                width:"100%", padding:"14px 0", borderRadius:16, border:"none", cursor: togglingStatus ? "default" : "pointer",
-                background: isOnline ? `linear-gradient(135deg,${G},#16a34a)` : "rgba(255,255,255,.12)",
+                width:"100%", padding:"13px 0", borderRadius:14, border:"none", cursor: togglingStatus ? "default" : "pointer",
+                background: isOnline ? `linear-gradient(135deg,${G},#16a34a)` : "rgba(255,255,255,.1)",
                 color: isOnline ? "white" : "#9CA3AF",
-                fontWeight:900, fontSize:15,
-                display:"flex", alignItems:"center", justifyContent:"center", gap:10,
+                fontWeight:900, fontSize:14,
+                display:"flex", alignItems:"center", justifyContent:"center", gap:8,
                 transition:"background .3s, color .3s",
               }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <circle cx="12" cy="12" r="2"/>
                 <path d="M16.24 7.76a6 6 0 0 1 0 8.49"/>
                 <path d="M7.76 7.76a6 6 0 0 0 0 8.49"/>
@@ -886,7 +877,9 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast }) {
             </button>
           </div>
         </div>
+      </div>
 
+      <div style={{ padding:"0 16px" }}>
         {/* preview exato do card de busca */}
         <div style={{ marginBottom:12 }}>
           <p style={{ fontSize:12, fontWeight:800, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1.2, margin:"0 0 10px" }}>Como você aparece pros clientes</p>
