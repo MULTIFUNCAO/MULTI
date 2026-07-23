@@ -3973,14 +3973,19 @@ function ProfileScreen({ role, isPro, userName: initialUserName, userEmail, show
   const [portfolioImgs, setPortfolioImgs] = useState([]);
   const [categoriaServico, setCategoriaServico] = useState("");
   const [savingCategoria, setSavingCategoria] = useState(false);
+  // Mesma proteção contra corrida do ProfessionalHome: se o usuário já mudou a
+  // categoria antes desse fetch inicial responder, não deixa a resposta antiga
+  // sobrescrever a escolha recém-feita.
+  const categoriaTocadaRef = useRef(false);
   useEffect(() => {
     if (role !== "professional" || !userEmail) return;
     supabase.from("usuarios").select("categoria_servico").eq("email", userEmail).maybeSingle()
-      .then(({ data }) => setCategoriaServico(data?.categoria_servico || ""))
+      .then(({ data }) => { if (!categoriaTocadaRef.current) setCategoriaServico(data?.categoria_servico || ""); })
       .catch(() => {});
   }, [role, userEmail]);
 
   const handleSaveCategoria = async (novaCategoria) => {
+    categoriaTocadaRef.current = true;
     setCategoriaServico(novaCategoria);
     if (!userEmail) return;
     setSavingCategoria(true);
@@ -6147,12 +6152,17 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   useEffect(()=>{ supabase.from("pedidos").select("*").eq("status","aberto").order("created_at",{ascending:false}).limit(50).then(({data})=>{ if(data&&data.length>0) setRealPedidos(data.map(p=>({id:p.id,cat:p.categoria||"servico",title:(p.descricao||p.categoria||"Serviço").slice(0,40),desc:p.descricao||"",value:p.valor||0,loc:p.cidade||"sua região",time:new Date(p.created_at).toLocaleDateString("pt-BR"),client:p.cliente_nome||"Cliente",rating:4.5,urgent:false,emoji:"🔧",bg:"#FFF8E1",photo:null,photos:p.fotos}))); }).catch(()=>{}); },[]);
 
   // Carrega categoria + status persistidos, mesmo padrão do handleToggleOnline da empresa.
+  // userToggledRef evita que essa carga inicial (assíncrona) sobrescreva um clique em
+  // "Ficar Online" que já tenha acontecido antes dela terminar — sem isso, um clique
+  // rápido logo após a tela abrir "não fazia efeito" (a resposta do fetch chegava
+  // depois e revertia o estado local pro valor antigo do banco).
+  const userToggledRef = useRef(false);
   useEffect(() => {
     if (!userEmail) return;
     supabase.from("usuarios").select("categoria_servico,status").eq("email", userEmail).maybeSingle()
       .then(({ data }) => {
         setCategoriaServico(data?.categoria_servico || "");
-        setOnline(!!data?.status);
+        if (!userToggledRef.current) setOnline(!!data?.status);
       })
       .catch(() => {});
   }, [userEmail]);
@@ -6177,6 +6187,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
 
   const handleFicarOnline=async()=>{
   const next=!online;
+  userToggledRef.current=true;
 
   // Categoria obrigatória antes de poder ficar online (senão o profissional nunca
   // aparece pra nenhum pedido, já que a busca do notify-pedido casa por categoria).
