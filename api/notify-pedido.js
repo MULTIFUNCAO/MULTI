@@ -78,19 +78,7 @@ export default async function handler(req, res) {
     });
 
     const data = await oneSignalRes.json();
-    res.status(200).json({
-      sent: playerIds.length,
-      oneSignal: data,
-      // DIAGNÓSTICO TEMPORÁRIO — remover depois de resolver o problema da chave.
-      // Não expõe o valor real, só metadados pra confirmar se a env var que a
-      // function está enxergando mudou entre um redeploy e outro.
-      _debugKey: {
-        length: restApiKey.length,
-        first4: restApiKey.slice(0, 4),
-        last4: restApiKey.slice(-4),
-        hasLeadingOrTrailingWhitespace: restApiKey !== restApiKey.trim(),
-      },
-    });
+    res.status(200).json({ sent: playerIds.length, oneSignal: data });
   } catch (err) {
     res.status(500).json({ error: err.message || String(err) });
   }
