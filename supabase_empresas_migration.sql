@@ -61,3 +61,9 @@ create policy "Edicao publica de empresas"
   to anon, authenticated
   using (true)
   with check (true);
+
+-- 7. Coluna de presença online/offline (EmpresaHomeScreen "Ficar Online"/"Ficar Offline").
+-- Reflete no RadarSearchScreen: quando false, o card da empresa aparece com o selo
+-- "Fechado no momento" (esmaecido, mas ainda visível e clicável).
+alter table empresas
+  add column if not exists status boolean not null default false;

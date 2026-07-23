@@ -707,8 +707,14 @@ function EmpresaProfileScreen({ empresa, onBack, onLogout }) {
 /* Card de empresa parceira — usado no RadarSearchScreen (resultado de busca) e
    no preview "Como você aparece pros clientes" do EmpresaHomeScreen. */
 function EmpresaCard({ emp, onVerPerfil }) {
+  const isOnline = emp.status === true;
   return (
-    <div style={{ background:"white", borderRadius:20, overflow:"hidden", boxShadow:"0 4px 20px rgba(0,0,0,.08)", border:"1px solid #F0F0F0", padding:"14px 16px" }}>
+    <div style={{ background:"white", borderRadius:20, overflow:"hidden", boxShadow:"0 4px 20px rgba(0,0,0,.08)", border:"1px solid #F0F0F0", padding:"14px 16px", position:"relative", opacity: isOnline ? 1 : .6 }}>
+      {!isOnline && (
+        <span style={{ position:"absolute", top:10, right:10, zIndex:1, background:"rgba(17,17,17,.75)", color:"white", fontSize:10, fontWeight:800, borderRadius:99, padding:"4px 10px" }}>
+          Fechado no momento
+        </span>
+      )}
       <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
         <div style={{ width:52, height:52, borderRadius:16, overflow:"hidden", background:"#F8F9FA", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
           {emp.logo_url
@@ -744,12 +750,162 @@ function EmpresaCard({ emp, onVerPerfil }) {
 function EmpresaHomeScreen({ userEmail, onLogout, showToast }) {
   const [empresa, setEmpresa] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showFullPreview, setShowFullPreview] = useState(false);
+  const [togglingStatus, setTogglingStatus] = useState(false);
+
+  useEffect(() => {
+    if (!userEmail) { setLoading(false); return; }
+    supabase.from("empresas").select("*").eq("email", userEmail).maybeSingle()
+      .then(({ data }) => {
+        setEmpresa(data || null);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [userEmail]);
+
+  if (loading) {
+    return (
+      <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#f5f5f5" }}>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        <span style={{ width:32, height:32, border:`3px solid ${B}33`, borderTopColor:B, borderRadius:"50%", display:"inline-block", animation:"spin .7s linear infinite" }} />
+      </div>
+    );
+  }
+
+  if (!empresa) {
+    return (
+      <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"#f5f5f5", padding:32, textAlign:"center" }}>
+        <p style={{ fontSize:14, color:"#6B7280", marginBottom:20 }}>Não encontramos os dados da sua empresa.</p>
+        <button onClick={onLogout} style={{ padding:"12px 24px", borderRadius:14, border:"none", background:"#E53935", color:"white", fontWeight:800, fontSize:13, cursor:"pointer" }}>Sair da Conta</button>
+      </div>
+    );
+  }
+
+  if (showFullPreview) {
+    return <EmpresaProfileScreen empresa={empresa} onBack={() => setShowFullPreview(false)} />;
+  }
+
+  const isOnline = empresa.status === true;
+  const cat = CATS.find(c => c.id === empresa.categoria_servico?.toLowerCase())
+    || CATS.find(c => c.label?.toLowerCase() === empresa.categoria_servico?.toLowerCase());
+
+  const handleToggleOnline = async () => {
+    const next = !empresa.status;
+    setEmpresa(e => ({ ...e, status: next }));
+    setTogglingStatus(true);
+    const { error } = await supabase.from("empresas").update({ status: next }).eq("id", empresa.id);
+    setTogglingStatus(false);
+    if (error) {
+      setEmpresa(e => ({ ...e, status: !next }));
+      showToast?.("❌ Erro ao atualizar status: " + (error.message || ""), "#DC2626");
+    } else {
+      showToast?.(next ? "✅ Você está online!" : "Você ficou offline", next ? G : "#6B7280");
+    }
+  };
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#f5f5f5", paddingBottom:40 }}>
+      <style>{`
+        @keyframes spin{to{transform:rotate(360deg)}}
+        @keyframes radar-pulse {
+          0%   { box-shadow: 0 0 0 0 rgba(34,197,94,.6); }
+          70%  { box-shadow: 0 0 0 18px rgba(34,197,94,0); }
+          100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+        }
+        @keyframes radar-pulse-off {
+          0%   { box-shadow: 0 0 0 0 rgba(156,163,175,.4); }
+          70%  { box-shadow: 0 0 0 12px rgba(156,163,175,0); }
+          100% { box-shadow: 0 0 0 0 rgba(156,163,175,0); }
+        }
+        .pulse-online  { animation: radar-pulse     1.8s ease-out infinite; }
+        .pulse-offline { animation: radar-pulse-off 2.4s ease-out infinite; }
+      `}</style>
+
+      <div style={{ background:"linear-gradient(135deg,#1565C0,#0D47A1)", padding:"32px 20px 48px", textAlign:"center" }}>
+        <div style={{ width:80, height:80, borderRadius:"50%", overflow:"hidden", background:"rgba(255,255,255,.2)", margin:"0 auto 10px", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          {empresa.logo_url
+            ? <img src={empresa.logo_url} alt={empresa.nome} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+            : <Briefcase size={32} color="white" />}
+        </div>
+        <h2 style={{ color:"white", margin:"0 0 8px", fontSize:22 }}>{empresa.nome}</h2>
+        <div style={{ display:"inline-flex", alignItems:"center", gap:4, background:"rgba(255,255,255,.18)", borderRadius:99, padding:"4px 10px" }}>
+          <ShieldCheck size={12} color="white" />
+          <span style={{ color:"white", fontSize:12, fontWeight:700 }}>Empresa Parceira</span>
+        </div>
+      </div>
+
+      <div style={{ padding:"16px", marginTop:-24 }}>
+
+        {/* ── BUSINESS CARD BANNER — mesmo padrão visual do ProfessionalHome ── */}
+        <div style={{ borderRadius:24, overflow:"hidden", position:"relative", boxShadow:"0 10px 32px rgba(0,0,0,.22)", marginBottom:16 }}>
+          <div style={{ position:"absolute", inset:0, background:"linear-gradient(140deg,#1a1a2e 0%,#2d2d44 55%,#3a2418 100%)" }} />
+          <div style={{ position:"absolute", top:-24, right:-24, width:140, height:140, borderRadius:"50%", background:"rgba(255,87,34,.12)" }} />
+          <div style={{ position:"absolute", top:14, right:18, fontSize:44, opacity:.18 }}>🏢</div>
+          <div style={{ position:"absolute", bottom:14, right:22, fontSize:26, opacity:.25 }}>✅</div>
+
+          <div style={{ position:"relative", zIndex:1, padding:"22px 22px 18px" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+              <div style={{ width:7, height:7, borderRadius:"50%", background: isOnline ? G : "#6B7280" }} />
+              <span style={{ fontSize:10, fontWeight:800, color: isOnline ? G : "#9CA3AF", textTransform:"uppercase", letterSpacing:1.5 }}>
+                {isOnline ? "Online — Recebendo pedidos" : "Offline"}
+              </span>
+            </div>
+            <h3 style={{ fontSize:19, fontWeight:900, color:"white", lineHeight:1.3, margin:"0 0 10px" }}>
+              Olá, {empresa.nome}!
+            </h3>
+            <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:16 }}>
+              <span style={{ fontSize:12, fontWeight:700, color:"rgba(255,255,255,.75)" }}>
+                {cat?.emoji} {cat?.label || empresa.categoria_servico}
+              </span>
+              <span style={{ display:"inline-flex", alignItems:"center", gap:4, background:"rgba(255,255,255,.12)", borderRadius:99, padding:"3px 9px" }}>
+                <ShieldCheck size={11} color="#4ade80" />
+                <span style={{ color:"#4ade80", fontSize:11, fontWeight:800 }}>Perfil Verificado</span>
+              </span>
+            </div>
+
+            <button
+              onClick={handleToggleOnline}
+              disabled={togglingStatus}
+              className={isOnline ? "pulse-online" : "pulse-offline"}
+              style={{
+                width:"100%", padding:"14px 0", borderRadius:16, border:"none", cursor: togglingStatus ? "default" : "pointer",
+                background: isOnline ? `linear-gradient(135deg,${G},#16a34a)` : "rgba(255,255,255,.12)",
+                color: isOnline ? "white" : "#9CA3AF",
+                fontWeight:900, fontSize:15,
+                display:"flex", alignItems:"center", justifyContent:"center", gap:10,
+                transition:"background .3s, color .3s",
+              }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <circle cx="12" cy="12" r="2"/>
+                <path d="M16.24 7.76a6 6 0 0 1 0 8.49"/>
+                <path d="M7.76 7.76a6 6 0 0 0 0 8.49"/>
+                <path d="M20.49 3.51a12 12 0 0 1 0 16.97"/>
+                <path d="M3.51 3.51a12 12 0 0 0 0 16.97"/>
+              </svg>
+              {togglingStatus ? "Atualizando…" : (isOnline ? "✓  Online — Clique para pausar" : "Ficar Online")}
+            </button>
+          </div>
+        </div>
+
+        {/* preview exato do card de busca */}
+        <div style={{ marginBottom:12 }}>
+          <p style={{ fontSize:12, fontWeight:800, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1.2, margin:"0 0 10px" }}>Como você aparece pros clientes</p>
+          <EmpresaCard emp={empresa} onVerPerfil={() => setShowFullPreview(true)} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────────────── EMPRESA — EDITAR PERFIL ─────────────────────────── */
+function EmpresaEditProfileScreen({ userEmail, onLogout, showToast }) {
+  const [empresa, setEmpresa] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [phone, setPhone] = useState("");
   const [descricao, setDescricao] = useState("");
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [showFullPreview, setShowFullPreview] = useState(false);
 
   useEffect(() => {
     if (!userEmail) { setLoading(false); return; }
@@ -779,12 +935,6 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast }) {
         <button onClick={onLogout} style={{ padding:"12px 24px", borderRadius:14, border:"none", background:"#E53935", color:"white", fontWeight:800, fontSize:13, cursor:"pointer" }}>Sair da Conta</button>
       </div>
     );
-  }
-
-  const previewEmpresa = { ...empresa, telefone_contato: phone.replace(/\D/g, ""), descricao, logo_url: logoPreview || empresa.logo_url };
-
-  if (showFullPreview) {
-    return <EmpresaProfileScreen empresa={previewEmpresa} onBack={() => setShowFullPreview(false)} />;
   }
 
   const handleLogoChange = (e) => {
@@ -823,21 +973,18 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast }) {
     <div style={{ minHeight:"100vh", background:"#f5f5f5", paddingBottom:40 }}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 
-      <div style={{ background:"linear-gradient(135deg,#1565C0,#0D47A1)", padding:"32px 20px 48px", textAlign:"center" }}>
-        <label htmlFor="empresa-home-logo-input" style={{ width:80, height:80, borderRadius:"50%", overflow:"hidden", background:"rgba(255,255,255,.2)", margin:"0 auto 10px", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", position:"relative" }}>
+      <div style={{ background:"linear-gradient(135deg,#1565C0,#0D47A1)", padding:"28px 20px 40px", textAlign:"center" }}>
+        <label htmlFor="empresa-home-logo-input" style={{ width:76, height:76, borderRadius:"50%", overflow:"hidden", background:"rgba(255,255,255,.2)", margin:"0 auto 10px", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", position:"relative" }}>
           {(logoPreview || empresa.logo_url)
             ? <img src={logoPreview || empresa.logo_url} alt={empresa.nome} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-            : <Briefcase size={32} color="white" />}
+            : <Briefcase size={30} color="white" />}
           <div style={{ position:"absolute", bottom:0, right:0, width:24, height:24, background:O, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", border:"2px solid white" }}>
             <Camera size={12} color="white" />
           </div>
         </label>
         <input id="empresa-home-logo-input" type="file" accept="image/*" onChange={handleLogoChange} style={{ display:"none" }} />
-        <h2 style={{ color:"white", margin:"0 0 8px", fontSize:22 }}>{empresa.nome}</h2>
-        <div style={{ display:"inline-flex", alignItems:"center", gap:4, background:"rgba(255,255,255,.18)", borderRadius:99, padding:"4px 10px" }}>
-          <ShieldCheck size={12} color="white" />
-          <span style={{ color:"white", fontSize:12, fontWeight:700 }}>Empresa Parceira</span>
-        </div>
+        <h2 style={{ color:"white", margin:"0 0 4px", fontSize:19 }}>Editar Perfil</h2>
+        <p style={{ color:"rgba(255,255,255,.75)", margin:0, fontSize:13 }}>{empresa.nome}</p>
       </div>
 
       <div style={{ padding:"16px", marginTop:-24 }}>
@@ -874,12 +1021,6 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast }) {
           </div>
         </div>
 
-        {/* preview exato do card de busca */}
-        <div style={{ marginBottom:12 }}>
-          <p style={{ fontSize:12, fontWeight:800, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1.2, margin:"0 0 10px" }}>Como você aparece pros clientes</p>
-          <EmpresaCard emp={previewEmpresa} onVerPerfil={() => setShowFullPreview(true)} />
-        </div>
-
         {/* salvar */}
         <button onClick={handleSave} disabled={saving} style={{
           width:"100%", padding:"15px 0", borderRadius:16, border:"none", marginBottom:12,
@@ -892,14 +1033,83 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast }) {
             ? <><span style={{ width:16, height:16, border:"2px solid white", borderTopColor:"transparent", borderRadius:"50%", display:"inline-block", animation:"spin .7s linear infinite" }} /> Salvando…</>
             : <><Check size={16} /> Salvar alterações</>}
         </button>
+      </div>
+    </div>
+  );
+}
 
-        {/* sair */}
-        <div onClick={onLogout} style={{ display:"flex", alignItems:"center", gap:13, padding:"13px 16px", cursor:"pointer", background:"white", borderRadius:16, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
-          <span style={{ width:36, height:36, borderRadius:11, background:"#FFF0F0", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-            <LogOut size={17} color="#E53935" />
-          </span>
-          <p style={{ fontSize:13, fontWeight:800, color:"#E53935", margin:0 }}>Sair da Conta</p>
-        </div>
+/* ───────────────────────── EMPRESA — PEDIDOS RECEBIDOS ─────────────────────── */
+function EmpresaPedidosScreen({ userEmail }) {
+  const [empresa, setEmpresa] = useState(null);
+  const [pedidos, setPedidos] = useState([]);
+  const [phones, setPhones] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userEmail) { setLoading(false); return; }
+    supabase.from("empresas").select("*").eq("email", userEmail).maybeSingle()
+      .then(async ({ data: emp }) => {
+        setEmpresa(emp || null);
+        if (emp?.categoria_servico) {
+          const { data: peds } = await supabase.from("pedidos").select("*")
+            .ilike("categoria", emp.categoria_servico)
+            .order("created_at", { ascending:false });
+          setPedidos(peds || []);
+          const emails = [...new Set((peds || []).map(p => p.cliente_id).filter(Boolean))];
+          if (emails.length) {
+            const { data: users } = await supabase.from("usuarios").select("email,whatsapp").in("email", emails);
+            const map = {};
+            (users || []).forEach(u => { map[u.email] = u.whatsapp; });
+            setPhones(map);
+          }
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [userEmail]);
+
+  if (loading) {
+    return (
+      <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#f5f5f5" }}>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        <span style={{ width:32, height:32, border:`3px solid ${B}33`, borderTopColor:B, borderRadius:"50%", display:"inline-block", animation:"spin .7s linear infinite" }} />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#f5f5f5", paddingBottom:40 }}>
+      <div style={{ padding:"20px 20px 4px" }}>
+        <h2 style={{ margin:"0 0 4px", fontSize:20, fontWeight:900, color:"#1a1a2e" }}>Pedidos Recebidos</h2>
+        <p style={{ margin:0, fontSize:12, color:"#9CA3AF" }}>Pedidos de clientes na sua categoria de serviço — o fechamento continua 100% pelo WhatsApp.</p>
+      </div>
+      <div style={{ padding:16 }}>
+        {pedidos.length === 0 && (
+          <div style={{ textAlign:"center", padding:"60px 20px", color:"#9CA3AF" }}>
+            <p style={{ fontSize:14 }}>Nenhum pedido na sua categoria ainda.</p>
+          </div>
+        )}
+        {pedidos.map(p => {
+          const cat = CATS.find(c => c.id === p.categoria?.toLowerCase());
+          const whatsapp = phones[p.cliente_id];
+          return (
+            <div key={p.id} style={{ background:"white", borderRadius:16, padding:"14px 16px", marginBottom:12, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6, gap:8 }}>
+                <p style={{ margin:0, fontSize:15, fontWeight:900, color:"#1a1a2e" }}>{p.cliente_nome || "Cliente"}</p>
+                <span style={{ fontSize:11, color:"#9CA3AF", whiteSpace:"nowrap" }}>
+                  {p.created_at ? new Date(p.created_at).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" }) : ""}
+                </span>
+              </div>
+              <p style={{ margin:"0 0 4px", fontSize:12, fontWeight:700, color:B }}>{cat?.emoji} {cat?.label || p.categoria}</p>
+              {p.descricao && <p style={{ margin:"0 0 10px", fontSize:13, color:"#555", lineHeight:1.5 }}>{p.descricao}</p>}
+              {whatsapp && (
+                <a href={`https://wa.me/55${whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"11px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:13, textDecoration:"none" }}>
+                  <MessageCircle size={15} /> Chamar no WhatsApp
+                </a>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -6841,8 +7051,10 @@ const renderContent = () => {
       );
     }
 
-    // Empresa parceira — home própria, somente leitura por enquanto.
+    // Empresa parceira — home própria + Pedidos + Editar Perfil.
     if (role === "empresa") {
+      if (screen === "pedidos") return <EmpresaPedidosScreen userEmail={userEmail} />;
+      if (screen === "editar")  return <EmpresaEditProfileScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} />;
       return <EmpresaHomeScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} />;
     }
 
@@ -6894,6 +7106,11 @@ const renderContent = () => {
 
   // ── BOTTOM NAV with auth-gated tabs ─────────────────────────────────────────
   const handleNavTab = (id) => {
+    // "Sair" na nav da empresa desloga direto, sem virar uma tela.
+    if (id === "sair") {
+      handleLogout();
+      return;
+    }
     // Client-only gated tabs
     if (["orders","chat","alerts"].includes(id) && !isLoggedIn) {
       requireAuth(id, () => setScreen(id));
@@ -6990,6 +7207,14 @@ const renderContent = () => {
               { id:"upgrade", label:"Seja PRO",  Icon:Crown },
               { id:"profile", label:"Perfil",    Icon:User },
             ]
+          // ── Empresa parceira tabs ──
+          : (isLoggedIn && userRole === "empresa")
+          ? [
+              { id:"home",    label:"Início",        Icon:Home },
+              { id:"pedidos", label:"Pedidos",       Icon:ClipboardList },
+              { id:"editar",  label:"Editar Perfil", Icon:User },
+              { id:"sair",    label:"Sair",          Icon:LogOut },
+            ]
           // ── Client tabs (or guest browsing) ──
           : [
               { id:"home",    label:"Início",       Icon:Home },
@@ -6998,7 +7223,7 @@ const renderContent = () => {
               { id:"profile", label:"Perfil",       Icon:User },
             ]
         ).map(({ id, label, Icon }) => {
-          const active = screen === id || (id === "home" && !["orders","alerts","upgrade","profile","chat","post","service","radar","activechat"].includes(screen));
+          const active = screen === id || (id === "home" && !["orders","alerts","upgrade","profile","chat","post","service","radar","activechat","pedidos","editar"].includes(screen));
           const locked = ["orders","chat"].includes(id) && !isLoggedIn;
           return (
             <button key={id} onClick={() => handleNavTab(id)} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3, background:"none", border:"none", cursor:"pointer", padding:"0 12px", position:"relative" }}>
