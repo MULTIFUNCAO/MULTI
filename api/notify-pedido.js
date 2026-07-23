@@ -8,7 +8,8 @@ const supabase = createClient(
 const ONESIGNAL_APP_ID = '184f4647-8fbd-427d-8a8e-60f5aa38243c';
 
 // Chamado pelo client logo após criar um pedido. Notifica, via OneSignal, as
-// empresas parceiras online cuja categoria_servico bate com a do pedido.
+// empresas parceiras E os profissionais online cuja categoria_servico bate
+// com a do pedido.
 // A REST API Key nunca chega ao browser — só existe aqui, como variável de
 // ambiente do servidor (Vercel → Settings → Environment Variables).
 export default async function handler(req, res) {
@@ -30,17 +31,30 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { data: empresas, error } = await supabase
-      .from('empresas')
-      .select('onesignal_player_id')
-      .ilike('categoria_servico', categoria)
-      .eq('status', true)
-      .eq('ativo', true)
-      .not('onesignal_player_id', 'is', null);
+    const [{ data: empresas, error: empresasError }, { data: profissionais, error: profissionaisError }] = await Promise.all([
+      supabase
+        .from('empresas')
+        .select('onesignal_player_id')
+        .ilike('categoria_servico', categoria)
+        .eq('status', true)
+        .eq('ativo', true)
+        .not('onesignal_player_id', 'is', null),
+      supabase
+        .from('usuarios')
+        .select('onesignal_player_id')
+        .eq('role', 'professional')
+        .ilike('categoria_servico', categoria)
+        .eq('status', true)
+        .not('onesignal_player_id', 'is', null),
+    ]);
 
-    if (error) throw error;
+    if (empresasError) throw empresasError;
+    if (profissionaisError) throw profissionaisError;
 
-    const playerIds = [...new Set((empresas || []).map(e => e.onesignal_player_id).filter(Boolean))];
+    const playerIds = [...new Set([
+      ...(empresas || []).map(e => e.onesignal_player_id),
+      ...(profissionais || []).map(p => p.onesignal_player_id),
+    ].filter(Boolean))];
     if (playerIds.length === 0) {
       res.status(200).json({ sent: 0 });
       return;

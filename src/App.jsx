@@ -40,8 +40,9 @@ const G  = "#22c55e";
 
 /* ───────────────────────── ONESIGNAL ─────────────────────────────────────── */
 // Pede permissão de push e devolve o subscription id (player_id) do navegador
-// atual, ou null se o SDK não carregar / o usuário recusar. Usado só quando a
-// empresa fica online, pra salvar o player_id em empresas.onesignal_player_id.
+// atual, ou null se o SDK não carregar / o usuário recusar. Usado quando a
+// empresa ou o profissional ficam online, pra salvar o player_id em
+// empresas.onesignal_player_id / usuarios.onesignal_player_id.
 function getOneSignalPlayerId() {
   return new Promise((resolve) => {
     if (typeof window === "undefined") { resolve(null); return; }
@@ -3964,12 +3965,30 @@ function RankingScreen({ onBack, contratacoes }) {
   );
 }
 
-function ProfileScreen({ role, isPro, userName: initialUserName, showRankingGlobal, onClearRankingGlobal, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange, onSwitchRole }) {
+function ProfileScreen({ role, isPro, userName: initialUserName, userEmail, showRankingGlobal, onClearRankingGlobal, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange, onSwitchRole }) {
   const [avatarUrl, setAvatarUrl] = useState(() => sessionStorage.getItem("multiAvatar") || null);
   const [editMode,  setEditMode]  = useState(false);
   const [name, setName] = useState(initialUserName || "");
   useEffect(() => { if (initialUserName) setName(initialUserName); }, [initialUserName]);
   const [portfolioImgs, setPortfolioImgs] = useState([]);
+  const [categoriaServico, setCategoriaServico] = useState("");
+  const [savingCategoria, setSavingCategoria] = useState(false);
+  useEffect(() => {
+    if (role !== "professional" || !userEmail) return;
+    supabase.from("usuarios").select("categoria_servico").eq("email", userEmail).maybeSingle()
+      .then(({ data }) => setCategoriaServico(data?.categoria_servico || ""))
+      .catch(() => {});
+  }, [role, userEmail]);
+
+  const handleSaveCategoria = async (novaCategoria) => {
+    setCategoriaServico(novaCategoria);
+    if (!userEmail) return;
+    setSavingCategoria(true);
+    const { error } = await supabase.from("usuarios").update({ categoria_servico: novaCategoria }).eq("email", userEmail);
+    setSavingCategoria(false);
+    if (error) showToast?.("❌ Erro ao salvar categoria: " + (error.message || ""), "#DC2626");
+    else showToast?.("✅ Categoria de serviço salva!", G);
+  };
   const [showNotif, setShowNotif] = useState(false);
   const [showSeguranca, setShowSeguranca] = useState(false);
   const [showSuporte, setShowSuporte] = useState(false);
@@ -4123,6 +4142,22 @@ function ProfileScreen({ role, isPro, userName: initialUserName, showRankingGlob
                 </span>
                 <ChevronRight size={15} color={B} />
               </div>
+            </div>
+          </div>
+
+          {/* Categoria de serviço — obrigatória pra poder ficar online no Mural */}
+          <div style={{ padding:"14px 16px 0" }}>
+            <div style={{ background:"white", borderRadius:16, padding:16, boxShadow:"0 3px 14px rgba(0,0,0,.07)", border: categoriaServico ? "1px solid #F0F0F0" : "1.5px solid #FCA5A5" }}>
+              <p style={{ margin:"0 0 3px", fontSize:11, fontWeight:800, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1.1 }}>Categoria de Serviço</p>
+              <p style={{ margin:"0 0 10px", fontSize:11, color:"#9CA3AF" }}>Necessária pra ficar online e receber pedidos no Mural.</p>
+              <select
+                value={categoriaServico}
+                disabled={savingCategoria}
+                onChange={e => handleSaveCategoria(e.target.value)}
+                style={{ ...REG_INPUT, paddingLeft:14, appearance:"none", cursor: savingCategoria ? "default" : "pointer" }}>
+                <option value="">Selecione sua categoria...</option>
+                {CATS.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+              </select>
             </div>
           </div>
 
@@ -6103,13 +6138,25 @@ function GuestMural({ onSignup, allDocsVerified }) {
 }
 
 /* ───────────────────────── PROFESSIONAL HOME ────────────────────────────────── */
-function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet, onAcceptOrder, pendingOrders=[] }) {
+function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro, feedServices, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet, onAcceptOrder, pendingOrders=[] }) {
   const [online,       setOnline]       = useState(false);
+  const [categoriaServico, setCategoriaServico] = useState("");
   const [newOrder, setNewOrder] = useState(null);
   const [activeFilter, setActiveFilter] = useState("all");
   const [realPedidos, setRealPedidos] = useState(SEED_FEED);
   useEffect(()=>{ supabase.from("pedidos").select("*").eq("status","aberto").order("created_at",{ascending:false}).limit(50).then(({data})=>{ if(data&&data.length>0) setRealPedidos(data.map(p=>({id:p.id,cat:p.categoria||"servico",title:(p.descricao||p.categoria||"Serviço").slice(0,40),desc:p.descricao||"",value:p.valor||0,loc:p.cidade||"sua região",time:new Date(p.created_at).toLocaleDateString("pt-BR"),client:p.cliente_nome||"Cliente",rating:4.5,urgent:false,emoji:"🔧",bg:"#FFF8E1",photo:null,photos:p.fotos}))); }).catch(()=>{}); },[]);
-  
+
+  // Carrega categoria + status persistidos, mesmo padrão do handleToggleOnline da empresa.
+  useEffect(() => {
+    if (!userEmail) return;
+    supabase.from("usuarios").select("categoria_servico,status").eq("email", userEmail).maybeSingle()
+      .then(({ data }) => {
+        setCategoriaServico(data?.categoria_servico || "");
+        setOnline(!!data?.status);
+      })
+      .catch(() => {});
+  }, [userEmail]);
+
   const [showDocBlock, setShowDocBlock] = useState(false); // pop-up modal
 
   const filters = [
@@ -6128,7 +6175,36 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
   const totalValue = feedServices.reduce((acc, s) => acc + (s.value || 0), 0);
   const proTrialDays = 7; // free trial period
 
-  const handleFicarOnline=()=>{const next=!online;setOnline(next);if(next){
+  const handleFicarOnline=async()=>{
+  const next=!online;
+
+  // Categoria obrigatória antes de poder ficar online (senão o profissional nunca
+  // aparece pra nenhum pedido, já que a busca do notify-pedido casa por categoria).
+  if(next && !categoriaServico){
+    showToast?.("⚠️ Defina sua categoria de serviço no perfil antes de ficar online", "#DC2626");
+    onGoToProfile?.();
+    return;
+  }
+
+  setOnline(next);
+
+  // Persiste status (+ player_id do OneSignal ao ligar), mesmo padrão do
+  // handleToggleOnline da empresa.
+  if(userEmail){
+    const updates={ status: next };
+    if(next){
+      const playerId=await getOneSignalPlayerId();
+      if(playerId) updates.onesignal_player_id=playerId;
+    }
+    const{error}=await supabase.from("usuarios").update(updates).eq("email",userEmail);
+    if(error){
+      setOnline(!next);
+      showToast?.("❌ Erro ao atualizar status: "+(error.message||""), "#DC2626");
+      return;
+    }
+  }
+
+  if(next){
   supabase.from("pedidos").select("*").eq("status","aberto").order("created_at",{ascending:false}).limit(1).then(({data})=>{
     if(data&&data[0]){const p=data[0];console.log("REALTIME P.FOTOS:",typeof p.fotos, JSON.stringify(p.fotos));setNewOrder({category:p.categoria,location:p.cidade||"Guarulhos, SP",value:String(p.valor||"0"),description:p.descricao||"",photos:(()=>{try{const f=p.fotos;return Array.isArray(f)?f:(typeof f==="string"?JSON.parse(f):[]);}catch(e){return [];}})(),photo:(()=>{try{const f=p.fotos;const arr=Array.isArray(f)?f:(typeof f==="string"?JSON.parse(f):[]);return arr[0]||null;}catch(e){return null;}})()});}
   });
@@ -6137,7 +6213,6 @@ function ProfessionalHome({ userName, isPro, feedServices, onViewService, onUpgr
   }).subscribe();
 
 // Realtime: notificar cliente quando proposta chegar
-const _mu=localStorage.getItem("multiUser");const userEmail=_mu?JSON.parse(_mu).email||JSON.parse(_mu).whatsapp||"":"";
 if(userEmail){
   supabase.channel("propostas_realtime")
     .on("postgres_changes",{event:"INSERT",schema:"public",table:"propostas"},
@@ -7260,7 +7335,7 @@ const renderContent = () => {
     if (screen === "wallet") return <WalletScreen onBack={() => setScreen("profile")} showToast={showToast} walletBalance={walletBalance} setWalletBalance={setWalletBalance} />;
     if (screen === "profile") {
       if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
-      return <ProfileScreen role="professional" userName={userName} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenWallet={() => setScreen("wallet")} onOpenAdmin={() => setShowAdmin(true)} docStatus={docStatus} onDocStatusChange={(id, st) => setDocStatus(d => ({ ...d, [id]: st }))} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} setScreen("home"); }} />;
+      return <ProfileScreen role="professional" userName={userName} userEmail={userEmail} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenWallet={() => setScreen("wallet")} onOpenAdmin={() => setShowAdmin(true)} docStatus={docStatus} onDocStatusChange={(id, st) => setDocStatus(d => ({ ...d, [id]: st }))} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} setScreen("home"); }} />;
     }
     if (screen === "service" && selected) return <ServiceDetailPro service={selected} onBack={() => setScreen("home")} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onOpenPinEntry={() => setScreen("pinjob")} />;
     if (screen === "pinjob"  && selected) return <ServiceDetailPinEntry service={selected} onBack={() => setScreen("service")} onStatusChange={(id, ns) => setMyServices(s => s.map(x => x.id === id ? { ...x, status:ns } : x))} showToast={showToast} />;
@@ -7269,6 +7344,9 @@ const renderContent = () => {
     return (
       <ProfessionalHome
         userName={userName}
+        userEmail={userEmail}
+        showToast={showToast}
+        onGoToProfile={() => setScreen("profile")}
         isPro={isPro}
         feedServices={feedServices}
         onViewService={handleProFeedAction}
