@@ -38,6 +38,28 @@ const G  = "#22c55e";
    O backend então usa:  sgMail.send({ to, from, subject, text })
 ───────────────────────────────────────────────────────────────────────────── */
 
+/* ───────────────────────── ONESIGNAL ─────────────────────────────────────── */
+// Pede permissão de push e devolve o subscription id (player_id) do navegador
+// atual, ou null se o SDK não carregar / o usuário recusar. Usado só quando a
+// empresa fica online, pra salvar o player_id em empresas.onesignal_player_id.
+function getOneSignalPlayerId() {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined") { resolve(null); return; }
+    let done = false;
+    const finish = (id) => { if (!done) { done = true; resolve(id); } };
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    window.OneSignalDeferred.push(async (OneSignal) => {
+      try {
+        await OneSignal.Notifications.requestPermission();
+        finish(OneSignal.User.PushSubscription.id || null);
+      } catch {
+        finish(null);
+      }
+    });
+    setTimeout(() => finish(null), 8000);
+  });
+}
+
 /* ───────────────────────── STATIC DATA ───────────────────────────────────── */
 const CATS = [
   { id:"pedreiro",    label:"Pedreiro",          emoji:"👷", star:4.8, bg:"#FFF0EE", dot:"#E53935" },
@@ -803,12 +825,18 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
     const next = !empresa.status;
     setEmpresa(e => ({ ...e, status: next }));
     setTogglingStatus(true);
-    const { error } = await supabase.from("empresas").update({ status: next }).eq("id", empresa.id);
+    const updates = { status: next };
+    if (next) {
+      const playerId = await getOneSignalPlayerId();
+      if (playerId) updates.onesignal_player_id = playerId;
+    }
+    const { error } = await supabase.from("empresas").update(updates).eq("id", empresa.id);
     setTogglingStatus(false);
     if (error) {
       setEmpresa(e => ({ ...e, status: !next }));
       showToast?.("❌ Erro ao atualizar status: " + (error.message || ""), "#DC2626");
     } else {
+      setEmpresa(e => ({ ...e, ...updates }));
       showToast?.(next ? "✅ Você está online!" : "Você ficou offline", next ? G : "#6B7280");
     }
   };
@@ -1835,7 +1863,7 @@ function PostServiceScreen({ onBack, onSuccess }) {
       </div>
 
         <button
-            onClick={() => { if (canPublish) { (async()=>{ const ts=Date.now(); const urls=await Promise.all((window._photos||[]).map(async(b64,i)=>{ const res=await fetch(b64); const blob=await res.blob(); const ext=blob.type.includes("png")?"png":"jpg"; const path="pedido_"+ts+"_"+i+"."+ext; const{error:ue}=await supabase.storage.from("pedidos-fotos").upload(path,blob,{contentType:blob.type,upsert:true}); if(ue){console.warn("upload:",ue);return null;} return supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl; })); const fotos=urls.filter(Boolean); await supabase.from("pedidos").insert({cliente_id:safeGetUser().email||"anonimo",cliente_nome:safeGetUser().name||"Cliente",categoria:form.cat,descricao:form.desc,valor:Number(form.value),cep:form.cep,fotos,status:"aberto"}); onSuccess({cat:form.cat,desc:form.desc,value:Number(form.value),cep:form.cep,photos:fotos,photo:fotos[0]||null,cepInfo,material:form.material}); })(); }}}
+            onClick={() => { if (canPublish) { (async()=>{ const ts=Date.now(); const urls=await Promise.all((window._photos||[]).map(async(b64,i)=>{ const res=await fetch(b64); const blob=await res.blob(); const ext=blob.type.includes("png")?"png":"jpg"; const path="pedido_"+ts+"_"+i+"."+ext; const{error:ue}=await supabase.storage.from("pedidos-fotos").upload(path,blob,{contentType:blob.type,upsert:true}); if(ue){console.warn("upload:",ue);return null;} return supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl; })); const fotos=urls.filter(Boolean); await supabase.from("pedidos").insert({cliente_id:safeGetUser().email||"anonimo",cliente_nome:safeGetUser().name||"Cliente",categoria:form.cat,descricao:form.desc,valor:Number(form.value),cep:form.cep,fotos,status:"aberto"}); fetch("/api/notify-pedido",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({categoria:form.cat,descricao:form.desc})}).catch(()=>{}); onSuccess({cat:form.cat,desc:form.desc,value:Number(form.value),cep:form.cep,photos:fotos,photo:fotos[0]||null,cepInfo,material:form.material}); })(); }}}
             style={{ padding:"15px 0", borderRadius:14, border:"none", cursor: canPublish ? "pointer" : "not-allowed", background: canPublish ? `linear-gradient(135deg,${0},#E64A19)` : "#9CA3AF", color: canPublish ? "white" : "#4B5563", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow: canPublish ? "0 5px 18px rgba(255,87,34,.30)" : "none", transition:"all .2s" }}>
             <Send size={15} /> Publicar Serviço
           </button>

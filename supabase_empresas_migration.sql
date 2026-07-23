@@ -67,3 +67,9 @@ create policy "Edicao publica de empresas"
 -- "Fechado no momento" (esmaecido, mas ainda visível e clicável).
 alter table empresas
   add column if not exists status boolean not null default false;
+
+-- 8. Player id do OneSignal (subscription id do navegador), salvo toda vez que a
+-- empresa fica online. Usado por api/notify-pedido.js pra saber pra quem mandar
+-- o push quando um pedido novo bate com a categoria_servico da empresa.
+alter table empresas
+  add column if not exists onesignal_player_id text;
