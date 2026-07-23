@@ -769,12 +769,28 @@ function EmpresaCard({ emp, onVerPerfil }) {
 }
 
 /* ───────────────────────── EMPRESA HOME (área logada, somente leitura) ─────────── */
+function formatTimeAgo(dateStr) {
+  if (!dateStr) return "";
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "agora mesmo";
+  if (diffMin < 60) return `há ${diffMin} min`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `há ${diffH}h`;
+  const diffD = Math.floor(diffH / 24);
+  if (diffD === 1) return "há 1 dia";
+  if (diffD < 7) return `há ${diffD} dias`;
+  return new Date(dateStr).toLocaleDateString("pt-BR");
+}
+
 function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGoToEditar }) {
   const [empresa, setEmpresa] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showFullPreview, setShowFullPreview] = useState(false);
   const [togglingStatus, setTogglingStatus] = useState(false);
   const [pedidosCount, setPedidosCount] = useState(0);
+  const [pedidosPreview, setPedidosPreview] = useState([]);
+  const [loadingPedidos, setLoadingPedidos] = useState(true);
 
   useEffect(() => {
     if (!userEmail) { setLoading(false); return; }
@@ -787,12 +803,26 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
   }, [userEmail]);
 
   useEffect(() => {
-    if (!empresa?.categoria_servico) return;
-    supabase.from("pedidos").select("id", { count:"exact", head:true })
-      .ilike("categoria", empresa.categoria_servico)
-      .eq("status", "aberto")
-      .then(({ count }) => setPedidosCount(count || 0))
-      .catch(() => setPedidosCount(0));
+    if (!empresa?.categoria_servico) { setLoadingPedidos(false); return; }
+    setLoadingPedidos(true);
+    Promise.all([
+      supabase.from("pedidos").select("id", { count:"exact", head:true })
+        .ilike("categoria", empresa.categoria_servico)
+        .eq("status", "aberto"),
+      supabase.from("pedidos").select("*")
+        .ilike("categoria", empresa.categoria_servico)
+        .eq("status", "aberto")
+        .order("created_at", { ascending:false })
+        .limit(3),
+    ]).then(([countRes, listRes]) => {
+      setPedidosCount(countRes.count || 0);
+      setPedidosPreview(listRes.data || []);
+      setLoadingPedidos(false);
+    }).catch(() => {
+      setPedidosCount(0);
+      setPedidosPreview([]);
+      setLoadingPedidos(false);
+    });
   }, [empresa?.categoria_servico]);
 
   if (loading) {
@@ -916,19 +946,6 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
           </div>
         </div>
 
-        {/* contador de pedidos disponíveis na categoria + atalho pro Mural */}
-        <div style={{ background:"white", borderRadius:16, padding:"16px 18px", marginBottom:18, boxShadow:"0 3px 14px rgba(0,0,0,.07)", display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
-          <div style={{ minWidth:0 }}>
-            <p style={{ margin:"0 0 3px", fontSize:24, fontWeight:900, color:B }}>{pedidosCount}</p>
-            <p style={{ margin:0, fontSize:12, color:"#6B7280", lineHeight:1.4 }}>
-              pedido{pedidosCount === 1 ? "" : "s"} disponíve{pedidosCount === 1 ? "l" : "is"} agora em {cat?.label || "sua categoria"}
-            </p>
-          </div>
-          <button onClick={onGoToPedidos} style={{ flexShrink:0, display:"flex", alignItems:"center", gap:4, padding:"10px 16px", borderRadius:12, border:"none", background:B, color:"white", fontWeight:800, fontSize:12, cursor:"pointer" }}>
-            Ver todos <ChevronRight size={14} />
-          </button>
-        </div>
-
         {/* dados da empresa — visão geral (também editáveis em "Editar Perfil") */}
         <div style={{ background:"white", borderRadius:16, padding:"16px 18px", marginBottom:18, boxShadow:"0 3px 14px rgba(0,0,0,.07)" }}>
           <p style={{ margin:"0 0 12px", fontSize:11, fontWeight:800, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1.1 }}>Sobre a empresa</p>
@@ -939,6 +956,47 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
             </span>
           </div>
           {empresa.descricao && <p style={{ margin:0, fontSize:13, color:"#555", lineHeight:1.6 }}>{empresa.descricao}</p>}
+        </div>
+
+        {/* preview real dos pedidos disponíveis na categoria + atalho pro Mural */}
+        <div style={{ background:"white", borderRadius:16, padding:"16px 18px", marginBottom:18, boxShadow:"0 3px 14px rgba(0,0,0,.07)" }}>
+          <p style={{ margin:"0 0 12px", fontSize:12, color:"#6B7280", lineHeight:1.4 }}>
+            <span style={{ fontSize:16, fontWeight:900, color:B }}>{pedidosCount}</span>{" "}
+            pedido{pedidosCount === 1 ? "" : "s"} disponíve{pedidosCount === 1 ? "l" : "is"} agora em {cat?.label || "sua categoria"}
+          </p>
+
+          {loadingPedidos ? (
+            <div style={{ padding:"18px 0", display:"flex", justifyContent:"center" }}>
+              <span style={{ width:22, height:22, border:`2.5px solid ${B}33`, borderTopColor:B, borderRadius:"50%", display:"inline-block", animation:"spin .7s linear infinite" }} />
+            </div>
+          ) : pedidosPreview.length === 0 ? (
+            <p style={{ margin:"0 0 4px", fontSize:13, color:"#9CA3AF", textAlign:"center", padding:"10px 0" }}>
+              Nenhum pedido disponível no momento
+            </p>
+          ) : (
+            <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:12 }}>
+              {pedidosPreview.map(p => {
+                const scat = CATS.find(c => c.id === p.categoria?.toLowerCase());
+                const title = (p.descricao || p.categoria || "Serviço").slice(0, 40);
+                return (
+                  <div key={p.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:14, background:"#F8F9FB" }}>
+                    <div style={{ width:34, height:34, borderRadius:10, background:scat?.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0 }}>{scat?.emoji}</div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ margin:"0 0 2px", fontSize:13, fontWeight:800, color:"#1a1a2e", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{title}</p>
+                      <p style={{ margin:0, fontSize:11, color:"#9CA3AF", display:"flex", alignItems:"center", gap:4 }}>
+                        <Clock size={10} />{formatTimeAgo(p.created_at)}
+                      </p>
+                    </div>
+                    <span style={{ fontSize:15, fontWeight:900, color:B, flexShrink:0 }}>R$ {p.valor || 0}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <button onClick={onGoToPedidos} style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:4, padding:"11px 16px", borderRadius:12, border:"none", background:B, color:"white", fontWeight:800, fontSize:12, cursor:"pointer" }}>
+            Ver todos os {pedidosCount} <ChevronRight size={14} />
+          </button>
         </div>
 
         {/* atalho rápido pra edição, sem depender só da nav inferior */}
