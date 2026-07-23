@@ -1037,6 +1037,7 @@ function EmpresaPedidosScreen({ userEmail }) {
   const [pedidos, setPedidos] = useState([]);
   const [phones, setPhones] = useState({});
   const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState("all");
 
   useEffect(() => {
     if (!userEmail) { setLoading(false); return; }
@@ -1047,8 +1048,20 @@ function EmpresaPedidosScreen({ userEmail }) {
           const { data: peds } = await supabase.from("pedidos").select("*")
             .ilike("categoria", emp.categoria_servico)
             .order("created_at", { ascending:false });
-          setPedidos(peds || []);
-          const emails = [...new Set((peds || []).map(p => p.cliente_id).filter(Boolean))];
+          const mapped = (peds || []).map(p => ({
+            id: p.id,
+            cat: p.categoria || "servico",
+            title: (p.descricao || p.categoria || "Serviço").slice(0, 40),
+            desc: p.descricao || "",
+            value: p.valor || 0,
+            loc: p.cidade || "sua região",
+            time: p.created_at ? new Date(p.created_at).toLocaleDateString("pt-BR") : "",
+            client: p.cliente_nome || "Cliente",
+            cliente_id: p.cliente_id,
+            urgent: false,
+          }));
+          setPedidos(mapped);
+          const emails = [...new Set(mapped.map(p => p.cliente_id).filter(Boolean))];
           if (emails.length) {
             const { data: users } = await supabase.from("usuarios").select("email,whatsapp").in("email", emails);
             const map = {};
@@ -1070,33 +1083,77 @@ function EmpresaPedidosScreen({ userEmail }) {
     );
   }
 
+  const empresaCat = empresa ? CATS.find(c => c.id === empresa.categoria_servico?.toLowerCase()) : null;
+
+  const filters = [
+    { id:"all",    label:"Todos",           emoji:"📋" },
+    { id:"urgent", label:"Urgentes",         emoji:"🔥" },
+    { id:"nearby", label:"Perto de Mim",     emoji:"📍" },
+    { id:"topPay", label:"Melhor Pagamento", emoji:"💰" },
+  ];
+  const filtered = pedidos.filter(s => {
+    if (activeFilter === "urgent") return s.urgent;
+    if (activeFilter === "topPay") return s.value >= 400;
+    return true;
+  });
+
   return (
-    <div style={{ minHeight:"100vh", background:"#f5f5f5", paddingBottom:40 }}>
-      <div style={{ padding:"20px 20px 4px" }}>
-        <h2 style={{ margin:"0 0 4px", fontSize:20, fontWeight:900, color:"#1a1a2e" }}>Pedidos Recebidos</h2>
-        <p style={{ margin:0, fontSize:12, color:"#9CA3AF" }}>Pedidos de clientes na sua categoria de serviço — o fechamento continua 100% pelo WhatsApp.</p>
+    <div style={{ display:"flex", flexDirection:"column", background:"#F0F2F5", minHeight:"100vh", paddingBottom:100 }}>
+
+      {/* ── mesmo padrão do Mural de Serviços do profissional, filtrado pela categoria da empresa ── */}
+      <div style={{ padding:"20px 16px 0" }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
+          <h3 style={{ fontSize:16, fontWeight:900, color:"#1a1a2e", margin:0 }}>Mural de Serviços</h3>
+          <span style={{ fontSize:12, color:"#888" }}>{filtered.length} disponíveis</span>
+        </div>
+        <p style={{ fontSize:12, color:"#9CA3AF", margin:"2px 0 12px" }}>
+          Pedidos de clientes em {empresaCat?.label || "sua categoria"} — o fechamento continua 100% pelo WhatsApp.
+        </p>
+        <div style={{ display:"flex", gap:8, overflowX:"auto", scrollbarWidth:"none", paddingBottom:4 }}>
+          {filters.map(f => (
+            <button key={f.id} onClick={() => setActiveFilter(f.id)} style={{
+              flexShrink:0, display:"flex", alignItems:"center", gap:5,
+              padding:"8px 14px", borderRadius:99, fontSize:12, fontWeight:800,
+              border:"none", cursor:"pointer", transition:"all .15s",
+              background: activeFilter === f.id ? "#1a1a2e" : "white",
+              color:       activeFilter === f.id ? "white"   : "#555",
+              boxShadow:   activeFilter === f.id ? "0 3px 12px rgba(0,0,0,.2)" : "0 1px 4px rgba(0,0,0,.08)",
+            }}>
+              <span style={{ fontSize:14 }}>{f.emoji}</span> {f.label}
+            </button>
+          ))}
+        </div>
       </div>
-      <div style={{ padding:16 }}>
-        {pedidos.length === 0 && (
-          <div style={{ textAlign:"center", padding:"60px 20px", color:"#9CA3AF" }}>
-            <p style={{ fontSize:14 }}>Nenhum pedido na sua categoria ainda.</p>
+
+      <div style={{ padding:"14px 16px 0", display:"flex", flexDirection:"column", gap:14 }}>
+        {filtered.length === 0 ? (
+          <div style={{ textAlign:"center", padding:"40px 24px", color:"#bbb" }}>
+            <p style={{ fontSize:15, fontWeight:700 }}>Nenhum pedido neste filtro</p>
+            <p style={{ fontSize:12, marginTop:4 }}>Assim que um cliente publicar um pedido na sua categoria, ele aparece aqui.</p>
           </div>
-        )}
-        {pedidos.map(p => {
-          const cat = CATS.find(c => c.id === p.categoria?.toLowerCase());
-          const whatsapp = phones[p.cliente_id];
+        ) : filtered.map(s => {
+          const scat = CATS.find(c => c.id === s.cat?.toLowerCase());
+          const whatsapp = phones[s.cliente_id];
           return (
-            <div key={p.id} style={{ background:"white", borderRadius:16, padding:"14px 16px", marginBottom:12, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6, gap:8 }}>
-                <p style={{ margin:0, fontSize:15, fontWeight:900, color:"#1a1a2e" }}>{p.cliente_nome || "Cliente"}</p>
-                <span style={{ fontSize:11, color:"#9CA3AF", whiteSpace:"nowrap" }}>
-                  {p.created_at ? new Date(p.created_at).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" }) : ""}
-                </span>
+            <div key={s.id} style={{ borderRadius:20, overflow:"hidden", boxShadow:"0 3px 14px rgba(0,0,0,.09)", background:"white", padding:"16px", display:"flex", flexDirection:"column", gap:10 }}>
+              <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:8 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:10, flex:1, minWidth:0 }}>
+                  <div style={{ width:40, height:40, borderRadius:11, background:scat?.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>{scat?.emoji}</div>
+                  <span style={{ fontWeight:800, fontSize:14, color:"#1a1a2e", lineHeight:1.35 }}>{s.title}</span>
+                </div>
+                {s.urgent && <Pill color="#E53935" sm>🔥 Urgente</Pill>}
               </div>
-              <p style={{ margin:"0 0 4px", fontSize:12, fontWeight:700, color:B }}>{cat?.emoji} {cat?.label || p.categoria}</p>
-              {p.descricao && <p style={{ margin:"0 0 10px", fontSize:13, color:"#555", lineHeight:1.5 }}>{p.descricao}</p>}
+              {s.desc && <p style={{ fontSize:13, color:"#888", lineHeight:1.6, margin:0 }}>{s.desc}</p>}
+              <div style={{ display:"flex", alignItems:"center", gap:14, fontSize:11, color:"#bbb" }}>
+                <span style={{ display:"flex", alignItems:"center", gap:4 }}><MapPin size={11} />{s.loc}</span>
+                <span style={{ display:"flex", alignItems:"center", gap:4 }}><Clock size={11} />{s.time}</span>
+              </div>
+              <div style={{ borderTop:"1px solid #F4F4F6", paddingTop:10, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                <span style={{ fontSize:22, fontWeight:900, color:B }}>R$ {s.value}</span>
+                <span style={{ fontSize:12, color:"#aaa" }}>👤 {s.client}</span>
+              </div>
               {whatsapp && (
-                <a href={`https://wa.me/55${whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"11px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:13, textDecoration:"none" }}>
+                <a href={`https://wa.me/55${whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:7, padding:"11px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:900, fontSize:13, textDecoration:"none" }}>
                   <MessageCircle size={15} /> Chamar no WhatsApp
                 </a>
               )}
