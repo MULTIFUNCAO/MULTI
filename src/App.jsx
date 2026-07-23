@@ -747,11 +747,12 @@ function EmpresaCard({ emp, onVerPerfil }) {
 }
 
 /* ───────────────────────── EMPRESA HOME (área logada, somente leitura) ─────────── */
-function EmpresaHomeScreen({ userEmail, onLogout, showToast }) {
+function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGoToEditar }) {
   const [empresa, setEmpresa] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showFullPreview, setShowFullPreview] = useState(false);
   const [togglingStatus, setTogglingStatus] = useState(false);
+  const [pedidosCount, setPedidosCount] = useState(0);
 
   useEffect(() => {
     if (!userEmail) { setLoading(false); return; }
@@ -762,6 +763,15 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast }) {
       })
       .catch(() => setLoading(false));
   }, [userEmail]);
+
+  useEffect(() => {
+    if (!empresa?.categoria_servico) return;
+    supabase.from("pedidos").select("id", { count:"exact", head:true })
+      .ilike("categoria", empresa.categoria_servico)
+      .eq("status", "aberto")
+      .then(({ count }) => setPedidosCount(count || 0))
+      .catch(() => setPedidosCount(0));
+  }, [empresa?.categoria_servico]);
 
   if (loading) {
     return (
@@ -877,11 +887,41 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast }) {
             </button>
           </div>
         </div>
+
+        {/* contador de pedidos disponíveis na categoria + atalho pro Mural */}
+        <div style={{ background:"white", borderRadius:16, padding:"16px 18px", marginBottom:18, boxShadow:"0 3px 14px rgba(0,0,0,.07)", display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
+          <div style={{ minWidth:0 }}>
+            <p style={{ margin:"0 0 3px", fontSize:24, fontWeight:900, color:B }}>{pedidosCount}</p>
+            <p style={{ margin:0, fontSize:12, color:"#6B7280", lineHeight:1.4 }}>
+              pedido{pedidosCount === 1 ? "" : "s"} disponíve{pedidosCount === 1 ? "l" : "is"} agora em {cat?.label || "sua categoria"}
+            </p>
+          </div>
+          <button onClick={onGoToPedidos} style={{ flexShrink:0, display:"flex", alignItems:"center", gap:4, padding:"10px 16px", borderRadius:12, border:"none", background:B, color:"white", fontWeight:800, fontSize:12, cursor:"pointer" }}>
+            Ver todos <ChevronRight size={14} />
+          </button>
+        </div>
+
+        {/* dados da empresa — visão geral (também editáveis em "Editar Perfil") */}
+        <div style={{ background:"white", borderRadius:16, padding:"16px 18px", marginBottom:18, boxShadow:"0 3px 14px rgba(0,0,0,.07)" }}>
+          <p style={{ margin:"0 0 12px", fontSize:11, fontWeight:800, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1.1 }}>Sobre a empresa</p>
+          <div style={{ display:"flex", alignItems:"center", gap:9, marginBottom: empresa.descricao ? 10 : 0 }}>
+            <WA_ICON size={15} color={B} />
+            <span style={{ fontSize:14, color:"#333", fontWeight:600 }}>
+              {empresa.telefone_contato ? maskPhone(empresa.telefone_contato) : "Telefone não informado"}
+            </span>
+          </div>
+          {empresa.descricao && <p style={{ margin:0, fontSize:13, color:"#555", lineHeight:1.6 }}>{empresa.descricao}</p>}
+        </div>
+
+        {/* atalho rápido pra edição, sem depender só da nav inferior */}
+        <button onClick={onGoToEditar} style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px 0", borderRadius:16, border:"1.5px solid #E5E7EB", background:"white", color:"#374151", fontWeight:800, fontSize:13, cursor:"pointer", marginBottom:18, boxShadow:"0 3px 14px rgba(0,0,0,.05)" }}>
+          <Pencil size={15} /> Editar Perfil
+        </button>
       </div>
 
       <div style={{ padding:"0 16px" }}>
         {/* preview exato do card de busca */}
-        <div style={{ marginBottom:12 }}>
+        <div style={{ marginBottom:16 }}>
           <p style={{ fontSize:12, fontWeight:800, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1.2, margin:"0 0 10px" }}>Como você aparece pros clientes</p>
           <EmpresaCard emp={empresa} onVerPerfil={() => setShowFullPreview(true)} />
         </div>
@@ -1047,6 +1087,7 @@ function EmpresaPedidosScreen({ userEmail }) {
         if (emp?.categoria_servico) {
           const { data: peds } = await supabase.from("pedidos").select("*")
             .ilike("categoria", emp.categoria_servico)
+            .eq("status", "aberto")
             .order("created_at", { ascending:false });
           const mapped = (peds || []).map(p => ({
             id: p.id,
@@ -7105,7 +7146,7 @@ const renderContent = () => {
     if (role === "empresa") {
       if (screen === "pedidos") return <EmpresaPedidosScreen userEmail={userEmail} />;
       if (screen === "editar")  return <EmpresaEditProfileScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} />;
-      return <EmpresaHomeScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} />;
+      return <EmpresaHomeScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} onGoToPedidos={() => setScreen("pedidos")} onGoToEditar={() => setScreen("editar")} />;
     }
 
     // Route guard: logged-in clients must never see the professional feed.
