@@ -504,143 +504,6 @@ function AlertsScreen({ notifications, onAccept, onOpenChat }) {
   );
 }
 
-/* ───────────────────────── CHAT SCREEN ─────────────────────────────────────── */
-function ChatScreen({ chat, onBack, onFinish }) {
-  const [text, setText] = useState("");
-  const [messages, setMessages] = useState(chat.messages || [
-    { id:1, from:"pro",    text:"Olá! Recebi seu serviço. Posso ir amanhã às 9h, tudo bem?", time:"10:01" },
-    { id:2, from:"client", text:"Ótimo! Estarei em casa. Por favor confirme antes de vir.", time:"10:03" },
-    { id:3, from:"pro",    text:"Confirmado! Trarei todos os materiais necessários 🔧",       time:"10:04" },
-  ]);
-  const endRef = useRef(null);
-
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior:"smooth" }); }, [messages]);
-
-  const send = (msg) => {
-    if (!msg.trim()) return;
-    const now = new Date();
-    const time = `${now.getHours()}:${String(now.getMinutes()).padStart(2,"0")}`;
-    setMessages(m => [...m, { id: Date.now(), from:"client", text: msg, time }]);
-    setText("");
-    // simulate pro reply with quick actions
-    if (msg.includes("Localização")) {
-      setTimeout(() => setMessages(m => [...m, { id: Date.now()+1, from:"pro", text:"📍 Localização recebida! Estou a caminho.", time }]), 800);
-    } else if (msg.includes("Foto")) {
-      setTimeout(() => setMessages(m => [...m, { id: Date.now()+1, from:"pro", text:"📸 Pode enviar! Vou verificar o problema antes de chegar.", time }]), 800);
-    }
-  };
-
-  const handleFinish = () => {
-    var div = document.getElementById('rating-portal') || document.createElement('div');
-    div.id='rating-portal';
-    div.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center';
-    div.innerHTML='<div style="background:white;border-radius:20px;padding:32px;width:90%;max-width:380px;text-align:center"><div style="font-size:32px;margin-bottom:8px">⭐</div><div style="font-size:18px;font-weight:700;color:#1a1a2e">Avalie o profissional</div><div style="color:#666;font-size:13px;margin-bottom:20px">Como foi a experiência?</div><div id="stars" style="display:flex;justify-content:center;gap:8px;margin-bottom:20px;font-size:36px">★★★★★</div><textarea id="rating-comment" placeholder="Comentário (opcional)..." style="width:100%;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:14px;resize:none;height:80px;box-sizing:border-box;margin-bottom:16px"></textarea><button id="rating-submit" style="width:100%;padding:14px 0;border-radius:12px;border:none;background:linear-gradient(135deg,#F9A825,#E65100);color:white;font-weight:700;font-size:16px;cursor:pointer">Enviar Avaliação ⭐</button><button id="rating-skip" style="width:100%;padding:10px 0;border-radius:12px;border:none;background:transparent;color:#999;font-size:14px;cursor:pointer;margin-top:8px">Pular</button></div>';
-    document.body.appendChild(div);
-    document.getElementById('rating-skip').onclick=()=>document.body.removeChild(div);
-    document.getElementById('rating-submit').onclick=()=>{
-      div.innerHTML='<div style="background:white;border-radius:20px;padding:32px;text-align:center"><div style="font-size:48px">🎉</div><div style="font-size:20px;font-weight:700;margin-top:8px">Obrigado!</div><div style="color:#666;margin-top:4px">Avaliação enviada!</div></div>';
-      setFinished(true);
-      setMessages(m=>[...m,{id:Date.now(),from:'system',text:'✅ Serviço finalizado! Obrigado por usar o Multi.',time:''}]);
-      setTimeout(()=>{document.body.removeChild(div);onFinish&&onFinish();},2000);
-    };
-  };
-  const handleSubmitRating = async () => {
-    const userEmail = safeGetUser().email || safeGetUser().whatsapp;
-    try { await supabase.from("avaliacoes").insert({ cliente_id: userEmail, profissional_nome: chat.proName||"Profissional", estrelas: ratingStars, comentario: ratingComment, created_at: new Date().toISOString() }); } catch(e) {}
-    setRatingSubmitted(true);
-    setFinished(true);
-    setMessages(m => [...m, { id: Date.now(), from:"system", text:"✅ Serviço finalizado! Obrigado por usar o Multi.", time:"" }]);
-    setTimeout(() => { setShowRatingModal(false); setRatingSubmitted(false); setRatingComment(""); setRatingStars(5); onFinish && onFinish(); }, 2000);
-  };
-
-  const quickActions = [
-    { label:"🚗 A caminho", msg:"Estou a caminho! Chego em breve." },
-    { label:"📍 Já cheguei", msg:"Já estou no local! Pode me receber." },
-    { label:"⏱ 5 minutinhos", msg:"Preciso de mais 5 min, já chego!" },
-    { label:"💰 Valor ok?", msg:"Confirma o valor combinado?" },
-    { label:"📍 Endereço?", msg:"Pode confirmar o endereço completo?" },
-    { label:"📸 Manda foto", msg:"Pode mandar uma foto do problema?" },
-    { label:"✅ Finalizar Serviço", action: handleFinish },
-  ];
-
-  return (
-    <div style={{ display:"flex", flexDirection:"column", height:"100%", maxHeight:"calc(100vh - 130px)" }}>
-      {/* chat header */}
-      <div style={{ padding:"14px 16px 12px", background:"white", borderBottom:"1px solid #F0F0F0", display:"flex", alignItems:"center", gap:12 }}>
-        <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", padding:0 }}><ArrowLeft size={20} color="#aaa" /></button>
-        <div style={{ width:38, height:38, borderRadius:12, background:O+"18", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>💼</div>
-        <div style={{ flex:1 }}>
-          <p style={{ fontWeight:900, fontSize:14, color:"#1a1a2e" }}>{chat.proName}</p>
-          <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-            <span style={{ width:7, height:7, borderRadius:"50%", background:G, display:"inline-block" }} />
-            <span style={{ fontSize:11, color:G, fontWeight:700 }}>Online</span>
-          </div>
-        </div>
-        <div>
-          <p style={{ fontSize:10, color:"#aaa", textAlign:"right" }}>Serviço</p>
-          <p style={{ fontSize:12, fontWeight:800, color:B }}>{chat.serviceTitle}</p>
-        </div>
-      </div>
-
-      {/* messages */}
-      <div style={{ flex:1, overflowY:"auto", padding:"16px", display:"flex", flexDirection:"column", gap:10, background:BG }}>
-        {messages.map(m => {
-          if (m.from === "system") return (
-            <div key={m.id} style={{ textAlign:"center" }}>
-              <span style={{ background:G+"18", color:G, fontSize:12, fontWeight:800, padding:"6px 14px", borderRadius:99 }}>{m.text}</span>
-            </div>
-          );
-          const isClient = m.from === "client";
-          return (
-            <div key={m.id} style={{ display:"flex", justifyContent: isClient ? "flex-end" : "flex-start" }}>
-              <div style={{
-                maxWidth:"75%", padding:"10px 13px", borderRadius: isClient ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-                background: isClient ? B : "white",
-                color: isClient ? "white" : "#1a1a2e",
-                fontSize:13, lineHeight:1.5,
-                boxShadow:"0 2px 8px rgba(0,0,0,.08)",
-              }}>
-                <p style={{ margin:0 }}>{m.text}</p>
-                <p style={{ margin:"4px 0 0", fontSize:10, opacity:.6, textAlign:"right" }}>{m.time}</p>
-              </div>
-            </div>
-          );
-        })}
-        <div ref={endRef} />
-      </div>
-
-      {/* quick actions */}
-      {!finished && (
-        <div style={{ padding:"10px 12px 4px", background:"white", borderTop:"1px solid #F0F0F0", display:"flex", gap:7, overflowX:"auto", scrollbarWidth:"none" }}>
-          {quickActions.map((qa, i) => (
-            <button key={i} onClick={() => qa.action ? qa.action() : send(qa.msg)} style={{
-              flexShrink:0, padding:"7px 12px", borderRadius:99, fontSize:11, fontWeight:700, border:"none", cursor:"pointer",
-              background: qa.label.includes("Finalizar") ? G+"15" : B+"10",
-              color:      qa.label.includes("Finalizar") ? G       : B,
-            }}>{qa.label}</button>
-          ))}
-        </div>
-      )}
-
-      {/* input */}
-      {!finished && (
-        <div style={{ padding:"10px 12px 16px", background:"white", display:"flex", alignItems:"center", gap:10 }}>
-          <input
-            value={text}
-            onChange={e => setText(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && send(text)}
-            placeholder="Digite uma mensagem..."
-            style={{ flex:1, border:"1.5px solid #EBEBEB", borderRadius:12, padding:"11px 14px", fontSize:13, outline:"none", fontFamily:"inherit" }}
-          />
-          <button onClick={() => send(text)} style={{ width:42, height:42, borderRadius:12, border:"none", background:B, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", boxShadow:"0 3px 10px rgba(0,112,255,.3)", flexShrink:0 }}>
-            <Send size={16} color="white" />
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
 /* ───────────────────────── CATEGORY GRID CARDS ──────────────────────────────── */
 const CAT_GRID = [
   {
@@ -1653,8 +1516,8 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName }
           <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
             {myServices.slice(0, 3).map(s => {
               const cat = CATS.find(c => c.id === s.cat);
-              const statusColor = s.status === "open" ? B : s.status === "inprogress" ? O : G;
-              const statusLabel = s.status === "open" ? "Aguardando" : s.status === "inprogress" ? "Em andamento" : "Concluído";
+              const statusColor = s.status === "aberto" ? B : isEmAndamentoTab(s.status) ? O : G;
+              const statusLabel = s.status === "aberto" ? "Aguardando" : s.status === "concluido" ? "Concluído" : "Em andamento";
               return (
                 <div key={s.id} onClick={() => onViewService(s)} style={{
                   background:"white", borderRadius:20, padding:"14px 16px",
@@ -1922,7 +1785,7 @@ function PostServiceScreen({ onBack, onSuccess }) {
       </div>
 
         <button
-            onClick={() => { if (canPublish) { (async()=>{ const ts=Date.now(); const urls=await Promise.all((window._photos||[]).map(async(b64,i)=>{ const res=await fetch(b64); const blob=await res.blob(); const ext=blob.type.includes("png")?"png":"jpg"; const path="pedido_"+ts+"_"+i+"."+ext; const{error:ue}=await supabase.storage.from("pedidos-fotos").upload(path,blob,{contentType:blob.type,upsert:true}); if(ue){console.warn("upload:",ue);return null;} return supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl; })); const fotos=urls.filter(Boolean); await supabase.from("pedidos").insert({cliente_id:safeGetUser().email||"anonimo",cliente_nome:safeGetUser().name||"Cliente",categoria:form.cat,descricao:form.desc,valor:Number(form.value),cep:form.cep,fotos,status:"aberto"}); fetch("/api/notify-pedido",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({categoria:form.cat,descricao:form.desc})}).catch(()=>{}); onSuccess({cat:form.cat,desc:form.desc,value:Number(form.value),cep:form.cep,photos:fotos,photo:fotos[0]||null,cepInfo,material:form.material}); })(); }}}
+            onClick={() => { if (canPublish) { (async()=>{ const ts=Date.now(); const urls=await Promise.all((window._photos||[]).map(async(b64,i)=>{ const res=await fetch(b64); const blob=await res.blob(); const ext=blob.type.includes("png")?"png":"jpg"; const path="pedido_"+ts+"_"+i+"."+ext; const{error:ue}=await supabase.storage.from("pedidos-fotos").upload(path,blob,{contentType:blob.type,upsert:true}); if(ue){console.warn("upload:",ue);return null;} return supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl; })); const fotos=urls.filter(Boolean); const{data:novoPedido,error}=await supabase.from("pedidos").insert({cliente_id:safeGetUser().email||"anonimo",cliente_nome:safeGetUser().name||"Cliente",categoria:form.cat,descricao:form.desc,valor:Number(form.value),cep:form.cep,fotos,status:"aberto"}).select().single(); if(error){alert("Erro ao publicar serviço: "+(error.message||"")); return;} fetch("/api/notify-pedido",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({categoria:form.cat,descricao:form.desc})}).catch(()=>{}); onSuccess({...mapPedidoRow(novoPedido), cepInfo, material:form.material}); })(); }}}
             style={{ padding:"15px 0", borderRadius:14, border:"none", cursor: canPublish ? "pointer" : "not-allowed", background: canPublish ? `linear-gradient(135deg,${0},#E64A19)` : "#9CA3AF", color: canPublish ? "white" : "#4B5563", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow: canPublish ? "0 5px 18px rgba(255,87,34,.30)" : "none", transition:"all .2s" }}>
             <Send size={15} /> Publicar Serviço
           </button>
@@ -1933,13 +1796,46 @@ function PostServiceScreen({ onBack, onSuccess }) {
 /* ───────────────────────── SERVICE DETAIL CLIENT ──────────────────────────── */
 /* ───────────────────────── SERVICE STATUS STEPPER ──────────────────────────── */
 
-// Map service.status to a phase number 0-3
+// Map service.status to a phase number 0-3.
+// Vocabulário único do pedido (Fase 1 de consolidação): o mesmo em português
+// usado direto na coluna pedidos.status no Supabase — não existe mais um
+// vocabulário mock em inglês para traduzir.
 function statusToPhase(status) {
-  if (status === "open")       return 0;
-  if (status === "inprogress") return 1;
-  if (status === "executing")  return 2;
-  if (status === "done")       return 3;
+  if (status === "aberto")       return 0;
+  if (status === "em_andamento") return 1;
+  if (status === "executando")   return 2;
+  if (status === "em_disputa")   return 2;
+  if (status === "concluido")    return 3;
   return 0;
+}
+
+// Normaliza uma linha crua de "pedidos" (Supabase) pro shape usado pela UI,
+// preservando TODOS os campos que alguma tela do fluxo real precisa — antes
+// da Fase 1 existiam dois mapeamentos ad-hoc diferentes (um no mural do
+// profissional, outro em "meus pedidos"), cada um descartando campos
+// diferentes (ex: cliente_id sumia num, profissional_aceito sumia no outro).
+function mapPedidoRow(p) {
+  return {
+    id: p.id,
+    cliente_id: p.cliente_id,
+    cliente_nome: p.cliente_nome,
+    profissional_aceito: p.profissional_aceito,
+    profissional_nome: p.profissional_nome,
+    pro: p.profissional_nome,
+    cat: p.categoria,
+    title: p.categoria,
+    desc: p.descricao,
+    value: p.valor,
+    cep: p.cep,
+    photos: p.fotos || [],
+    photo: (p.fotos || [])[0] || null,
+    loc: p.cidade || "sua região",
+    status: p.status,
+    time: p.created_at,
+    concluido_em: p.concluido_em,
+    contestado_em: p.contestado_em,
+    contestacao_motivo: p.contestacao_motivo,
+  };
 }
 
 // Generate a deterministic 4-digit PIN from service id
@@ -1999,7 +1895,7 @@ function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
   const [rating,     setRating]     = useState(0);
   const [rated,      setRated]      = useState(service.clientRating > 0);
   const [showSOS,    setShowSOS]    = useState(false);
-  const [released,   setReleased]   = useState(service.status === "done");
+  const [released,   setReleased]   = useState(service.status === "concluido");
   const cat  = CATS.find(c => c.id === service.cat);
   const pin  = generatePin(service.id);
 
@@ -2010,14 +1906,14 @@ function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
   const handleCheckin = () => {
     setPhase(2);
     showToast?.("🛠️ Status atualizado: O profissional está no local!", O);
-    onStatusChange?.(service.id, "executing");
+    onStatusChange?.(service.id, "executando");
   };
 
   const releasePayment = () => {
     setReleased(true);
     setPhase(3);
     showToast?.("✅ Pagamento liberado! Serviço concluído com sucesso.", G);
-    onStatusChange?.(service.id, "done");
+    onStatusChange?.(service.id, "concluido");
   };
 
   return (
@@ -2202,7 +2098,7 @@ function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
 }
 
 /* ───────────────────────── SERVICE DETAIL — PROFESSIONAL PIN ENTRY ──────────── */
-function ServiceDetailPinEntry({ service, onBack, onStatusChange, showToast }) {
+function ServiceDetailPinEntry({ service, onBack, onStatusChange, showToast, onAvaliar }) {
   const [enteredPin, setEnteredPin] = useState("");
   const [pinError,   setPinError]   = useState(false);
   const [confirmed,  setConfirmed]  = useState(false);
@@ -2219,7 +2115,7 @@ function ServiceDetailPinEntry({ service, onBack, onStatusChange, showToast }) {
         if (next === pin) {
           setConfirmed(true);
           showToast?.("✅ PIN correto! Serviço finalizado. Pagamento liberado!", G);
-          onStatusChange?.(service.id, "done");
+          onStatusChange?.(service.id, "concluido");
         } else {
           setPinError(true);
           setEnteredPin("");
@@ -4283,16 +4179,24 @@ function ProfileScreen({ role, isPro, userName: initialUserName, userEmail, show
 }
 
 /* ───────────────────────── MY SERVICES SCREEN ───────────────────────────────── */
-function MyServicesScreen({ myServices, onOpenService, onOpenChat, onViewPropostas, isPro, initialTab = "open" }) {
+// Vocabulário real tem 5 estados (aberto/em_andamento/executando/concluido/
+// em_disputa); a tela tem 3 abas — em_andamento/executando/em_disputa ficam
+// juntas em "Em Andamento" (em_disputa ganha um badge extra de alerta).
+function isEmAndamentoTab(status) {
+  return status === "em_andamento" || status === "executando" || status === "em_disputa";
+}
+
+function MyServicesScreen({ myServices, onOpenService, onOpenChat, onViewPropostas, isPro, initialTab = "aberto" }) {
   const [tab, setTab] = useState(initialTab);
 
   const tabs = [
-    { id:"open",       label:"Aguardando",  color:"#0070F3" },
-    { id:"inprogress", label:"Em Andamento", color:O },
-    { id:"done",       label:"Concluído",   color:G },
+    { id:"aberto",       label:"Aguardando",   color:"#0070F3" },
+    { id:"em_andamento", label:"Em Andamento", color:O },
+    { id:"concluido",    label:"Concluído",    color:G },
   ];
 
-  const filtered = myServices.filter(s => s.status === tab);
+  const matchesTab = (s, tabId) => tabId === "em_andamento" ? isEmAndamentoTab(s.status) : s.status === tabId;
+  const filtered = myServices.filter(s => matchesTab(s, tab));
 
   return (
     <div style={{ display:"flex", flexDirection:"column", paddingBottom:32 }}>
@@ -4308,7 +4212,7 @@ function MyServicesScreen({ myServices, onOpenService, onOpenChat, onViewPropost
           }}>
             {t.label}
             <span style={{ marginLeft:6, background: tab === t.id ? "rgba(255,255,255,.25)" : "#F0F0F0", color: tab === t.id ? "white" : "#aaa", borderRadius:99, padding:"1px 7px", fontSize:10 }}>
-              {myServices.filter(s => s.status === t.id).length}
+              {myServices.filter(s => matchesTab(s, t.id)).length}
             </span>
           </button>
         ))}
@@ -4324,8 +4228,8 @@ function MyServicesScreen({ myServices, onOpenService, onOpenChat, onViewPropost
         )}
         {filtered.map(s => {
           const cat = CATS.find(c => c.id === s.cat);
-          const statusColor = s.status === "open" ? B : s.status === "inprogress" ? O : G;
-          const statusLabel = s.status === "open" ? "Aguardando propostas" : s.status === "inprogress" ? "Em andamento" : "Concluído";
+          const statusColor = s.status === "aberto" ? B : isEmAndamentoTab(s.status) ? O : G;
+          const statusLabel = s.status === "aberto" ? "Aguardando propostas" : s.status === "concluido" ? "Concluído" : "Em andamento";
           return (
             <div key={s.id} style={{ background:"white", borderRadius:16, padding:16, boxShadow:"0 2px 10px rgba(0,0,0,.06)", border:"1px solid #F0F0F0" }}>
               <div style={{ display:"flex", alignItems:"flex-start", gap:10, marginBottom:10 }}>
@@ -4333,20 +4237,23 @@ function MyServicesScreen({ myServices, onOpenService, onOpenChat, onViewPropost
                 <div style={{ flex:1, minWidth:0 }}>
                   <p style={{ fontWeight:800, fontSize:14, color:"#1a1a2e", marginBottom:3 }}>{s.title}</p>
                   <span style={{ fontSize:11, fontWeight:700, padding:"2px 9px", borderRadius:99, background: statusColor+"18", color: statusColor }}>{statusLabel}</span>
+                  {s.status === "em_disputa" && (
+                    <span style={{ marginLeft:6, fontSize:11, fontWeight:700, padding:"2px 9px", borderRadius:99, background:"#FEE2E2", color:"#DC2626" }}>🚨 Em disputa</span>
+                  )}
                 </div>
                 <span style={{ fontSize:16, fontWeight:900, color:B, flexShrink:0 }}>R$ {s.value}</span>
               </div>
 
               <p style={{ fontSize:12, color:"#aaa", lineHeight:1.5, marginBottom:12 }}>{s.desc}</p>
 
-              {s.status === "open" && (
+              {s.status === "aberto" && (
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                  <span style={{ fontSize:12, color:"#aaa" }}>👥 {s.candidates} candidatos</span>
+                  <span style={{ fontSize:12, color:"#aaa" }}>👥 {s.candidates || 0} candidatos</span>
                   <button onClick={() => { onViewPropostas(s); }} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${B}`, background:"white", color:B, fontSize:12, fontWeight:800, cursor:"pointer" }}>Ver Propostas</button>
                 </div>
               )}
 
-              {s.status === "inprogress" && (
+              {isEmAndamentoTab(s.status) && (
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                   <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                     <div style={{ width:30, height:30, borderRadius:9, background:O+"18", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>👨‍🔧</div>
@@ -4362,7 +4269,7 @@ function MyServicesScreen({ myServices, onOpenService, onOpenChat, onViewPropost
                 </div>
               )}
 
-              {s.status === "done" && (
+              {s.status === "concluido" && (
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                   <div style={{ display:"flex", alignItems:"center", gap:4 }}>
                     <MiniStars v={s.clientRating || 0} size={14} />
@@ -4379,67 +4286,9 @@ function MyServicesScreen({ myServices, onOpenService, onOpenChat, onViewPropost
   );
 }
 
-/* ───────────────────────── RATING MODAL ─────────────────────────────────────── */
-function RatingModal({ service, onRate, onClose }) {
-  const [rating, setRating] = useState(0);
-  const [hover,  setHover]  = useState(0);
-  const [comment, setComment] = useState("");
-  const cat = CATS.find(c => c.id === service.cat);
-
-  const labels = ["", "Ruim", "Regular", "Bom", "Ótimo", "Excelente!"];
-
-  return (
-    <div style={{ position:"fixed", inset:0, zIndex:300, background:"rgba(0,0,0,.5)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
-      <div style={{ width:"100%", maxWidth:400, background:"white", borderRadius:"24px 24px 0 0", padding:"24px 20px 40px" }}>
-        <div style={{ width:40, height:4, background:"#E0E0E0", borderRadius:99, margin:"0 auto 20px" }} />
-
-        <div style={{ textAlign:"center", marginBottom:20 }}>
-          <div style={{ width:56, height:56, borderRadius:16, background:cat?.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, margin:"0 auto 10px" }}>{cat?.emoji}</div>
-          <h3 style={{ fontSize:17, fontWeight:900, color:"#1a1a2e", marginBottom:4 }}>Como foi o serviço?</h3>
-          <p style={{ fontSize:13, color:"#aaa" }}>Avalie <strong style={{ color:"#1a1a2e" }}>{service.pro}</strong> pelo trabalho em "{service.title}"</p>
-        </div>
-
-        {/* stars */}
-        <div style={{ display:"flex", justifyContent:"center", gap:10, marginBottom:8 }}>
-          {[1,2,3,4,5].map(s => (
-            <Star key={s} size={40}
-              fill={(hover || rating) >= s ? "#F9A825" : "none"}
-              stroke={(hover || rating) >= s ? "#F9A825" : "#E0E0E0"}
-              style={{ cursor:"pointer", transition:"transform .1s" }}
-              onMouseEnter={() => setHover(s)}
-              onMouseLeave={() => setHover(0)}
-              onClick={() => setRating(s)}
-            />
-          ))}
-        </div>
-        <p style={{ textAlign:"center", fontSize:14, fontWeight:800, color: rating ? "#F9A825" : "#ccc", marginBottom:16, minHeight:20 }}>
-          {labels[hover || rating]}
-        </p>
-
-        <textarea
-          rows={3}
-          placeholder="Deixe um comentário (opcional)…"
-          value={comment}
-          onChange={e => setComment(e.target.value)}
-          style={{ width:"100%", border:"1.5px solid #EBEBEB", borderRadius:12, padding:"12px 14px", fontSize:13, color:"#1a1a2e", outline:"none", resize:"none", fontFamily:"inherit", boxSizing:"border-box", lineHeight:1.5, marginBottom:14 }}
-        />
-
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-          <button onClick={onClose} style={{ padding:"13px 0", borderRadius:12, border:"1.5px solid #E8E8E8", background:"white", color:"#888", fontWeight:800, fontSize:13, cursor:"pointer" }}>
-            Agora não
-          </button>
-          <button onClick={() => rating > 0 && onRate(rating, comment)} style={{ padding:"13px 0", borderRadius:12, border:"none", background: rating > 0 ? `linear-gradient(135deg,#F9A825,#E65100)` : "#F0F0F0", color: rating > 0 ? "white" : "#ccc", fontWeight:800, fontSize:13, cursor: rating > 0 ? "pointer" : "default", boxShadow: rating > 0 ? "0 4px 14px rgba(249,168,37,.35)" : "none" }}>
-            Enviar Avaliação
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ───────────────────────── CHAT INBOX ──────────────────────────────────────── */
 function ChatInbox({ myServices, onOpenChat }) {
-  const active = myServices.filter(s => s.status === "inprogress" || s.status === "done");
+  const active = myServices.filter(s => isEmAndamentoTab(s.status) || s.status === "concluido");
   return (
     <div style={{ display:"flex", flexDirection:"column", paddingBottom:32 }}>
       <div style={{ padding:"18px 16px 12px" }}>
@@ -4455,7 +4304,7 @@ function ChatInbox({ myServices, onOpenChat }) {
       )}
       {active.map(s => {
         const cat = CATS.find(c => c.id === s.cat);
-        const unread = s.status === "inprogress";
+        const unread = isEmAndamentoTab(s.status);
         return (
           <div key={s.id} onClick={() => onOpenChat(s)} style={{
             display:"flex", alignItems:"center", gap:12,
@@ -4465,7 +4314,7 @@ function ChatInbox({ myServices, onOpenChat }) {
             {/* avatar with online dot */}
             <div style={{ position:"relative", flexShrink:0 }}>
               <div style={{ width:48, height:48, borderRadius:15, background:cat?.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24 }}>{cat?.emoji}</div>
-              {s.status === "inprogress" && (
+              {isEmAndamentoTab(s.status) && (
                 <span style={{
                   position:"absolute", bottom:1, right:1,
                   width:12, height:12, borderRadius:"50%",
@@ -4479,7 +4328,7 @@ function ChatInbox({ myServices, onOpenChat }) {
                 <span style={{ fontSize:11, color:"#bbb" }}>Agora</span>
               </div>
               <p style={{ fontSize:12, color: unread ? "#555" : "#aaa", fontWeight: unread ? 700 : 400, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                {s.status === "inprogress" ? `Orçamento R$ ${s.proposalValue || s.value} confirmado 👍` : "✅ Serviço concluído"}
+                {isEmAndamentoTab(s.status) ? `Orçamento R$ ${s.proposalValue || s.value} confirmado 👍` : "✅ Serviço concluído"}
               </p>
               <p style={{ fontSize:11, color:"#bbb", marginTop:2 }}>{s.title}</p>
             </div>
@@ -6143,13 +5992,13 @@ function GuestMural({ onSignup, allDocsVerified }) {
 }
 
 /* ───────────────────────── PROFESSIONAL HOME ────────────────────────────────── */
-function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro, feedServices, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet, onAcceptOrder, pendingOrders=[] }) {
+function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet, onAcceptOrder }) {
   const [online,       setOnline]       = useState(false);
   const [categoriaServico, setCategoriaServico] = useState("");
   const [newOrder, setNewOrder] = useState(null);
   const [activeFilter, setActiveFilter] = useState("all");
   const [realPedidos, setRealPedidos] = useState(SEED_FEED);
-  useEffect(()=>{ supabase.from("pedidos").select("*").eq("status","aberto").order("created_at",{ascending:false}).limit(50).then(({data})=>{ if(data&&data.length>0) setRealPedidos(data.map(p=>({id:p.id,cat:p.categoria||"servico",title:(p.descricao||p.categoria||"Serviço").slice(0,40),desc:p.descricao||"",value:p.valor||0,loc:p.cidade||"sua região",time:new Date(p.created_at).toLocaleDateString("pt-BR"),client:p.cliente_nome||"Cliente",rating:4.5,urgent:false,emoji:"🔧",bg:"#FFF8E1",photo:null,photos:p.fotos}))); }).catch(()=>{}); },[]);
+  useEffect(()=>{ supabase.from("pedidos").select("*").eq("status","aberto").order("created_at",{ascending:false}).limit(50).then(({data})=>{ if(data&&data.length>0) setRealPedidos(data.map(p=>({id:p.id,cliente_id:p.cliente_id,cat:p.categoria||"servico",title:(p.descricao||p.categoria||"Serviço").slice(0,40),desc:p.descricao||"",value:p.valor||0,loc:p.cidade||"sua região",time:new Date(p.created_at).toLocaleDateString("pt-BR"),client:p.cliente_nome||"Cliente",rating:4.5,urgent:false,emoji:"🔧",bg:"#FFF8E1",photo:null,photos:p.fotos}))); }).catch(()=>{}); },[]);
 
   // Carrega categoria + status persistidos, mesmo padrão do handleToggleOnline da empresa.
   // userToggledRef evita que essa carga inicial (assíncrona) sobrescreva um clique em
@@ -6182,7 +6031,6 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
     return true;
   });
 
-  const totalValue = feedServices.reduce((acc, s) => acc + (s.value || 0), 0);
   const proTrialDays = 7; // free trial period
 
   const handleFicarOnline=async()=>{
@@ -6217,38 +6065,11 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
 
   if(next){
   supabase.from("pedidos").select("*").eq("status","aberto").order("created_at",{ascending:false}).limit(1).then(({data})=>{
-    if(data&&data[0]){const p=data[0];console.log("REALTIME P.FOTOS:",typeof p.fotos, JSON.stringify(p.fotos));setNewOrder({category:p.categoria,location:p.cidade||"Guarulhos, SP",value:String(p.valor||"0"),description:p.descricao||"",photos:(()=>{try{const f=p.fotos;return Array.isArray(f)?f:(typeof f==="string"?JSON.parse(f):[]);}catch(e){return [];}})(),photo:(()=>{try{const f=p.fotos;const arr=Array.isArray(f)?f:(typeof f==="string"?JSON.parse(f):[]);return arr[0]||null;}catch(e){return null;}})()});}
+    if(data&&data[0]){const p=data[0];setNewOrder({id:p.id,cliente_id:p.cliente_id,category:p.categoria,location:p.cidade||"Guarulhos, SP",value:String(p.valor||"0"),description:p.descricao||"",photos:(()=>{try{const f=p.fotos;return Array.isArray(f)?f:(typeof f==="string"?JSON.parse(f):[]);}catch(e){return [];}})(),photo:(()=>{try{const f=p.fotos;const arr=Array.isArray(f)?f:(typeof f==="string"?JSON.parse(f):[]);return arr[0]||null;}catch(e){return null;}})()});}
   });
   supabase.channel("pedidos_novos").on("postgres_changes",{event:"*",schema:"public",table:"pedidos"},(payload)=>{
-    const p=payload.new;if(!p||!p.fotos||p.fotos.length===0)return;setNewOrder({category:p.categoria,location:p.cidade||"Guarulhos, SP",value:String(p.valor||"0"),description:p.descricao||"",photos:(()=>{try{const f=p.fotos;return Array.isArray(f)?f:(typeof f==="string"?JSON.parse(f):[]);}catch(e){return [];}})(),photo:(()=>{try{const f=p.fotos;const arr=Array.isArray(f)?f:(typeof f==="string"?JSON.parse(f):[]);return arr[0]||null;}catch(e){return null;}})()});
+    const p=payload.new;if(!p||!p.fotos||p.fotos.length===0)return;setNewOrder({id:p.id,cliente_id:p.cliente_id,category:p.categoria,location:p.cidade||"Guarulhos, SP",value:String(p.valor||"0"),description:p.descricao||"",photos:(()=>{try{const f=p.fotos;return Array.isArray(f)?f:(typeof f==="string"?JSON.parse(f):[]);}catch(e){return [];}})(),photo:(()=>{try{const f=p.fotos;const arr=Array.isArray(f)?f:(typeof f==="string"?JSON.parse(f):[]);return arr[0]||null;}catch(e){return null;}})()});
   }).subscribe();
-
-// Realtime: notificar cliente quando proposta chegar
-if(userEmail){
-  supabase.channel("propostas_realtime")
-    .on("postgres_changes",{event:"INSERT",schema:"public",table:"propostas"},
-      (payload)=>{
-        const p=payload.new;
-        // Verificar se proposta é para pedido do cliente logado via campo cliente_email
-        if(p.cliente_email===userEmail||!p.cliente_email){
-              setNotifications(n=>[{
-                id:Date.now(),
-                title:"Nova proposta recebida!",
-                body:p.profissional_nome+" quer fazer seu serviço por R$"+p.valor,
-                pedido_id:p.pedido_id,
-                read:false,
-                time:"Agora"
-              },...n]);
-              // Toast visual
-              const toast=document.createElement("div");
-              toast.innerHTML="🔔 Nova proposta de "+p.profissional_nome+"!";
-              toast.style.cssText="position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#007BFF;color:white;padding:12px 20px;border-radius:12px;font-weight:700;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2);";
-              document.body.appendChild(toast);
-              setTimeout(()=>toast.remove(),4000);
-        }
-      })
-    .subscribe();
-}
 }else{supabase.removeAllChannels();}};
   return (
     <div style={{ display:"flex", flexDirection:"column", background:"#F0F2F5", minHeight:"100vh", paddingBottom:100 }}>
@@ -6317,7 +6138,7 @@ if(userEmail){
               display:"flex", alignItems:"center", justifyContent:"center", gap:10,
               transition:"background .3s, color .3s",
             }}>
-            {newOrder && <NewOrderCard order={newOrder} onAccept={()=>{stopNewOrderSound();setNewOrder(null);setOnline(false);onAcceptOrder&&onAcceptOrder({id:Date.now(),title:newOrder.category,category:newOrder.category,clientName:safeGetUser().name||"Cliente",location:newOrder.location,value:newOrder.value,description:newOrder.description,photo:newOrder.photo,photos:newOrder.photos||[],status:"accepted",phase:1});}} onReject={()=>{stopNewOrderSound();setNewOrder(null);}} />}
+            {newOrder && <NewOrderCard order={newOrder} onAccept={()=>{stopNewOrderSound();setNewOrder(null);setOnline(false);onAcceptOrder&&onAcceptOrder({id:newOrder.id,cliente_id:newOrder.cliente_id,title:newOrder.category,category:newOrder.category,clientName:safeGetUser().name||"Cliente",location:newOrder.location,value:newOrder.value,description:newOrder.description,photo:newOrder.photo,photos:newOrder.photos||[],status:"em_andamento",phase:1});}} onReject={()=>{stopNewOrderSound();setNewOrder(null);}} />}
             {/* radar icon */}
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <circle cx="12" cy="12" r="2"/>
@@ -6409,7 +6230,7 @@ if(userEmail){
                     if (!allDocsVerified) { setShowDocBlock(true); return; }
                     if (isLocked) { onUpgrade(); return; }
                   const proUser=safeGetUser();
-                  supabase.from("propostas").upsert({pedido_id:s.id,profissional_id:proUser.email||proUser.whatsapp,profissional_nome:proUser.name||"Profissional",profissional_email:proUser.email||proUser.whatsapp,valor:s.value||0,mensagem:"Tenho interesse neste serviço!",status:"pendente",cliente_email:s.cliente_id||s.cliente_email||s.user_id||""}).then(()=>{}).catch(()=>{});
+                  supabase.from("propostas").upsert({pedido_id:s.id,profissional_id:proUser.email||proUser.whatsapp,profissional_nome:proUser.name||"Profissional",profissional_email:proUser.email||proUser.whatsapp,valor:s.value||0,mensagem:"Tenho interesse neste serviço!",status:"pendente",cliente_email:s.cliente_id||""},{onConflict:"pedido_id,profissional_id"}).then(()=>{}).catch(()=>{});
                   onViewService({ _notify:{ serviceId:s.id, serviceTitle:s.title, value:s.value, proName:proUser.name||"Profissional" } });
                   }}
                   style={{ padding:"11px 0", borderRadius:12, border:"none", cursor:"pointer", fontWeight:900, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:7,
@@ -6812,6 +6633,7 @@ function AvaliacaoScreen({ service, onBack, setScreen, userEmail, showToast }) {
       pedido_id: service.id,
       cliente_id: userEmail,
       profissional_id: service.profissional_aceito,
+      profissional_nome: service.profissional_nome || service.pro || null,
       nota,
       comentario
     });
@@ -6870,7 +6692,6 @@ export default function App() {
   const [avaliacaoSvc, setAvaliacaoSvc] = useState(null);
   const [isPro,     setIsPro]     = useState(false);
   const [toast,     setToast]     = useState(null);
-  const [ratingTarget, setRatingTarget] = useState(null);
   const [showRankingGlobal, setShowRankingGlobal] = useState(false);
   useEffect(() => {
     const h = () => { setScreen("profile"); setShowRankingGlobal(true); };
@@ -6910,28 +6731,77 @@ export default function App() {
   const [userRole,      setUserRole]      = useState(savedSession?.role      || "client");
   const [userName,      setUserName]      = useState(savedSession?.name      || "");
 
-  // SHARED STATE
-  const [myServices, setMyServices] = useState([]);
-  const [myServicesLoading, setMyServicesLoading] = useState(false);
-  useEffect(() => {
-    if (!userEmail) return;
-    setMyServicesLoading(true);
-    supabase.from("pedidos").select("*").eq("profissional_aceito", userEmail).order("created_at", { ascending: false })
-      .then(({ data }) => {
-        if (data && data.length > 0) {
-          setMyServices(data.map(p => ({
-            id: p.id, cat: p.categoria || "servico", title: p.descricao?.slice(0,40) || p.categoria || "Serviço",
-            desc: p.descricao || "", value: p.valor || 0, status: p.status === "aberto" ? "open" : p.status === "em_andamento" ? "inprogress" : p.status === "concluido" ? "done" : p.status || "open",
-            time: p.created_at ? new Date(p.created_at).toLocaleDateString("pt-BR") : "",
-            pro: p.pro_name || null, loc: p.city || "sua região", payment_id: p.payment_id
-          })));
-        }
-        setMyServicesLoading(false);
-      }).catch(() => setMyServicesLoading(false));
-  }, [screen, userName]);
-  const [notifications, setNotifications] = useState([]);
   const [activeChat,    setActiveChat]    = useState(null);
   const [userEmail,     setUserEmail]     = useState(savedSession?.email    || "");
+
+  // MEUS PEDIDOS — fonte única real (Fase 1 de consolidação): cliente vê os
+  // próprios pedidos (cliente_id), profissional vê os que aceitou
+  // (profissional_aceito). Antes só existia leitura por profissional_aceito —
+  // o cliente nunca via os próprios pedidos reais nesta lista.
+  const [meusPedidos, setMeusPedidos] = useState([]);
+  const [meusPedidosLoading, setMeusPedidosLoading] = useState(false);
+  const refreshMeusPedidos = () => {
+    if (!userEmail) { setMeusPedidos([]); return; }
+    setMeusPedidosLoading(true);
+    const query = role === "professional"
+      ? supabase.from("pedidos").select("*").eq("profissional_aceito", userEmail)
+      : supabase.from("pedidos").select("*").eq("cliente_id", userEmail);
+    query.order("created_at", { ascending: false }).then(({ data }) => {
+      setMeusPedidos((data || []).map(mapPedidoRow));
+      setMeusPedidosLoading(false);
+    }).catch(() => setMeusPedidosLoading(false));
+  };
+  useEffect(() => { refreshMeusPedidos(); }, [screen, userEmail, role]);
+
+  // Contagem real de propostas recebidas por pedido aberto (cliente) — antes
+  // sempre aparecia 0/vazio, sem nenhuma leitura de "propostas".
+  const [candidatosPorPedido, setCandidatosPorPedido] = useState({});
+  useEffect(() => {
+    if (role !== "client") return;
+    const abertos = meusPedidos.filter(p => p.status === "aberto").map(p => p.id);
+    if (abertos.length === 0) { setCandidatosPorPedido({}); return; }
+    supabase.from("propostas").select("pedido_id").in("pedido_id", abertos).then(({ data }) => {
+      const counts = {};
+      (data || []).forEach(p => { counts[p.pedido_id] = (counts[p.pedido_id] || 0) + 1; });
+      setCandidatosPorPedido(counts);
+    }).catch(() => {});
+  }, [meusPedidos, role]);
+  const meusPedidosComCandidatos = meusPedidos.map(p => ({ ...p, candidates: candidatosPorPedido[p.id] || 0 }));
+
+  // Propostas recebidas pelo cliente — alimenta AlertsScreen. Antes vinha de
+  // um "notifications" mockado em memória (nunca persistido, alimentado por
+  // um canal realtime dentro de ProfessionalHome que não fazia sentido ali).
+  const [propostasRecebidas, setPropostasRecebidas] = useState([]);
+  useEffect(() => {
+    if (!userEmail || role !== "client") { setPropostasRecebidas([]); return; }
+    supabase.from("propostas").select("*").eq("cliente_email", userEmail).eq("status", "pendente")
+      .order("created_at", { ascending: false })
+      .then(({ data }) => setPropostasRecebidas(data || []));
+    const ch = supabase.channel("propostas_cliente_" + userEmail)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "propostas", filter: `cliente_email=eq.${userEmail}` },
+        payload => setPropostasRecebidas(p => [payload.new, ...p]))
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }, [userEmail, role]);
+
+  // Títulos dos pedidos relacionados, só pro card de AlertsScreen mostrar
+  // "serviceTitle" sem precisar duplicar essa informação em "propostas".
+  const [pedidoTitlesById, setPedidoTitlesById] = useState({});
+  useEffect(() => {
+    const ids = [...new Set(propostasRecebidas.map(p => p.pedido_id).filter(Boolean))];
+    if (ids.length === 0) { setPedidoTitlesById({}); return; }
+    supabase.from("pedidos").select("id,descricao,categoria").in("id", ids).then(({ data }) => {
+      const map = {};
+      (data || []).forEach(p => { map[p.id] = p.descricao || p.categoria || "Serviço"; });
+      setPedidoTitlesById(map);
+    }).catch(() => {});
+  }, [propostasRecebidas]);
+
+  const notificationsFromPropostas = propostasRecebidas.map(p => ({
+    id: p.id, proName: p.profissional_nome, proposal: p.mensagem,
+    serviceTitle: pedidoTitlesById[p.pedido_id] || "Serviço", value: p.valor,
+    status: p.status === "pendente" ? "pending" : "accepted",
+  }));
   const [userLocation,  setUserLocation]  = useState(localStorage.getItem("multiLocation") || savedSession?.location || "sua região");
   const [walletBalance, setWalletBalance] = useState(1240);
   useEffect(() => {
@@ -6970,8 +6840,6 @@ export default function App() {
         }
       }).catch(() => {});
   }, []);
-
-  const feedServices = [...myServices.filter(s => s.status === "open")];
 
   const showToast = (msg, color = G) => {
     setToast({ msg, color });
@@ -7063,7 +6931,15 @@ export default function App() {
         const session = { name: firstName, email, whatsapp, location, role: resolvedRole };
         localStorage.setItem("multiSession", JSON.stringify(session));
         localStorage.setItem("multiUser",    JSON.stringify(session));
-        supabase.from("usuarios").upsert({ email: session.email, name: session.name, whatsapp: session.whatsapp||null, role: session.role||"client", city: session.location||null }, { onConflict: "email" }).then(()=>{}).catch(()=>{});
+        // "role" só entra nesse upsert na criação da conta (isNewAccount).
+        // Em logins seguintes, gravar role aqui sobrescrevia o valor real do
+        // Supabase com o que estava cacheado na sessão local, revertendo
+        // silenciosamente contas que tinham virado "professional" depois do
+        // cadastro original. Troca de role fora do cadastro só acontece pelo
+        // fluxo explícito (onSwitchRole, "Sou profissional"/"Sou cliente").
+        const upsertPayload = { email: session.email, name: session.name, whatsapp: session.whatsapp||null, city: session.location||null };
+        if (isNewAccount) upsertPayload.role = session.role || "client";
+        supabase.from("usuarios").upsert(upsertPayload, { onConflict: "email" }).then(()=>{}).catch(()=>{});
       } catch {}
 
       setScreen("home");
@@ -7093,66 +6969,99 @@ export default function App() {
       .catch(() => finishLogin(fallbackRole));
   };
 
-  // ── SERVICE HANDLERS ────────────────────────────────────────────────────────
-  const handlePostService = ({ cat, desc, value, photo }) => {
-    const catDef = CATS.find(c => c.id === cat);
-    const svc = {
-      id: Date.now(), cat, desc, value,
-      title: `${catDef?.label ?? "Serviço"} — ${desc.slice(0, 28)}…`,
-      candidates: 0, status:"open", time:"Agora", urgent:false,
-      loc: userLocation === "sua região" ? "Perto de você" : userLocation,
-      client:"Você", rating:5.0, photo:(typeof photo!=="undefined"?photo:null),
-    };
-    setMyServices(s => [svc, ...s]);
-    setSelected(svc);
-    setScreen("radar");
+  // ── SERVICE HANDLERS (Fase 1: fluxo único real, nada aqui é mock) ───────────
+  const handlePostServiceSuccess = (pedidoReal) => {
+    setSelected(pedidoReal);
+    setScreen("orders");
+    refreshMeusPedidos();
   };
 
-  const handleProposalNotify = (proposal) => {
-    setNotifications(n => [{ id:Date.now(), ...proposal, status:"pending", time:"Agora" }, ...n]);
-    setMyServices(s => s.map(x => x.id === proposal.serviceId ? { ...x, candidates: (x.candidates||0)+1 } : x));
-    showToast("💼 Proposta enviada! Cliente será notificado.", B);
+  // Usada tanto por PropostasScreen ("Ver Propostas" → aceitar) quanto por
+  // AlertsScreen ("Aceitar" direto no alerta) — antes eram dois caminhos
+  // redundantes, um real e um mock.
+  const handleAceitarProposta = (proposta) => {
+    supabase.from("propostas").update({ status:"aceita" }).eq("id", proposta.id).then(()=>{});
+    supabase.from("pedidos").update({
+      status:"em_andamento",
+      profissional_aceito: proposta.profissional_id,
+      profissional_nome: proposta.profissional_nome,
+    }).eq("id", proposta.pedido_id).then(()=>refreshMeusPedidos());
+    openChatFromService({
+      id: proposta.pedido_id,
+      title: pedidoTitlesById[proposta.pedido_id] || "Serviço",
+      pro: proposta.profissional_nome,
+      profissional_aceito: proposta.profissional_id,
+      proposalValue: proposta.valor,
+      contactUnlocked: true,
+    });
+    setScreen("chat");
   };
 
-  const handleAcceptProposal = (notifId) => {
-    const notif = notifications.find(n => n.id === notifId);
-    if (!notif) return;
-    setNotifications(n => n.map(x => x.id === notifId ? { ...x, status:"accepted" } : x));
-    setMyServices(s => s.map(x => x.id === notif.serviceId
-      ? { ...x, status:"inprogress", pro: notif.proName, proRating:4.8, proposalValue: notif.value, contactUnlocked:true }
-      : x));
-    showToast("🎉 Proposta aceita! Chat e contato liberados.");
+  // AlertsScreen só conhece o id da proposta (n.id) — resolve pra proposta
+  // completa antes de aceitar.
+  const handleAceitarPropostaPorId = (propostaId) => {
+    const proposta = propostasRecebidas.find(p => p.id === propostaId);
+    if (proposta) handleAceitarProposta(proposta);
+  };
+
+  // "Aceitar agora" no popup de novo pedido (NewOrderCard) — o profissional
+  // pega o pedido direto, sem passar por "propostas" (não existe proposta
+  // nenhuma nesse caminho). Só grava em "pedidos"; abrir a tela de detalhe
+  // continua sendo responsabilidade de quem chama.
+  const handleAceitarPedidoDireto = (pedidoId) => {
+    if (!pedidoId) return;
+    supabase.from("pedidos").update({
+      status: "em_andamento",
+      profissional_aceito: userEmail,
+      profissional_nome: userName,
+    }).eq("id", pedidoId).then(()=>refreshMeusPedidos());
   };
 
   const openChatFromNotif = (notif) => {
-    setActiveChat({ proName: notif.proName, serviceTitle: notif.serviceTitle, proposalValue: notif.value, budgetAccepted: notif.status === "accepted", messages:[] });
+    setActiveChat({ pedidoId:null, proId:null, proName: notif.proName, serviceTitle: notif.serviceTitle, proposalValue: notif.value, contactUnlocked:false, messages:[] });
     setScreen("activechat");
   };
 
   const openChatFromService = (svc) => {
-    setActiveChat({ proName: svc.pro || "Profissional", serviceTitle: svc.title, proposalValue: svc.proposalValue || svc.value, budgetAccepted: true, contactUnlocked: svc.contactUnlocked || isPro, messages:[] });
+    setActiveChat({
+      pedidoId: svc.id,
+      proId: svc.profissional_aceito || svc.proId || null,
+      proName: svc.pro || svc.profissional_nome || "Profissional",
+      serviceTitle: svc.title,
+      proposalValue: svc.proposalValue || svc.value,
+      contactUnlocked: svc.contactUnlocked || isPro,
+      messages: [],
+    });
     setScreen("activechat");
   };
 
   const handleFinishService = () => {
-    if (!activeChat) return;
-    const svc = myServices.find(s => s.title === activeChat.serviceTitle);
-    setMyServices(s => s.map(x => x.title === activeChat.serviceTitle ? { ...x, status:"done" } : x));
-    setScreen("orders");
+    if (!activeChat?.pedidoId) { setActiveChat(null); setScreen("orders"); return; }
+    const pedidoId = activeChat.pedidoId;
+    supabase.from("pedidos").update({
+      status:"concluido", updated_at:new Date().toISOString(), concluido_em:new Date().toISOString(),
+    }).eq("id", pedidoId).then(()=>refreshMeusPedidos());
+    setAvaliacaoSvc({
+      id: pedidoId, profissional_aceito: activeChat.proId,
+      pro: activeChat.proName, profissional_nome: activeChat.proName, title: activeChat.serviceTitle,
+    });
     setActiveChat(null);
-    if (svc) setTimeout(() => setRatingTarget({ ...svc, status:"done" }), 400);
+    setScreen("avaliacao");
   };
 
-  const handleRate = (svcId, stars) => {
-    setMyServices(s => s.map(x => x.id === svcId ? { ...x, clientRating: stars } : x));
-    setRatingTarget(null);
-    showToast(`⭐ Obrigada! Você avaliou com ${stars} estrelas.`);
+  // Centraliza a persistência de mudança de status do pedido — usada tanto
+  // pelo check-in/liberação do cliente (ServiceDetailClient) quanto pela
+  // finalização via PIN do profissional (ServiceDetailPinEntry).
+  const handlePedidoStatusChange = (id, novoStatus) => {
+    const extra = novoStatus === "concluido" ? { concluido_em: new Date().toISOString() } : {};
+    supabase.from("pedidos").update({ status: novoStatus, updated_at: new Date().toISOString(), ...extra })
+      .eq("id", id).then(()=>refreshMeusPedidos()).catch(()=>{});
   };
 
   const handleProFeedAction = (payload) => {
     if (payload._upgrade) { setScreen("upgrade"); return; }
     if (payload._notify)  {
-      requireAuth("proposal", () => handleProposalNotify(payload._notify));
+      requireAuth("proposal", () => showToast("💼 Proposta enviada! Cliente será notificado.", B));
       return;
     }
     // Professional must be logged in to see service details
@@ -7180,7 +7089,7 @@ export default function App() {
     showToast("👋 Até logo!");
   };
 
-  const notifCount = notifications.filter(n => n.status === "pending").length;
+  const notifCount = notificationsFromPropostas.filter(n => n.status === "pending").length;
 
   // ── SCREEN ROUTER ───────────────────────────────────────────────────────────
   function PropostasScreen({ pedido, onBack, onAceitarProposta }) {
@@ -7225,7 +7134,7 @@ const renderContent = () => {
 
   if (!role && !authScreen) { setAuthScreen("welcome"); return null; }
     if (role === "client") {
-      if (screen === "post")   return <PostServiceScreen onBack={() => setScreen("home")} onSuccess={handlePostService} />;
+      if (screen === "post")   return <PostServiceScreen onBack={() => setScreen("home")} onSuccess={handlePostServiceSuccess} />;
       if (selectedPro) return (
     <div style={{minHeight:"100vh",background:"#f5f5f5"}}>
       <div style={{background:"linear-gradient(135deg,#1565C0,#0D47A1)",padding:"40px 20px 60px",textAlign:"center",position:"relative"}}>
@@ -7260,24 +7169,15 @@ const renderContent = () => {
   );
   
   if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onFound={(pro, svc) => { setSelectedPro({pro, svc}); }} />;
-      if (screen === "alerts") return <AlertsScreen notifications={notifications} onAccept={handleAcceptProposal} onOpenChat={openChatFromNotif} />;
-      if (screen === "chat")   return <ChatInbox myServices={myServices} onOpenChat={openChatFromService} />;
-      if (screen === "orders") return <MyServicesScreen initialTab={screen === "orders" && role === "professional" ? "done" : "open"} myServices={myServices} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} isPro={isPro} />;
+      if (screen === "alerts") return <AlertsScreen notifications={notificationsFromPropostas} onAccept={handleAceitarPropostaPorId} onOpenChat={openChatFromNotif} />;
+      if (screen === "chat")   return <ChatInbox myServices={meusPedidosComCandidatos} onOpenChat={openChatFromService} />;
+      if (screen === "orders") return <MyServicesScreen initialTab="aberto" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} isPro={isPro} />;
       if (screen === "profile") {
         if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
-        return <ProfileScreen role="client" userName={userName} isPro={false} showRankingGlobal={showRankingGlobal} onClearRankingGlobal={() => setShowRankingGlobal(false)} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenAdmin={() => setShowAdmin(true)} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} setScreen("home"); }} />;
+        return <ProfileScreen role="client" userName={userName} isPro={false} showRankingGlobal={showRankingGlobal} onClearRankingGlobal={() => setShowRankingGlobal(false)} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenAdmin={() => setShowAdmin(true)} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
       }
-      if (screen === "propostas" && selected) return <PropostasScreen pedido={selected} onBack={()=>setScreen("orders")} onAceitarProposta={(prop)=>{
-  // 1. Atualizar proposta para aceita
-  supabase.from("propostas").update({status:"aceita"}).eq("id",prop.id).then(()=>{});
-  // 2. Atualizar pedido para em_andamento
-  supabase.from("pedidos").update({status:"em_andamento",profissional_aceito:prop.profissional_id,profissional_nome:prop.profissional_nome}).eq("id",selected.id).then(()=>{});
-  // 3. Abrir chat com profissional
-  openChatFromService && openChatFromService({id:selected.id,title:selected.title,proId:prop.profissional_id,proName:prop.profissional_nome,value:prop.valor});
-  setScreen("chat");
-  alert("Proposta aceita! Entrando em contato com "+prop.profissional_nome);
-}} />;
-      if (screen === "service" && selected) return <ServiceDetailClient service={selected} onBack={() => setScreen("orders")} onStatusChange={(id, newStatus) => { setMyServices(s => s.map(x => x.id === id ? { ...x, status: newStatus } : x)); supabase.from("pedidos").update({status:newStatus,updated_at:new Date().toISOString()}).eq("id",id).then(()=>{}).catch(()=>{}); }} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
+      if (screen === "propostas" && selected) return <PropostasScreen pedido={selected} onBack={()=>setScreen("orders")} onAceitarProposta={handleAceitarProposta} />;
+      if (screen === "service" && selected) return <ServiceDetailClient service={selected} onBack={() => setScreen("orders")} onStatusChange={handlePedidoStatusChange} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
 
       // ── GUEST TOGGLE: show professional mural preview when guest selects "Profissional"
       if (!isLoggedIn && guestRole === "professional") {
@@ -7294,7 +7194,7 @@ const renderContent = () => {
               : requireAuth("orders", () => setScreen("orders"))
             }
             onSwitchPro={() => { setRole("professional"); setUserRole("professional"); setScreen("home"); setSelected(null); }}
-            myServices={isLoggedIn ? myServices : []}
+            myServices={isLoggedIn ? meusPedidosComCandidatos : []}
             userName={userName}
           />
           {/* FAB */}
@@ -7330,7 +7230,7 @@ const renderContent = () => {
             onPost={() => requireAuth("post", () => setScreen("post"))}
             onViewService={s => s ? requireAuth("service", () => { setSelected(s); setScreen("service"); }) : requireAuth("orders", () => setScreen("orders"))}
             onSwitchPro={() => {}}
-            myServices={isLoggedIn ? myServices : []}
+            myServices={isLoggedIn ? meusPedidosComCandidatos : []}
             userName={userName}
           />
           <button onClick={() => requireAuth("post", () => setScreen("post"))} style={{ position:"fixed", bottom:80, right:20, zIndex:100, display:"flex", alignItems:"center", gap:8, padding:"14px 20px", borderRadius:99, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${O},#E64A19)`, color:"white", fontWeight:900, fontSize:14, boxShadow:"0 6px 24px rgba(255,87,34,.5)" }}>
@@ -7346,11 +7246,11 @@ const renderContent = () => {
     if (screen === "wallet") return <WalletScreen onBack={() => setScreen("profile")} showToast={showToast} walletBalance={walletBalance} setWalletBalance={setWalletBalance} />;
     if (screen === "profile") {
       if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
-      return <ProfileScreen role="professional" userName={userName} userEmail={userEmail} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenWallet={() => setScreen("wallet")} onOpenAdmin={() => setShowAdmin(true)} docStatus={docStatus} onDocStatusChange={(id, st) => setDocStatus(d => ({ ...d, [id]: st }))} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} setScreen("home"); }} />;
+      return <ProfileScreen role="professional" userName={userName} userEmail={userEmail} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenWallet={() => setScreen("wallet")} onOpenAdmin={() => setShowAdmin(true)} docStatus={docStatus} onDocStatusChange={(id, st) => setDocStatus(d => ({ ...d, [id]: st }))} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
     }
     if (screen === "service" && selected) return <ServiceDetailPro service={selected} onBack={() => setScreen("home")} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onOpenPinEntry={() => setScreen("pinjob")} />;
-    if (screen === "pinjob"  && selected) return <ServiceDetailPinEntry service={selected} onBack={() => setScreen("service")} onStatusChange={(id, ns) => setMyServices(s => s.map(x => x.id === id ? { ...x, status:ns } : x))} showToast={showToast} />;
-    if (screen === "orders") return <MyServicesScreen initialTab="done" myServices={myServices} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} isPro={isPro} />;
+    if (screen === "pinjob"  && selected) return <ServiceDetailPinEntry service={selected} onBack={() => setScreen("service")} onStatusChange={handlePedidoStatusChange} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
+    if (screen === "orders") return <MyServicesScreen initialTab="concluido" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} isPro={isPro} />;
     // Pro home — shows professional-specific banner + filters + feed
     return (
       <ProfessionalHome
@@ -7359,13 +7259,12 @@ const renderContent = () => {
         showToast={showToast}
         onGoToProfile={() => setScreen("profile")}
         isPro={isPro}
-        feedServices={feedServices}
         onViewService={handleProFeedAction}
         onUpgrade={() => setScreen("upgrade")}
         userLocation={localStorage.getItem("multiLocation") || userLocation}
         allDocsVerified={allDocsVerified}
         docStatus={docStatus}
-        onGoToDocs={() => setScreen("profile")} onGoToOrders={() => setScreen("orders")} onGoToWallet={() => setScreen("wallet")} onAcceptOrder={(order) => { setSelected(order); setScreen("service"); }} pendingOrders={myServices.filter(s=>s.status==="open")}
+        onGoToDocs={() => setScreen("profile")} onGoToOrders={() => setScreen("orders")} onGoToWallet={() => setScreen("wallet")} onAcceptOrder={(order) => { handleAceitarPedidoDireto(order.id); setSelected(order); setScreen("service"); }}
       />
     );
   };
@@ -7443,14 +7342,6 @@ const renderContent = () => {
     console.log("APP_RENDER: chegou no return wrapper");
   return wrapper(
     <>
-      {ratingTarget && (
-        <RatingModal
-          service={ratingTarget}
-          onRate={(stars) => handleRate(ratingTarget.id, stars)}
-          onClose={() => setRatingTarget(null)}
-        />
-      )}
-
       {toast && (
         <div style={{ position:"fixed", top:18, left:"50%", transform:"translateX(-50%)", zIndex:999, background:toast.color, color:"white", padding:"11px 20px", borderRadius:14, boxShadow:"0 6px 20px rgba(0,0,0,.20)", fontSize:13, fontWeight:800, whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:8 }}>
           {toast.msg}
