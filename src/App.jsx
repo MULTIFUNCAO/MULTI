@@ -2505,13 +2505,13 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
 
       {onBack && <button onClick={onBack} style={{ background:"none", border:"none", fontSize:24, cursor:"pointer", marginBottom:8 }}>←</button>}
 
-      <h2 style={{ textAlign:"center", fontWeight:900, fontSize: isEmpresa ? 22 : 24, color:"#1a1a2e", margin:"0 0 8px", letterSpacing:-.3, lineHeight:1.2 }}>
-        {isEmpresa ? "Escolha seu plano" : <>Escolha o plano que combina com o próximo nível da <span style={{ color:O }}>sua carreira</span></>}
+      <h2 style={{ textAlign:"center", fontWeight:900, fontSize: isEmpresa ? 22 : 23, color:"#1a1a2e", margin:"0 0 8px", letterSpacing:-.3, lineHeight:1.3 }}>
+        {isEmpresa ? "Escolha seu plano" : <>Você pode continuar esperando o próximo cliente aparecer... ou começar a <span style={{ color:O }}>criar novas oportunidades</span>.</>}
       </h2>
       <p style={{ textAlign:"center", color:"#666", fontSize:14, lineHeight:1.5, margin:"0 auto 26px", maxWidth:340 }}>
         {isEmpresa
           ? <>7 dias grátis pra testar{titularNome ? `, ${titularNome}` : ""} — sem cartão agora.</>
-          : "Você pode continuar esperando o próximo cliente aparecer... ou começar a criar novas oportunidades. No Multi, você encontra pessoas e empresas que já estão procurando profissionais para realizar serviços. Escolha como você quer crescer."}
+          : "No Multi, você encontra pessoas e empresas que já estão procurando profissionais para realizar serviços. Escolha como você quer crescer."}
       </p>
 
       <div style={{ display:"flex", flexDirection:"column", gap:24, maxWidth:420, margin:"0 auto" }}>
