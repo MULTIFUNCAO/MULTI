@@ -4978,6 +4978,99 @@ function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnloc
   );
 }
 
+/* ───────────────────────── AUTH: ROLE SELECT SCREEN ──────────────────────────── */
+const ROLE_OPTIONS = [
+  {
+    id: "cliente", icon: User, accent: B, accentDeep: B,
+    title: "Preciso de um serviço",
+    hook: "Encontre quem resolve.",
+    desc: "Publique sua necessidade e encontre profissionais para realizar seu serviço.",
+    tag: "Grátis para clientes", tagBg:"#F0FDF4", tagBorder:"#BBF7D0", tagColor:"#166534",
+  },
+  {
+    id: "profissional", icon: Wrench, accent: O, accentDeep: O,
+    title: "Quero trabalhar",
+    hook: "Encontre quem precisa do que você faz.",
+    desc: "Receba oportunidades de serviços e conquiste novos clientes.",
+    tag: "7 dias grátis", tagBg:`${O}22`, tagBorder:"transparent", tagColor:O,
+  },
+  {
+    id: "empresa", icon: Briefcase, accent: "#1a1a2e", accentDeep: "#0A2A6B",
+    title: "Quero crescer minha empresa",
+    hook: "Encontre clientes e profissionais para fazer sua operação acontecer.",
+    desc: "Publique demandas, encontre mão de obra e amplie suas oportunidades.",
+    tag: "7 dias grátis", tagBg:"#1a1a2e14", tagBorder:"transparent", tagColor:"#1a1a2e",
+  },
+];
+
+function RoleSelectScreen({ onSelect, onLogin }) {
+  return (
+    <div style={{ minHeight:"100vh", background:"#F8F9FA" }}>
+      <div style={{
+        background:`radial-gradient(420px 320px at 88% 98%, #FFB74D55, transparent 65%), linear-gradient(160deg,${B} 0%,#0055D4 55%,#0A2A6B 130%)`,
+        padding:"22px 26px 84px", position:"relative", overflow:"hidden", borderRadius:"0 0 0 0",
+      }}>
+        <div style={{ position:"absolute", top:-50, right:-50, width:220, height:220, borderRadius:"50%", background:"rgba(255,255,255,.06)" }} />
+        <div style={{ position:"absolute", top:"40%", left:-60, width:170, height:170, borderRadius:"50%", background:"rgba(255,255,255,.045)" }} />
+
+        <div style={{ display:"flex", alignItems:"center", gap:9, margin:"6px 0 30px", position:"relative", zIndex:1 }}>
+          <div style={{ width:32, height:32, borderRadius:10, background:"white", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900, fontSize:15, color:B, flexShrink:0 }}>M</div>
+          <span style={{ fontSize:15, fontWeight:900, color:"white", letterSpacing:-.3 }}>multi</span>
+        </div>
+
+        <h1 style={{ position:"relative", zIndex:1, fontSize:32, fontWeight:900, color:"white", margin:"0 0 12px", lineHeight:1.08, letterSpacing:-.6 }}>
+          Bem-vindo ao Multi.
+        </h1>
+        <p style={{ position:"relative", zIndex:1, fontSize:16.5, fontWeight:700, color:"rgba(255,255,255,.92)", margin:0, lineHeight:1.4, letterSpacing:-.1, maxWidth:320 }}>
+          O lugar onde oportunidades encontram <span style={{ color:"#FFB74D" }}>quem sabe fazer</span>.
+        </p>
+      </div>
+
+      <div style={{
+        position:"relative", background:"white", borderRadius:"28px 28px 0 0",
+        marginTop:-56, padding:"26px 20px 32px", boxShadow:"0 -18px 30px -24px rgba(20,21,42,.14)",
+      }}>
+        <p style={{ textAlign:"center", fontSize:15.5, fontWeight:800, color:"#1a1a2e", lineHeight:1.4, margin:"0 0 22px", letterSpacing:-.1, padding:"0 4px" }}>
+          Você está aqui para contratar, trabalhar ou fazer sua empresa crescer?
+        </p>
+
+        <div style={{ display:"flex", flexDirection:"column", gap:13 }}>
+          {ROLE_OPTIONS.map(opt => {
+            const Icon = opt.icon;
+            return (
+              <button key={opt.id} onClick={() => onSelect(opt.id)} style={{
+                position:"relative", display:"flex", alignItems:"flex-start", gap:14,
+                background:"#F8F9FA", border:"1.5px solid #EEEEF2", borderRadius:20,
+                padding:"18px 17px 17px", cursor:"pointer", textAlign:"left", overflow:"hidden", width:"100%",
+              }}>
+                <div style={{ position:"absolute", top:0, left:0, right:0, height:4, background:`linear-gradient(90deg,${opt.accent},${opt.accentDeep})` }} />
+                <div style={{ width:52, height:52, borderRadius:15, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:`${opt.accent}22`, color:opt.accent }}>
+                  <Icon size={24} />
+                </div>
+                <div style={{ flex:1, minWidth:0, paddingTop:1 }}>
+                  <p style={{ fontSize:16, fontWeight:900, color:"#1a1a2e", margin:"0 0 3px", letterSpacing:-.1 }}>{opt.title}</p>
+                  <p style={{ fontSize:13, fontWeight:800, color:opt.accent, margin:"0 0 6px" }}>{opt.hook}</p>
+                  <p style={{ fontSize:12.5, color:"#9CA3AF", lineHeight:1.48, margin:"0 0 11px" }}>{opt.desc}</p>
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:10, fontWeight:900, letterSpacing:.5, textTransform:"uppercase", padding:"4px 11px", borderRadius:99, background:opt.tagBg, color:opt.tagColor, border:`1px solid ${opt.tagBorder}` }}>{opt.tag}</span>
+                </div>
+                <span style={{ flexShrink:0, marginTop:14, width:26, height:26, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", background:`${opt.accent}1F`, color:opt.accent }}>
+                  <ChevronRight size={15} />
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {onLogin && (
+          <p style={{ textAlign:"center", fontSize:12, color:"#9CA3AF", margin:"22px 0 4px" }}>
+            Já tem conta? <button onClick={onLogin} style={{ color:B, fontWeight:800, background:"none", border:"none", cursor:"pointer", fontSize:12, fontFamily:"inherit" }}>Entrar</button>
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ───────────────────────── AUTH: WELCOME SCREEN ──────────────────────────────── */
 function WelcomeScreen({ onGoogle, onEmail, onBack, onEmpresa }) {
   return (
@@ -5381,14 +5474,14 @@ function LoginScreen({ onBack, onComplete, onRegister, onForgot }) {
   );
 }
 
-function RegisterScreen({ onBack, onComplete, showToast }) {
+function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" }) {
   const [step,    setStep]    = useState("form");
   const [name,    setName]    = useState("");
   const [email,   setEmail]   = useState("");
   const [phone,   setPhone]   = useState("");
   const [password, setPassword] = useState("");
   const [cep,     setCep]     = useState("");
-  const [role,    setRole]    = useState("client");
+  const [role,    setRole]    = useState(initialRole);
   const [errors,  setErrors]  = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -6744,7 +6837,8 @@ export default function App() {
   })();
   // Auth: starts as guest, modal layers appear on demand
   const [isLoggedIn,    setIsLoggedIn]    = useState(!!savedSession);
-  const [authScreen,    setAuthScreen]   = useState("welcome");
+  const [authScreen,    setAuthScreen]   = useState("role-select");
+  const [signupRole,    setSignupRole]   = useState("client");
   // Detect password reset link from email
   useEffect(() => {
     const hash = window.location.hash;
@@ -7164,7 +7258,7 @@ const renderContent = () => {
       );
     }
 
-  if (!role && !authScreen) { setAuthScreen("welcome"); return null; }
+  if (!role && !authScreen) { setAuthScreen("role-select"); return null; }
     if (role === "client") {
       if (screen === "post")   return <PostServiceScreen onBack={() => setScreen("home")} onSuccess={handlePostServiceSuccess} />;
       if (selectedPro) return (
@@ -7336,12 +7430,25 @@ const renderContent = () => {
   );
 
   // ── AUTH MODAL OVERLAYS (slide in over the app, never replace it) ────────────
+  if (authScreen === "role-select") {
+    return wrapper(
+      <RoleSelectScreen
+        onLogin={() => setAuthScreen("login")}
+        onSelect={(roleId) => {
+          if (roleId === "cliente") { setAuthScreen("welcome"); return; }
+          if (roleId === "profissional") { setSignupRole("professional"); setAuthScreen("register"); return; }
+          if (roleId === "empresa") { setAuthScreen("cadastro-empresa"); return; }
+        }}
+      />
+    );
+  }
+
   if (authScreen === "welcome") {
     return wrapper(
       <WelcomeScreen
         onGoogle={() => alert("Login com Google em breve! Use o cadastro por e-mail.")}
         onEmail={() => setAuthScreen("login")}
-        onBack={() => { setAuthScreen(null); setPendingIntent(null); }}
+        onBack={() => { setAuthScreen("role-select"); setPendingIntent(null); }}
         onEmpresa={() => setAuthScreen("cadastro-empresa")}
       />
     );
@@ -7349,13 +7456,13 @@ const renderContent = () => {
 
   if (authScreen === "register") {
     return wrapper(
-      <RegisterScreen onBack={() => setAuthScreen("welcome")} onComplete={handleLoginComplete} showToast={showToast} />
+      <RegisterScreen onBack={() => setAuthScreen("role-select")} onComplete={handleLoginComplete} showToast={showToast} initialRole={signupRole} />
     );
   }
 
   if (authScreen === "cadastro-empresa") {
     return wrapper(
-      <CadastroEmpresaScreen onBack={() => setAuthScreen("welcome")} showToast={showToast} />
+      <CadastroEmpresaScreen onBack={() => setAuthScreen("role-select")} showToast={showToast} />
     );
   }
   if (authScreen === "reset-password") {
