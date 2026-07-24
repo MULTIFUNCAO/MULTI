@@ -3886,8 +3886,12 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
   }, [role, userEmail]);
 
   // Multi Autônomo trava em MAX_CATEGORIAS_AUTONOMO categorias — Multi Pro é ilimitado.
+  // Importante: usa "plano" (id exato da assinatura: "autonomo"/"pro"), não "isPro" —
+  // isPro só indica "tem alguma assinatura ativa" (inclui Autônomo), então usá-lo aqui
+  // deixava o Autônomo sem limite nenhum assim que a trial/assinatura ficava ativa.
   const MAX_CATEGORIAS_AUTONOMO = 3;
-  const limiteCategoria = isPro ? undefined : MAX_CATEGORIAS_AUTONOMO;
+  const isPlanoPro = plano === "pro";
+  const limiteCategoria = isPlanoPro ? undefined : MAX_CATEGORIAS_AUTONOMO;
 
   const handleSaveCategoria = async (novasCategorias) => {
     categoriaTocadaRef.current = true;
@@ -4066,7 +4070,7 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
               <p style={{ margin:"0 0 3px", fontSize:11, fontWeight:800, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1.1 }}>Categorias de Serviço</p>
               <p style={{ margin:"0 0 10px", fontSize:11, color:"#9CA3AF" }}>
                 Necessárias pra ficar online e receber pedidos no Mural.
-                {!isPro && ` Multi Autônomo: até ${MAX_CATEGORIAS_AUTONOMO}.`}
+                {!isPlanoPro && ` Multi Autônomo: até ${MAX_CATEGORIAS_AUTONOMO}.`}
               </p>
               <CategoriaMultiSelect
                 value={categoriaServico}
@@ -4074,7 +4078,7 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
                 max={limiteCategoria}
                 onLimitReached={handleLimiteCategoria}
               />
-              {!isPro && (
+              {!isPlanoPro && (
                 <button onClick={onUpgrade} style={{ marginTop:12, display:"flex", alignItems:"center", gap:6, background:"none", border:"none", cursor:"pointer", padding:0, color:O, fontSize:11.5, fontWeight:800 }}>
                   <Crown size={13} /> Virar Pro pra categorias ilimitadas
                 </button>
