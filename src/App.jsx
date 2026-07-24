@@ -881,7 +881,7 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
 }
 
 /* ───────────────────────── EMPRESA — EDITAR PERFIL ─────────────────────────── */
-function EmpresaEditProfileScreen({ userEmail, onLogout, showToast }) {
+function EmpresaEditProfileScreen({ userEmail, onLogout, showToast, isPro, plano, planoStatus, planoExpiraEm, onUpgrade }) {
   const [empresa, setEmpresa] = useState(null);
   const [loading, setLoading] = useState(true);
   const [phone, setPhone] = useState("");
@@ -987,6 +987,21 @@ function EmpresaEditProfileScreen({ userEmail, onLogout, showToast }) {
             <p style={{ margin:0, fontSize:10, fontWeight:800, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1 }}>Categoria de Serviço</p>
             <p style={{ margin:0, fontSize:13, color:"#333", fontWeight:600 }}>{CATS.find(c => c.id === empresa.categoria_servico?.toLowerCase())?.label || empresa.categoria_servico || "—"}</p>
           </div>
+        </div>
+
+        {/* plano/assinatura */}
+        <div style={{ background:"white", borderRadius:16, padding:"16px", marginBottom:12, boxShadow:"0 2px 8px rgba(0,0,0,.06)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div>
+            <h3 style={{ margin:"0 0 4px", fontSize:15, color:"#333" }}>Plano</h3>
+            <p style={{ margin:0, fontSize:12, color: isPro ? G : "#9CA3AF" }}>
+              {isPro
+                ? `${plano === "empresa_plus" ? "Multi Empresa Plus" : "Multi Empresa"} — ${planoStatus === "trial" ? "em trial" : "ativo"}${planoExpiraEm ? " até " + new Date(planoExpiraEm).toLocaleDateString("pt-BR") : ""}`
+                : "Nenhum plano ativo"}
+            </p>
+          </div>
+          <button onClick={onUpgrade} style={{ background: isPro ? "#F0F0F0" : `linear-gradient(135deg,${O},#E64A19)`, color: isPro ? "#555" : "white", fontWeight:800, fontSize:11, padding:"8px 14px", borderRadius:99, border:"none", cursor:"pointer" }}>
+            {isPro ? "Trocar" : "Escolher plano"}
+          </button>
         </div>
 
         {/* campos editáveis */}
@@ -2416,229 +2431,78 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry })
 }
 
 /* ───────────────────────── PRO UPGRADE ──────────────────────────────────────── */
-function ProUpgrade({ onBack, onSubscribe }) {
-  const [paymentStep, setPaymentStep] = useState("choose");
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [chatQrBase64, setChatQrBase64] = useState("");
-  const [sel,          setSel]          = useState("monthly");
-  const [step,         setStep]         = useState("plans"); // "plans" | "pix" | "done"
-  const [seconds,      setSeconds]      = useState(1800);   // 30min real PIX
-  const [copied,       setCopied]       = useState(false);
-  const [showCardForm, setShowCardForm] = useState(false);
-  const serviceValue = sel==="mensal"?"29,90":sel==="trim"?"79,90":"249,90";
-  const [form, setForm] = useState({ label:'', number:'', expiry:'', cvv:'', cpf:'', brand:'Visa', type:'credit' });
+// Multi passa a monetizar por assinatura (plano fixo por tier), não mais por
+// período de cobrança — substitui a antiga simulação de PIX/cartão (que
+// chamava de verdade um backend externo de pagamento) por uma escolha de
+// plano que ativa um trial de 7 dias direto no Supabase. Cobrança real via
+// Asaas fica pra uma fase futura (ver assinaturas.asaas_subscription_id).
+const PLANOS_USUARIO = [
+  { id:"autonomo", label:"Multi Autônomo", price:"29,90", beneficios:["Acesso a oportunidades de clientes finais"] },
+  { id:"pro",      label:"Multi Pro",      price:"59,90", beneficios:["Tudo do Autônomo","Oportunidades de empresas e PJ","Contratos temporários e projetos"] },
+];
+const PLANOS_EMPRESA = [
+  { id:"empresa",      label:"Multi Empresa",      price:"149,90", beneficios:["Captar clientes"] },
+  { id:"empresa_plus", label:"Multi Empresa Plus", price:"299,90", beneficios:["Captar clientes","Banco de profissionais (busca/filtro)","Criar demandas de mão de obra","Dashboard"] },
+];
+
+function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, onDone, showToast }) {
+  const planos = titularTipo === "empresa" ? PLANOS_EMPRESA : PLANOS_USUARIO;
+  const [sel, setSel] = useState(planos[0].id);
   const [saving, setSaving] = useState(false);
-  const handleCardPayment = async () => {
+
+  const confirmar = async () => {
+    if (!titularEmail) { showToast?.("❌ E-mail do titular não encontrado.", "#DC2626"); return; }
     setSaving(true);
-    try {
-      const user = safeGetUser();
-      const res = await fetch(API_URL + '/api/cobrar-cartao', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: user.email, name: user.name || form.label, phone: user.whatsapp || '', plan: chosen?.label || 'monthly', cardNumber: form.number.replace(/\s/g,''), cardHolder: form.label, expiryMonth: form.expiry.split('/')[0], expiryYear: '20'+form.expiry.split('/')[1], cvv: form.cvv, cpf: form.cpf, installments: 1 }) });
-      const data = await res.json();
-      if (res.ok) { showToast('Pagamento aprovado! PRO ativado!'); onSubscribe && onSubscribe(); }
-      else { alert(data.error || 'Erro no pagamento'); }
-    } catch(e) { alert('Erro de conexão'); }
+    const inicio = new Date();
+    const expira = new Date(inicio.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const { error } = await supabase.from("assinaturas").upsert({
+      titular_tipo: titularTipo,
+      titular_email: titularEmail,
+      plano: sel,
+      status: "trial",
+      inicio: inicio.toISOString(),
+      expira_em: expira.toISOString(),
+    }, { onConflict: "titular_tipo,titular_email" });
     setSaving(false);
-  };
-  const [copiedPix,    setCopiedPix]    = useState(false);
-
-  // Real PIX state
-  const [pixLoading,   setPixLoading]   = useState(false);
-  const [pixCode,      setPixCode]      = useState("");
-  const [qrBase64,     setQrBase64]     = useState("");
-  useEffect(() => { if (paymentStep === "pix" && showPaymentModal && !chatQrBase64) { setChatQrLoading(true); const sv = chat.dealValue || chat.proposalValue || "100"; console.log("[PIX DEBUG] sv:",sv,"dealValue:",chat.dealValue,"proposalValue:",chat.proposalValue,"chat:",JSON.stringify(chat)); fetch("https://multi-backend-lfwp.onrender.com/api/gerar-pix-servico", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ value: Math.max(parseFloat(String(sv).replace(/[^0-9,]/g,"").replace(",",".")) || 100, 10), name: userName||"Cliente", email: userEmail||"cliente@multi.com", phone: "11999999999" }) }).then(r => r.json()).then(d => { if (d.qrCodeBase64) { setChatQrBase64(d.qrCodeBase64); setChatQrKey(k => k+1); } }).catch(() => {}).finally(() => setChatQrLoading(false)); } }, [paymentStep, showPaymentModal]);
-  const [paymentId,    setPaymentId]    = useState(null);
-  const [pixError,     setPixError]     = useState("");
-
-  const API_URL = typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL
-    ? import.meta.env.VITE_API_URL
-    : "https://multi-backend-lfwp.onrender.com";
-
-  const plans = [
-    { id:"monthly",   label:"Mensal",     price:"29,90", period:"/mês",     badge:null,            value:29.90  },
-    { id:"quarterly", label:"Trimestral", price:"79,90", period:"/3 meses", badge:"Economize 11%",  value:79.90  },
-    { id:"annual",    label:"Anual",      price:"249,90",period:"/ano",     badge:"🏆 Melhor valor!", value:249.90 },
-  ];
-  const chosen = plans.find(p => p.id === sel);
-
-  // Generate real PIX via Asaas
-  const gerarPixServico = async () => { try { const r = await fetch("https://api.multifuncao.com.br/api/gerar-pix-servico",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({valor:serviceValue||"100",name:"Cliente",email: userEmail||"cliente@multi.com",phone:"11939437657"})}); const d = await r.json(); if(d.pixCode){setPixCode(d.pixCode);setQrBase64(d.qrCodeBase64);} } catch(e){console.error(e);} };
-  const gerarPixReal = async () => {
-    if (!chosen) return;
-    setPixLoading(true);
-    setPixError("");
-    try {
-      // Step 1: create customer
-  const userData = (() => { try { return JSON.parse(localStorage.getItem("multiSession")) || null; } catch { return null; } })();
-      const custRes  = await fetch(`${API_URL}/api/criar-cliente`, {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ name: userData.name || "Cliente Multi", phone: userData.whatsapp || "11999999999", email: userData.email || "", role:"professional" }),
-      });
-      const custData = await custRes.json();
-      if (!custData.customerId) throw new Error("Erro ao criar cliente");
-
-      // Step 2: generate PIX
-      const pixRes  = await fetch(`${API_URL}/api/gerar-pix`, {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ customerId: custData.customerId, plan: sel, phone: userData.whatsapp || "11999999999", name: userData.name || "", email: userData.email || "" }),
-      });
-      const pixData = await pixRes.json();
-      if (!pixData.pixCode) throw new Error(pixData.error || "Erro ao gerar PIX");
-
-      setPixCode(pixData.pixCode);
-      setQrBase64(pixData.qrCodeBase64);
-      setPaymentId(pixData.paymentId);
-      setSeconds(1800);
-      setStep("pix");
-    } catch(e) {
-      setPixError(e.message || "Erro ao gerar PIX. Tente novamente.");
-    } finally {
-      setPixLoading(false);
-    }
+    if (error) { showToast?.("❌ Erro ao ativar plano: " + (error.message || ""), "#DC2626"); return; }
+    showToast?.("🎉 Plano ativado! 7 dias grátis pra testar.", G);
+    onDone?.(sel);
   };
 
-  // Poll payment status every 5s
-  useEffect(() => {
-    if (step !== "pix" || !paymentId) return;
-    const poll = setInterval(async () => {
-      try {
-        const r = await fetch(`${API_URL}/api/status-pagamento/${paymentId}`);
-        const d = await r.json();
-        if (d.isPaid) { clearInterval(poll); setStep("done"); setTimeout(() => onSubscribe(), 2000); }
-      } catch {}
-    }, 5000);
-    return () => clearInterval(poll);
-  }, [step, paymentId]);
-
-  // Countdown timer
-  useEffect(() => {
-    if (step !== "pix") return;
-    if (seconds <= 0) return;
-    const t = setInterval(() => setSeconds(s => s - 1), 1000);
-    return () => clearInterval(t);
-  }, [step, seconds]);
-
-  const fmt = (s) => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
-
-  const handleCopy = () => {
-    navigator.clipboard?.writeText(pixCode).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  /* ── DONE SCREEN ── */
-  if (step==="plans") return (<div style={{minHeight:"100vh",background:"#F5F6FA",padding:"20px 16px"}}><button onClick={onBack} style={{background:"none",border:"none",fontSize:24,cursor:"pointer"}}>←</button><h2 style={{textAlign:"center",fontWeight:900,fontSize:22,color:"#1a1a2e"}}>Assine o Multi PRO</h2><p style={{textAlign:"center",color:"#666",fontSize:14,marginBottom:24}}>Acesse contatos, chat e todos os serviços</p>{[{label:"Mensal",price:"R$29,90",id:"mensal"},{label:"Trimestral",price:"R$79,90",id:"trim"},{label:"Anual",price:"R$249,90",id:"anual"}].map(p=>(<div key={p.id} onClick={()=>{setSel(p.id);setStep("pix");}} style={{background:"white",borderRadius:16,padding:"16px 20px",marginBottom:12,border:sel===p.id?"2px solid #007BFF":"2px solid #eee",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}><p style={{fontWeight:800,margin:0}}>{p.label}</p><p style={{fontWeight:900,color:"#007BFF",margin:0}}>{p.price}</p></div>))}<button onClick={()=>setStep("pix")} style={{marginTop:16,padding:"14px",background:"#007BFF",color:"white",border:"none",borderRadius:14,fontWeight:800,fontSize:16,cursor:"pointer",width:"100%"}}>Continuar →</button></div>);
-  if (step==="done") {
-    return (
-      <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#0F3460,#7C3AED)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:32, textAlign:"center" }}>
-        <style>{`@keyframes pop-in{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}} .pop{animation:pop-in .5s ease-out forwards;}`}</style>
-        <div className="pop" style={{ width:96, height:96, borderRadius:"50%", background:"linear-gradient(135deg,#F9A825,#E65100)", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:24, boxShadow:"0 8px 32px rgba(249,168,37,.5)" }}>
-          <Crown size={48} color="white" />
-        </div>
-        <h2 style={{ fontSize:28, fontWeight:900, color:"white", margin:"0 0 10px" }}>Você é Multi PRO!</h2>
-        <p style={{ fontSize:15, color:"rgba(255,255,255,.75)", lineHeight:1.7, margin:"0 0 28px" }}>
-          Pagamento confirmado. 🎉<br/>Todos os contatos foram desbloqueados.
-        </p>
-        <div style={{ display:"flex", gap:10, flexWrap:"wrap", justifyContent:"center", marginBottom:28 }}>
-          {["✅ Contatos liberados","✅ Chat ilimitado","✅ Selo PRO","✅ Prioridade no mural"].map((b, i) => (
-            <span key={i} style={{ fontSize:12, fontWeight:700, color:"white", background:"rgba(255,255,255,.15)", borderRadius:99, padding:"6px 14px" }}>{b}</span>
+  return (
+    <div style={{ minHeight:"100vh", background:"#F5F6FA", padding:"20px 16px 40px" }}>
+      {onBack && <button onClick={onBack} style={{ background:"none", border:"none", fontSize:24, cursor:"pointer", marginBottom:8 }}>←</button>}
+      <h2 style={{ textAlign:"center", fontWeight:900, fontSize:22, color:"#1a1a2e", margin:"0 0 6px" }}>Escolha seu plano</h2>
+      <p style={{ textAlign:"center", color:"#666", fontSize:14, marginBottom:24 }}>
+        7 dias grátis pra testar{titularNome ? `, ${titularNome}` : ""} — sem cartão agora.
+      </p>
+      {planos.map(p => (
+        <div key={p.id} onClick={() => setSel(p.id)} style={{
+          background:"white", borderRadius:18, padding:"18px 20px", marginBottom:14,
+          border: sel === p.id ? `2px solid ${B}` : "2px solid #eee", cursor:"pointer",
+        }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+            <p style={{ fontWeight:900, fontSize:16, color:"#1a1a2e", margin:0, display:"flex", alignItems:"center", gap:6 }}>
+              {(p.id === "pro" || p.id === "empresa_plus") && <Crown size={16} color={O} />} {p.label}
+            </p>
+            <p style={{ fontWeight:900, color:B, margin:0, fontSize:18 }}>R$ {p.price}<span style={{ fontSize:11, color:"#aaa", fontWeight:700 }}>/mês</span></p>
+          </div>
+          {p.beneficios.map((b, i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:7, marginBottom:4 }}>
+              <Check size={13} color={G} />
+              <span style={{ fontSize:12.5, color:"#555" }}>{b}</span>
+            </div>
           ))}
         </div>
-        <div style={{ display:"flex", gap:8 }}>
-          {[O, G, B, "#F9A825"].map((c, i) => <div key={i} style={{ width:10, height:10, borderRadius:"50%", background:c }} />)}
-        </div>
-        <p style={{ fontSize:12, color:"rgba(255,255,255,.45)", marginTop:20 }}>Redirecionando para o mural…</p>
-      </div>
-    );
-  }
-
-  /* ── PIX SCREEN ── */
-  if (step === "pix") {
-    const expired = seconds <= 0;
-    return (
-      <div style={{ minHeight:"100vh", background:"#F8F9FA", display:"flex", flexDirection:"column" }}>
-        <style>{`
-          @keyframes spin{to{transform:rotate(360deg)}}
-          @keyframes pix-pulse{0%,100%{opacity:1}50%{opacity:.5}}
-          .pix-pulse{animation:pix-pulse 1.5s ease-in-out infinite;}
-        `}</style>
-
-        {/* header */}
-        <div style={{ background:"linear-gradient(135deg,#1a1a2e,#2d2d44)", padding:"16px 20px 20px" }}>
-          <button onClick={() => setStep("plans")} style={{ background:"rgba(255,255,255,.12)", border:"none", cursor:"pointer", borderRadius:"50%", width:34, height:34, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:14 }}>
-            <ArrowLeft size={17} color="white" />
-          </button>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-            <div>
-              <p style={{ fontSize:12, color:"rgba(255,255,255,.55)", margin:0 }}>Plano {chosen?.label}</p>
-              <p style={{ fontSize:26, fontWeight:900, color:"white", margin:0 }}>R$ {chosen?.price}</p>
-            </div>
-            <div style={{ textAlign:"center" }}>
-              <p style={{ fontSize:10, color:"rgba(255,255,255,.5)", margin:0, fontWeight:700, textTransform:"uppercase", letterSpacing:1 }}>Expira em</p>
-              <p className={seconds < 60 ? "pix-pulse" : ""} style={{ fontSize:22, fontWeight:900, color: seconds < 60 ? "#EF4444" : G, margin:0 }}>{fmt(seconds)}</p>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ flex:1, padding:"24px 20px 40px", display:"flex", flexDirection:"column", gap:18 }}>
-
-          {expired ? (
-            <div style={{ textAlign:"center", padding:"40px 0" }}>
-              <p style={{ fontSize:16, fontWeight:800, color:"#EF4444" }}>PIX expirado</p>
-              <button onClick={() => { setSeconds(300); }} style={{ marginTop:14, padding:"12px 28px", borderRadius:12, border:"none", background:O, color:"white", fontWeight:800, cursor:"pointer" }}>
-                Gerar novo PIX
-              </button>
-            </div>
-          ) : (
-            <>
-              {/* QR Code — real from Asaas */}
-              <div style={{ background:"white", borderRadius:20, padding:20, textAlign:"center", boxShadow:"0 3px 16px rgba(0,0,0,.09)" }}>
-                <p style={{ fontSize:12, color:"#888", fontWeight:700, margin:"0 0 14px" }}>Escaneie o QR Code com o app do seu banco</p>
-
-            <PixQRChat valor={serviceValue} />
-
-
-                <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:99, padding:"5px 14px" }}>
-                  <div style={{ width:8, height:8, borderRadius:"50%", background:G }} />
-                  <span style={{ fontSize:11, fontWeight:800, color:"#166534" }}>PIX gerado com sucesso</span>
-                </div>
-              </div>
-
-              {/* Pix copy-paste code */}
-              <div style={{ background:"white", borderRadius:18, padding:16, boxShadow:"0 2px 10px rgba(0,0,0,.06)" }}>
-                <p style={{ fontSize:11, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1, margin:"0 0 10px" }}>
-                  Ou copie o codigo PIX
-                </p>
-                <div style={{ background:"#F8F9FA", borderRadius:12, padding:"12px 14px", marginBottom:12, wordBreak:"break-all", fontSize:11, color:"#555", lineHeight:1.6, fontFamily:"monospace", border:"1px dashed #E5E7EB" }}>
-                  {pixCode.slice(0, 60)}…
-                </div>
-                <button onClick={handleCopy} style={{ width:"100%", padding:"12px 0", borderRadius:12, border:"none", cursor:"pointer", background: copied ? G : B, color:"white", fontWeight:900, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:8, transition:"background .2s" }}>
-                  {copied ? <><Check size={15} /> Copiado!</> : <><FileText size={15} /> Copiar codigo PIX</>}
-                </button>
-              </div>
-
-              {/* Benefits reminder */}
-              <div style={{ background:"linear-gradient(135deg,#7C3AED15,#4F46E515)", borderRadius:16, padding:"14px 16px", border:"1px solid #DDD6FE" }}>
-                <p style={{ fontSize:12, fontWeight:900, color:"#5B21B6", margin:"0 0 8px" }}>Você está assinando:</p>
-                {["Contatos desbloqueados", "Chat direto com clientes", "Selo PRO verificado", "Prioridade no mural de serviços"].map((b, i) => (
-                  <div key={i} style={{ display:"flex", alignItems:"center", gap:7, marginBottom: i < 3 ? 6 : 0 }}>
-                    <Check size={13} color="#7C3AED" />
-                    <span style={{ fontSize:12, color:"#4C1D95", fontWeight:600 }}>{b}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Simulate payment confirmed (demo button) */}
-                
-
-            </>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // plans screen (default)
-  return null;
+      ))}
+      <button onClick={confirmar} disabled={saving} style={{
+        marginTop:10, padding:"15px 0", background:`linear-gradient(135deg,${B},#0055d4)`, color:"white",
+        border:"none", borderRadius:14, fontWeight:900, fontSize:15, cursor: saving ? "default" : "pointer", width:"100%",
+      }}>
+        {saving ? "Ativando..." : "Começar trial grátis de 7 dias"}
+      </button>
+    </div>
+  );
 }
 
 /* ── CHECKOUT SCREEN ── */
@@ -3861,7 +3725,7 @@ function RankingScreen({ onBack, contratacoes }) {
   );
 }
 
-function ProfileScreen({ role, isPro, userName: initialUserName, userEmail, showRankingGlobal, onClearRankingGlobal, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange, onSwitchRole }) {
+function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userName: initialUserName, userEmail, showRankingGlobal, onClearRankingGlobal, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange, onSwitchRole }) {
   const [avatarUrl, setAvatarUrl] = useState(() => sessionStorage.getItem("multiAvatar") || null);
   const [editMode,  setEditMode]  = useState(false);
   const [name, setName] = useState(initialUserName || "");
@@ -4070,13 +3934,17 @@ function ProfileScreen({ role, isPro, userName: initialUserName, userEmail, show
               <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                 <span style={{ width:36, height:36, borderRadius:11, background:O+"18", display:"flex", alignItems:"center", justifyContent:"center" }}><Crown size={17} color={O} /></span>
                 <div>
-                  <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e" }}>Plano Multi PRO</p>
-                  <p style={{ fontSize:11, color: isPro ? G : "#bbb" }}>{isPro ? "✅ Ativo — renova em 15/07/2026" : "❌ Inativo"}</p>
+                  <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e" }}>{isPro && plano === "pro" ? "Multi Pro" : "Multi Autônomo"}</p>
+                  <p style={{ fontSize:11, color: isPro ? G : "#bbb" }}>
+                    {isPro
+                      ? `✅ ${planoStatus === "trial" ? "Em trial" : "Ativo"}${planoExpiraEm ? " até " + new Date(planoExpiraEm).toLocaleDateString("pt-BR") : ""}`
+                      : "❌ Nenhum plano ativo"}
+                  </p>
                 </div>
               </div>
               {isPro
-                ? <span style={{ background:G+"18", color:G, fontWeight:800, fontSize:11, padding:"4px 10px", borderRadius:99 }}>PRO</span>
-                : <button onClick={onUpgrade} style={{ background:`linear-gradient(135deg,${O},#E64A19)`, color:"white", fontWeight:800, fontSize:11, padding:"6px 12px", borderRadius:99, border:"none", cursor:"pointer" }}>Assinar</button>}
+                ? <button onClick={onUpgrade} style={{ background:G+"18", color:G, fontWeight:800, fontSize:11, padding:"4px 10px", borderRadius:99, border:"none", cursor:"pointer" }}>{plano === "pro" ? "PRO" : "Trocar"}</button>
+                : <button onClick={onUpgrade} style={{ background:`linear-gradient(135deg,${O},#E64A19)`, color:"white", fontWeight:800, fontSize:11, padding:"6px 12px", borderRadius:99, border:"none", cursor:"pointer" }}>Escolher plano</button>}
             </div>
           </div>
 
@@ -5395,7 +5263,7 @@ function LoginScreen({ onBack, onComplete, onRegister, onForgot }) {
   );
 }
 
-function RegisterScreen({ onBack, onComplete }) {
+function RegisterScreen({ onBack, onComplete, showToast }) {
   const [step,    setStep]    = useState("form");
   const [name,    setName]    = useState("");
   const [email,   setEmail]   = useState("");
@@ -5445,6 +5313,20 @@ function RegisterScreen({ onBack, onComplete }) {
   const cepFound = cep.replace(/\D/g,"").length === 8;
   const isProfessional = role === "professional";
 
+  /* ── ESCOLHA DE PLANO (só profissional — cliente é sempre grátis) ── */
+  if (step === "plano") {
+    return (
+      <EscolherPlanoScreen
+        titularTipo="usuario"
+        titularEmail={email.trim()}
+        titularNome={name.trim().split(/\s+/)[0]}
+        onBack={() => setStep("success")}
+        showToast={showToast}
+        onDone={() => onComplete(name, email.trim(), true, cepFound ? "Sua cidade" : "sua região", role, phone)}
+      />
+    );
+  }
+
   /* ── SUCCESS ── */
   if (step === "success") {
     return (
@@ -5480,9 +5362,9 @@ function RegisterScreen({ onBack, onComplete }) {
         </div>
 
         <button
-          onClick={() => onComplete(name, email.trim(), true, cepFound ? "Sua cidade" : "sua região", role, phone)}
+          onClick={() => isProfessional ? setStep("plano") : onComplete(name, email.trim(), true, cepFound ? "Sua cidade" : "sua região", role, phone)}
           style={{ width:"100%", padding:"16px 0", borderRadius:18, border:"none", color:"white", fontWeight:900, fontSize:15, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:10, boxShadow:`0 6px 24px ${isProfessional ? O : B}44`, background: isProfessional ? `linear-gradient(135deg,${O},#E64A19)` : `linear-gradient(135deg,${B},#0055d4)` }}>
-          {isProfessional ? <><Briefcase size={17} /> Ir para o Mural</> : <><Home size={17} /> Ir para a Tela Inicial</>}
+          {isProfessional ? <><Briefcase size={17} /> Escolher plano</> : <><Home size={17} /> Ir para a Tela Inicial</>}
         </button>
       </div>
     );
@@ -5624,8 +5506,8 @@ function isValidCnpj(value) {
 }
 
 /* ───────────────────────── AUTH: CADASTRO EMPRESA PARCEIRA ────────────────────── */
-function CadastroEmpresaScreen({ onBack }) {
-  const [step, setStep] = useState("form"); // form | success
+function CadastroEmpresaScreen({ onBack, showToast }) {
+  const [step, setStep] = useState("form"); // form | plano | success
   const [cnpj, setCnpj] = useState("");
   const [razaoSocial, setRazaoSocial] = useState("");
   const [nomeFantasia, setNomeFantasia] = useState("");
@@ -5706,12 +5588,24 @@ function CadastroEmpresaScreen({ onBack }) {
       }, { onConflict: "email" });
 
       setLoading(false);
-      setStep("success");
+      setStep("plano");
     } catch (e) {
       setLoading(false);
       alert(e.message || "Erro ao cadastrar empresa");
     }
   };
+
+  if (step === "plano") {
+    return (
+      <EscolherPlanoScreen
+        titularTipo="empresa"
+        titularEmail={email.trim()}
+        titularNome={nomeFantasia.trim()}
+        showToast={showToast}
+        onDone={() => setStep("success")}
+      />
+    );
+  }
 
   if (step === "success") {
     return (
@@ -6691,6 +6585,27 @@ export default function App() {
   const [selected,  setSelected]  = useState(null);
   const [avaliacaoSvc, setAvaliacaoSvc] = useState(null);
   const [isPro,     setIsPro]     = useState(false);
+  // Plano real do titular (profissional ou empresa), carregado de "assinaturas"
+  // — antes disso isPro era só estado em memória (nunca refletia o Supabase).
+  const [plano,          setPlano]          = useState(null);
+  const [planoStatus,    setPlanoStatus]    = useState(null);
+  const [planoExpiraEm,  setPlanoExpiraEm]  = useState(null);
+  const carregarPlano = (titularTipo, titularEmail) => {
+    if (!titularTipo || !titularEmail) { setPlano(null); setPlanoStatus(null); setPlanoExpiraEm(null); setIsPro(false); return; }
+    supabase.from("assinaturas").select("plano,status,expira_em")
+      .eq("titular_tipo", titularTipo).eq("titular_email", titularEmail).maybeSingle()
+      .then(({ data }) => {
+        setPlano(data?.plano || null);
+        setPlanoStatus(data?.status || null);
+        setPlanoExpiraEm(data?.expira_em || null);
+        setIsPro(!!data?.plano && (data.status === "trial" || data.status === "ativa"));
+      })
+      .catch(() => {});
+  };
+  useEffect(() => {
+    const titularTipo = role === "professional" ? "usuario" : role === "empresa" ? "empresa" : null;
+    carregarPlano(titularTipo, userEmail);
+  }, [userEmail, role]);
   const [toast,     setToast]     = useState(null);
   const [showRankingGlobal, setShowRankingGlobal] = useState(false);
   useEffect(() => {
@@ -6943,11 +6858,9 @@ export default function App() {
       } catch {}
 
       setScreen("home");
-      // 7-day PRO trial for new professional sign-ups
-      if (isNewAccount && resolvedRole === "professional") {
-        setIsPro(true);
-        setTimeout(() => showToast("🎁 7 dias de Multi PRO ativados! Explore tudo.", "#7C3AED"), 600);
-      }
+      // Plano real (assinaturas) é carregado pelo efeito de [userEmail, role]
+      // logo abaixo — dispara tanto aqui (login) quanto na restauração de
+      // sessão do localStorage num reload de página.
       if (isNewAccount) {
         setTimeout(() => sendWelcomeEmail({ name, email, role: resolvedRole }), 400);
       }
@@ -7217,7 +7130,8 @@ const renderContent = () => {
     // Empresa parceira — home própria + Pedidos + Editar Perfil.
     if (role === "empresa") {
       if (screen === "pedidos") return <EmpresaPedidosScreen userEmail={userEmail} />;
-      if (screen === "editar")  return <EmpresaEditProfileScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} />;
+      if (screen === "upgrade") return <EscolherPlanoScreen titularTipo="empresa" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("editar")} showToast={showToast} onDone={() => { carregarPlano("empresa", userEmail); setScreen("editar"); }} />;
+      if (screen === "editar")  return <EmpresaEditProfileScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} isPro={isPro} plano={plano} planoStatus={planoStatus} planoExpiraEm={planoExpiraEm} onUpgrade={() => setScreen("upgrade")} />;
       return <EmpresaHomeScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} onGoToPedidos={() => setScreen("pedidos")} onGoToEditar={() => setScreen("editar")} />;
     }
 
@@ -7242,11 +7156,11 @@ const renderContent = () => {
 
     // Professional screens
     if (screen === "avaliacao" && avaliacaoSvc) return <AvaliacaoScreen service={avaliacaoSvc} onBack={()=>setScreen("orders")} setScreen={setScreen} userEmail={userEmail} showToast={showToast} />;
-  if (screen === "upgrade") return <ProUpgrade onBack={() => setScreen("home")} onSubscribe={() => { setIsPro(true); setScreen("home"); showToast("🎉 Você agora é Multi PRO! Contatos desbloqueados."); }} />;
+  if (screen === "upgrade") return <EscolherPlanoScreen titularTipo="usuario" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("home")} showToast={showToast} onDone={() => { carregarPlano("usuario", userEmail); setScreen("home"); }} />;
     if (screen === "wallet") return <WalletScreen onBack={() => setScreen("profile")} showToast={showToast} walletBalance={walletBalance} setWalletBalance={setWalletBalance} />;
     if (screen === "profile") {
       if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
-      return <ProfileScreen role="professional" userName={userName} userEmail={userEmail} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenWallet={() => setScreen("wallet")} onOpenAdmin={() => setShowAdmin(true)} docStatus={docStatus} onDocStatusChange={(id, st) => setDocStatus(d => ({ ...d, [id]: st }))} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
+      return <ProfileScreen role="professional" userName={userName} userEmail={userEmail} isPro={isPro} plano={plano} planoStatus={planoStatus} planoExpiraEm={planoExpiraEm} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenWallet={() => setScreen("wallet")} onOpenAdmin={() => setShowAdmin(true)} docStatus={docStatus} onDocStatusChange={(id, st) => setDocStatus(d => ({ ...d, [id]: st }))} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
     }
     if (screen === "service" && selected) return <ServiceDetailPro service={selected} onBack={() => setScreen("home")} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onOpenPinEntry={() => setScreen("pinjob")} />;
     if (screen === "pinjob"  && selected) return <ServiceDetailPinEntry service={selected} onBack={() => setScreen("service")} onStatusChange={handlePedidoStatusChange} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
@@ -7316,13 +7230,13 @@ const renderContent = () => {
 
   if (authScreen === "register") {
     return wrapper(
-      <RegisterScreen onBack={() => setAuthScreen("welcome")} onComplete={handleLoginComplete} />
+      <RegisterScreen onBack={() => setAuthScreen("welcome")} onComplete={handleLoginComplete} showToast={showToast} />
     );
   }
 
   if (authScreen === "cadastro-empresa") {
     return wrapper(
-      <CadastroEmpresaScreen onBack={() => setAuthScreen("welcome")} />
+      <CadastroEmpresaScreen onBack={() => setAuthScreen("welcome")} showToast={showToast} />
     );
   }
   if (authScreen === "reset-password") {
