@@ -6602,10 +6602,6 @@ export default function App() {
       })
       .catch(() => {});
   };
-  useEffect(() => {
-    const titularTipo = role === "professional" ? "usuario" : role === "empresa" ? "empresa" : null;
-    carregarPlano(titularTipo, userEmail);
-  }, [userEmail, role]);
   const [toast,     setToast]     = useState(null);
   const [showRankingGlobal, setShowRankingGlobal] = useState(false);
   useEffect(() => {
@@ -6648,6 +6644,11 @@ export default function App() {
 
   const [activeChat,    setActiveChat]    = useState(null);
   const [userEmail,     setUserEmail]     = useState(savedSession?.email    || "");
+
+  useEffect(() => {
+    const titularTipo = role === "professional" ? "usuario" : role === "empresa" ? "empresa" : null;
+    carregarPlano(titularTipo, userEmail);
+  }, [userEmail, role]);
 
   // MEUS PEDIDOS — fonte única real (Fase 1 de consolidação): cliente vê os
   // próprios pedidos (cliente_id), profissional vê os que aceitou
