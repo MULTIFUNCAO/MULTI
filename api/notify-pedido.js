@@ -35,7 +35,7 @@ export default async function handler(req, res) {
       supabase
         .from('empresas')
         .select('onesignal_player_id')
-        .ilike('categoria_servico', categoria)
+        .contains('categoria_servico', [categoria])
         .eq('status', true)
         .eq('ativo', true)
         .not('onesignal_player_id', 'is', null),
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
         .from('usuarios')
         .select('onesignal_player_id')
         .eq('role', 'professional')
-        .ilike('categoria_servico', categoria)
+        .contains('categoria_servico', [categoria])
         .eq('status', true)
         .not('onesignal_player_id', 'is', null),
     ]);
