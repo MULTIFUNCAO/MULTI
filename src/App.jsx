@@ -2437,70 +2437,188 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry })
 // plano que ativa um trial de 7 dias direto no Supabase. Cobrança real via
 // Asaas fica pra uma fase futura (ver assinaturas.asaas_subscription_id).
 const PLANOS_USUARIO = [
-  { id:"autonomo", label:"Multi Autônomo", price:"29,90", beneficios:["Acesso a oportunidades de clientes finais"] },
-  { id:"pro",      label:"Multi Pro",      price:"59,90", beneficios:["Tudo do Autônomo","Oportunidades de empresas e PJ","Contratos temporários e projetos"] },
+  {
+    id: "autonomo", icon: User, label: "Multi Autônomo", price: "29,90", perDay: "menos de R$1 por dia",
+    hook: "Pare de depender só de indicação. Comece a encontrar novos clientes.",
+    intro: "Você sabe fazer. Você tem experiência. Mas nem sempre tem cliente. Com o Multi Autônomo, você coloca seu trabalho na frente de pessoas que estão procurando profissionais como você.",
+    beneficios: [
+      { icon: MapPin, text: "Apareça para clientes que procuram o seu serviço na sua região" },
+      { icon: Bell, text: "Receba novas oportunidades compatíveis com sua profissão" },
+      { icon: DollarSign, text: "Aceite o valor oferecido ou faça sua própria proposta" },
+      { icon: MessageCircle, text: "Negocie diretamente com o cliente" },
+      { icon: Star, text: "Construa seu histórico e sua reputação com avaliações reais" },
+      { icon: ClipboardList, text: "Acompanhe todos os seus serviços em um só lugar" },
+    ],
+    idealLead: "Ideal para quem quer:",
+    ideal: "Mais oportunidades. Mais clientes. Mais chances de trabalhar. Você faz o serviço. O Multi ajuda você a encontrar quem precisa dele.",
+    ctaLabel: "Quero encontrar clientes",
+  },
+  {
+    id: "pro", icon: Crown, label: "Multi Pro", price: "59,90", perDay: "menos de R$2 por dia", badge: "Mais escolhido",
+    hook: "Seu próximo cliente pode ser uma empresa.",
+    intro: "Você não precisa limitar seu crescimento aos pequenos serviços do dia a dia. Com o Multi Pro, além de encontrar clientes, você pode abrir portas para novos projetos, demandas profissionais e oportunidades com empresas que procuram prestadores para realizar seus serviços.",
+    beneficios: [
+      { icon: CheckCircle2, text: "Tudo do Multi Autônomo", lead: true },
+      { icon: Eye, text: "Torne seu perfil visível para empresas que procuram profissionais" },
+      { icon: Send, text: "Receba oportunidades de projetos e demandas de prestação de serviços" },
+      { icon: Briefcase, text: "Tenha acesso a oportunidades de contratos PJ e trabalhos temporários" },
+      { icon: TrendingUp, text: "Amplie suas possibilidades para projetos maiores e serviços recorrentes" },
+      { icon: BadgeCheck, text: "Construa sua reputação profissional e aumente suas chances de ser escolhido" },
+    ],
+    idealLead: "Ideal para quem pensa além do próximo serviço.",
+    ideal: "Você não quer apenas trabalhar hoje. Você quer construir uma carreira, conquistar contratos e crescer. O Multi Pro coloca você em mais lugares onde novas oportunidades podem acontecer.",
+    ctaLabel: "Quero crescer com o Multi Pro",
+  },
 ];
 const PLANOS_EMPRESA = [
-  { id:"empresa",      label:"Multi Empresa",      price:"149,90", beneficios:["Captar clientes"] },
-  { id:"empresa_plus", label:"Multi Empresa Plus", price:"299,90", beneficios:["Captar clientes","Banco de profissionais (busca/filtro)","Criar demandas de mão de obra","Dashboard"] },
+  { id:"empresa",      icon:Briefcase, label:"Multi Empresa",      price:"149,90", beneficios:["Captar clientes"] },
+  { id:"empresa_plus", icon:Crown,     label:"Multi Empresa Plus", price:"299,90", beneficios:["Captar clientes","Banco de profissionais (busca/filtro)","Criar demandas de mão de obra","Dashboard"] },
 ];
 
 function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, onDone, showToast }) {
-  const planos = titularTipo === "empresa" ? PLANOS_EMPRESA : PLANOS_USUARIO;
-  const [sel, setSel] = useState(planos[0].id);
-  const [saving, setSaving] = useState(false);
+  const isEmpresa = titularTipo === "empresa";
+  const planos = isEmpresa ? PLANOS_EMPRESA : PLANOS_USUARIO;
+  const [savingId, setSavingId] = useState(null);
 
-  const confirmar = async () => {
+  const confirmar = async (planoId) => {
     if (!titularEmail) { showToast?.("❌ E-mail do titular não encontrado.", "#DC2626"); return; }
-    setSaving(true);
+    setSavingId(planoId);
     const inicio = new Date();
     const expira = new Date(inicio.getTime() + 7 * 24 * 60 * 60 * 1000);
     const { error } = await supabase.from("assinaturas").upsert({
       titular_tipo: titularTipo,
       titular_email: titularEmail,
-      plano: sel,
+      plano: planoId,
       status: "trial",
       inicio: inicio.toISOString(),
       expira_em: expira.toISOString(),
     }, { onConflict: "titular_tipo,titular_email" });
-    setSaving(false);
+    setSavingId(null);
     if (error) { showToast?.("❌ Erro ao ativar plano: " + (error.message || ""), "#DC2626"); return; }
     showToast?.("🎉 Plano ativado! 7 dias grátis pra testar.", G);
-    onDone?.(sel);
+    onDone?.(planoId);
   };
 
   return (
-    <div style={{ minHeight:"100vh", background:"#F5F6FA", padding:"20px 16px 40px" }}>
+    <div style={{ minHeight:"100vh", background: isEmpresa ? BG : "linear-gradient(180deg,#F2F3FB,#E7E9F5)", padding:"20px 16px 48px", fontFamily:"'Nunito', -apple-system, sans-serif" }}>
+      <style>{`@keyframes planoGlow{0%,100%{opacity:.7}50%{opacity:1}}`}</style>
+
       {onBack && <button onClick={onBack} style={{ background:"none", border:"none", fontSize:24, cursor:"pointer", marginBottom:8 }}>←</button>}
-      <h2 style={{ textAlign:"center", fontWeight:900, fontSize:22, color:"#1a1a2e", margin:"0 0 6px" }}>Escolha seu plano</h2>
-      <p style={{ textAlign:"center", color:"#666", fontSize:14, marginBottom:24 }}>
-        7 dias grátis pra testar{titularNome ? `, ${titularNome}` : ""} — sem cartão agora.
+
+      <h2 style={{ textAlign:"center", fontWeight:900, fontSize: isEmpresa ? 22 : 24, color:"#1a1a2e", margin:"0 0 8px", letterSpacing:-.3, lineHeight:1.2 }}>
+        {isEmpresa ? "Escolha seu plano" : <>Escolha o plano que combina com o próximo nível da <span style={{ color:O }}>sua carreira</span></>}
+      </h2>
+      <p style={{ textAlign:"center", color:"#666", fontSize:14, lineHeight:1.5, margin:"0 auto 26px", maxWidth:340 }}>
+        {isEmpresa
+          ? <>7 dias grátis pra testar{titularNome ? `, ${titularNome}` : ""} — sem cartão agora.</>
+          : "Você pode continuar esperando o próximo cliente aparecer... ou começar a criar novas oportunidades. No Multi, você encontra pessoas e empresas que já estão procurando profissionais para realizar serviços. Escolha como você quer crescer."}
       </p>
-      {planos.map(p => (
-        <div key={p.id} onClick={() => setSel(p.id)} style={{
-          background:"white", borderRadius:18, padding:"18px 20px", marginBottom:14,
-          border: sel === p.id ? `2px solid ${B}` : "2px solid #eee", cursor:"pointer",
-        }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-            <p style={{ fontWeight:900, fontSize:16, color:"#1a1a2e", margin:0, display:"flex", alignItems:"center", gap:6 }}>
-              {(p.id === "pro" || p.id === "empresa_plus") && <Crown size={16} color={O} />} {p.label}
-            </p>
-            <p style={{ fontWeight:900, color:B, margin:0, fontSize:18 }}>R$ {p.price}<span style={{ fontSize:11, color:"#aaa", fontWeight:700 }}>/mês</span></p>
-          </div>
-          {p.beneficios.map((b, i) => (
-            <div key={i} style={{ display:"flex", alignItems:"center", gap:7, marginBottom:4 }}>
-              <Check size={13} color={G} />
-              <span style={{ fontSize:12.5, color:"#555" }}>{b}</span>
+
+      <div style={{ display:"flex", flexDirection:"column", gap:24, maxWidth:420, margin:"0 auto" }}>
+        {planos.map(p => {
+          const isPro = !!p.badge;
+          const HeaderIcon = p.icon || Briefcase;
+          const beneficios = p.beneficios.map(b => typeof b === "string" ? { text:b, Icon:Check, lead:false } : { text:b.text, Icon:b.icon || Check, lead:!!b.lead });
+          const saving = savingId === p.id;
+
+          const card = (
+            <div style={{
+              position:"relative",
+              background: isPro ? "linear-gradient(180deg,#FFF4EC,#FFE2CF)" : "white",
+              borderRadius: isPro ? 20 : 22,
+              padding: isPro ? "26px 22px 22px" : "22px 20px",
+              border: isPro ? "none" : "1.5px solid #ECEDF5",
+            }}>
+              {isPro && (
+                <span style={{
+                  position:"absolute", top:-14, left:"50%", transform:"translateX(-50%)",
+                  background:`linear-gradient(135deg,#FFB100,${O})`, color:"#2A1200",
+                  fontSize:10.5, fontWeight:800, letterSpacing:.5, textTransform:"uppercase",
+                  padding:"7px 16px", borderRadius:99, boxShadow:`0 6px 16px ${O}55`,
+                  display:"flex", alignItems:"center", gap:5, whiteSpace:"nowrap",
+                }}>
+                  <Star size={12} fill="#2A1200" color="#2A1200" /> {p.badge}
+                </span>
+              )}
+
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:12, marginBottom:16 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                  <div style={{
+                    width:38, height:38, borderRadius:12, flexShrink:0,
+                    display:"flex", alignItems:"center", justifyContent:"center",
+                    background: isPro ? `linear-gradient(135deg,#FFB100,${O})` : "#EBEFFE",
+                    color: isPro ? "#2A1200" : B,
+                  }}>
+                    <HeaderIcon size={19} />
+                  </div>
+                  <p style={{ fontWeight:800, fontSize: isPro ? 18 : 16.5, color:"#14152A", margin:0, letterSpacing:-.1 }}>{p.label}</p>
+                </div>
+                <div style={{ textAlign:"right", flexShrink:0 }}>
+                  <p style={{ fontWeight:900, color:"#14152A", margin:0, fontSize: isPro ? 24 : 21 }}>
+                    R$ {p.price.split(",")[0]}<span style={{ fontSize:13 }}>,{p.price.split(",")[1]}</span>
+                  </p>
+                  <p style={{ fontSize:11, color:"#8A8DAE", fontWeight:700, margin:"1px 0 0" }}>/mês</p>
+                  {p.perDay && <p style={{ fontSize:10.5, color: isPro ? O : "#8A8DAE", fontWeight: isPro ? 800 : 600, margin:"3px 0 0" }}>{p.perDay}</p>}
+                </div>
+              </div>
+
+              {p.hook && <p style={{ fontWeight:700, fontSize: isPro ? 16.5 : 15, color:"#14152A", margin:"0 0 8px", lineHeight:1.35 }}>{p.hook}</p>}
+              {p.intro && <p style={{ fontSize:13, color:"#6C6F94", lineHeight:1.58, margin:"0 0 20px" }}>{p.intro}</p>}
+
+              <div style={{ display:"flex", flexDirection:"column", gap:13 }}>
+                {beneficios.map((b, i) => (
+                  <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
+                    <div style={{
+                      width:32, height:32, borderRadius:10, flexShrink:0,
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                      background: b.lead ? "#14152A" : isPro ? `${O}22` : "#EBEFFE",
+                      color: b.lead ? "#FFF4EC" : isPro ? O : B,
+                    }}>
+                      <b.Icon size={16} />
+                    </div>
+                    <span style={{ fontSize:13.5, lineHeight:1.45, color: b.lead ? "#14152A" : "#42436A", fontWeight: b.lead ? 700 : 400, paddingTop:4 }}>{b.text}</span>
+                  </div>
+                ))}
+              </div>
+
+              {p.ideal && (
+                <p style={{ marginTop:18, paddingTop:14, borderTop:`1px dashed ${isPro ? O+"4D" : "#E2E4F1"}`, fontSize:11.5, lineHeight:1.5, color:"#6C6F94" }}>
+                  <b style={{ color:"#14152A", fontWeight:800 }}>{p.idealLead}</b> {p.ideal}
+                </p>
+              )}
+
+              <button onClick={() => confirmar(p.id)} disabled={saving} style={{
+                marginTop:22, width:"100%", border:"none", borderRadius:16, padding:"16px 0",
+                fontWeight:800, fontSize:13, letterSpacing:.4, textTransform:"uppercase",
+                color:"white", cursor: saving ? "default" : "pointer",
+                background: isPro ? `linear-gradient(135deg,${O},#E8280A)` : `linear-gradient(135deg,${B},#22348F)`,
+                boxShadow: isPro ? `0 16px 30px -10px ${O}66` : `0 14px 28px -10px ${B}88`,
+              }}>
+                {saving ? "Ativando..." : (p.ctaLabel || "Escolher este plano")}
+              </button>
             </div>
-          ))}
-        </div>
-      ))}
-      <button onClick={confirmar} disabled={saving} style={{
-        marginTop:10, padding:"15px 0", background:`linear-gradient(135deg,${B},#0055d4)`, color:"white",
-        border:"none", borderRadius:14, fontWeight:900, fontSize:15, cursor: saving ? "default" : "pointer", width:"100%",
-      }}>
-        {saving ? "Ativando..." : "Começar trial grátis de 7 dias"}
-      </button>
+          );
+
+          return isPro ? (
+            <div key={p.id} style={{ position:"relative", paddingTop:14 }}>
+              <div style={{
+                position:"absolute", inset:"12px -12px -12px", borderRadius:30,
+                background:`radial-gradient(120% 100% at 50% 0%, ${O}4D, transparent 70%)`,
+                filter:"blur(20px)", animation:"planoGlow 4.5s ease-in-out infinite", zIndex:0,
+              }} />
+              <div style={{
+                position:"relative", zIndex:1, borderRadius:22, padding:2,
+                background:`linear-gradient(155deg,#FFB100,${O} 45%,#E8280A 100%)`,
+                boxShadow:`0 20px 40px -16px ${O}4D`,
+              }}>
+                {card}
+              </div>
+            </div>
+          ) : (
+            <div key={p.id}>{card}</div>
+          );
+        })}
+      </div>
     </div>
   );
 }
