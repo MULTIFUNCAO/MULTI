@@ -7066,7 +7066,11 @@ export default function App() {
         // cadastro original. Troca de role fora do cadastro só acontece pelo
         // fluxo explícito (onSwitchRole, "Sou profissional"/"Sou cliente").
         const upsertPayload = { email: session.email, name: session.name, whatsapp: session.whatsapp||null, city: session.location||null };
-        if (isNewAccount) upsertPayload.role = session.role || "client";
+        // Cadastro novo por aqui é sempre client/professional (empresa tem seu próprio
+        // fluxo/upsert em CadastroEmpresaScreen) — zera empresa_id pra não herdar o
+        // vínculo de um teste/conta anterior que usou o mesmo e-mail como empresa,
+        // o que travava esse e-mail pra sempre como "empresa" no login (ver abaixo).
+        if (isNewAccount) { upsertPayload.role = session.role || "client"; upsertPayload.empresa_id = null; }
         supabase.from("usuarios").upsert(upsertPayload, { onConflict: "email" }).then(()=>{}).catch(()=>{});
       } catch {}
 
