@@ -3867,11 +3867,23 @@ function RankingScreen({ onBack, contratacoes }) {
 }
 
 function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userName: initialUserName, userEmail, showRankingGlobal, onClearRankingGlobal, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange, onSwitchRole }) {
-  const [avatarUrl, setAvatarUrl] = useState(() => sessionStorage.getItem("multiAvatar") || null);
+  const [avatarUrl, setAvatarUrl] = useState(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [editMode,  setEditMode]  = useState(false);
   const [name, setName] = useState(initialUserName || "");
   useEffect(() => { if (initialUserName) setName(initialUserName); }, [initialUserName]);
+  // Antes disso, avatar/portfólio só viviam em sessionStorage/estado local —
+  // nunca eram lidos do Supabase, então "salvavam" só até fechar a aba.
+  useEffect(() => {
+    if (!userEmail) return;
+    supabase.from("usuarios").select("foto_perfil_url").eq("email", userEmail).maybeSingle()
+      .then(({ data }) => setAvatarUrl(data?.foto_perfil_url || null))
+      .catch(() => {});
+  }, [userEmail]);
   const [portfolioImgs, setPortfolioImgs] = useState([]);
+  const [uploadingPortfolio, setUploadingPortfolio] = useState(false);
+  const [bio, setBio] = useState("");
+  const [savingBio, setSavingBio] = useState(false);
   const [categoriaServico, setCategoriaServico] = useState([]);
   const [savingCategoria, setSavingCategoria] = useState(false);
   // Mesma proteção contra corrida do ProfessionalHome: se o usuário já mudou a
@@ -3880,8 +3892,12 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
   const categoriaTocadaRef = useRef(false);
   useEffect(() => {
     if (role !== "professional" || !userEmail) return;
-    supabase.from("usuarios").select("categoria_servico").eq("email", userEmail).maybeSingle()
-      .then(({ data }) => { if (!categoriaTocadaRef.current) setCategoriaServico(data?.categoria_servico || []); })
+    supabase.from("usuarios").select("categoria_servico,bio,portfolio").eq("email", userEmail).maybeSingle()
+      .then(({ data }) => {
+        if (!categoriaTocadaRef.current) setCategoriaServico(data?.categoria_servico || []);
+        setBio(data?.bio || "");
+        setPortfolioImgs((data?.portfolio || []).map(url => ({ id: url, url })));
+      })
       .catch(() => {});
   }, [role, userEmail]);
 
@@ -3922,24 +3938,73 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
   const avatarRef = useRef(null);
   const portfolioRef = useRef(null);
 
-  // handle avatar upload
-  const handleAvatar = (e) => {
+  // Foto de perfil — sobe pro bucket "pedidos-fotos" (mesmo já usado por
+  // empresas/pedidos) e persiste em usuarios.foto_perfil_url.
+  const handleAvatar = async (e) => {
     const f = e.target.files[0];
-    if (!f) return;
-    const r = new FileReader();
-    r.onload = ev => { setAvatarUrl(ev.target.result); sessionStorage.setItem("multiAvatar", ev.target.result); };
-    r.readAsDataURL(f);
     e.target.value = "";
+    if (!f) return;
+    setUploadingAvatar(true);
+    try {
+      const ext = f.type.includes("png") ? "png" : "jpg";
+      const path = `perfil_${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, f, { contentType: f.type, upsert: true });
+      if (upErr) throw upErr;
+      const url = supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl;
+      setAvatarUrl(url);
+      if (userEmail) {
+        const { error } = await supabase.from("usuarios").update({ foto_perfil_url: url }).eq("email", userEmail);
+        if (error) throw error;
+      }
+      showToast?.("✅ Foto de perfil atualizada!", G);
+    } catch (err) {
+      showToast?.("❌ Erro ao enviar foto: " + (err.message || ""), "#DC2626");
+    } finally {
+      setUploadingAvatar(false);
+    }
   };
 
-  // handle portfolio images
-  const handlePortfolio = (e) => {
-    Array.from(e.target.files).forEach(f => {
-      const r = new FileReader();
-      r.onload = ev => setPortfolioImgs(p => [...p, { id: Date.now() + Math.random(), url: ev.target.result }]);
-      r.readAsDataURL(f);
-    });
+  // Portfólio — mesmo bucket, persiste o array completo em usuarios.portfolio
+  // (não só localmente, como antes).
+  const handlePortfolio = async (e) => {
+    const files = Array.from(e.target.files || []);
     e.target.value = "";
+    if (!files.length) return;
+    setUploadingPortfolio(true);
+    try {
+      const newUrls = [];
+      for (const f of files) {
+        const ext = f.type.includes("png") ? "png" : "jpg";
+        const path = `portfolio_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, f, { contentType: f.type, upsert: true });
+        if (upErr) throw upErr;
+        newUrls.push(supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl);
+      }
+      const updatedUrls = [...portfolioImgs.map(p => p.url), ...newUrls];
+      setPortfolioImgs(updatedUrls.map(url => ({ id: url, url })));
+      if (userEmail) {
+        const { error } = await supabase.from("usuarios").update({ portfolio: updatedUrls }).eq("email", userEmail);
+        if (error) throw error;
+      }
+    } catch (err) {
+      showToast?.("❌ Erro ao enviar foto: " + (err.message || ""), "#DC2626");
+    } finally {
+      setUploadingPortfolio(false);
+    }
+  };
+
+  const removePortfolioImg = (id) => {
+    const updatedUrls = portfolioImgs.filter(x => x.id !== id).map(p => p.url);
+    setPortfolioImgs(p => p.filter(x => x.id !== id));
+    if (userEmail) supabase.from("usuarios").update({ portfolio: updatedUrls }).eq("email", userEmail).then(() => {}).catch(() => {});
+  };
+
+  const handleSaveBio = async (novaBio) => {
+    if (!userEmail) return;
+    setSavingBio(true);
+    const { error } = await supabase.from("usuarios").update({ bio: novaBio }).eq("email", userEmail);
+    setSavingBio(false);
+    if (error) showToast?.("❌ Erro ao salvar bio: " + (error.message || ""), "#DC2626");
   };
 
   const stats = role === "client"
@@ -3988,14 +4053,14 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
         <input ref={avatarRef} type="file" accept="image/*" style={{ display:"none" }} onChange={handleAvatar} />
         <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
           <div style={{ position:"relative", marginBottom:4 }}>
-            <div style={{ width:88, height:88, borderRadius:"50%", background:"rgba(255,255,255,.25)", border:"3px solid rgba(255,255,255,.5)", display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", cursor:"pointer" }}
-              onClick={() => editMode && avatarRef.current?.click()}>
+            <div style={{ width:88, height:88, borderRadius:"50%", background:"rgba(255,255,255,.25)", border:"3px solid rgba(255,255,255,.5)", display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", cursor:"pointer", opacity: uploadingAvatar ? .5 : 1 }}
+              onClick={() => editMode && !uploadingAvatar && avatarRef.current?.click()}>
               {avatarUrl
                 ? <img src={avatarUrl} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt="avatar" />
                 : <span style={{ fontSize:40 }}>{role === "client" ? "👩" : "👨‍🔧"}</span>}
             </div>
             {editMode && (
-              <div onClick={() => avatarRef.current?.click()} style={{ position:"absolute", bottom:0, right:0, width:26, height:26, background:O, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", border:"2px solid white", cursor:"pointer" }}>
+              <div onClick={() => !uploadingAvatar && avatarRef.current?.click()} style={{ position:"absolute", bottom:0, right:0, width:26, height:26, background:O, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", border:"2px solid white", cursor:"pointer" }}>
                 <Camera size={13} color="white" />
               </div>
             )}
@@ -4108,6 +4173,24 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
             </div>
           </div>
 
+          {/* Bio — mesmo texto pedido em CompletarPerfilScreen no cadastro, editável depois */}
+          <div style={{ padding:"14px 16px 0" }}>
+            <div style={{ background:"white", borderRadius:16, padding:16, boxShadow:"0 3px 14px rgba(0,0,0,.07)" }}>
+              <p style={{ margin:"0 0 3px", fontSize:11, fontWeight:800, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1.1 }}>Sobre você</p>
+              <p style={{ margin:"0 0 10px", fontSize:11, color:"#9CA3AF" }}>Aparece pra clientes e empresas junto das suas propostas.</p>
+              <textarea
+                value={bio}
+                maxLength={160}
+                disabled={savingBio}
+                onChange={e => setBio(e.target.value)}
+                onBlur={() => handleSaveBio(bio)}
+                placeholder="Ex: Encanador com 10 anos de experiência, atendo emergências"
+                rows={3}
+                style={{ width:"100%", border:"1.5px solid #E5E7EB", borderRadius:14, padding:"13px 14px", fontSize:14, color:"#1a1a2e", outline:"none", fontFamily:"inherit", boxSizing:"border-box", resize:"none" }} />
+              <p style={{ fontSize:11, color:"#9CA3AF", margin:"5px 0 0", textAlign:"right" }}>{bio.length}/160</p>
+            </div>
+          </div>
+
           {/* Portfolio */}
           <SectionLabel label="Portfólio — Antes e Depois" />
           <div style={{ background:"white", padding:"14px 16px" }}>
@@ -4116,13 +4199,13 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
               {portfolioImgs.map(img => (
                 <div key={img.id} style={{ width:80, height:80, borderRadius:12, overflow:"hidden", position:"relative", flexShrink:0, boxShadow:"0 2px 8px rgba(0,0,0,.10)" }}>
                   <img src={img.url} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt="" />
-                  <button onClick={() => setPortfolioImgs(p => p.filter(x => x.id !== img.id))} style={{ position:"absolute", top:3, right:3, width:18, height:18, borderRadius:"50%", background:"rgba(0,0,0,.5)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <button onClick={() => removePortfolioImg(img.id)} style={{ position:"absolute", top:3, right:3, width:18, height:18, borderRadius:"50%", background:"rgba(0,0,0,.5)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
                     <X size={10} color="white" />
                   </button>
                 </div>
               ))}
-              <button onClick={() => portfolioRef.current?.click()} style={{ width:80, height:80, borderRadius:12, border:"2px dashed #DDD", background:BG, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, cursor:"pointer", color:"#ccc", flexShrink:0 }}>
-                <Image size={18} /><span style={{ fontSize:10, fontWeight:700 }}>Adicionar</span>
+              <button onClick={() => portfolioRef.current?.click()} disabled={uploadingPortfolio} style={{ width:80, height:80, borderRadius:12, border:"2px dashed #DDD", background:BG, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, cursor: uploadingPortfolio ? "default" : "pointer", color:"#ccc", flexShrink:0 }}>
+                <Image size={18} /><span style={{ fontSize:10, fontWeight:700 }}>{uploadingPortfolio ? "Enviando..." : "Adicionar"}</span>
               </button>
             </div>
             <p style={{ fontSize:11, color:"#bbb", marginTop:10 }}>Mostre antes & depois dos seus melhores trabalhos</p>
@@ -5546,6 +5629,145 @@ function LoginScreen({ onBack, onComplete, onRegister, onForgot }) {
   );
 }
 
+/* ───────────────────────── COMPLETAR PERFIL (só profissional, pós-plano) ──────── */
+// Bio é obrigatória (cliente/empresa que recebe proposta hoje só vê nome+valor+
+// mensagem, sem nada que gere confiança); foto e portfólio são opcionais mas
+// incentivados. Sobe pro mesmo bucket "pedidos-fotos" já usado por empresas/pedidos.
+function CompletarPerfilScreen({ userEmail, onDone, showToast }) {
+  const [bio, setBio] = useState("");
+  const [errorBio, setErrorBio] = useState("");
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [portfolioFiles, setPortfolioFiles] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const avatarRef = useRef(null);
+  const portfolioRef = useRef(null);
+  const MAX_BIO = 160;
+
+  const handleAvatarChange = (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setAvatarFile(f);
+    setAvatarPreview(URL.createObjectURL(f));
+    e.target.value = "";
+  };
+
+  const handlePortfolioChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    setPortfolioFiles(p => [...p, ...files.map(f => ({ id: Date.now() + Math.random(), file: f, preview: URL.createObjectURL(f) }))]);
+    e.target.value = "";
+  };
+
+  const removePortfolio = (id) => setPortfolioFiles(p => p.filter(x => x.id !== id));
+
+  const uploadToStorage = async (file, prefix) => {
+    const ext = file.type.includes("png") ? "png" : "jpg";
+    const path = `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from("pedidos-fotos").upload(path, file, { contentType: file.type, upsert: true });
+    if (error) throw error;
+    return supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl;
+  };
+
+  const handleContinuar = async () => {
+    if (!bio.trim()) { setErrorBio("Conta rapidinho sua experiência — esse campo é obrigatório"); return; }
+    setErrorBio("");
+    setSaving(true);
+    try {
+      const updates = { bio: bio.trim() };
+      if (avatarFile) updates.foto_perfil_url = await uploadToStorage(avatarFile, "perfil_profissional");
+      if (portfolioFiles.length) {
+        const urls = [];
+        for (const p of portfolioFiles) urls.push(await uploadToStorage(p.file, "portfolio"));
+        updates.portfolio = urls;
+      }
+      if (userEmail) {
+        const { error } = await supabase.from("usuarios").update(updates).eq("email", userEmail);
+        if (error) throw error;
+      }
+      onDone?.();
+    } catch (e) {
+      showToast?.("❌ Erro ao salvar perfil: " + (e.message || ""), "#DC2626");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#F8F9FA", display:"flex", flexDirection:"column" }}>
+      <div style={{ background:`linear-gradient(160deg,${B} 0%,#0055d4 100%)`, padding:"28px 20px 32px", borderRadius:"0 0 32px 32px", textAlign:"center" }}>
+        <h2 style={{ color:"white", fontSize:20, fontWeight:900, margin:"0 0 6px" }}>Complete seu perfil</h2>
+        <p style={{ color:"rgba(255,255,255,.75)", fontSize:13, margin:0 }}>Isso ajuda clientes e empresas a confiarem em você</p>
+      </div>
+
+      <div style={{ flex:1, padding:"20px 20px 40px", display:"flex", flexDirection:"column", gap:20 }}>
+
+        {/* BIO — obrigatória */}
+        <div>
+          <label style={{ display:"block", fontSize:11, fontWeight:800, color: errorBio ? "#E53935" : "#6B7280", textTransform:"uppercase", letterSpacing:1.1, marginBottom:7 }}>
+            Sobre você <span style={{ color:O }}>*</span>
+          </label>
+          <textarea
+            value={bio}
+            maxLength={MAX_BIO}
+            onChange={e => { setBio(e.target.value); if (errorBio) setErrorBio(""); }}
+            placeholder="Ex: Encanador com 10 anos de experiência, atendo emergências"
+            rows={3}
+            style={{ width:"100%", border:`1.5px solid ${errorBio ? "#E53935" : "#E5E7EB"}`, borderRadius:14, padding:"13px 14px", fontSize:14, color:"#1a1a2e", outline:"none", fontFamily:"inherit", boxSizing:"border-box", resize:"none" }} />
+          <div style={{ display:"flex", justifyContent:"space-between", marginTop:5 }}>
+            {errorBio ? <p style={{ fontSize:11, color:"#E53935", margin:0, fontWeight:700 }}>{errorBio}</p> : <span />}
+            <span style={{ fontSize:11, color:"#9CA3AF" }}>{bio.length}/{MAX_BIO}</span>
+          </div>
+        </div>
+
+        {/* incentivo */}
+        <div style={{ display:"flex", alignItems:"center", gap:8, background:"#FFF8E7", border:"1px solid #FDE68A", borderRadius:12, padding:"10px 14px" }}>
+          <Star size={16} color="#F9A825" />
+          <p style={{ fontSize:12, color:"#92400E", fontWeight:700, margin:0 }}>Perfis com foto e fotos de trabalhos recebem mais contratações</p>
+        </div>
+
+        {/* FOTO DE PERFIL — opcional */}
+        <div>
+          <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#6B7280", textTransform:"uppercase", letterSpacing:1.1, marginBottom:7 }}>Foto de perfil (opcional)</label>
+          <input ref={avatarRef} type="file" accept="image/*" style={{ display:"none" }} onChange={handleAvatarChange} />
+          <div onClick={() => avatarRef.current?.click()} style={{ width:84, height:84, borderRadius:"50%", background:"#EEF0F5", border:"2px dashed #DDD", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", overflow:"hidden", position:"relative" }}>
+            {avatarPreview
+              ? <img src={avatarPreview} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt="" />
+              : <Camera size={26} color="#B0B4C0" />}
+          </div>
+        </div>
+
+        {/* PORTFÓLIO — opcional */}
+        <div>
+          <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#6B7280", textTransform:"uppercase", letterSpacing:1.1, marginBottom:7 }}>Fotos de trabalhos (opcional)</label>
+          <input ref={portfolioRef} type="file" accept="image/*" multiple style={{ display:"none" }} onChange={handlePortfolioChange} />
+          <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+            {portfolioFiles.map(p => (
+              <div key={p.id} style={{ width:72, height:72, borderRadius:12, overflow:"hidden", position:"relative", flexShrink:0 }}>
+                <img src={p.preview} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt="" />
+                <button onClick={() => removePortfolio(p.id)} style={{ position:"absolute", top:3, right:3, width:18, height:18, borderRadius:"50%", background:"rgba(0,0,0,.5)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <X size={10} color="white" />
+                </button>
+              </div>
+            ))}
+            <button onClick={() => portfolioRef.current?.click()} style={{ width:72, height:72, borderRadius:12, border:"2px dashed #DDD", background:"white", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3, cursor:"pointer", color:"#ccc", flexShrink:0 }}>
+              <Image size={16} /><span style={{ fontSize:9, fontWeight:700 }}>Adicionar</span>
+            </button>
+          </div>
+        </div>
+
+        <div style={{ flex:1 }} />
+
+        <button onClick={handleContinuar} disabled={saving} style={{ width:"100%", padding:"16px 0", borderRadius:16, border:"none", background:`linear-gradient(135deg,${B},#0055d4)`, color:"white", fontWeight:900, fontSize:15, cursor: saving ? "default" : "pointer" }}>
+          {saving ? "Salvando..." : "Salvar e continuar"}
+        </button>
+        <button onClick={handleContinuar} disabled={saving} style={{ background:"none", border:"none", color:"#9CA3AF", fontWeight:700, fontSize:13, cursor: saving ? "default" : "pointer", padding:"4px 0", textAlign:"center" }}>
+          Pular fotos por agora
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" }) {
   const [step,    setStep]    = useState("form");
   const [name,    setName]    = useState("");
@@ -5604,6 +5826,17 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
         titularEmail={email.trim()}
         titularNome={name.trim().split(/\s+/)[0]}
         onBack={() => setStep("success")}
+        showToast={showToast}
+        onDone={() => setStep("completar-perfil")}
+      />
+    );
+  }
+
+  /* ── COMPLETAR PERFIL (só profissional, depois do plano) ── */
+  if (step === "completar-perfil") {
+    return (
+      <CompletarPerfilScreen
+        userEmail={email.trim()}
         showToast={showToast}
         onDone={() => onComplete(name, email.trim(), true, cepFound ? "Sua cidade" : "sua região", role, phone)}
       />
@@ -7296,11 +7529,26 @@ export default function App() {
   // ── SCREEN ROUTER ───────────────────────────────────────────────────────────
   function PropostasScreen({ pedido, onBack, onAceitarProposta }) {
   const [propostas, setPropostas] = useState([]);
+  const [perfis, setPerfis] = useState({}); // email -> { foto_perfil_url, bio, categoria_servico }
   const [loading, setLoading] = useState(true);
   useEffect(()=>{
     if(!pedido) return;
     supabase.from("propostas").select("*").eq("pedido_id",pedido.id).order("created_at",{ascending:false})
-      .then(({data})=>{ setPropostas(data||[]); setLoading(false); }).catch(()=>setLoading(false));
+      .then(async ({data})=>{
+        const lista = data || [];
+        setPropostas(lista);
+        setLoading(false);
+        // Enriquece cada proposta com foto/bio/categorias reais do profissional —
+        // antes disso a tela só mostrava nome+valor+mensagem, perfil vazio.
+        const emails = [...new Set(lista.map(p => p.profissional_email || p.profissional_id).filter(Boolean))];
+        if (emails.length) {
+          const { data: usuarios } = await supabase.from("usuarios").select("email,foto_perfil_url,bio,categoria_servico").in("email", emails);
+          const map = {};
+          (usuarios || []).forEach(u => { map[u.email] = u; });
+          setPerfis(map);
+        }
+      })
+      .catch(()=>setLoading(false));
   },[pedido?.id]);
   return (
     <div style={{padding:"16px",maxWidth:480,margin:"0 auto"}}>
@@ -7308,14 +7556,31 @@ export default function App() {
       <h2 style={{fontSize:18,fontWeight:800,marginBottom:16}}>Propostas recebidas</h2>
       {loading && <p>Carregando...</p>}
       {!loading && propostas.length===0 && <p style={{color:"#888"}}>Nenhuma proposta ainda.</p>}
-      {propostas.map(p=>(
-        <div key={p.id} style={{background:"white",borderRadius:12,padding:16,marginBottom:12,boxShadow:"0 2px 8px rgba(0,0,0,.08)"}}>
-          <div style={{fontWeight:700,fontSize:15}}>{p.profissional_nome||"Profissional"}</div>
-          <div style={{color:"#007BFF",fontWeight:800,fontSize:18,margin:"6px 0"}}>R$ {p.valor||0}</div>
-          <div style={{color:"#666",fontSize:13,marginBottom:12}}>{p.mensagem||""}</div>
-          <button onClick={()=>onAceitarProposta&&onAceitarProposta(p)} style={{width:"100%",padding:"12px",background:"#22c55e",color:"white",border:"none",borderRadius:10,fontWeight:800,fontSize:14,cursor:"pointer"}}>✅ Aceitar Proposta</button>
-        </div>
-      ))}
+      {propostas.map(p=>{
+        const perfil = perfis[p.profissional_email || p.profissional_id];
+        const cats = resolveCats(perfil?.categoria_servico);
+        return (
+          <div key={p.id} style={{background:"white",borderRadius:12,padding:16,marginBottom:12,boxShadow:"0 2px 8px rgba(0,0,0,.08)"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+              <div style={{width:48,height:48,borderRadius:"50%",overflow:"hidden",background:"#EEF0F5",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                {perfil?.foto_perfil_url
+                  ? <img src={perfil.foto_perfil_url} style={{width:"100%",height:"100%",objectFit:"cover"}} alt="" />
+                  : <User size={22} color="#B0B4C0" />}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:700,fontSize:15}}>{p.profissional_nome||"Profissional"}</div>
+                {cats.length > 0 && <div style={{fontSize:11,color:"#888"}}>{cats.map(c=>`${c.emoji} ${c.label}`).join(" · ")}</div>}
+              </div>
+            </div>
+            {perfil?.bio && (
+              <div style={{color:"#555",fontSize:12.5,lineHeight:1.5,marginBottom:10,background:"#F8F9FB",borderRadius:10,padding:"8px 10px"}}>{perfil.bio}</div>
+            )}
+            <div style={{color:"#007BFF",fontWeight:800,fontSize:18,margin:"6px 0"}}>R$ {p.valor||0}</div>
+            <div style={{color:"#666",fontSize:13,marginBottom:12}}>{p.mensagem||""}</div>
+            <button onClick={()=>onAceitarProposta&&onAceitarProposta(p)} style={{width:"100%",padding:"12px",background:"#22c55e",color:"white",border:"none",borderRadius:10,fontWeight:800,fontSize:14,cursor:"pointer"}}>✅ Aceitar Proposta</button>
+          </div>
+        );
+      })}
     </div>
   );
 }
