@@ -122,6 +122,35 @@ function MiniStars({ v, size = 10 }) {
   );
 }
 
+// Fotos da confirmação de conclusão (Fase 4.5) — só nesta tela de detalhe,
+// visível pros dois lados; nada de aparecer em perfil público ou outro lugar.
+function FotosConclusao({ cliente, profissional }) {
+  const temCliente = Array.isArray(cliente) && cliente.length > 0;
+  const temProfissional = Array.isArray(profissional) && profissional.length > 0;
+  if (!temCliente && !temProfissional) return null;
+  return (
+    <div style={{ background:"white", borderRadius:20, padding:16, boxShadow:"0 2px 12px rgba(0,0,0,.07)" }}>
+      <p style={{ fontSize:11, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1, margin:"0 0 10px" }}>Fotos da conclusão</p>
+      {temCliente && (
+        <>
+          {temProfissional && <p style={{ fontSize:11, fontWeight:700, color:"#888", margin:"0 0 6px" }}>Do cliente</p>}
+          <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom: temProfissional ? 12 : 0 }}>
+            {cliente.map((url, i) => <img key={i} src={url} style={{ width:64, height:64, borderRadius:10, objectFit:"cover" }} alt="" />)}
+          </div>
+        </>
+      )}
+      {temProfissional && (
+        <>
+          {temCliente && <p style={{ fontSize:11, fontWeight:700, color:"#888", margin:"0 0 6px" }}>Do profissional</p>}
+          <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+            {profissional.map((url, i) => <img key={i} src={url} style={{ width:64, height:64, borderRadius:10, objectFit:"cover" }} alt="" />)}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function Pill({ children, color = B, solid = false, sm = false }) {
   return (
     <span style={{
@@ -2455,6 +2484,8 @@ function mapPedidoRow(p) {
     contestacao_motivo: p.contestacao_motivo,
     concluido_cliente_em: p.concluido_cliente_em,
     concluido_profissional_em: p.concluido_profissional_em,
+    conclusao_fotos_cliente: p.conclusao_fotos_cliente,
+    conclusao_fotos_profissional: p.conclusao_fotos_profissional,
   };
 }
 
@@ -2516,6 +2547,8 @@ function ServiceDetailClient({ service, onBack, onStatusChange, onConfirmarConcl
   const [released,   setReleased]   = useState(service.status === "concluido");
   const [observacao, setObservacao] = useState("");
   const [confirmando,setConfirmando]= useState(false);
+  const [fotos,       setFotos]       = useState([]);
+  const [enviandoFoto,setEnviandoFoto]= useState(false);
   const cat  = CATS.find(c => c.id === service.cat);
   const pin  = generatePin(service.id);
   const jaConfirmeiConclusao = !!service.concluido_cliente_em;
@@ -2530,11 +2563,35 @@ function ServiceDetailClient({ service, onBack, onStatusChange, onConfirmarConcl
     onStatusChange?.(service.id, "executando");
   };
 
+  // Foto da conclusão — opcional, mesmo padrão de handlePortfolio
+  // (ProfileScreen): upload eager ao selecionar, acumula URLs no estado.
+  const handleFotoConclusao = async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (!files.length) return;
+    setEnviandoFoto(true);
+    try {
+      const novasUrls = [];
+      for (const f of files) {
+        const ext = f.type.includes("png") ? "png" : "jpg";
+        const path = `conclusao_${service.id}_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, f, { contentType: f.type, upsert: true });
+        if (upErr) throw upErr;
+        novasUrls.push(supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl);
+      }
+      setFotos(fs => [...fs, ...novasUrls]);
+    } catch (err) {
+      showToast?.("❌ Erro ao enviar foto: " + (err.message || ""), "#DC2626");
+    } finally {
+      setEnviandoFoto(false);
+    }
+  };
+
   const confirmarConclusao = () => {
     if (confirmando) return;
     setConfirmando(true);
     showToast?.("✅ Confirmação registrada.", G);
-    onConfirmarConclusao?.(service.id, "cliente", observacao);
+    onConfirmarConclusao?.(service.id, "cliente", observacao, fotos);
   };
 
   return (
@@ -2619,7 +2676,16 @@ function ServiceDetailClient({ service, onBack, onStatusChange, onConfirmarConcl
                   placeholder="Observação sobre a conclusão (opcional)..."
                   style={{ width:"100%", minHeight:70, marginTop:14, borderRadius:12, border:"1.5px solid #eee", padding:12, fontSize:13.5, fontFamily:"Nunito", resize:"none", boxSizing:"border-box" }}
                 />
-                <button onClick={confirmarConclusao} style={{ marginTop:10, width:"100%", padding:"14px 0", borderRadius:14, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${G},#16a34a)`, color:"white", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:`0 5px 18px ${G}44` }}>
+                {fotos.length > 0 && (
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginTop:10 }}>
+                    {fotos.map((url, i) => <img key={i} src={url} style={{ width:56, height:56, borderRadius:10, objectFit:"cover" }} alt="" />)}
+                  </div>
+                )}
+                <label htmlFor="foto-conclusao-cliente" style={{ marginTop:10, width:"100%", padding:"11px 0", borderRadius:12, border:"1.5px solid #E5E7EB", background:"white", color:"#555", fontWeight:700, fontSize:12.5, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxSizing:"border-box" }}>
+                  <Camera size={14} /> {enviandoFoto ? "Enviando..." : "Adicionar foto (opcional)"}
+                </label>
+                <input id="foto-conclusao-cliente" type="file" accept="image/*" multiple onChange={handleFotoConclusao} disabled={enviandoFoto} style={{ display:"none" }} />
+                <button onClick={confirmarConclusao} disabled={enviandoFoto} style={{ marginTop:10, width:"100%", padding:"14px 0", borderRadius:14, border:"none", cursor: enviandoFoto ? "default" : "pointer", opacity: enviandoFoto ? .6 : 1, background:`linear-gradient(135deg,${G},#16a34a)`, color:"white", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:`0 5px 18px ${G}44` }}>
                   <Check size={17} /> Marcar como concluído
                 </button>
               </>
@@ -2693,7 +2759,10 @@ function ServiceDetailClient({ service, onBack, onStatusChange, onConfirmarConcl
 
       {/* ── AVALIAR (após conclusão bilateral) ── */}
       {service.status==="concluido" && (
-        <button onClick={()=>onAvaliar&&onAvaliar(service)} style={{ width:"100%", padding:"12px", background:"#FF9500", color:"white", border:"none", borderRadius:12, fontWeight:700, fontSize:15, cursor:"pointer" }}>⭐ Avaliar</button>
+        <>
+          <FotosConclusao cliente={service.conclusao_fotos_cliente} profissional={service.conclusao_fotos_profissional} />
+          <button onClick={()=>onAvaliar&&onAvaliar(service)} style={{ width:"100%", padding:"12px", background:"#FF9500", color:"white", border:"none", borderRadius:12, fontWeight:700, fontSize:15, cursor:"pointer" }}>⭐ Avaliar</button>
+        </>
       )}
     </div>
   );
@@ -2705,9 +2774,35 @@ function ServiceDetailPinEntry({ service, onBack, onStatusChange, onConfirmarCon
   const [pinError,   setPinError]   = useState(false);
   const [confirmed,  setConfirmed]  = useState(false);
   const [observacao, setObservacao] = useState("");
+  const [fotos,       setFotos]       = useState([]);
+  const [enviandoFoto,setEnviandoFoto]= useState(false);
   const pin = generatePin(service.id);
   const phase = statusToPhase(service.status);
   const jaConfirmeiConclusao = !!service.concluido_profissional_em;
+
+  // Foto da conclusão — opcional, mesmo padrão de handlePortfolio
+  // (ProfileScreen): upload eager ao selecionar, acumula URLs no estado.
+  const handleFotoConclusao = async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (!files.length) return;
+    setEnviandoFoto(true);
+    try {
+      const novasUrls = [];
+      for (const f of files) {
+        const ext = f.type.includes("png") ? "png" : "jpg";
+        const path = `conclusao_${service.id}_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, f, { contentType: f.type, upsert: true });
+        if (upErr) throw upErr;
+        novasUrls.push(supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl);
+      }
+      setFotos(fs => [...fs, ...novasUrls]);
+    } catch (err) {
+      showToast?.("❌ Erro ao enviar foto: " + (err.message || ""), "#DC2626");
+    } finally {
+      setEnviandoFoto(false);
+    }
+  };
 
   const handleDigit = (d) => {
     if (enteredPin.length >= 4) return;
@@ -2719,7 +2814,7 @@ function ServiceDetailPinEntry({ service, onBack, onStatusChange, onConfirmarCon
         if (next === pin) {
           setConfirmed(true);
           showToast?.("✅ PIN correto! Confirmação registrada.", G);
-          onConfirmarConclusao?.(service.id, "profissional", observacao);
+          onConfirmarConclusao?.(service.id, "profissional", observacao, fotos);
         } else {
           setPinError(true);
           setEnteredPin("");
@@ -2768,7 +2863,10 @@ function ServiceDetailPinEntry({ service, onBack, onStatusChange, onConfirmarCon
 
       
           {service.status==="concluido" && (
-            <button onClick={()=>onAvaliar&&onAvaliar(service)} style={{marginTop:12,width:"100%",padding:"12px",background:"#FF9500",color:"white",border:"none",borderRadius:12,fontWeight:700,fontSize:15,cursor:"pointer"}}>⭐ Avaliar</button>
+            <>
+              <FotosConclusao cliente={service.conclusao_fotos_cliente} profissional={service.conclusao_fotos_profissional} />
+              <button onClick={()=>onAvaliar&&onAvaliar(service)} style={{marginTop:12,width:"100%",padding:"12px",background:"#FF9500",color:"white",border:"none",borderRadius:12,fontWeight:700,fontSize:15,cursor:"pointer"}}>⭐ Avaliar</button>
+            </>
           )}
           {service.status==="concluido" ? (
         <div style={{ background:"white", borderRadius:20, padding:"28px 20px", textAlign:"center", boxShadow:"0 4px 18px rgba(0,0,0,.10)" }}>
@@ -2820,6 +2918,15 @@ function ServiceDetailPinEntry({ service, onBack, onStatusChange, onConfirmarCon
               placeholder="Observação sobre a conclusão (opcional)..."
               style={{ width:"100%", minHeight:70, marginTop:16, borderRadius:12, border:"1.5px solid #eee", padding:12, fontSize:13.5, fontFamily:"Nunito", resize:"none", boxSizing:"border-box" }}
             />
+            {fotos.length > 0 && (
+              <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginTop:10 }}>
+                {fotos.map((url, i) => <img key={i} src={url} style={{ width:56, height:56, borderRadius:10, objectFit:"cover" }} alt="" />)}
+              </div>
+            )}
+            <label htmlFor="foto-conclusao-pro" style={{ marginTop:10, width:"100%", padding:"11px 0", borderRadius:12, border:"1.5px solid #E5E7EB", background:"white", color:"#555", fontWeight:700, fontSize:12.5, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6, boxSizing:"border-box" }}>
+              <Camera size={14} /> {enviandoFoto ? "Enviando..." : "Adicionar foto (opcional)"}
+            </label>
+            <input id="foto-conclusao-pro" type="file" accept="image/*" multiple onChange={handleFotoConclusao} disabled={enviandoFoto} style={{ display:"none" }} />
           </div>
         </div>
       )}
@@ -8244,13 +8351,14 @@ export default function App() {
   // Conclusão bilateral (Fase 4): cada lado só grava sua própria coluna
   // pareada (mesmo padrão do aceite formal). Só quando os dois lados já
   // confirmaram é que o pedido de fato vira "concluido".
-  const handleConfirmarConclusao = (pedidoId, lado, observacao) => {
+  const handleConfirmarConclusao = (pedidoId, lado, observacao, fotos) => {
     const campoTempo = lado === "cliente" ? "concluido_cliente_em" : "concluido_profissional_em";
     const campoObs   = lado === "cliente" ? "conclusao_observacao_cliente" : "conclusao_observacao_profissional";
+    const campoFotos = lado === "cliente" ? "conclusao_fotos_cliente" : "conclusao_fotos_profissional";
     supabase.from("pedidos").select("concluido_cliente_em,concluido_profissional_em").eq("id", pedidoId).maybeSingle()
       .then(({ data }) => {
         const outroJaConfirmou = lado === "cliente" ? data?.concluido_profissional_em : data?.concluido_cliente_em;
-        const updates = { [campoTempo]: new Date().toISOString(), [campoObs]: observacao || null };
+        const updates = { [campoTempo]: new Date().toISOString(), [campoObs]: observacao || null, [campoFotos]: (fotos && fotos.length) ? fotos : null };
         if (outroJaConfirmou) { updates.status = "concluido"; updates.concluido_em = new Date().toISOString(); }
         return supabase.from("pedidos").update(updates).eq("id", pedidoId);
       })
