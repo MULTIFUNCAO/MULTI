@@ -5681,7 +5681,10 @@ function CompletarPerfilScreen({ userEmail, onDone, showToast }) {
         updates.portfolio = urls;
       }
       if (userEmail) {
-        const { error } = await supabase.from("usuarios").update(updates).eq("email", userEmail);
+        // update() vira no-op se a linha em "usuarios" ainda não existir (caso do
+        // profissional recém-cadastrado, criada só depois no onComplete do App) —
+        // upsert garante que bio/foto/portfólio persistem mesmo assim.
+        const { error } = await supabase.from("usuarios").upsert({ email: userEmail, ...updates }, { onConflict: "email" });
         if (error) throw error;
       }
       onDone?.();
