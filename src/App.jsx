@@ -6831,7 +6831,6 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
               display:"flex", alignItems:"center", justifyContent:"center", gap:10,
               transition:"background .3s, color .3s",
             }}>
-            {newOrder && <NewOrderCard order={newOrder} onAccept={()=>{stopNewOrderSound();setNewOrder(null);setOnline(false);onAcceptOrder&&onAcceptOrder({id:newOrder.id,cliente_id:newOrder.cliente_id,title:newOrder.category,category:newOrder.category,clientName:safeGetUser().name||"Cliente",location:newOrder.location,value:newOrder.value,description:newOrder.description,photo:newOrder.photo,photos:newOrder.photos||[],status:"em_andamento",phase:1});}} onReject={()=>{stopNewOrderSound();setNewOrder(null);}} />}
             {/* radar icon */}
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <circle cx="12" cy="12" r="2"/>
@@ -6844,6 +6843,11 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
           </button>
         </div>
       </div>
+
+      {/* Modal fixed inset:0 — precisa ficar fora do <button> "Ficar Online"
+          (botão dentro de botão é HTML inválido e quebra o clique real do
+          navegador em "Aceitar agora"/"Recusar"). */}
+      {newOrder && <NewOrderCard order={newOrder} onAccept={()=>{stopNewOrderSound();setNewOrder(null);setOnline(false);onAcceptOrder&&onAcceptOrder({id:newOrder.id,cliente_id:newOrder.cliente_id,title:newOrder.category,category:newOrder.category,clientName:safeGetUser().name||"Cliente",location:newOrder.location,value:newOrder.value,description:newOrder.description,photo:newOrder.photo,photos:newOrder.photos||[],status:"em_andamento",phase:1});}} onReject={()=>{stopNewOrderSound();setNewOrder(null);}} />}
 
       {/* ── PRO TRIAL BANNER (free users) ── */}
       {!isPro && (
@@ -7254,13 +7258,17 @@ function NewOrderCard({ order, onAccept, onReject }) {
   useEffect(() => {
     playNewOrderSound();
     const interval = setInterval(() => {
-      setSeconds(s => {
-        if (s <= 1) { clearInterval(interval); onReject(); return 0; }
-        return s - 1;
-      });
+      setSeconds(s => (s > 0 ? s - 1 : 0));
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+  // onReject atualiza o pai (ProfessionalHome) — chamar isso de dentro do
+  // updater funcional do setSeconds acima (setState de um componente
+  // enquanto outro está no meio de um render) é o que disparava o warning
+  // "Cannot update a component while rendering a different component".
+  useEffect(() => {
+    if (seconds === 0) onReject();
+  }, [seconds]);
   return (
     <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.88)',zIndex:9999,display:'flex',alignItems:'flex-end',justifyContent:'center',padding:'0 0 20px'}}>
       <div style={{background:'#0f1117',borderRadius:28,padding:'20px',width:340,textAlign:'center',border:'1px solid #FF572240'}}>
