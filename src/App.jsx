@@ -1165,7 +1165,7 @@ function NovaDemandaScreen({ userEmail, userName, onBack, showToast }) {
 // Demandas postadas pela própria empresa + propostas recebidas nelas. Papel
 // diferente do Mural de Serviços (EmpresaPedidosScreen), que mostra pedidos de
 // CLIENTES na categoria da empresa — aqui a empresa é quem está contratando.
-function MinhasDemandasScreen({ userEmail, onBack, onVerPropostas }) {
+function MinhasDemandasScreen({ userEmail, onBack, onVerPropostas, onOpenChat }) {
   const [demandas, setDemandas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [candidatos, setCandidatos] = useState({});
@@ -1250,11 +1250,16 @@ function MinhasDemandasScreen({ userEmail, onBack, onVerPropostas }) {
               {d.status !== "aberto" && d.profissional_nome && (
                 <div style={{ paddingTop:8, borderTop:"1px solid #F0F0F0" }}>
                   <p style={{ fontSize:12, color:G, fontWeight:800, margin:"0 0 8px" }}>✅ {d.profissional_nome} aceitou essa demanda</p>
-                  {whatsapp && (
-                    <a href={`https://wa.me/55${whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{ textDecoration:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:12 }}>
-                      <MessageCircle size={14} /> Chamar no WhatsApp
-                    </a>
-                  )}
+                  <div style={{ display:"flex", gap:8 }}>
+                    <button onClick={() => onOpenChat?.(d)} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 0", borderRadius:12, border:"none", background:`linear-gradient(135deg,${B},#0056c7)`, color:"white", fontWeight:800, fontSize:12, cursor:"pointer" }}>
+                      <MessageCircle size={14} /> Chat
+                    </button>
+                    {whatsapp && (
+                      <a href={`https://wa.me/55${whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{ flex:1, textDecoration:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:12 }}>
+                        <MessageCircle size={14} /> WhatsApp
+                      </a>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -4727,6 +4732,111 @@ function PixQRChat({ valor }) {
   return <div style={{width:200,height:200,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,color:'#888',margin:'0 auto'}}>Gerando QR Code...</div>;
 }
 
+// Chat de negociação real (Fase 1) — mensagens persistidas em "mensagens",
+// chaveadas por pedido_id (um pedido em_andamento só tem uma proposta aceita,
+// então pedido_id já desambigua a negociação sem precisar de proposta_id).
+// Sem realtime: polling simples, consistente com o resto do app.
+function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
+  const [mensagens, setMensagens] = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [text,      setText]      = useState("");
+  const [sending,   setSending]   = useState(false);
+  const endRef = useRef(null);
+
+  const carregar = () => {
+    supabase.from("mensagens").select("*").eq("pedido_id", chat.pedidoId).order("criado_em")
+      .then(({ data }) => setMensagens(data || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    carregar();
+    const interval = setInterval(carregar, 5000);
+    return () => clearInterval(interval);
+  }, [chat.pedidoId]);
+
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior:"smooth" }); }, [mensagens]);
+
+  const enviar = () => {
+    const texto = text.trim();
+    if (!texto || sending) return;
+    setSending(true);
+    setText("");
+    supabase.from("mensagens").insert({ pedido_id: chat.pedidoId, remetente_email: meuEmail, texto })
+      .then(() => carregar())
+      .catch(() => {})
+      .finally(() => setSending(false));
+  };
+
+  const horaFmt = (iso) => {
+    const d = new Date(iso);
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  };
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#F8F9FA", display:"flex", flexDirection:"column" }}>
+      <div style={{ background:`linear-gradient(160deg,${B} 0%,#0055d4 100%)`, padding:"16px 18px 18px", borderRadius:"0 0 24px 24px", flexShrink:0 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <button onClick={onBack} style={{ background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:34, height:34, display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <ArrowLeft size={17} color="white" />
+          </button>
+          <div style={{ flex:1, minWidth:0 }}>
+            <p style={{ fontSize:15, fontWeight:900, color:"white", margin:0 }}>{chat.proName || "Conversa"}</p>
+            {chat.serviceTitle && <p style={{ fontSize:11, color:"rgba(255,255,255,.75)", margin:0 }}>{chat.serviceTitle}</p>}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ flex:1, overflowY:"auto", padding:"16px 14px", display:"flex", flexDirection:"column", gap:8 }}>
+        {loading && <p style={{ textAlign:"center", color:"#aaa", fontSize:13 }}>Carregando...</p>}
+        {!loading && mensagens.length === 0 && (
+          <div style={{ textAlign:"center", padding:"40px 24px", color:"#ccc" }}>
+            <MessageCircle size={36} color="#E0E0E0" style={{ margin:"0 auto 12px", display:"block" }} />
+            <p style={{ fontSize:13, fontWeight:700 }}>Nenhuma mensagem ainda</p>
+            <p style={{ fontSize:12, marginTop:4 }}>Envie a primeira mensagem pra combinar os detalhes.</p>
+          </div>
+        )}
+        {mensagens.map(m => {
+          const minha = m.remetente_email === meuEmail;
+          return (
+            <div key={m.id} style={{ display:"flex", justifyContent: minha ? "flex-end" : "flex-start" }}>
+              <div style={{
+                maxWidth:"78%", padding:"9px 13px", borderRadius:14,
+                borderBottomRightRadius: minha ? 4 : 14, borderBottomLeftRadius: minha ? 14 : 4,
+                background: minha ? B : "white", color: minha ? "white" : "#1a1a2e",
+                boxShadow: minha ? "none" : "0 1px 4px rgba(0,0,0,.07)",
+              }}>
+                <p style={{ fontSize:13.5, lineHeight:1.4, margin:0, whiteSpace:"pre-wrap", wordBreak:"break-word" }}>{m.texto}</p>
+                <p style={{ fontSize:10, margin:"4px 0 0", textAlign:"right", color: minha ? "rgba(255,255,255,.7)" : "#bbb" }}>{horaFmt(m.criado_em)}</p>
+              </div>
+            </div>
+          );
+        })}
+        <div ref={endRef} />
+      </div>
+
+      <div style={{ flexShrink:0, padding:"10px 14px", background:"white", borderTop:"1px solid #F0F0F0", display:"flex", gap:8, alignItems:"center" }}>
+        <input
+          value={text}
+          onChange={e => setText(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") enviar(); }}
+          placeholder="Escreva uma mensagem..."
+          style={{ flex:1, padding:"11px 14px", borderRadius:99, border:"1.5px solid #EEE", fontSize:13.5, outline:"none" }}
+        />
+        <button onClick={enviar} disabled={!text.trim() || sending} style={{
+          width:40, height:40, borderRadius:"50%", border:"none",
+          background: text.trim() ? B : "#E0E0E0", color:"white",
+          display:"flex", alignItems:"center", justifyContent:"center",
+          cursor: text.trim() ? "pointer" : "default", flexShrink:0,
+        }}>
+          <Send size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function EnhancedChatScreen({ chat, onBack, onFinishService, isPro, contactUnlocked }) {
   const initMsgs = [
     { id:1, from:"pro",    text:"Olá! Vi seu serviço e posso ajudar. Tenho 8 anos de experiência na área.", time:"10:01", read:true  },
@@ -7730,16 +7840,13 @@ export default function App() {
       proposalValue: proposta.valor,
       contactUnlocked: true,
     });
-    setScreen("chat");
   };
 
-  // Mesma lógica de handleAceitarProposta, versão empresa: sem chat in-app
-  // (empresa fecha por WhatsApp, mesmo padrão do EmpresaCard/Banco de
-  // Profissionais) — só marca a demanda como em_andamento e volta pra
-  // "Minhas Demandas", onde o botão de WhatsApp aparece.
+  // Mesma lógica de handleAceitarProposta, versão empresa: agora também abre o
+  // chat in-app (Fase 1), espelhando o fluxo de cliente+profissional individual.
   const handleAceitarPropostaEmpresa = (proposta) => {
     supabase.from("propostas").update({ status:"aceita" }).eq("id", proposta.id).then(()=>{});
-    // Só troca de tela depois do update de "pedidos" terminar — antes disso,
+    // Só abre o chat depois do update de "pedidos" terminar — antes disso,
     // MinhasDemandasScreen podia remontar e buscar o pedido ainda com o status
     // antigo (a escrita ainda não tinha chegado no banco).
     supabase.from("pedidos").update({
@@ -7747,8 +7854,14 @@ export default function App() {
       profissional_aceito: proposta.profissional_id,
       profissional_nome: proposta.profissional_nome,
     }).eq("id", proposta.pedido_id).then(() => {
-      showToast?.("✅ Proposta aceita! Chame o profissional no WhatsApp pra combinar os detalhes.", G);
-      setScreen("minhas-demandas");
+      showToast?.("✅ Proposta aceita!", G);
+      openChatFromService({
+        id: proposta.pedido_id,
+        pro: proposta.profissional_nome,
+        profissional_aceito: proposta.profissional_id,
+        proposalValue: proposta.valor,
+        contactUnlocked: true,
+      });
     });
   };
 
@@ -7909,12 +8022,10 @@ const renderContent = () => {
   console.log("RENDER:", role, authScreen, screen);
     if (screen === "activechat" && activeChat) {
       return (
-        <EnhancedChatScreen
+        <NegociacaoChatScreen
           chat={activeChat}
+          meuEmail={userEmail}
           onBack={() => { setActiveChat(null); setScreen(role === "client" ? "chat" : "home"); }}
-          onFinishService={handleFinishService}
-          isPro={isPro}
-          contactUnlocked={activeChat.contactUnlocked || isPro}
         />
       );
     }
@@ -8023,7 +8134,7 @@ const renderContent = () => {
       }
       if (screen === "minhas-demandas") {
         if (!temEmpresaPlus) return paywallPlus("minhas-demandas");
-        return <MinhasDemandasScreen userEmail={userEmail} onBack={() => setScreen("home")} onVerPropostas={(d) => { setSelected(d); setScreen("demanda-propostas"); }} />;
+        return <MinhasDemandasScreen userEmail={userEmail} onBack={() => setScreen("home")} onVerPropostas={(d) => { setSelected(d); setScreen("demanda-propostas"); }} onOpenChat={openChatFromService} />;
       }
       if (screen === "demanda-propostas" && selected) {
         if (!temEmpresaPlus) return paywallPlus("minhas-demandas");
