@@ -2773,7 +2773,7 @@ function ProfessionalFeed({ onViewService, isPro, feedServices, embedded = false
 }
 
 /* ───────────────────────── SERVICE DETAIL PRO ───────────────────────────────── */
-function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry }) {
+function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry, onAvaliar }) {
   const cat   = CATS.find(c => c.id === service.cat);
   const phase = statusToPhase(service.status);
   return (
@@ -2835,8 +2835,13 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry })
         )}
       </Card>
 
-      {/* PIN entry CTA for executing/in-progress jobs */}
-      {phase >= 1 && (
+      {/* Já concluído (bilateral) — avaliar direto, sem precisar passar pela
+          tela de PIN de novo. Enquanto não concluído, CTA pra abrir o PIN. */}
+      {service.status==="concluido" ? (
+        <button onClick={()=>onAvaliar&&onAvaliar(service)} style={{ width:"100%", padding:"15px 0", borderRadius:16, border:"none", cursor:"pointer", background:"#FF9500", color:"white", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:10, boxShadow:"0 5px 18px rgba(255,149,0,.35)" }}>
+          ⭐ Avaliar
+        </button>
+      ) : phase >= 1 && (
         <button onClick={onOpenPinEntry} style={{ width:"100%", padding:"15px 0", borderRadius:16, border:"none", cursor:"pointer", background:"linear-gradient(135deg,#1a1a2e,#2d2d44)", color:"white", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:10, boxShadow:"0 5px 18px rgba(0,0,0,.2)" }}>
           <KeyRound size={18} /> Inserir Codigo do Cliente (Finalizar)
         </button>
@@ -8314,7 +8319,7 @@ const renderContent = () => {
       if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
       return <ProfileScreen role="professional" userName={userName} userEmail={userEmail} isPro={isPro} plano={plano} planoStatus={planoStatus} planoExpiraEm={planoExpiraEm} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenWallet={() => setScreen("wallet")} meusGanhos={meusGanhos} onOpenAdmin={() => setShowAdmin(true)} docStatus={docStatus} onDocStatusChange={(id, st) => setDocStatus(d => ({ ...d, [id]: st }))} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
     }
-    if (screen === "service" && selected) return <ServiceDetailPro service={selected} onBack={() => setScreen("home")} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onOpenPinEntry={() => setScreen("pinjob")} />;
+    if (screen === "service" && selected) return <ServiceDetailPro key={selected.id} service={selected} onBack={() => setScreen("home")} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onOpenPinEntry={() => setScreen("pinjob")} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
     if (screen === "pinjob"  && selected) return <ServiceDetailPinEntry key={selected.id} service={selected} onBack={() => setScreen("service")} onStatusChange={handlePedidoStatusChange} onConfirmarConclusao={handleConfirmarConclusao} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
     if (screen === "orders") return <MyServicesScreen initialTab="concluido" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} isPro={isPro} />;
     // Pro home — shows professional-specific banner + filters + feed
