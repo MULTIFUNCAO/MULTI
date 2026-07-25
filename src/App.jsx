@@ -8173,7 +8173,7 @@ const renderContent = () => {
     // Global (independente de role) — antes só existia dentro do bloco
     // "Professional screens", então o cliente nunca conseguia abrir essa
     // tela de fato (Fase 4).
-    if (screen === "avaliacao" && avaliacaoSvc) return <AvaliacaoScreen service={avaliacaoSvc} onBack={()=>setScreen("orders")} setScreen={setScreen} userEmail={userEmail} showToast={showToast} />;
+    if (screen === "avaliacao" && avaliacaoSvc) return <AvaliacaoScreen key={avaliacaoSvc.id} service={avaliacaoSvc} onBack={()=>setScreen("orders")} setScreen={setScreen} userEmail={userEmail} showToast={showToast} />;
 
   if (!role && !authScreen) { setAuthScreen("role-select"); return null; }
     if (role === "client") {
@@ -8220,7 +8220,7 @@ const renderContent = () => {
         return <ProfileScreen role="client" userName={userName} isPro={false} showRankingGlobal={showRankingGlobal} onClearRankingGlobal={() => setShowRankingGlobal(false)} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenAdmin={() => setShowAdmin(true)} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
       }
       if (screen === "propostas" && selected) return <PropostasScreen pedido={selected} onBack={()=>setScreen("orders")} onAceitarProposta={handleAceitarProposta} />;
-      if (screen === "service" && selected) return <ServiceDetailClient service={selected} onBack={() => setScreen("orders")} onStatusChange={handlePedidoStatusChange} onConfirmarConclusao={handleConfirmarConclusao} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
+      if (screen === "service" && selected) return <ServiceDetailClient key={selected.id} service={selected} onBack={() => setScreen("orders")} onStatusChange={handlePedidoStatusChange} onConfirmarConclusao={handleConfirmarConclusao} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
 
       // ── GUEST TOGGLE: show professional mural preview when guest selects "Profissional"
       if (!isLoggedIn && guestRole === "professional") {
@@ -8315,7 +8315,7 @@ const renderContent = () => {
       return <ProfileScreen role="professional" userName={userName} userEmail={userEmail} isPro={isPro} plano={plano} planoStatus={planoStatus} planoExpiraEm={planoExpiraEm} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenWallet={() => setScreen("wallet")} meusGanhos={meusGanhos} onOpenAdmin={() => setShowAdmin(true)} docStatus={docStatus} onDocStatusChange={(id, st) => setDocStatus(d => ({ ...d, [id]: st }))} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
     }
     if (screen === "service" && selected) return <ServiceDetailPro service={selected} onBack={() => setScreen("home")} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onOpenPinEntry={() => setScreen("pinjob")} />;
-    if (screen === "pinjob"  && selected) return <ServiceDetailPinEntry service={selected} onBack={() => setScreen("service")} onStatusChange={handlePedidoStatusChange} onConfirmarConclusao={handleConfirmarConclusao} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
+    if (screen === "pinjob"  && selected) return <ServiceDetailPinEntry key={selected.id} service={selected} onBack={() => setScreen("service")} onStatusChange={handlePedidoStatusChange} onConfirmarConclusao={handleConfirmarConclusao} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
     if (screen === "orders") return <MyServicesScreen initialTab="concluido" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} isPro={isPro} />;
     // Pro home — shows professional-specific banner + filters + feed
     return (
