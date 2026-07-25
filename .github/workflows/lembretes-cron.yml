@@ -1,0 +1,15 @@
+name: Lembretes de agendamento
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chama endpoint de lembretes no backend
+        run: |
+          curl -sf -X POST https://multi-backend-lfwp.onrender.com/api/cron/lembretes \
+            -H "x-cron-key: ${{ secrets.CRON_KEY }}"

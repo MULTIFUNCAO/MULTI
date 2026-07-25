@@ -4750,6 +4750,7 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
   const [text,      setText]      = useState("");
   const [sending,   setSending]   = useState(false);
   const [aceitando, setAceitando] = useState(false);
+  const [dataInput, setDataInput] = useState("");
   const endRef = useRef(null);
 
   const carregar = () => {
@@ -4758,7 +4759,7 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
       .catch(() => {})
       .finally(() => setLoading(false));
     supabase.from("pedidos")
-      .select("cliente_id,profissional_aceito,aceite_formal_cliente_em,aceite_formal_profissional_em")
+      .select("cliente_id,profissional_aceito,aceite_formal_cliente_em,aceite_formal_profissional_em,data_agendada")
       .eq("id", chat.pedidoId).maybeSingle()
       .then(({ data }) => setPedido(data || null))
       .catch(() => {});
@@ -4791,9 +4792,12 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
 
   const aceitarContratacao = () => {
     if (!pedido || aceitando) return;
+    if (!pedido.data_agendada && !dataInput) return;
     setAceitando(true);
     const campo = souCliente ? "aceite_formal_cliente_em" : "aceite_formal_profissional_em";
-    supabase.from("pedidos").update({ [campo]: new Date().toISOString() }).eq("id", chat.pedidoId)
+    const updates = { [campo]: new Date().toISOString() };
+    if (!pedido.data_agendada) updates.data_agendada = new Date(dataInput).toISOString();
+    supabase.from("pedidos").update(updates).eq("id", chat.pedidoId)
       .then(() => carregar())
       .catch(() => {})
       .finally(() => setAceitando(false));
@@ -4802,6 +4806,17 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
   const horaFmt = (iso) => {
     const d = new Date(iso);
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  };
+
+  const dataAgendadaFmt = (iso) => {
+    const d = new Date(iso);
+    return `${d.toLocaleDateString("pt-BR")} às ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  };
+
+  const agoraLocalStr = () => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 16);
   };
 
   return (
@@ -4850,16 +4865,35 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
         liberado ? (
           <div style={{ flexShrink:0, margin:"0 14px 10px", padding:"10px 14px", borderRadius:12, background:"#F0FDF4", border:`1px solid ${G}44` }}>
             <p style={{ fontSize:12.5, fontWeight:800, color:G, margin:0 }}>🤝 Contratação confirmada — telefone liberado.</p>
+            {pedido.data_agendada && (
+              <p style={{ fontSize:12, fontWeight:700, color:G, margin:"4px 0 0" }}>📅 Agendado pra {dataAgendadaFmt(pedido.data_agendada)}</p>
+            )}
           </div>
         ) : meuAceite ? (
           <div style={{ flexShrink:0, margin:"0 14px 10px", padding:"10px 14px", borderRadius:12, background:"#F8F9FA", border:"1px solid #E5E7EB" }}>
             <p style={{ fontSize:12.5, fontWeight:700, color:"#555", margin:0 }}>✅ Você confirmou. Aguardando confirmação do outro lado.</p>
+            {pedido.data_agendada && (
+              <p style={{ fontSize:12, color:"#888", margin:"4px 0 0" }}>📅 Data proposta: {dataAgendadaFmt(pedido.data_agendada)}</p>
+            )}
           </div>
         ) : (
           <div style={{ flexShrink:0, margin:"0 14px 10px", padding:"10px 14px", borderRadius:12, background:"#EFF6FF", border:`1px solid ${B}33` }}>
-            <p style={{ fontSize:12, color:"#555", margin:"0 0 8px" }}>Já combinaram os detalhes? Confirmar libera o telefone pros dois lados.</p>
-            <button onClick={aceitarContratacao} disabled={aceitando} style={{ width:"100%", padding:"9px 0", borderRadius:10, border:"none", background:G, color:"white", fontWeight:800, fontSize:12.5, cursor: aceitando ? "default" : "pointer", opacity: aceitando ? .7 : 1 }}>
-              ✅ Aceitar contratação
+            {pedido.data_agendada ? (
+              <p style={{ fontSize:12, color:"#555", margin:"0 0 8px" }}>📅 Data proposta: <strong>{dataAgendadaFmt(pedido.data_agendada)}</strong>. Confirmar libera o telefone pros dois lados.</p>
+            ) : (
+              <>
+                <p style={{ fontSize:12, color:"#555", margin:"0 0 8px" }}>Já combinaram os detalhes? Escolha a data/hora do serviço e confirme — libera o telefone pros dois lados.</p>
+                <input
+                  type="datetime-local"
+                  value={dataInput}
+                  min={agoraLocalStr()}
+                  onChange={e => setDataInput(e.target.value)}
+                  style={{ width:"100%", padding:"9px 12px", borderRadius:10, border:"1.5px solid #DBEAFE", fontSize:13, marginBottom:8, boxSizing:"border-box" }}
+                />
+              </>
+            )}
+            <button onClick={aceitarContratacao} disabled={aceitando || (!pedido.data_agendada && !dataInput)} style={{ width:"100%", padding:"9px 0", borderRadius:10, border:"none", background:G, color:"white", fontWeight:800, fontSize:12.5, cursor: (aceitando || (!pedido.data_agendada && !dataInput)) ? "default" : "pointer", opacity: (aceitando || (!pedido.data_agendada && !dataInput)) ? .5 : 1 }}>
+              ✅ {pedido.data_agendada ? "Aceitar contratação" : "Propor data e aceitar"}
             </button>
           </div>
         )
