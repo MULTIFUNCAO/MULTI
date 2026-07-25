@@ -2268,6 +2268,8 @@ function mapPedidoRow(p) {
     concluido_em: p.concluido_em,
     contestado_em: p.contestado_em,
     contestacao_motivo: p.contestacao_motivo,
+    concluido_cliente_em: p.concluido_cliente_em,
+    concluido_profissional_em: p.concluido_profissional_em,
   };
 }
 
@@ -2323,14 +2325,15 @@ function ServiceStatusStepper({ phase }) {
 }
 
 /* ───────────────────────── SERVICE DETAIL — CLIENT VIEW ─────────────────────── */
-function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
+function ServiceDetailClient({ service, onBack, onStatusChange, onConfirmarConclusao, onAvaliar, showToast }) {
   const [phase,      setPhase]      = useState(statusToPhase(service.status));
-  const [rating,     setRating]     = useState(0);
-  const [rated,      setRated]      = useState(service.clientRating > 0);
   const [showSOS,    setShowSOS]    = useState(false);
   const [released,   setReleased]   = useState(service.status === "concluido");
+  const [observacao, setObservacao] = useState("");
+  const [confirmando,setConfirmando]= useState(false);
   const cat  = CATS.find(c => c.id === service.cat);
   const pin  = generatePin(service.id);
+  const jaConfirmeiConclusao = !!service.concluido_cliente_em;
 
   const phaseColors = ["#6366F1", B, O, G];
   const currentColor = phaseColors[phase];
@@ -2342,11 +2345,11 @@ function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
     onStatusChange?.(service.id, "executando");
   };
 
-  const releasePayment = () => {
-    setReleased(true);
-    setPhase(3);
-    showToast?.("✅ Pagamento liberado! Serviço concluído com sucesso.", G);
-    onStatusChange?.(service.id, "concluido");
+  const confirmarConclusao = () => {
+    if (confirmando) return;
+    setConfirmando(true);
+    showToast?.("✅ Confirmação registrada.", G);
+    onConfirmarConclusao?.(service.id, "cliente", observacao);
   };
 
   return (
@@ -2418,12 +2421,24 @@ function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
               )}
             </div>
 
-            {/* Release button — only when executing */}
-            {phase === 2 && (
-              <button onClick={releasePayment} style={{ marginTop:14, width:"100%", padding:"14px 0", borderRadius:14, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${G},#16a34a)`, color:"white", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:`0 5px 18px ${G}44` }}>
-                <Check size={17} /> Liberar Pagamento & Finalizar
-              </button>
-            )}
+            {/* Confirmar conclusão — só quando executando; bilateral (Fase 4) */}
+            {phase === 2 && (confirmando || jaConfirmeiConclusao ? (
+              <div style={{ marginTop:14, padding:"12px 14px", borderRadius:12, background:"#F8F9FA", border:"1px solid #E5E7EB", textAlign:"center" }}>
+                <p style={{ fontSize:13, fontWeight:700, color:"#555", margin:0 }}>✅ Você confirmou. Aguardando confirmação do outro lado.</p>
+              </div>
+            ) : (
+              <>
+                <textarea
+                  value={observacao}
+                  onChange={e => setObservacao(e.target.value)}
+                  placeholder="Observação sobre a conclusão (opcional)..."
+                  style={{ width:"100%", minHeight:70, marginTop:14, borderRadius:12, border:"1.5px solid #eee", padding:12, fontSize:13.5, fontFamily:"Nunito", resize:"none", boxSizing:"border-box" }}
+                />
+                <button onClick={confirmarConclusao} style={{ marginTop:10, width:"100%", padding:"14px 0", borderRadius:14, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${G},#16a34a)`, color:"white", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:`0 5px 18px ${G}44` }}>
+                  <Check size={17} /> Marcar como concluído
+                </button>
+              </>
+            ))}
           </div>
         </div>
       )}
@@ -2491,52 +2506,23 @@ function ServiceDetailClient({ service, onBack, onStatusChange, showToast }) {
         </div>
       )}
 
-      {/* ── RATING (done) ── */}
-      {phase === 3 && (
-        <div style={{ background:"white", borderRadius:20, padding:"16px", boxShadow:"0 2px 12px rgba(0,0,0,.07)" }}>
-          <h3 style={{ fontWeight:900, color:"#1a1a2e", marginBottom:10, fontSize:14 }}>Avalie o Serviço</h3>
-          {!rated ? (
-            <>
-              <p style={{ fontSize:12, color:"#aaa", marginBottom:12 }}>Como foi o atendimento?</p>
-              <div style={{ display:"flex", gap:6, marginBottom:14 }}>
-                {[1,2,3,4,5].map(s => <Star key={s} size={32} fill={rating >= s ? O : "none"} stroke={rating >= s ? O : "#ddd"} style={{ cursor:"pointer" }} onClick={() => setRating(s)} />)}
-              </div>
-              {rating > 0 && !rated && (
-              <div style={{ marginBottom:12 }}>
-                <p style={{ fontSize:12, color:'#888', marginBottom:8 }}>O que se destacou? (opcional)</p>
-                <div id="eval-tags" style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-                  {['Pontual','Atencioso','Cuidadoso','Prestativo','Limpeza','Preco justo'].map(tag => (
-                    <span key={tag} onClick={(e) => {
-                      e.currentTarget.style.background = e.currentTarget.dataset.sel === '1' ? '#f0f0f0' : '#FF5722';
-                      e.currentTarget.style.color = e.currentTarget.dataset.sel === '1' ? '#555' : 'white';
-                      e.currentTarget.dataset.sel = e.currentTarget.dataset.sel === '1' ? '0' : '1';
-                    }} data-sel="0" style={{ padding:'6px 12px', borderRadius:20, border:'1px solid #ddd', fontSize:12, cursor:'pointer', background:'#f0f0f0', color:'#555', userSelect:'none' }}>{tag}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-            {rating > 0 && <button onClick={() => setRated(true)} style={{ width:"100%", padding:"13px 0", borderRadius:12, fontWeight:900, color:"white", fontSize:13, background:`linear-gradient(135deg,${O},#E64A19)`, border:"none", cursor:"pointer" }}>Enviar Avaliação ⭐</button>}
-            </>
-          ) : (
-            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8, padding:"8px 0" }}>
-              <div style={{ width:50, height:50, borderRadius:"50%", background:"#DCFCE7", display:"flex", alignItems:"center", justifyContent:"center" }}><Check size={24} color="#16a34a" /></div>
-              <p style={{ fontWeight:800, color:"#1a1a2e" }}>Avaliação enviada!</p>
-              <MiniStars v={rating} size={18} />
-            </div>
-          )}
-        </div>
+      {/* ── AVALIAR (após conclusão bilateral) ── */}
+      {service.status==="concluido" && (
+        <button onClick={()=>onAvaliar&&onAvaliar(service)} style={{ width:"100%", padding:"12px", background:"#FF9500", color:"white", border:"none", borderRadius:12, fontWeight:700, fontSize:15, cursor:"pointer" }}>⭐ Avaliar</button>
       )}
     </div>
   );
 }
 
 /* ───────────────────────── SERVICE DETAIL — PROFESSIONAL PIN ENTRY ──────────── */
-function ServiceDetailPinEntry({ service, onBack, onStatusChange, showToast, onAvaliar }) {
+function ServiceDetailPinEntry({ service, onBack, onStatusChange, onConfirmarConclusao, showToast, onAvaliar }) {
   const [enteredPin, setEnteredPin] = useState("");
   const [pinError,   setPinError]   = useState(false);
   const [confirmed,  setConfirmed]  = useState(false);
+  const [observacao, setObservacao] = useState("");
   const pin = generatePin(service.id);
   const phase = statusToPhase(service.status);
+  const jaConfirmeiConclusao = !!service.concluido_profissional_em;
 
   const handleDigit = (d) => {
     if (enteredPin.length >= 4) return;
@@ -2547,8 +2533,8 @@ function ServiceDetailPinEntry({ service, onBack, onStatusChange, showToast, onA
       setTimeout(() => {
         if (next === pin) {
           setConfirmed(true);
-          showToast?.("✅ PIN correto! Serviço finalizado. Pagamento liberado!", G);
-          onStatusChange?.(service.id, "concluido");
+          showToast?.("✅ PIN correto! Confirmação registrada.", G);
+          onConfirmarConclusao?.(service.id, "profissional", observacao);
         } else {
           setPinError(true);
           setEnteredPin("");
@@ -2597,15 +2583,30 @@ function ServiceDetailPinEntry({ service, onBack, onStatusChange, showToast, onA
 
       
           {service.status==="concluido" && (
-            <button onClick={()=>onAvaliar&&onAvaliar(service)} style={{marginTop:12,width:"100%",padding:"12px",background:"#FF9500",color:"white",border:"none",borderRadius:12,fontWeight:700,fontSize:15,cursor:"pointer"}}>⭐ Avaliar Profissional</button>
+            <button onClick={()=>onAvaliar&&onAvaliar(service)} style={{marginTop:12,width:"100%",padding:"12px",background:"#FF9500",color:"white",border:"none",borderRadius:12,fontWeight:700,fontSize:15,cursor:"pointer"}}>⭐ Avaliar</button>
           )}
-          {!confirmed ? (
+          {service.status==="concluido" ? (
+        <div style={{ background:"white", borderRadius:20, padding:"28px 20px", textAlign:"center", boxShadow:"0 4px 18px rgba(0,0,0,.10)" }}>
+          <div style={{ width:72, height:72, borderRadius:"50%", background:`linear-gradient(135deg,${G},#16a34a)`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", boxShadow:`0 6px 20px ${G}44` }}>
+            <Check size={36} color="white" strokeWidth={3} />
+          </div>
+          <h3 style={{ fontSize:20, fontWeight:900, color:"#1a1a2e", margin:"0 0 8px" }}>Serviço concluído!</h3>
+          <p style={{ fontSize:14, color:"#6B7280", lineHeight:1.6, margin:"0 0 20px" }}>Os dois lados confirmaram a conclusão.</p>
+          <div style={{ display:"flex", gap:8, justifyContent:"center" }}>
+            {[B, O, G, "#F9A825"].map((c, i) => <div key={i} style={{ width:10, height:10, borderRadius:"50%", background:c }} />)}
+          </div>
+        </div>
+      ) : (confirmed || jaConfirmeiConclusao) ? (
+        <div style={{ background:"#F8F9FA", borderRadius:20, padding:"20px", textAlign:"center", border:"1px solid #E5E7EB" }}>
+          <p style={{ fontSize:13.5, fontWeight:700, color:"#555", margin:0 }}>✅ Você confirmou. Aguardando confirmação do outro lado.</p>
+        </div>
+      ) : (
         <div style={{ background:"white", borderRadius:20, overflow:"hidden", boxShadow:"0 4px 18px rgba(0,0,0,.10)" }}>
           <div style={{ background:"linear-gradient(135deg,#1a1a2e,#2d2d44)", padding:"16px", display:"flex", alignItems:"center", gap:10 }}>
             <KeyRound size={20} color={O} />
             <div>
-              <p style={{ fontSize:14, fontWeight:900, color:"white", margin:0 }}>Inserir Codigo do Cliente</p>
-              <p style={{ fontSize:11, color:"rgba(255,255,255,.55)", margin:0 }}>Digite o PIN de 4 dígitos para liberar o pagamento</p>
+              <p style={{ fontSize:14, fontWeight:900, color:"white", margin:0 }}>Inserir Código do Cliente</p>
+              <p style={{ fontSize:11, color:"rgba(255,255,255,.55)", margin:0 }}>Digite o PIN de 4 dígitos pra confirmar a conclusão</p>
             </div>
           </div>
           <div style={{ padding:"20px 16px" }}>
@@ -2627,19 +2628,13 @@ function ServiceDetailPinEntry({ service, onBack, onStatusChange, showToast, onA
                 </button>
               ))}
             </div>
-          </div>
-        </div>
-      ) : (
-        <div style={{ background:"white", borderRadius:20, padding:"28px 20px", textAlign:"center", boxShadow:"0 4px 18px rgba(0,0,0,.10)" }}>
-          <div style={{ width:72, height:72, borderRadius:"50%", background:`linear-gradient(135deg,${G},#16a34a)`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", boxShadow:`0 6px 20px ${G}44` }}>
-            <Check size={36} color="white" strokeWidth={3} />
-          </div>
-          <h3 style={{ fontSize:20, fontWeight:900, color:"#1a1a2e", margin:"0 0 8px" }}>Serviço Finalizado!</h3>
-          <p style={{ fontSize:14, color:"#6B7280", lineHeight:1.6, margin:"0 0 20px" }}>
-            Pagamento de <strong style={{ color:G }}>R$ {service.proposalValue || service.value}</strong><br/>liberado e em processamento.
-          </p>
-          <div style={{ display:"flex", gap:8, justifyContent:"center" }}>
-            {[B, O, G, "#F9A825"].map((c, i) => <div key={i} style={{ width:10, height:10, borderRadius:"50%", background:c }} />)}
+
+            <textarea
+              value={observacao}
+              onChange={e => setObservacao(e.target.value)}
+              placeholder="Observação sobre a conclusão (opcional)..."
+              style={{ width:"100%", minHeight:70, marginTop:16, borderRadius:12, border:"1.5px solid #eee", padding:12, fontSize:13.5, fontFamily:"Nunito", resize:"none", boxSizing:"border-box" }}
+            />
           </div>
         </div>
       )}
@@ -2796,15 +2791,17 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry })
         <div style={{ background:"white", borderRadius:20, padding:"16px 12px", boxShadow:"0 2px 12px rgba(0,0,0,.07)" }}>
           <p style={{ fontSize:12, fontWeight:800, color:"#1a1a2e", margin:"0 0 14px" }}>Progresso do Job</p>
           <ServiceStatusStepper phase={phase} />
-          {phase < 3 && (
+          {/* Avança aberto→em_andamento→executando. A partir daqui, a
+              conclusão é bilateral — só pelo botão de PIN mais abaixo, não
+              por esse atalho (que fechava o pedido sozinho). */}
+          {phase < 2 && (
             <button onClick={()=>{
-              const nextStatus=["aberto","em_andamento","executando","concluido"][Math.min(phase+1,3)];const extraFields=nextStatus==="concluido"?{concluido_em:new Date().toISOString()}:{};
-              supabase.from("pedidos").update({status:nextStatus,updated_at:new Date().toISOString(),...extraFields}).eq("id",service.id).then(()=>{
-                showToast&&showToast("Status: "+nextStatus);
+              const nextStatus=["aberto","em_andamento","executando"][Math.min(phase+1,2)];
+              supabase.from("pedidos").update({status:nextStatus,updated_at:new Date().toISOString()}).eq("id",service.id).then(()=>{
                 onBack&&onBack();
               }).catch(()=>{});
             }} style={{marginTop:12,width:"100%",padding:"12px",background:"#007BFF",color:"white",border:"none",borderRadius:12,fontWeight:700,fontSize:15,cursor:"pointer"}}>
-              {["Iniciar Serviço","Marcar Em Execução","Concluir Serviço"][phase]||"Avançar"}
+              {["Iniciar Serviço","Marcar Em Execução"][phase]||"Avançar"}
             </button>
           )}
         </div>
@@ -7520,20 +7517,40 @@ function NewOrderCard({ order, onAccept, onReject }) {
 // ===== AVALIACAO SCREEN =====
 function AvaliacaoScreen({ service, onBack, setScreen, userEmail, showToast }) {
   if(!service) return null;
+  const souCliente = service.cliente_id === userEmail;
+  const avaliadoEmail = souCliente ? service.profissional_aceito : service.cliente_id;
+  const avaliadoNome  = souCliente ? (service.profissional_nome || service.pro || "profissional") : (service.cliente_nome || "cliente");
+
   const [nota, setNota] = useState(0);
   const [hover, setHover] = useState(0);
   const [comentario, setComentario] = useState("");
   const [enviado, setEnviado] = useState(false);
+  const [jaAvaliado, setJaAvaliado] = useState(false);
+  const [checando, setChecando] = useState(true);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!service.id || !userEmail) { setChecando(false); return; }
+    supabase.from("avaliacoes").select("id").eq("pedido_id", service.id).eq("avaliador_email", userEmail).maybeSingle()
+      .then(({ data }) => setJaAvaliado(!!data))
+      .catch(() => {})
+      .finally(() => setChecando(false));
+  }, [service.id, userEmail]);
 
   const enviarAvaliacao = async () => {
     if(nota===0) return showToast&&showToast("Selecione uma nota!");
     setLoading(true);
     const {error} = await supabase.from("avaliacoes").insert({
       pedido_id: service.id,
-      cliente_id: userEmail,
-      profissional_id: service.profissional_aceito,
-      profissional_nome: service.profissional_nome || service.pro || null,
+      avaliador_email: userEmail,
+      avaliado_email: avaliadoEmail,
+      avaliado_nome: avaliadoNome,
+      // Colunas legadas — só fazem sentido quando o avaliado é o profissional
+      // (mantém a leitura já existente em BancoProfissionaisScreen, que
+      // filtra por profissional_id).
+      cliente_id: souCliente ? userEmail : null,
+      profissional_id: souCliente ? avaliadoEmail : null,
+      profissional_nome: souCliente ? avaliadoNome : null,
       nota,
       comentario
     });
@@ -7542,11 +7559,13 @@ function AvaliacaoScreen({ service, onBack, setScreen, userEmail, showToast }) {
     else{ showToast&&showToast("Erro ao enviar avaliação"); }
   };
 
-  if(enviado) return (
+  if (checando) return null;
+
+  if(enviado || jaAvaliado) return (
     <div style={{minHeight:"100vh",background:"#F5F6FA",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24}}>
       <div style={{fontSize:64}}>⭐</div>
       <h2 style={{fontWeight:900,fontSize:22,color:"#1a1a2e",margin:"16px 0 8px"}}>Obrigado!</h2>
-      <p style={{color:"#666",textAlign:"center",marginBottom:24}}>Sua avaliação ajuda outros clientes a encontrar bons profissionais.</p>
+      <p style={{color:"#666",textAlign:"center",marginBottom:24}}>Sua avaliação ajuda outras pessoas a encontrar bons parceiros no Multi.</p>
       <button onClick={onBack} style={{padding:"14px 32px",background:"#007BFF",color:"white",border:"none",borderRadius:14,fontWeight:800,fontSize:16,cursor:"pointer"}}>Voltar</button>
     </div>
   );
@@ -7554,7 +7573,7 @@ function AvaliacaoScreen({ service, onBack, setScreen, userEmail, showToast }) {
   return (
     <div style={{minHeight:"100vh",background:"#F5F6FA",padding:"20px 16px"}}>
       <button onClick={()=>{ if(setScreen) setScreen("orders"); else if(onBack) onBack(); }} style={{background:"none",border:"none",fontSize:24,cursor:"pointer",marginBottom:16}}>←</button>
-      <h2 style={{fontWeight:900,fontSize:22,color:"#1a1a2e",marginBottom:4}}>Avaliar Profissional</h2>
+      <h2 style={{fontWeight:900,fontSize:22,color:"#1a1a2e",marginBottom:4}}>Avaliar {avaliadoNome}</h2>
       <p style={{color:"#666",fontSize:14,marginBottom:24}}>Como foi o serviço?</p>
       <div style={{background:"white",borderRadius:20,padding:24,marginBottom:16,boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
         <p style={{fontWeight:700,fontSize:15,marginBottom:16,color:"#1a1a2e"}}>Sua nota:</p>
@@ -7675,6 +7694,25 @@ export default function App() {
     }).catch(() => setMeusPedidosLoading(false));
   };
   useEffect(() => { refreshMeusPedidos(); }, [screen, userEmail, role]);
+
+  // Deep link do lembrete pós-horário (Fase 4): o push "foi realizado?" leva
+  // direto pra tela de confirmar conclusão. Não precisa de dado extra na
+  // notificação — cada dispositivo já sabe seu próprio papel no pedido.
+  useEffect(() => {
+    if (!isLoggedIn || !userEmail) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("tela") !== "concluir") return;
+    const pedidoId = params.get("pedido");
+    if (!pedidoId) return;
+    supabase.from("pedidos").select("*").eq("id", pedidoId).maybeSingle().then(({ data }) => {
+      if (!data) return;
+      if (data.cliente_id === userEmail) setRole("client");
+      else if (data.profissional_aceito === userEmail) setRole("professional");
+      setSelected(mapPedidoRow(data));
+      setScreen("service");
+    }).catch(() => {});
+    window.history.replaceState({}, "", window.location.pathname);
+  }, [isLoggedIn, userEmail]);
 
   // Contagem real de propostas recebidas por pedido aberto (cliente) — antes
   // sempre aparecia 0/vazio, sem nenhuma leitura de "propostas".
@@ -8002,11 +8040,30 @@ export default function App() {
 
   // Centraliza a persistência de mudança de status do pedido — usada tanto
   // pelo check-in/liberação do cliente (ServiceDetailClient) quanto pela
-  // finalização via PIN do profissional (ServiceDetailPinEntry).
+  // finalização via PIN do profissional (ServiceDetailPinEntry). Não cobre
+  // mais a transição pra "concluido" — isso é bilateral, ver
+  // handleConfirmarConclusao.
   const handlePedidoStatusChange = (id, novoStatus) => {
     const extra = novoStatus === "concluido" ? { concluido_em: new Date().toISOString() } : {};
     supabase.from("pedidos").update({ status: novoStatus, updated_at: new Date().toISOString(), ...extra })
       .eq("id", id).then(()=>refreshMeusPedidos()).catch(()=>{});
+  };
+
+  // Conclusão bilateral (Fase 4): cada lado só grava sua própria coluna
+  // pareada (mesmo padrão do aceite formal). Só quando os dois lados já
+  // confirmaram é que o pedido de fato vira "concluido".
+  const handleConfirmarConclusao = (pedidoId, lado, observacao) => {
+    const campoTempo = lado === "cliente" ? "concluido_cliente_em" : "concluido_profissional_em";
+    const campoObs   = lado === "cliente" ? "conclusao_observacao_cliente" : "conclusao_observacao_profissional";
+    supabase.from("pedidos").select("concluido_cliente_em,concluido_profissional_em").eq("id", pedidoId).maybeSingle()
+      .then(({ data }) => {
+        const outroJaConfirmou = lado === "cliente" ? data?.concluido_profissional_em : data?.concluido_cliente_em;
+        const updates = { [campoTempo]: new Date().toISOString(), [campoObs]: observacao || null };
+        if (outroJaConfirmou) { updates.status = "concluido"; updates.concluido_em = new Date().toISOString(); }
+        return supabase.from("pedidos").update(updates).eq("id", pedidoId);
+      })
+      .then(() => refreshMeusPedidos())
+      .catch(() => {});
   };
 
   const handleProFeedAction = (payload) => {
@@ -8113,6 +8170,11 @@ const renderContent = () => {
       );
     }
 
+    // Global (independente de role) — antes só existia dentro do bloco
+    // "Professional screens", então o cliente nunca conseguia abrir essa
+    // tela de fato (Fase 4).
+    if (screen === "avaliacao" && avaliacaoSvc) return <AvaliacaoScreen service={avaliacaoSvc} onBack={()=>setScreen("orders")} setScreen={setScreen} userEmail={userEmail} showToast={showToast} />;
+
   if (!role && !authScreen) { setAuthScreen("role-select"); return null; }
     if (role === "client") {
       if (screen === "post")   return <PostServiceScreen onBack={() => setScreen("home")} onSuccess={handlePostServiceSuccess} />;
@@ -8158,7 +8220,7 @@ const renderContent = () => {
         return <ProfileScreen role="client" userName={userName} isPro={false} showRankingGlobal={showRankingGlobal} onClearRankingGlobal={() => setShowRankingGlobal(false)} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenAdmin={() => setShowAdmin(true)} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
       }
       if (screen === "propostas" && selected) return <PropostasScreen pedido={selected} onBack={()=>setScreen("orders")} onAceitarProposta={handleAceitarProposta} />;
-      if (screen === "service" && selected) return <ServiceDetailClient service={selected} onBack={() => setScreen("orders")} onStatusChange={handlePedidoStatusChange} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
+      if (screen === "service" && selected) return <ServiceDetailClient service={selected} onBack={() => setScreen("orders")} onStatusChange={handlePedidoStatusChange} onConfirmarConclusao={handleConfirmarConclusao} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
 
       // ── GUEST TOGGLE: show professional mural preview when guest selects "Profissional"
       if (!isLoggedIn && guestRole === "professional") {
@@ -8246,7 +8308,6 @@ const renderContent = () => {
     }
 
     // Professional screens
-    if (screen === "avaliacao" && avaliacaoSvc) return <AvaliacaoScreen service={avaliacaoSvc} onBack={()=>setScreen("orders")} setScreen={setScreen} userEmail={userEmail} showToast={showToast} />;
   if (screen === "upgrade") return <EscolherPlanoScreen titularTipo="usuario" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("home")} showToast={showToast} onDone={() => { carregarPlano("usuario", userEmail); setScreen("home"); }} />;
     if (screen === "wallet") return <WalletScreen onBack={() => setScreen("profile")} pedidos={meusGanhos} />;
     if (screen === "profile") {
@@ -8254,7 +8315,7 @@ const renderContent = () => {
       return <ProfileScreen role="professional" userName={userName} userEmail={userEmail} isPro={isPro} plano={plano} planoStatus={planoStatus} planoExpiraEm={planoExpiraEm} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenWallet={() => setScreen("wallet")} meusGanhos={meusGanhos} onOpenAdmin={() => setShowAdmin(true)} docStatus={docStatus} onDocStatusChange={(id, st) => setDocStatus(d => ({ ...d, [id]: st }))} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
     }
     if (screen === "service" && selected) return <ServiceDetailPro service={selected} onBack={() => setScreen("home")} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onOpenPinEntry={() => setScreen("pinjob")} />;
-    if (screen === "pinjob"  && selected) return <ServiceDetailPinEntry service={selected} onBack={() => setScreen("service")} onStatusChange={handlePedidoStatusChange} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
+    if (screen === "pinjob"  && selected) return <ServiceDetailPinEntry service={selected} onBack={() => setScreen("service")} onStatusChange={handlePedidoStatusChange} onConfirmarConclusao={handleConfirmarConclusao} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
     if (screen === "orders") return <MyServicesScreen initialTab="concluido" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} isPro={isPro} />;
     // Pro home — shows professional-specific banner + filters + feed
     return (
