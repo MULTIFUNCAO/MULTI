@@ -1042,8 +1042,14 @@ function BancoProfissionaisScreen({ onBack }) {
 // obra") — reaproveita a tabela "pedidos" já consolidada, só com
 // publico_alvo:"pro" pra aparecer só no mural de profissionais Multi Pro
 // (ver supabase_demandas_pro_migration.sql e o filtro em ProfessionalHome).
+const PRAZO_OPTIONS = [
+  { id:"urgente",     label:"Urgente",      emoji:"🔴" },
+  { id:"essa_semana", label:"Essa semana",  emoji:"🟡" },
+  { id:"sem_pressa",  label:"Sem pressa",   emoji:"🟢" },
+];
+
 function NovaDemandaScreen({ userEmail, userName, onBack, showToast }) {
-  const [form, setForm] = useState({ cat:"", desc:"", value:"" });
+  const [form, setForm] = useState({ cat:"", desc:"", value:"", prazo:"sem_pressa" });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
@@ -1068,6 +1074,7 @@ function NovaDemandaScreen({ userEmail, userName, onBack, showToast }) {
         valor: Number(form.value),
         status: "aberto",
         publico_alvo: "pro",
+        prazo: form.prazo,
       });
       if (error) throw error;
       // Best-effort — não bloqueia a publicação se o push falhar.
@@ -1128,6 +1135,18 @@ function NovaDemandaScreen({ userEmail, userName, onBack, showToast }) {
             value={form.value}
             onChange={e => { setForm(f => ({ ...f, value: e.target.value })); if (errors.value) setErrors(p => ({ ...p, value: undefined })); }} />
           {errors.value && <p style={{ fontSize:11, color:"#E53935", margin:"5px 0 0", fontWeight:700 }}>{errors.value}</p>}
+        </div>
+
+        <div>
+          <label style={L}>Prazo</label>
+          <div style={{ display:"flex", gap:8 }}>
+            {PRAZO_OPTIONS.map(p => (
+              <button key={p.id} onClick={() => setForm(f => ({ ...f, prazo: p.id }))}
+                style={{ flex:1, padding:"10px 0", borderRadius:10, border: form.prazo === p.id ? "2px solid "+B : "1.5px solid #E5E7EB", background: form.prazo === p.id ? "#EEF4FF" : "white", color: form.prazo === p.id ? B : "#555", fontWeight: form.prazo === p.id ? 800 : 500, fontSize:12, cursor:"pointer" }}>
+                {p.emoji} {p.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div style={{ flex:1 }} />
@@ -1203,6 +1222,7 @@ function MinhasDemandasScreen({ userEmail, onBack, onVerPropostas }) {
         )}
         {demandas.map(d => {
           const cat = CATS.find(c => c.id === d.categoria);
+          const prazo = PRAZO_OPTIONS.find(p => p.id === d.prazo);
           const nCandidatos = candidatos[d.id] || 0;
           const whatsapp = d.profissional_aceito ? contatos[d.profissional_aceito] : null;
           return (
@@ -1216,6 +1236,7 @@ function MinhasDemandasScreen({ userEmail, onBack, onVerPropostas }) {
                 <span style={{ fontSize:14, fontWeight:900, color:B }}>R$ {d.valor}</span>
               </div>
               <p style={{ fontSize:12.5, color:"#555", margin:"0 0 8px", lineHeight:1.5 }}>{d.descricao}</p>
+              {prazo && <p style={{ fontSize:11, color:"#888", fontWeight:700, margin:"0 0 8px" }}>{prazo.emoji} {prazo.label}</p>}
 
               {d.status === "aberto" && (
                 <div onClick={() => onVerPropostas(d)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", paddingTop:8, borderTop:"1px solid #F0F0F0", cursor:"pointer" }}>
@@ -6668,7 +6689,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   // Demandas de empresa (publico_alvo:"pro") só entram no feed de quem é
   // Multi Pro — Autônomo continua vendo só pedido normal de cliente.
   const isPlanoPro = plano === "pro";
-  useEffect(()=>{ supabase.from("pedidos").select("*").eq("status","aberto").in("publico_alvo", isPlanoPro ? ["geral","pro"] : ["geral"]).order("created_at",{ascending:false}).limit(50).then(({data})=>{ if(data&&data.length>0) setRealPedidos(data.map(p=>({id:p.id,cliente_id:p.cliente_id,cat:p.categoria||"servico",title:(p.descricao||p.categoria||"Serviço").slice(0,40),desc:p.descricao||"",value:p.valor||0,loc:p.cidade||"sua região",time:new Date(p.created_at).toLocaleDateString("pt-BR"),client:p.cliente_nome||"Cliente",rating:4.5,urgent:false,emoji:"🔧",bg:"#FFF8E1",photo:null,photos:p.fotos,publicoAlvo:p.publico_alvo}))); }).catch(()=>{}); },[isPlanoPro]);
+  useEffect(()=>{ supabase.from("pedidos").select("*").eq("status","aberto").in("publico_alvo", isPlanoPro ? ["geral","pro"] : ["geral"]).order("created_at",{ascending:false}).limit(50).then(({data})=>{ if(data&&data.length>0) setRealPedidos(data.map(p=>({id:p.id,cliente_id:p.cliente_id,cat:p.categoria||"servico",title:(p.descricao||p.categoria||"Serviço").slice(0,40),desc:p.descricao||"",value:p.valor||0,loc:p.cidade||"sua região",time:new Date(p.created_at).toLocaleDateString("pt-BR"),client:p.cliente_nome||"Cliente",rating:4.5,urgent:false,emoji:"🔧",bg:"#FFF8E1",photo:null,photos:p.fotos,publicoAlvo:p.publico_alvo,prazo:p.prazo}))); }).catch(()=>{}); },[isPlanoPro]);
 
   // Carrega categoria + status persistidos, mesmo padrão do handleToggleOnline da empresa.
   // userToggledRef evita que essa carga inicial (assíncrona) sobrescreva um clique em
@@ -6881,6 +6902,11 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                     <span style={{ fontWeight:800, fontSize:14, color:"#1a1a2e", lineHeight:1.35 }}>{s.title}</span>
                   </div>
                   {s.publicoAlvo === "pro" && <Pill color="#7C3AED" sm>💼 Demanda de Empresa</Pill>}
+                  {s.publicoAlvo === "pro" && s.prazo && (() => {
+                    const prazoInfo = PRAZO_OPTIONS.find(p => p.id === s.prazo);
+                    const prazoColor = s.prazo === "urgente" ? "#E53935" : s.prazo === "essa_semana" ? "#F59E0B" : "#22c55e";
+                    return prazoInfo ? <Pill color={prazoColor} sm>{prazoInfo.emoji} {prazoInfo.label}</Pill> : null;
+                  })()}
                   {s.urgent && <Pill color="#E53935" sm>🔥 Urgente</Pill>}
                 </div>
                 <p style={{ fontSize:13, color:"#888", lineHeight:1.6, margin:0 }}>{s.desc}</p>
