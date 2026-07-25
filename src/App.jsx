@@ -937,11 +937,11 @@ function BancoProfissionaisScreen({ onBack }) {
         // Nota média por profissional — hoje não existe agregação de
         // "avaliacoes" em nenhuma outra tela, então calcula client-side
         // (mesmo padrão já usado pra enriquecer PropostasScreen).
-        supabase.from("avaliacoes").select("profissional_id,nota").in("profissional_id", emails)
+        supabase.from("avaliacoes").select("profissional_id,estrelas").in("profissional_id", emails)
           .then(({ data: avals }) => {
             const soma = {}, count = {};
             (avals || []).forEach(a => {
-              soma[a.profissional_id] = (soma[a.profissional_id] || 0) + (a.nota || 0);
+              soma[a.profissional_id] = (soma[a.profissional_id] || 0) + (a.estrelas || 0);
               count[a.profissional_id] = (count[a.profissional_id] || 0) + 1;
             });
             const medias = {};
@@ -7556,7 +7556,9 @@ function AvaliacaoScreen({ service, onBack, setScreen, userEmail, showToast }) {
       cliente_id: souCliente ? userEmail : null,
       profissional_id: souCliente ? avaliadoEmail : null,
       profissional_nome: souCliente ? avaliadoNome : null,
-      nota,
+      // Coluna real na tabela é "estrelas" — a migration antiga de avaliacoes
+      // documentava um rename pra "nota" que nunca rodou de fato no banco.
+      estrelas: nota,
       comentario
     });
     setLoading(false);
