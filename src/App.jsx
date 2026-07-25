@@ -662,7 +662,7 @@ function formatTimeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString("pt-BR");
 }
 
-function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGoToEditar, onGoToBanco, onGoToNovaDemanda, onGoToMinhasDemandas }) {
+function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGoToEditar, onGoToBanco, onGoToRede, onGoToNovaDemanda, onGoToMinhasDemandas }) {
   const [empresa, setEmpresa] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showFullPreview, setShowFullPreview] = useState(false);
@@ -885,6 +885,13 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
           <span style={{ marginLeft:2, fontSize:9, fontWeight:900, background:"rgba(255,255,255,.25)", borderRadius:99, padding:"2px 6px" }}>PLUS</span>
         </button>
 
+        {/* Minha Rede — favoritos/convites + histórico automático de quem já
+            concluiu serviço; mesmo padrão de gate Plus do Banco */}
+        <button onClick={onGoToRede} style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px 0", borderRadius:16, border:"none", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", color:"white", fontWeight:800, fontSize:13, cursor:"pointer", marginBottom:12, boxShadow:"0 4px 14px rgba(124,58,237,.3)" }}>
+          <Star size={15} /> Minha Rede
+          <span style={{ marginLeft:2, fontSize:9, fontWeight:900, background:"rgba(255,255,255,.25)", borderRadius:99, padding:"2px 6px" }}>PLUS</span>
+        </button>
+
         {/* Demanda de mão de obra (Multi Pro) — mesmo padrão de gate Plus */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
           <button onClick={onGoToNovaDemanda} style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, padding:"12px 0", borderRadius:16, border:"none", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", color:"white", fontWeight:800, fontSize:12, cursor:"pointer", boxShadow:"0 4px 14px rgba(124,58,237,.3)" }}>
@@ -917,13 +924,24 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
 // Busca real de profissionais (tabela "usuarios"), exclusiva do plano Empresa
 // Plus — o gate de acesso (plano ativo/trial) fica no router em App(), não
 // aqui; esta tela assume que quem a renderiza já tem direito a ela.
-function BancoProfissionaisScreen({ onBack }) {
+function BancoProfissionaisScreen({ onBack, empresaEmail }) {
   const [loading,           setLoading]           = useState(true);
   const [profissionais,     setProfissionais]     = useState([]);
   const [notas,             setNotas]              = useState({}); // email -> média
   const [busca,             setBusca]              = useState("");
   const [catsSelecionadas,  setCatsSelecionadas]   = useState([]);
   const [soDisponiveis,     setSoDisponiveis]      = useState(false);
+  const [rede,              setRede]              = useState({}); // email -> true (na Minha Rede)
+
+  const carregarRede = () => {
+    if (!empresaEmail) return;
+    supabase.from("empresa_rede_favoritos").select("profissional_email").eq("empresa_email", empresaEmail)
+      .then(({ data }) => {
+        const map = {};
+        (data || []).forEach(r => { map[r.profissional_email] = true; });
+        setRede(map);
+      }).catch(() => {});
+  };
 
   useEffect(() => {
     supabase.from("usuarios").select("email,name,whatsapp,foto_perfil_url,bio,categoria_servico,status")
@@ -950,7 +968,31 @@ function BancoProfissionaisScreen({ onBack }) {
           }).catch(() => {});
       })
       .catch(() => setLoading(false));
+    carregarRede();
   }, []);
+
+  // Minha Rede (Empresa Plus): favoritar guarda silencioso; convidar faz o
+  // mesmo insert + abre WhatsApp com uma mensagem pronta de convite.
+  const toggleFavorito = (email) => {
+    if (!empresaEmail) return;
+    if (rede[email]) {
+      supabase.from("empresa_rede_favoritos").delete().eq("empresa_email", empresaEmail).eq("profissional_email", email)
+        .then(() => carregarRede()).catch(() => {});
+    } else {
+      supabase.from("empresa_rede_favoritos").insert({ empresa_email: empresaEmail, profissional_email: email, origem: "favoritado" })
+        .then(() => carregarRede()).catch(() => {});
+    }
+  };
+
+  const convidar = (p) => {
+    if (!empresaEmail) return;
+    supabase.from("empresa_rede_favoritos").insert({ empresa_email: empresaEmail, profissional_email: p.email, origem: "convidado" })
+      .then(() => carregarRede()).catch(() => {});
+    if (p.whatsapp) {
+      const texto = encodeURIComponent(`Olá, ${p.name || ""}! Você foi convidado a fazer parte da rede de profissionais de confiança da nossa empresa no Multi. 🤝`);
+      window.open(`https://wa.me/55${p.whatsapp.replace(/\D/g, "")}?text=${texto}`, "_blank");
+    }
+  };
 
   const toggleCat = (id) => setCatsSelecionadas(c => c.includes(id) ? c.filter(x => x !== id) : [...c, id]);
 
@@ -1022,6 +1064,9 @@ function BancoProfissionaisScreen({ onBack }) {
                     <span style={{ fontSize:11, fontWeight:800, color:"#92400E" }}>{nota.toFixed(1)}</span>
                   </div>
                 )}
+                <button onClick={() => toggleFavorito(p.email)} title={rede[p.email] ? "Remover da Minha Rede" : "Adicionar à Minha Rede"} style={{ background:"none", border:"none", cursor:"pointer", padding:4, flexShrink:0, display:"flex" }}>
+                  <Star size={20} color={rede[p.email] ? "#7C3AED" : "#D1D5DB"} fill={rede[p.email] ? "#7C3AED" : "none"} />
+                </button>
               </div>
               {p.bio && <p style={{ fontSize:12.5, color:"#555", lineHeight:1.5, margin:"0 0 12px" }}>{p.bio}</p>}
               {p.whatsapp && (
@@ -1029,6 +1074,138 @@ function BancoProfissionaisScreen({ onBack }) {
                   <MessageCircle size={14} /> Chamar no WhatsApp
                 </a>
               )}
+              {!rede[p.email] && (
+                <button onClick={() => convidar(p)} style={{ marginTop:8, width:"100%", padding:"9px 0", borderRadius:12, border:`1.5px solid #DDD6FE`, background:"#F5F3FF", color:"#6D28D9", fontWeight:800, fontSize:12, cursor:"pointer" }}>
+                  ⭐ Convidar pra Rede
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────────────── MINHA REDE DE PROFISSIONAIS (EMPRESA PLUS) ──────── */
+// Une dois conjuntos: automático (quem já concluiu serviço pra essa empresa,
+// calculado ao vivo a partir de "pedidos" — sem linha própria) e manual
+// (favoritado/convidado, em "empresa_rede_favoritos"). Um profissional pode
+// estar nos dois; mostra uma vez só, com as duas tags se for o caso.
+function MinhaRedeScreen({ onBack, empresaEmail }) {
+  const [loading,       setLoading]       = useState(true);
+  const [profissionais, setProfissionais] = useState([]);
+  const [notas,         setNotas]         = useState({});
+
+  const carregar = () => {
+    if (!empresaEmail) { setLoading(false); return; }
+    Promise.all([
+      supabase.from("pedidos").select("profissional_aceito").eq("cliente_id", empresaEmail).eq("status", "concluido"),
+      supabase.from("empresa_rede_favoritos").select("profissional_email,origem").eq("empresa_email", empresaEmail),
+    ]).then(([{ data: concluidos }, { data: favoritos }]) => {
+      const origemPorEmail = {};
+      (concluidos || []).forEach(p => {
+        if (!p.profissional_aceito) return;
+        origemPorEmail[p.profissional_aceito] = { ...(origemPorEmail[p.profissional_aceito] || {}), historico: true };
+      });
+      (favoritos || []).forEach(f => {
+        const key = f.origem === "convidado" ? "convidado" : "favoritado";
+        origemPorEmail[f.profissional_email] = { ...(origemPorEmail[f.profissional_email] || {}), [key]: true };
+      });
+      const emails = Object.keys(origemPorEmail);
+      if (!emails.length) { setProfissionais([]); setLoading(false); return; }
+      supabase.from("usuarios").select("email,name,whatsapp,foto_perfil_url,bio,categoria_servico,status")
+        .in("email", emails)
+        .then(({ data }) => {
+          setProfissionais((data || []).map(p => ({ ...p, ...origemPorEmail[p.email] })));
+          setLoading(false);
+          supabase.from("avaliacoes").select("profissional_id,estrelas").in("profissional_id", emails)
+            .then(({ data: avals }) => {
+              const soma = {}, count = {};
+              (avals || []).forEach(a => {
+                soma[a.profissional_id] = (soma[a.profissional_id] || 0) + (a.estrelas || 0);
+                count[a.profissional_id] = (count[a.profissional_id] || 0) + 1;
+              });
+              const medias = {};
+              Object.keys(count).forEach(email => { medias[email] = soma[email] / count[email]; });
+              setNotas(medias);
+            }).catch(() => {});
+        }).catch(() => setLoading(false));
+    }).catch(() => setLoading(false));
+  };
+
+  useEffect(() => { carregar(); }, [empresaEmail]);
+
+  const removerFavorito = (email) => {
+    supabase.from("empresa_rede_favoritos").delete().eq("empresa_email", empresaEmail).eq("profissional_email", email)
+      .then(() => carregar()).catch(() => {});
+  };
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#F8F9FA", paddingBottom:40 }}>
+      <div style={{ background:"linear-gradient(160deg,#7C3AED 0%,#4F46E5 100%)", padding:"16px 18px 20px", borderRadius:"0 0 28px 28px" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <button onClick={onBack} style={{ background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:34, height:34, display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <ArrowLeft size={17} color="white" />
+          </button>
+          <div>
+            <h2 style={{ fontSize:18, fontWeight:900, color:"white", margin:0 }}>Minha Rede</h2>
+            <p style={{ fontSize:11, color:"rgba(255,255,255,.6)", margin:0 }}>Profissionais de confiança, prontos pra reutilizar</p>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding:"16px 16px 0", display:"flex", flexDirection:"column", gap:12 }}>
+        {loading && <p style={{ textAlign:"center", color:"#aaa", fontSize:13 }}>Carregando...</p>}
+        {!loading && profissionais.length === 0 && (
+          <div style={{ textAlign:"center", padding:"48px 24px", color:"#ccc" }}>
+            <Star size={36} color="#E0E0E0" style={{ margin:"0 auto 12px", display:"block" }} />
+            <p style={{ fontSize:14, fontWeight:700 }}>Sua rede está vazia</p>
+            <p style={{ fontSize:12, marginTop:4 }}>Favorite profissionais no Banco de Profissionais ou conclua um serviço com alguém pra ele entrar aqui.</p>
+          </div>
+        )}
+        {profissionais.map(p => {
+          const cats = resolveCats(p.categoria_servico);
+          const nota = notas[p.email];
+          return (
+            <div key={p.email} style={{ background:"white", borderRadius:20, padding:16, boxShadow:"0 4px 20px rgba(0,0,0,.08)", border:"1px solid #F0F0F0" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:10 }}>
+                <div style={{ width:52, height:52, borderRadius:16, overflow:"hidden", background:"#F8F9FA", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  {p.foto_perfil_url
+                    ? <img src={p.foto_perfil_url} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt="" />
+                    : <User size={24} color="#B0B4C0" />}
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                    <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:0 }}>{p.name || "Profissional"}</p>
+                    {p.status === true && <span style={{ width:7, height:7, borderRadius:"50%", background:G, flexShrink:0 }} title="Disponível agora" />}
+                  </div>
+                  {cats.length > 0 && <p style={{ fontSize:11, color:"#888", margin:"2px 0 0" }}>{cats.map(c => `${c.emoji} ${c.label}`).join(" · ")}</p>}
+                  <div style={{ display:"flex", gap:6, marginTop:4 }}>
+                    {p.historico && <span style={{ fontSize:10, fontWeight:800, color:G, background:G+"18", borderRadius:99, padding:"2px 7px" }}>Já trabalhou com você</span>}
+                    {(p.favoritado || p.convidado) && <span style={{ fontSize:10, fontWeight:800, color:"#7C3AED", background:"#7C3AED18", borderRadius:99, padding:"2px 7px" }}>{p.convidado ? "Convidado" : "Favoritado"}</span>}
+                  </div>
+                </div>
+                {nota != null && (
+                  <div style={{ display:"flex", alignItems:"center", gap:3, background:"#FFF8E7", border:"1px solid #FDE68A", borderRadius:99, padding:"3px 8px", flexShrink:0 }}>
+                    <Star size={12} color="#F9A825" fill="#F9A825" />
+                    <span style={{ fontSize:11, fontWeight:800, color:"#92400E" }}>{nota.toFixed(1)}</span>
+                  </div>
+                )}
+              </div>
+              {p.bio && <p style={{ fontSize:12.5, color:"#555", lineHeight:1.5, margin:"0 0 12px" }}>{p.bio}</p>}
+              <div style={{ display:"flex", gap:8 }}>
+                {p.whatsapp && (
+                  <a href={`https://wa.me/55${p.whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{ flex:1, textDecoration:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"11px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:12 }}>
+                    <MessageCircle size={14} /> Chamar no WhatsApp
+                  </a>
+                )}
+                {(p.favoritado || p.convidado) && (
+                  <button onClick={() => removerFavorito(p.email)} title="Remover da Minha Rede" style={{ padding:"11px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", background:"white", cursor:"pointer" }}>
+                    <Star size={16} color="#7C3AED" fill="#7C3AED" />
+                  </button>
+                )}
+              </div>
             </div>
           );
         })}
@@ -8278,7 +8455,11 @@ const renderContent = () => {
 
       if (screen === "banco-profissionais") {
         if (!temEmpresaPlus) return paywallPlus("banco-profissionais");
-        return <BancoProfissionaisScreen onBack={() => setScreen("home")} />;
+        return <BancoProfissionaisScreen onBack={() => setScreen("home")} empresaEmail={userEmail} />;
+      }
+      if (screen === "minha-rede") {
+        if (!temEmpresaPlus) return paywallPlus("minha-rede");
+        return <MinhaRedeScreen onBack={() => setScreen("home")} empresaEmail={userEmail} />;
       }
       if (screen === "nova-demanda") {
         if (!temEmpresaPlus) return paywallPlus("nova-demanda");
@@ -8292,7 +8473,7 @@ const renderContent = () => {
         if (!temEmpresaPlus) return paywallPlus("minhas-demandas");
         return <PropostasScreen pedido={selected} onBack={() => setScreen("minhas-demandas")} onAceitarProposta={handleAceitarPropostaEmpresa} />;
       }
-      return <EmpresaHomeScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} onGoToPedidos={() => setScreen("pedidos")} onGoToEditar={() => setScreen("editar")} onGoToBanco={() => setScreen("banco-profissionais")} onGoToNovaDemanda={() => setScreen("nova-demanda")} onGoToMinhasDemandas={() => setScreen("minhas-demandas")} />;
+      return <EmpresaHomeScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} onGoToPedidos={() => setScreen("pedidos")} onGoToEditar={() => setScreen("editar")} onGoToBanco={() => setScreen("banco-profissionais")} onGoToRede={() => setScreen("minha-rede")} onGoToNovaDemanda={() => setScreen("nova-demanda")} onGoToMinhasDemandas={() => setScreen("minhas-demandas")} />;
     }
 
     // Route guard: logged-in clients must never see the professional feed.
