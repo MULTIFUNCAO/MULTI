@@ -4650,7 +4650,7 @@ function MyServicesScreen({ myServices, onOpenService, onOpenChat, onViewPropost
                     <MiniStars v={s.clientRating || 0} size={14} />
                     <span style={{ fontSize:11, color:"#aaa" }}>{s.clientRating ? `${s.clientRating}.0` : "Não avaliado"}</span>
                   </div>
-                  <span style={{ fontSize:12, fontWeight:700, color:G }}>✅ Serviço concluído</span>
+                  <button onClick={() => onOpenService(s)} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${G}`, background:"white", color:G, fontSize:12, fontWeight:800, cursor:"pointer" }}>✅ Ver detalhes</button>
                 </div>
               )}
             </div>
