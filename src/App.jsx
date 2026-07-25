@@ -1225,6 +1225,7 @@ function MinhasDemandasScreen({ userEmail, onBack, onVerPropostas, onOpenChat })
           const prazo = PRAZO_OPTIONS.find(p => p.id === d.prazo);
           const nCandidatos = candidatos[d.id] || 0;
           const whatsapp = d.profissional_aceito ? contatos[d.profissional_aceito] : null;
+          const liberado = !!(d.aceite_formal_cliente_em && d.aceite_formal_profissional_em);
           return (
             <div key={d.id} style={{ background:"white", borderRadius:18, padding:16, boxShadow:"0 2px 10px rgba(0,0,0,.06)" }}>
               <div onClick={() => d.status === "aberto" && onVerPropostas(d)} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8, cursor: d.status === "aberto" ? "pointer" : "default" }}>
@@ -1254,10 +1255,16 @@ function MinhasDemandasScreen({ userEmail, onBack, onVerPropostas, onOpenChat })
                     <button onClick={() => onOpenChat?.(d)} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 0", borderRadius:12, border:"none", background:`linear-gradient(135deg,${B},#0056c7)`, color:"white", fontWeight:800, fontSize:12, cursor:"pointer" }}>
                       <MessageCircle size={14} /> Chat
                     </button>
-                    {whatsapp && (
-                      <a href={`https://wa.me/55${whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{ flex:1, textDecoration:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:12 }}>
-                        <MessageCircle size={14} /> WhatsApp
-                      </a>
+                    {liberado ? (
+                      whatsapp && (
+                        <a href={`https://wa.me/55${whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{ flex:1, textDecoration:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:12 }}>
+                          <MessageCircle size={14} /> WhatsApp
+                        </a>
+                      )
+                    ) : (
+                      <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 0", borderRadius:12, background:"#F8F9FA", border:"1px solid #E5E7EB", color:"#aaa", fontWeight:700, fontSize:11 }}>
+                        🔒 Liberado após aceite no chat
+                      </div>
                     )}
                   </div>
                 </div>
@@ -4738,9 +4745,11 @@ function PixQRChat({ valor }) {
 // Sem realtime: polling simples, consistente com o resto do app.
 function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
   const [mensagens, setMensagens] = useState([]);
+  const [pedido,    setPedido]    = useState(null);
   const [loading,   setLoading]   = useState(true);
   const [text,      setText]      = useState("");
   const [sending,   setSending]   = useState(false);
+  const [aceitando, setAceitando] = useState(false);
   const endRef = useRef(null);
 
   const carregar = () => {
@@ -4748,6 +4757,11 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
       .then(({ data }) => setMensagens(data || []))
       .catch(() => {})
       .finally(() => setLoading(false));
+    supabase.from("pedidos")
+      .select("cliente_id,profissional_aceito,aceite_formal_cliente_em,aceite_formal_profissional_em")
+      .eq("id", chat.pedidoId).maybeSingle()
+      .then(({ data }) => setPedido(data || null))
+      .catch(() => {});
   };
 
   useEffect(() => {
@@ -4767,6 +4781,22 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
       .then(() => carregar())
       .catch(() => {})
       .finally(() => setSending(false));
+  };
+
+  // Aceite formal (Fase 2): gate de liberação de telefone. Cada lado aceita no
+  // máximo uma vez — 1-pra-1 com a linha de "pedidos", sem tabela separada.
+  const souCliente  = pedido?.cliente_id === meuEmail;
+  const meuAceite   = pedido && (souCliente ? pedido.aceite_formal_cliente_em : pedido.aceite_formal_profissional_em);
+  const liberado    = !!(pedido?.aceite_formal_cliente_em && pedido?.aceite_formal_profissional_em);
+
+  const aceitarContratacao = () => {
+    if (!pedido || aceitando) return;
+    setAceitando(true);
+    const campo = souCliente ? "aceite_formal_cliente_em" : "aceite_formal_profissional_em";
+    supabase.from("pedidos").update({ [campo]: new Date().toISOString() }).eq("id", chat.pedidoId)
+      .then(() => carregar())
+      .catch(() => {})
+      .finally(() => setAceitando(false));
   };
 
   const horaFmt = (iso) => {
@@ -4815,6 +4845,25 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
         })}
         <div ref={endRef} />
       </div>
+
+      {pedido && mensagens.length > 0 && (
+        liberado ? (
+          <div style={{ flexShrink:0, margin:"0 14px 10px", padding:"10px 14px", borderRadius:12, background:"#F0FDF4", border:`1px solid ${G}44` }}>
+            <p style={{ fontSize:12.5, fontWeight:800, color:G, margin:0 }}>🤝 Contratação confirmada — telefone liberado.</p>
+          </div>
+        ) : meuAceite ? (
+          <div style={{ flexShrink:0, margin:"0 14px 10px", padding:"10px 14px", borderRadius:12, background:"#F8F9FA", border:"1px solid #E5E7EB" }}>
+            <p style={{ fontSize:12.5, fontWeight:700, color:"#555", margin:0 }}>✅ Você confirmou. Aguardando confirmação do outro lado.</p>
+          </div>
+        ) : (
+          <div style={{ flexShrink:0, margin:"0 14px 10px", padding:"10px 14px", borderRadius:12, background:"#EFF6FF", border:`1px solid ${B}33` }}>
+            <p style={{ fontSize:12, color:"#555", margin:"0 0 8px" }}>Já combinaram os detalhes? Confirmar libera o telefone pros dois lados.</p>
+            <button onClick={aceitarContratacao} disabled={aceitando} style={{ width:"100%", padding:"9px 0", borderRadius:10, border:"none", background:G, color:"white", fontWeight:800, fontSize:12.5, cursor: aceitando ? "default" : "pointer", opacity: aceitando ? .7 : 1 }}>
+              ✅ Aceitar contratação
+            </button>
+          </div>
+        )
+      )}
 
       <div style={{ flexShrink:0, padding:"10px 14px", background:"white", borderTop:"1px solid #F0F0F0", display:"flex", gap:8, alignItems:"center" }}>
         <input
