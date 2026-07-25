@@ -24,37 +24,74 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { categoria, descricao } = req.body || {};
+  const { categoria, descricao, publicoAlvo } = req.body || {};
   if (!categoria) {
     res.status(400).json({ error: 'categoria é obrigatória' });
     return;
   }
 
   try {
-    const [{ data: empresas, error: empresasError }, { data: profissionais, error: profissionaisError }] = await Promise.all([
-      supabase
-        .from('empresas')
-        .select('onesignal_player_id')
-        .contains('categoria_servico', [categoria])
-        .eq('status', true)
-        .eq('ativo', true)
-        .not('onesignal_player_id', 'is', null),
-      supabase
+    let playerIds;
+    let heading;
+
+    if (publicoAlvo === 'pro') {
+      // Demanda de mão de obra (empresa Plus) — só profissionais com
+      // assinatura Multi Pro ativa/trial, nunca empresas parceiras nem
+      // Multi Autônomo (mesma restrição aplicada no filtro do mural).
+      const { data: assinaturasPro, error: assinaturasError } = await supabase
+        .from('assinaturas')
+        .select('titular_email')
+        .eq('titular_tipo', 'usuario')
+        .eq('plano', 'pro')
+        .in('status', ['trial', 'ativa']);
+      if (assinaturasError) throw assinaturasError;
+
+      const emailsPro = (assinaturasPro || []).map(a => a.titular_email).filter(Boolean);
+      if (emailsPro.length === 0) {
+        res.status(200).json({ sent: 0 });
+        return;
+      }
+
+      const { data: profissionaisPro, error: profissionaisError } = await supabase
         .from('usuarios')
         .select('onesignal_player_id')
         .eq('role', 'professional')
         .contains('categoria_servico', [categoria])
         .eq('status', true)
-        .not('onesignal_player_id', 'is', null),
-    ]);
+        .in('email', emailsPro)
+        .not('onesignal_player_id', 'is', null);
+      if (profissionaisError) throw profissionaisError;
 
-    if (empresasError) throw empresasError;
-    if (profissionaisError) throw profissionaisError;
+      playerIds = [...new Set((profissionaisPro || []).map(p => p.onesignal_player_id).filter(Boolean))];
+      heading = 'Nova demanda de empresa na sua categoria!';
+    } else {
+      const [{ data: empresas, error: empresasError }, { data: profissionais, error: profissionaisError }] = await Promise.all([
+        supabase
+          .from('empresas')
+          .select('onesignal_player_id')
+          .contains('categoria_servico', [categoria])
+          .eq('status', true)
+          .eq('ativo', true)
+          .not('onesignal_player_id', 'is', null),
+        supabase
+          .from('usuarios')
+          .select('onesignal_player_id')
+          .eq('role', 'professional')
+          .contains('categoria_servico', [categoria])
+          .eq('status', true)
+          .not('onesignal_player_id', 'is', null),
+      ]);
 
-    const playerIds = [...new Set([
-      ...(empresas || []).map(e => e.onesignal_player_id),
-      ...(profissionais || []).map(p => p.onesignal_player_id),
-    ].filter(Boolean))];
+      if (empresasError) throw empresasError;
+      if (profissionaisError) throw profissionaisError;
+
+      playerIds = [...new Set([
+        ...(empresas || []).map(e => e.onesignal_player_id),
+        ...(profissionais || []).map(p => p.onesignal_player_id),
+      ].filter(Boolean))];
+      heading = 'Novo pedido na sua categoria!';
+    }
+
     if (playerIds.length === 0) {
       res.status(200).json({ sent: 0 });
       return;
@@ -69,7 +106,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         app_id: ONESIGNAL_APP_ID,
         include_player_ids: playerIds,
-        headings: { en: 'Novo pedido na sua categoria!', pt: 'Novo pedido na sua categoria!' },
+        headings: { en: heading, pt: heading },
         contents: {
           en: descricao || 'Um cliente publicou um novo serviço.',
           pt: descricao || 'Um cliente publicou um novo serviço.',

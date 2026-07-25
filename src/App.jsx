@@ -662,7 +662,7 @@ function formatTimeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString("pt-BR");
 }
 
-function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGoToEditar, onGoToBanco }) {
+function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGoToEditar, onGoToBanco, onGoToNovaDemanda, onGoToMinhasDemandas }) {
   const [empresa, setEmpresa] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showFullPreview, setShowFullPreview] = useState(false);
@@ -885,6 +885,17 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
           <span style={{ marginLeft:2, fontSize:9, fontWeight:900, background:"rgba(255,255,255,.25)", borderRadius:99, padding:"2px 6px" }}>PLUS</span>
         </button>
 
+        {/* Demanda de mão de obra (Multi Pro) — mesmo padrão de gate Plus */}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
+          <button onClick={onGoToNovaDemanda} style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, padding:"12px 0", borderRadius:16, border:"none", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", color:"white", fontWeight:800, fontSize:12, cursor:"pointer", boxShadow:"0 4px 14px rgba(124,58,237,.3)" }}>
+            <Send size={15} /> Nova Demanda
+            <span style={{ fontSize:9, fontWeight:900, background:"rgba(255,255,255,.25)", borderRadius:99, padding:"2px 6px" }}>PLUS</span>
+          </button>
+          <button onClick={onGoToMinhasDemandas} style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, padding:"12px 0", borderRadius:16, border:"1.5px solid #DDD6FE", background:"#F5F3FF", color:"#6D28D9", fontWeight:800, fontSize:12, cursor:"pointer" }}>
+            <ClipboardList size={15} /> Minhas Demandas
+          </button>
+        </div>
+
         {/* atalho rápido pra edição, sem depender só da nav inferior */}
         <button onClick={onGoToEditar} style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px 0", borderRadius:16, border:"1.5px solid #E5E7EB", background:"white", color:"#374151", fontWeight:800, fontSize:13, cursor:"pointer", marginBottom:18, boxShadow:"0 3px 14px rgba(0,0,0,.05)" }}>
           <Pencil size={15} /> Editar Perfil
@@ -1026,6 +1037,213 @@ function BancoProfissionaisScreen({ onBack }) {
   );
 }
 
+/* ───────────────────────── EMPRESA PLUS — NOVA DEMANDA DE MÃO DE OBRA ──────── */
+// Empresa Plus anuncia uma demanda (ex: "preciso de um eletricista pra uma
+// obra") — reaproveita a tabela "pedidos" já consolidada, só com
+// publico_alvo:"pro" pra aparecer só no mural de profissionais Multi Pro
+// (ver supabase_demandas_pro_migration.sql e o filtro em ProfessionalHome).
+function NovaDemandaScreen({ userEmail, userName, onBack, showToast }) {
+  const [form, setForm] = useState({ cat:"", desc:"", value:"" });
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  const validate = () => {
+    const e = {};
+    if (!form.cat) e.cat = "Selecione a categoria do profissional";
+    if (!form.desc.trim()) e.desc = "Descreva a demanda";
+    if (!form.value || Number(form.value) <= 0) e.value = "Informe um valor";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handlePublicar = async () => {
+    if (!validate()) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("pedidos").insert({
+        cliente_id: userEmail,
+        cliente_nome: userName,
+        categoria: form.cat,
+        descricao: form.desc.trim(),
+        valor: Number(form.value),
+        status: "aberto",
+        publico_alvo: "pro",
+      });
+      if (error) throw error;
+      // Best-effort — não bloqueia a publicação se o push falhar.
+      fetch("/api/notify-pedido", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categoria: form.cat, descricao: form.desc.trim(), publicoAlvo: "pro" }),
+      }).catch(() => {});
+      showToast?.("✅ Demanda publicada! Profissionais Multi Pro da categoria já podem ver.", G);
+      onBack?.();
+    } catch (e) {
+      showToast?.("❌ Erro ao publicar demanda: " + (e.message || ""), "#DC2626");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const F = { background:"white", border:"1.5px solid #EBEBEB", borderRadius:12, padding:"13px 14px", fontSize:13, color:"#1a1a2e", outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit" };
+  const L = { display:"block", fontSize:11, fontWeight:800, color:"#6B7280", textTransform:"uppercase", letterSpacing:1.1, marginBottom:7 };
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#F8F9FA", display:"flex", flexDirection:"column" }}>
+      <div style={{ background:`linear-gradient(160deg,${B} 0%,#0055d4 100%)`, padding:"16px 20px 28px", borderRadius:"0 0 32px 32px" }}>
+        <button onClick={onBack} style={{ background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:36, height:36, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:18 }}>
+          <ArrowLeft size={18} color="white" />
+        </button>
+        <p style={{ fontSize:20, fontWeight:900, color:"white", margin:"0 0 6px" }}>Nova Demanda de Mão de Obra</p>
+        <p style={{ fontSize:12, color:"rgba(255,255,255,.7)", margin:0 }}>Visível só pra profissionais Multi Pro da categoria — sempre por proposta, sem aceite direto</p>
+      </div>
+
+      <div style={{ flex:1, padding:"20px 20px 40px", display:"flex", flexDirection:"column", gap:16 }}>
+        <div>
+          <label style={L}>Categoria do profissional</label>
+          <div style={{ position:"relative" }}>
+            <select style={{ ...F, paddingRight:36, appearance:"none", cursor:"pointer", borderColor: errors.cat ? "#E53935" : undefined }}
+              value={form.cat}
+              onChange={e => { setForm(f => ({ ...f, cat: e.target.value })); if (errors.cat) setErrors(p => ({ ...p, cat: undefined })); }}>
+              <option value="">Selecione...</option>
+              {CATS.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+            </select>
+            <ChevronDown size={14} color="#aaa" style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", pointerEvents:"none" }} />
+          </div>
+          {errors.cat && <p style={{ fontSize:11, color:"#E53935", margin:"5px 0 0", fontWeight:700 }}>{errors.cat}</p>}
+        </div>
+
+        <div>
+          <label style={L}>Descrição da demanda</label>
+          <textarea rows={4} placeholder="Ex: Obra residencial de 3 meses, preciso de eletricista com disponibilidade full-time..."
+            style={{ ...F, resize:"none", lineHeight:1.6, borderColor: errors.desc ? "#E53935" : undefined }}
+            value={form.desc}
+            onChange={e => { setForm(f => ({ ...f, desc: e.target.value })); if (errors.desc) setErrors(p => ({ ...p, desc: undefined })); }} />
+          {errors.desc && <p style={{ fontSize:11, color:"#E53935", margin:"5px 0 0", fontWeight:700 }}>{errors.desc}</p>}
+        </div>
+
+        <div>
+          <label style={L}>Valor oferecido (R$)</label>
+          <input type="number" placeholder="0,00"
+            style={{ ...F, borderColor: errors.value ? "#E53935" : undefined }}
+            value={form.value}
+            onChange={e => { setForm(f => ({ ...f, value: e.target.value })); if (errors.value) setErrors(p => ({ ...p, value: undefined })); }} />
+          {errors.value && <p style={{ fontSize:11, color:"#E53935", margin:"5px 0 0", fontWeight:700 }}>{errors.value}</p>}
+        </div>
+
+        <div style={{ flex:1 }} />
+      </div>
+
+      <div style={{ position:"sticky", bottom:0, background:"#F8F9FA", padding:"12px 20px 20px", boxShadow:"0 -4px 16px rgba(0,0,0,.06)" }}>
+        <button onClick={handlePublicar} disabled={saving} style={{ width:"100%", padding:"16px 0", borderRadius:16, border:"none", background:`linear-gradient(135deg,${B},#0055d4)`, color:"white", fontWeight:900, fontSize:15, cursor: saving ? "default" : "pointer" }}>
+          {saving ? "Publicando..." : "Publicar Demanda"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────────────── EMPRESA PLUS — MINHAS DEMANDAS ──────────────────── */
+// Demandas postadas pela própria empresa + propostas recebidas nelas. Papel
+// diferente do Mural de Serviços (EmpresaPedidosScreen), que mostra pedidos de
+// CLIENTES na categoria da empresa — aqui a empresa é quem está contratando.
+function MinhasDemandasScreen({ userEmail, onBack, onVerPropostas }) {
+  const [demandas, setDemandas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [candidatos, setCandidatos] = useState({});
+  const [contatos, setContatos] = useState({}); // email do profissional aceito -> whatsapp
+
+  useEffect(() => {
+    if (!userEmail) { setLoading(false); return; }
+    supabase.from("pedidos").select("*").eq("cliente_id", userEmail).eq("publico_alvo", "pro")
+      .order("created_at", { ascending:false })
+      .then(({ data }) => {
+        const lista = data || [];
+        setDemandas(lista);
+        setLoading(false);
+
+        const abertos = lista.filter(p => p.status === "aberto").map(p => p.id);
+        if (abertos.length) {
+          supabase.from("propostas").select("pedido_id").in("pedido_id", abertos).then(({ data: props }) => {
+            const counts = {};
+            (props || []).forEach(p => { counts[p.pedido_id] = (counts[p.pedido_id] || 0) + 1; });
+            setCandidatos(counts);
+          }).catch(() => {});
+        }
+
+        // Whatsapp do profissional aceito — só existe em "usuarios", não em "pedidos".
+        const emails = [...new Set(lista.filter(p => p.status !== "aberto" && p.profissional_aceito).map(p => p.profissional_aceito))];
+        if (emails.length) {
+          supabase.from("usuarios").select("email,whatsapp").in("email", emails).then(({ data: us }) => {
+            const map = {};
+            (us || []).forEach(u => { map[u.email] = u.whatsapp; });
+            setContatos(map);
+          }).catch(() => {});
+        }
+      })
+      .catch(() => setLoading(false));
+  }, [userEmail]);
+
+  const statusLabel = (s) => s === "aberto" ? "Aguardando propostas" : s === "em_andamento" ? "Em andamento" : s === "concluido" ? "Concluído" : s;
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#F8F9FA", paddingBottom:40 }}>
+      <div style={{ background:`linear-gradient(160deg,${B} 0%,#0055d4 100%)`, padding:"16px 18px 20px", borderRadius:"0 0 28px 28px" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <button onClick={onBack} style={{ background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:34, height:34, display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <ArrowLeft size={17} color="white" />
+          </button>
+          <h2 style={{ fontSize:18, fontWeight:900, color:"white", margin:0 }}>Minhas Demandas</h2>
+        </div>
+      </div>
+
+      <div style={{ padding:"16px 16px 0", display:"flex", flexDirection:"column", gap:12 }}>
+        {loading && <p style={{ textAlign:"center", color:"#aaa", fontSize:13 }}>Carregando...</p>}
+        {!loading && demandas.length === 0 && (
+          <p style={{ textAlign:"center", color:"#aaa", fontSize:13, padding:"20px 0" }}>Você ainda não publicou nenhuma demanda.</p>
+        )}
+        {demandas.map(d => {
+          const cat = CATS.find(c => c.id === d.categoria);
+          const nCandidatos = candidatos[d.id] || 0;
+          const whatsapp = d.profissional_aceito ? contatos[d.profissional_aceito] : null;
+          return (
+            <div key={d.id} style={{ background:"white", borderRadius:18, padding:16, boxShadow:"0 2px 10px rgba(0,0,0,.06)" }}>
+              <div onClick={() => d.status === "aberto" && onVerPropostas(d)} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8, cursor: d.status === "aberto" ? "pointer" : "default" }}>
+                <div style={{ width:38, height:38, borderRadius:11, background:cat?.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{cat?.emoji}</div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <p style={{ fontSize:14, fontWeight:800, color:"#1a1a2e", margin:0 }}>{cat?.label || d.categoria}</p>
+                  <p style={{ fontSize:11, color:"#888", margin:0 }}>{statusLabel(d.status)}</p>
+                </div>
+                <span style={{ fontSize:14, fontWeight:900, color:B }}>R$ {d.valor}</span>
+              </div>
+              <p style={{ fontSize:12.5, color:"#555", margin:"0 0 8px", lineHeight:1.5 }}>{d.descricao}</p>
+
+              {d.status === "aberto" && (
+                <div onClick={() => onVerPropostas(d)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", paddingTop:8, borderTop:"1px solid #F0F0F0", cursor:"pointer" }}>
+                  <span style={{ fontSize:12, fontWeight:800, color: nCandidatos > 0 ? G : "#aaa" }}>
+                    {nCandidatos > 0 ? `${nCandidatos} proposta${nCandidatos > 1 ? "s" : ""} recebida${nCandidatos > 1 ? "s" : ""}` : "Nenhuma proposta ainda"}
+                  </span>
+                  <ChevronRight size={15} color="#aaa" />
+                </div>
+              )}
+
+              {d.status !== "aberto" && d.profissional_nome && (
+                <div style={{ paddingTop:8, borderTop:"1px solid #F0F0F0" }}>
+                  <p style={{ fontSize:12, color:G, fontWeight:800, margin:"0 0 8px" }}>✅ {d.profissional_nome} aceitou essa demanda</p>
+                  {whatsapp && (
+                    <a href={`https://wa.me/55${whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{ textDecoration:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:12 }}>
+                      <MessageCircle size={14} /> Chamar no WhatsApp
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* ───────────────────────── EMPRESA — EDITAR PERFIL ─────────────────────────── */
 function EmpresaEditProfileScreen({ userEmail, onLogout, showToast, isPro, plano, planoStatus, planoExpiraEm, onUpgrade }) {
   const [empresa, setEmpresa] = useState(null);
@@ -1037,6 +1255,18 @@ function EmpresaEditProfileScreen({ userEmail, onLogout, showToast, isPro, plano
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  // Multi Empresa trava em MAX_CATEGORIAS_EMPRESA categorias — Empresa Plus é
+  // ilimitado. Mesmo padrão/motivo do MAX_CATEGORIAS_AUTONOMO em ProfileScreen
+  // (usa "plano", não "isPro", pra não liberar ilimitado só por ter alguma
+  // assinatura ativa).
+  const MAX_CATEGORIAS_EMPRESA = 3;
+  const isEmpresaPlus = plano === "empresa_plus";
+  const limiteCategoria = isEmpresaPlus ? undefined : MAX_CATEGORIAS_EMPRESA;
+  const handleLimiteCategoria = () => {
+    showToast?.(`⚠️ Multi Empresa permite até ${MAX_CATEGORIAS_EMPRESA} categorias — vire Plus pra categorias ilimitadas`, O);
+    onUpgrade?.();
+  };
 
   useEffect(() => {
     if (!userEmail) { setLoading(false); return; }
@@ -1139,8 +1369,9 @@ function EmpresaEditProfileScreen({ userEmail, onLogout, showToast, isPro, plano
         {/* categorias de serviço — agora editável (antes era fixa desde o cadastro) */}
         <div style={{ background:"white", borderRadius:16, padding:16, marginBottom:12, boxShadow:"0 2px 8px rgba(0,0,0,.06)", border: errorCategoria ? "1.5px solid #FCA5A5" : undefined }}>
           <h3 style={{ margin:"0 0 8px", fontSize:15, color:"#333" }}>Categorias de Serviço</h3>
-          <CategoriaMultiSelect value={categoria} onChange={v => { setCategoria(v); if (errorCategoria) setErrorCategoria(""); }} error={errorCategoria} />
+          <CategoriaMultiSelect value={categoria} onChange={v => { setCategoria(v); if (errorCategoria) setErrorCategoria(""); }} max={limiteCategoria} onLimitReached={handleLimiteCategoria} error={errorCategoria} />
           {errorCategoria && <p style={{ fontSize:11, color:"#E53935", margin:"8px 0 0", fontWeight:700 }}>{errorCategoria}</p>}
+          {!isEmpresaPlus && <p style={{ fontSize:11, color:"#9CA3AF", margin:"8px 0 0" }}>Multi Empresa permite até {MAX_CATEGORIAS_EMPRESA} categorias. <span style={{ color:B, fontWeight:800, cursor:"pointer" }} onClick={onUpgrade}>Vire Plus</span> pra categorias ilimitadas.</p>}
         </div>
 
         {/* plano/assinatura */}
@@ -6213,12 +6444,16 @@ function CadastroEmpresaScreen({ onBack, showToast }) {
             style={{ ...REG_INPUT, borderColor: errors.nomeFantasia ? "#E53935" : undefined }} />
         </FormField>
 
-        {/* CATEGORIAS */}
+        {/* CATEGORIAS — o plano ainda não foi escolhido nesse passo (só depois,
+            em "plano"), então trava sempre em 3 aqui (padrão do Multi Empresa
+            comum); quem virar Plus ajusta pra ilimitado depois em Editar Perfil. */}
         <div style={{ marginBottom: errors.categoria ? 6 : 18 }}>
           <label style={{ display:"block", fontSize:11, fontWeight:800, color: errors.categoria ? "#E53935" : "#6B7280", textTransform:"uppercase", letterSpacing:1.1, marginBottom:7 }}>Categorias de Serviço</label>
           <CategoriaMultiSelect
             value={categoria}
             onChange={v => { setCategoria(v); if (errors.categoria) setErrors(p => ({ ...p, categoria:undefined })); }}
+            max={3}
+            onLimitReached={() => showToast?.("⚠️ Até 3 categorias no cadastro — o plano Empresa Plus libera categorias ilimitadas (dá pra ajustar depois de escolher o plano)", O)}
             error={errors.categoria}
           />
           {errors.categoria && <p style={{ fontSize:11, color:"#E53935", margin:"5px 0 0", fontWeight:700 }}>{errors.categoria}</p>}
@@ -6424,13 +6659,16 @@ function GuestMural({ onSignup, allDocsVerified }) {
 }
 
 /* ───────────────────────── PROFESSIONAL HOME ────────────────────────────────── */
-function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet, onAcceptOrder }) {
+function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro, plano, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet, onAcceptOrder }) {
   const [online,       setOnline]       = useState(false);
   const [categoriaServico, setCategoriaServico] = useState([]);
   const [newOrder, setNewOrder] = useState(null);
   const [activeFilter, setActiveFilter] = useState("all");
   const [realPedidos, setRealPedidos] = useState(SEED_FEED);
-  useEffect(()=>{ supabase.from("pedidos").select("*").eq("status","aberto").order("created_at",{ascending:false}).limit(50).then(({data})=>{ if(data&&data.length>0) setRealPedidos(data.map(p=>({id:p.id,cliente_id:p.cliente_id,cat:p.categoria||"servico",title:(p.descricao||p.categoria||"Serviço").slice(0,40),desc:p.descricao||"",value:p.valor||0,loc:p.cidade||"sua região",time:new Date(p.created_at).toLocaleDateString("pt-BR"),client:p.cliente_nome||"Cliente",rating:4.5,urgent:false,emoji:"🔧",bg:"#FFF8E1",photo:null,photos:p.fotos}))); }).catch(()=>{}); },[]);
+  // Demandas de empresa (publico_alvo:"pro") só entram no feed de quem é
+  // Multi Pro — Autônomo continua vendo só pedido normal de cliente.
+  const isPlanoPro = plano === "pro";
+  useEffect(()=>{ supabase.from("pedidos").select("*").eq("status","aberto").in("publico_alvo", isPlanoPro ? ["geral","pro"] : ["geral"]).order("created_at",{ascending:false}).limit(50).then(({data})=>{ if(data&&data.length>0) setRealPedidos(data.map(p=>({id:p.id,cliente_id:p.cliente_id,cat:p.categoria||"servico",title:(p.descricao||p.categoria||"Serviço").slice(0,40),desc:p.descricao||"",value:p.valor||0,loc:p.cidade||"sua região",time:new Date(p.created_at).toLocaleDateString("pt-BR"),client:p.cliente_nome||"Cliente",rating:4.5,urgent:false,emoji:"🔧",bg:"#FFF8E1",photo:null,photos:p.fotos,publicoAlvo:p.publico_alvo}))); }).catch(()=>{}); },[isPlanoPro]);
 
   // Carrega categoria + status persistidos, mesmo padrão do handleToggleOnline da empresa.
   // userToggledRef evita que essa carga inicial (assíncrona) sobrescreva um clique em
@@ -6496,11 +6734,13 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   }
 
   if(next){
-  supabase.from("pedidos").select("*").eq("status","aberto").order("created_at",{ascending:false}).limit(1).then(({data})=>{
+  // Demanda de empresa (publico_alvo:"pro") nunca entra no popup de "aceitar
+  // agora" — só via proposta (Candidatar-me no mural), por isso o filtro.
+  supabase.from("pedidos").select("*").eq("status","aberto").eq("publico_alvo","geral").order("created_at",{ascending:false}).limit(1).then(({data})=>{
     if(data&&data[0]){const p=data[0];setNewOrder({id:p.id,cliente_id:p.cliente_id,category:p.categoria,location:p.cidade||"Guarulhos, SP",value:String(p.valor||"0"),description:p.descricao||"",photos:(()=>{try{const f=p.fotos;return Array.isArray(f)?f:(typeof f==="string"?JSON.parse(f):[]);}catch(e){return [];}})(),photo:(()=>{try{const f=p.fotos;const arr=Array.isArray(f)?f:(typeof f==="string"?JSON.parse(f):[]);return arr[0]||null;}catch(e){return null;}})()});}
   });
   supabase.channel("pedidos_novos").on("postgres_changes",{event:"*",schema:"public",table:"pedidos"},(payload)=>{
-    const p=payload.new;if(!p||!p.fotos||p.fotos.length===0)return;setNewOrder({id:p.id,cliente_id:p.cliente_id,category:p.categoria,location:p.cidade||"Guarulhos, SP",value:String(p.valor||"0"),description:p.descricao||"",photos:(()=>{try{const f=p.fotos;return Array.isArray(f)?f:(typeof f==="string"?JSON.parse(f):[]);}catch(e){return [];}})(),photo:(()=>{try{const f=p.fotos;const arr=Array.isArray(f)?f:(typeof f==="string"?JSON.parse(f):[]);return arr[0]||null;}catch(e){return null;}})()});
+    const p=payload.new;if(!p||!p.fotos||p.fotos.length===0||p.publico_alvo==="pro")return;setNewOrder({id:p.id,cliente_id:p.cliente_id,category:p.categoria,location:p.cidade||"Guarulhos, SP",value:String(p.valor||"0"),description:p.descricao||"",photos:(()=>{try{const f=p.fotos;return Array.isArray(f)?f:(typeof f==="string"?JSON.parse(f):[]);}catch(e){return [];}})(),photo:(()=>{try{const f=p.fotos;const arr=Array.isArray(f)?f:(typeof f==="string"?JSON.parse(f):[]);return arr[0]||null;}catch(e){return null;}})()});
   }).subscribe();
 }else{supabase.removeAllChannels();}};
   return (
@@ -6640,6 +6880,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                     <div style={{ width:40, height:40, borderRadius:11, background:cat?.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>{cat?.emoji}</div>
                     <span style={{ fontWeight:800, fontSize:14, color:"#1a1a2e", lineHeight:1.35 }}>{s.title}</span>
                   </div>
+                  {s.publicoAlvo === "pro" && <Pill color="#7C3AED" sm>💼 Demanda de Empresa</Pill>}
                   {s.urgent && <Pill color="#E53935" sm>🔥 Urgente</Pill>}
                 </div>
                 <p style={{ fontSize:13, color:"#888", lineHeight:1.6, margin:0 }}>{s.desc}</p>
@@ -7458,6 +7699,25 @@ export default function App() {
     setScreen("chat");
   };
 
+  // Mesma lógica de handleAceitarProposta, versão empresa: sem chat in-app
+  // (empresa fecha por WhatsApp, mesmo padrão do EmpresaCard/Banco de
+  // Profissionais) — só marca a demanda como em_andamento e volta pra
+  // "Minhas Demandas", onde o botão de WhatsApp aparece.
+  const handleAceitarPropostaEmpresa = (proposta) => {
+    supabase.from("propostas").update({ status:"aceita" }).eq("id", proposta.id).then(()=>{});
+    // Só troca de tela depois do update de "pedidos" terminar — antes disso,
+    // MinhasDemandasScreen podia remontar e buscar o pedido ainda com o status
+    // antigo (a escrita ainda não tinha chegado no banco).
+    supabase.from("pedidos").update({
+      status:"em_andamento",
+      profissional_aceito: proposta.profissional_id,
+      profissional_nome: proposta.profissional_nome,
+    }).eq("id", proposta.pedido_id).then(() => {
+      showToast?.("✅ Proposta aceita! Chame o profissional no WhatsApp pra combinar os detalhes.", G);
+      setScreen("minhas-demandas");
+    });
+  };
+
   // AlertsScreen só conhece o id da proposta (n.id) — resolve pra proposta
   // completa antes de aceitar.
   const handleAceitarPropostaPorId = (propostaId) => {
@@ -7712,15 +7972,30 @@ const renderContent = () => {
       if (screen === "pedidos") return <EmpresaPedidosScreen userEmail={userEmail} />;
       if (screen === "upgrade") return <EscolherPlanoScreen titularTipo="empresa" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("editar")} showToast={showToast} onDone={() => { carregarPlano("empresa", userEmail); setScreen("editar"); }} />;
       if (screen === "editar")  return <EmpresaEditProfileScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} isPro={isPro} plano={plano} planoStatus={planoStatus} planoExpiraEm={planoExpiraEm} onUpgrade={() => setScreen("upgrade")} />;
+
+      // Gate real das features Plus: só empresa_plus ativo/trial. Quem não
+      // tem, cai direto na tela de escolher plano — os botões em
+      // EmpresaHomeScreen não precisam saber o plano pra decidir o que mostrar.
+      const temEmpresaPlus = plano === "empresa_plus" && (planoStatus === "trial" || planoStatus === "ativa");
+      const paywallPlus = (voltarPara) => <EscolherPlanoScreen titularTipo="empresa" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("home")} showToast={showToast} onDone={() => { carregarPlano("empresa", userEmail); setScreen(voltarPara); }} />;
+
       if (screen === "banco-profissionais") {
-        // Gate real do Banco de Profissionais: só empresa_plus ativo/trial.
-        // Quem não tem, cai direto na tela de escolher plano — o botão em
-        // EmpresaHomeScreen não precisa saber o plano pra decidir o que mostrar.
-        const temEmpresaPlus = plano === "empresa_plus" && (planoStatus === "trial" || planoStatus === "ativa");
-        if (!temEmpresaPlus) return <EscolherPlanoScreen titularTipo="empresa" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("home")} showToast={showToast} onDone={() => { carregarPlano("empresa", userEmail); setScreen("banco-profissionais"); }} />;
+        if (!temEmpresaPlus) return paywallPlus("banco-profissionais");
         return <BancoProfissionaisScreen onBack={() => setScreen("home")} />;
       }
-      return <EmpresaHomeScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} onGoToPedidos={() => setScreen("pedidos")} onGoToEditar={() => setScreen("editar")} onGoToBanco={() => setScreen("banco-profissionais")} />;
+      if (screen === "nova-demanda") {
+        if (!temEmpresaPlus) return paywallPlus("nova-demanda");
+        return <NovaDemandaScreen userEmail={userEmail} userName={userName} showToast={showToast} onBack={() => setScreen("minhas-demandas")} />;
+      }
+      if (screen === "minhas-demandas") {
+        if (!temEmpresaPlus) return paywallPlus("minhas-demandas");
+        return <MinhasDemandasScreen userEmail={userEmail} onBack={() => setScreen("home")} onVerPropostas={(d) => { setSelected(d); setScreen("demanda-propostas"); }} />;
+      }
+      if (screen === "demanda-propostas" && selected) {
+        if (!temEmpresaPlus) return paywallPlus("minhas-demandas");
+        return <PropostasScreen pedido={selected} onBack={() => setScreen("minhas-demandas")} onAceitarProposta={handleAceitarPropostaEmpresa} />;
+      }
+      return <EmpresaHomeScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} onGoToPedidos={() => setScreen("pedidos")} onGoToEditar={() => setScreen("editar")} onGoToBanco={() => setScreen("banco-profissionais")} onGoToNovaDemanda={() => setScreen("nova-demanda")} onGoToMinhasDemandas={() => setScreen("minhas-demandas")} />;
     }
 
     // Route guard: logged-in clients must never see the professional feed.
@@ -7761,6 +8036,7 @@ const renderContent = () => {
         showToast={showToast}
         onGoToProfile={() => setScreen("profile")}
         isPro={isPro}
+        plano={plano}
         onViewService={handleProFeedAction}
         onUpgrade={() => setScreen("upgrade")}
         userLocation={localStorage.getItem("multiLocation") || userLocation}
