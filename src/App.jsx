@@ -979,15 +979,23 @@ function BancoProfissionaisScreen({ onBack, empresaEmail }) {
       supabase.from("empresa_rede_favoritos").delete().eq("empresa_email", empresaEmail).eq("profissional_email", email)
         .then(() => carregarRede()).catch(() => {});
     } else {
-      supabase.from("empresa_rede_favoritos").insert({ empresa_email: empresaEmail, profissional_email: email, origem: "favoritado" })
-        .then(() => carregarRede()).catch(() => {});
+      // upsert, não insert puro — se já existir uma linha pra esse par
+      // (ex: clique em "Convidar" seguido rápido de um clique na estrela,
+      // antes do estado local recarregar), força a origem certa em vez de
+      // falhar silenciosamente no unique constraint e deixar a origem antiga.
+      supabase.from("empresa_rede_favoritos").upsert(
+        { empresa_email: empresaEmail, profissional_email: email, origem: "favoritado" },
+        { onConflict: "empresa_email,profissional_email" }
+      ).then(() => carregarRede()).catch(() => {});
     }
   };
 
   const convidar = (p) => {
     if (!empresaEmail) return;
-    supabase.from("empresa_rede_favoritos").insert({ empresa_email: empresaEmail, profissional_email: p.email, origem: "convidado" })
-      .then(() => carregarRede()).catch(() => {});
+    supabase.from("empresa_rede_favoritos").upsert(
+      { empresa_email: empresaEmail, profissional_email: p.email, origem: "convidado" },
+      { onConflict: "empresa_email,profissional_email" }
+    ).then(() => carregarRede()).catch(() => {});
     if (p.whatsapp) {
       const texto = encodeURIComponent(`Olá, ${p.name || ""}! Você foi convidado a fazer parte da rede de profissionais de confiança da nossa empresa no Multi. 🤝`);
       window.open(`https://wa.me/55${p.whatsapp.replace(/\D/g, "")}?text=${texto}`, "_blank");
