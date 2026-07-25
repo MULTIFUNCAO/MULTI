@@ -18,7 +18,7 @@ import {
   Lock, Navigation, Image, Flag, DollarSign, CheckCircle2,
   AlertCircle, FileText, Pencil, Wallet, LogOut,
   CreditCard, HeartHandshake, HelpCircle, KeyRound,
-  BellRing, BadgeCheck, Banknote, Users, ShieldCheck,
+  BellRing, BadgeCheck, Users, ShieldCheck,
   Activity, BarChart2, Package, ChevronUp, Eye, EyeOff,
 } from "lucide-react";
 
@@ -2874,49 +2874,27 @@ const CheckoutScreen = () => {
 }
 
 /* ───────────────────────── PROFILE SCREEN ──────────────────────────────────── */
-/* ───────────────────────── WALLET SCREEN ────────────────────────────────────── */
-const WALLET_HISTORY = [
-  { id:1, date:"02/07/2026", service:"Pintura do quarto",       value:320,  status:"received" },
-  { id:2, date:"28/06/2026", service:"Reforma calçada",          value:600,  status:"received" },
-  { id:3, date:"20/06/2026", service:"Instalação elétrica",      value:280,  status:"received" },
-  { id:4, date:"15/06/2026", service:"Reparo de encanação",      value:150,  status:"received" },
-  { id:5, date:"10/06/2026", service:"Pintura sala e quartos",   value:1200, status:"received" },
-];
-const PENDING_SERVICES = [
-  { id:"p1", service:"Instalação de chuveiro", value:200 },
-  { id:"p2", service:"Jardim — poda e limpeza", value:250 },
-];
+/* ───────────────────────── WALLET SCREEN (Histórico de Ganhos) ─────────────── */
+// Multi não intermedia mais pagamento — cliente paga o profissional direto —
+// então isso não é mais uma carteira com saldo/saque, e sim um histórico
+// informativo somado a partir dos pedidos reais (status "concluido",
+// profissional_aceito = usuário). "pedidos" vem de mapPedidoRow, já filtrado
+// pro profissional logado em App().
+function WalletScreen({ onBack, pedidos }) {
+  const history = [...(pedidos || [])]
+    .sort((a, b) => new Date(b.concluido_em || b.time || 0) - new Date(a.concluido_em || a.time || 0))
+    .map(p => ({
+      id: p.id,
+      date: new Date(p.concluido_em || p.time).toLocaleDateString("pt-BR"),
+      service: p.desc || p.cat || "Serviço",
+      value: p.value || 0,
+    }));
 
-function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
-  const [showPix,     setShowPix]     = useState(false);
-  const [pixKey,      setPixKey]      = useState("");
-  const [pixAmount,   setPixAmount]   = useState("");
-  const [processing,  setProcessing]  = useState(false);
-  const [withdrawn,   setWithdrawn]   = useState(false);
-  const [history,     setHistory]     = useState(WALLET_HISTORY);
-
-  const balance  = walletBalance ?? 1240;
-  const pending  = PENDING_SERVICES.reduce((a, s) => a + s.value, 0);
-  const totalMonth = history.filter(h => h.date.includes("/06/2026") || h.date.includes("/07/2026"))
-                            .reduce((a, h) => a + h.value, 0);
-
-  const handleWithdraw = () => {
-    if (!pixKey.trim() || !pixAmount) return;
-    const amount = parseFloat(pixAmount.replace(",", "."));
-    if (isNaN(amount) || amount <= 0 || amount > balance) {
-      showToast("❌ Valor inválido para saque.", "#DC2626");
-      return;
-    }
-    setProcessing(true);
-    setTimeout(() => {
-      setProcessing(false);
-      setWithdrawn(true);
-      setWalletBalance?.(b => b - amount);
-      setHistory(h => [{ id:Date.now(), date: new Date().toLocaleDateString("pt-BR"), service:"Saque via PIX", value:-amount, status:"withdrawn" }, ...h]);
-      showToast(`💸 Saque de R$ ${amount.toFixed(2).replace(".",",")} enviado via PIX!`, G);
-      setTimeout(() => { setShowPix(false); setWithdrawn(false); setPixKey(""); setPixAmount(""); }, 2000);
-    }, 2200);
-  };
+  const total = history.reduce((a, h) => a + h.value, 0);
+  const now = new Date();
+  const totalMonth = (pedidos || [])
+    .filter(p => { const d = p.concluido_em ? new Date(p.concluido_em) : null; return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); })
+    .reduce((a, p) => a + (p.value || 0), 0);
 
   return (
     <div style={{ display:"flex", flexDirection:"column", background:"#F8F9FA", minHeight:"100vh", paddingBottom:60 }}>
@@ -2927,24 +2905,23 @@ function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
           <button onClick={onBack} style={{ background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:34, height:34, display:"flex", alignItems:"center", justifyContent:"center" }}>
             <ArrowLeft size={17} color="white" />
           </button>
-          <h2 style={{ fontSize:18, fontWeight:900, color:"white", margin:0 }}>Minha Carteira</h2>
+          <h2 style={{ fontSize:18, fontWeight:900, color:"white", margin:0 }}>Histórico de Ganhos</h2>
         </div>
 
-        {/* balance hero */}
+        {/* total hero */}
         <div style={{ textAlign:"center", marginBottom:20 }}>
-          <p style={{ fontSize:11, fontWeight:800, color:"rgba(255,255,255,.55)", textTransform:"uppercase", letterSpacing:1.5, margin:"0 0 6px" }}>Saldo Disponível</p>
+          <p style={{ fontSize:11, fontWeight:800, color:"rgba(255,255,255,.55)", textTransform:"uppercase", letterSpacing:1.5, margin:"0 0 6px" }}>Total Recebido</p>
           <p style={{ fontSize:42, fontWeight:900, color:"white", margin:"0 0 4px", lineHeight:1 }}>
-            R$ <span style={{ color:"#4ade80" }}>{balance.toLocaleString("pt-BR", { minimumFractionDigits:2, maximumFractionDigits:2 })}</span>
+            R$ <span style={{ color:"#4ade80" }}>{total.toLocaleString("pt-BR", { minimumFractionDigits:2, maximumFractionDigits:2 })}</span>
           </p>
-          <p style={{ fontSize:12, color:"rgba(255,255,255,.5)", margin:0 }}>Disponível para saque agora</p>
+          <p style={{ fontSize:12, color:"rgba(255,255,255,.5)", margin:0 }}>Soma dos serviços concluídos — pago direto pelo cliente</p>
         </div>
 
         {/* stats row */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
           {[
-            { label:"Pendente", value:`R$ ${pending}`, color:O },
             { label:"Este mês", value:`R$ ${totalMonth.toLocaleString("pt-BR")}`, color:"#4ade80" },
-            { label:"Serviços", value:history.filter(h=>h.status==="received").length, color:"white" },
+            { label:"Serviços", value:history.length, color:"white" },
           ].map((s, i) => (
             <div key={i} style={{ background:"rgba(255,255,255,.08)", borderRadius:12, padding:"10px 8px", textAlign:"center" }}>
               <p style={{ fontSize:15, fontWeight:900, color:s.color, margin:0 }}>{s.value}</p>
@@ -2955,146 +2932,37 @@ function WalletScreen({ onBack, showToast, walletBalance, setWalletBalance }) {
       </div>
 
       {/* ── ACTION BUTTONS ── */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, padding:"20px 16px 0" }}>
-        <button onClick={() => setShowPix(true)} style={{ padding:"14px 0", borderRadius:16, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${G},#16a34a)`, color:"white", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:`0 5px 16px ${G}44` }}>
-          <Banknote size={17} /> Sacar via PIX
-        </button>
-        <button onClick={() => window.open("/relatorio.html", "_blank")} style={{ padding:"14px 0", borderRadius:16, border:"1.5px solid "+B, background:"white", color:B, fontWeight:900, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+      <div style={{ padding:"20px 16px 0" }}>
+        <button onClick={() => window.open("/relatorio.html", "_blank")} style={{ width:"100%", padding:"14px 0", borderRadius:16, border:"1.5px solid "+B, background:"white", color:B, fontWeight:900, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
           <TrendingUp size={17} /> Relatório
         </button>
-      </div>
-
-      {/* ── PENDING SERVICES ── */}
-      {PENDING_SERVICES.length > 0 && (
-        <div style={{ margin:"20px 16px 0", background:"white", borderRadius:18, overflow:"hidden", boxShadow:"0 2px 10px rgba(0,0,0,.06)" }}>
-          <div style={{ padding:"12px 16px 8px", borderBottom:"1px solid #F0F0F0", display:"flex", alignItems:"center", gap:8 }}>
-            <Lock size={14} color={O} />
-            <p style={{ fontSize:12, fontWeight:900, color:"#1a1a2e", margin:0 }}>Em Custódia Multi</p>
-            <span style={{ marginLeft:"auto", fontSize:12, fontWeight:900, color:O }}>R$ {pending}</span>
-          </div>
-          {PENDING_SERVICES.map((s, i) => (
-            <div key={s.id} style={{ padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom: i < PENDING_SERVICES.length-1 ? "1px solid #F8F8F8" : "none" }}>
-              <div>
-                <p style={{ fontSize:13, fontWeight:700, color:"#1a1a2e", margin:0 }}>{s.service}</p>
-                <p style={{ fontSize:11, color:"#aaa", margin:0 }}>Aguardando finalização</p>
-              </div>
-              <span style={{ fontSize:13, fontWeight:900, color:O }}>R$ {s.value}</span>
-            </div>
-          ))}
-          <div style={{ padding:"10px 16px", background:"#FFF8F5" }}>
-            <p style={{ fontSize:11, color:"#C44B00", fontWeight:700, margin:0, display:"flex", alignItems:"center", gap:5 }}>
-              <Shield size={12} color={O} /> Liberado pelo cliente ao concluir o serviço
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* ── PAYMENT RULES ── */}
-      <div style={{ margin:"16px 16px 0", background:"white", borderRadius:18, overflow:"hidden", boxShadow:"0 2px 10px rgba(0,0,0,.06)" }}>
-        <div style={{ padding:"12px 16px 10px", borderBottom:"1px solid #F0F0F0" }}>
-          <p style={{ fontSize:13, fontWeight:900, color:"#1a1a2e", margin:0 }}>⏱️ Prazo de Recebimento</p>
-        </div>
-        {[
-          { icon:"⚡", method:"PIX",              prazo:"D+1 após confirmação", taxa:"Sem taxas",         col:G,        bg:"#F0FDF4", border:"#BBF7D0" },
-          { icon:"💳", method:"Cartão de Débito",  prazo:"D+1 após confirmação", taxa:"Sem taxas",         col:G,        bg:"#F0FDF4", border:"#BBF7D0" },
-          { icon:"💜", method:"Cartão de Crédito", prazo:"D+2 após confirmação", taxa:"3% descontado",    col:"#F59E0B", bg:"#FFFBEB", border:"#FDE68A" },
-        ].map((r, i) => (
-          <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 16px", borderBottom: i < 2 ? "1px solid #F8F8F8" : "none" }}>
-            <span style={{ fontSize:20, flexShrink:0 }}>{r.icon}</span>
-            <div style={{ flex:1 }}>
-              <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e", margin:"0 0 2px" }}>{r.method}</p>
-              <p style={{ fontSize:11, color:"#6B7280", margin:0 }}>{r.prazo}</p>
-            </div>
-            <span style={{ fontSize:11, fontWeight:800, color:r.col, background:r.bg, border:`1px solid ${r.border}`, borderRadius:99, padding:"4px 10px", whiteSpace:"nowrap" }}>
-              {r.taxa}
-            </span>
-          </div>
-        ))}
       </div>
 
       {/* ── HISTORY ── */}
       <div style={{ margin:"20px 16px 0", background:"white", borderRadius:18, overflow:"hidden", boxShadow:"0 2px 10px rgba(0,0,0,.06)" }}>
         <div style={{ padding:"12px 16px 8px", borderBottom:"1px solid #F0F0F0" }}>
-          <p style={{ fontSize:13, fontWeight:900, color:"#1a1a2e", margin:0 }}>Histórico de Ganhos</p>
+          <p style={{ fontSize:13, fontWeight:900, color:"#1a1a2e", margin:0 }}>Serviços Concluídos</p>
         </div>
-        {history.map((h, i) => {
-          const isWithdrawn = h.status === "withdrawn";
-          return (
-            <div key={h.id} style={{ padding:"12px 16px", display:"flex", alignItems:"center", gap:12, borderBottom: i < history.length-1 ? "1px solid #F8F8F8" : "none" }}>
-              <div style={{ width:38, height:38, borderRadius:11, background: isWithdrawn ? "#FFF0F0" : "#F0FDF4", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                {isWithdrawn ? <Banknote size={17} color="#DC2626" /> : <CheckCircle2 size={17} color={G} />}
-              </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <p style={{ fontSize:13, fontWeight:700, color:"#1a1a2e", margin:"0 0 2px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{h.service}</p>
-                <p style={{ fontSize:11, color:"#aaa", margin:0 }}>{h.date}</p>
-              </div>
-              <span style={{ fontSize:14, fontWeight:900, color: isWithdrawn ? "#DC2626" : G, flexShrink:0 }}>
-                {isWithdrawn ? "-" : "+"}R$ {Math.abs(h.value).toLocaleString("pt-BR", { minimumFractionDigits:2 })}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ── PIX WITHDRAWAL MODAL ── */}
-      {showPix && (
-        <div style={{ position:"fixed", inset:0, zIndex:300, background:"rgba(0,0,0,.5)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
-          <div style={{ width:"100%", maxWidth:400, background:"white", borderRadius:"24px 24px 0 0", padding:"24px 20px 40px" }}>
-            <div style={{ width:40, height:4, background:"#E0E0E0", borderRadius:99, margin:"0 auto 20px" }} />
-
-            {!withdrawn ? (
-              <>
-                <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20 }}>
-                  <div style={{ width:42, height:42, borderRadius:12, background:G+"18", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                    <Banknote size={22} color={G} />
-                  </div>
-                  <div>
-                    <p style={{ fontSize:16, fontWeight:900, color:"#1a1a2e", margin:0 }}>Sacar via PIX</p>
-                    <p style={{ fontSize:12, color:"#aaa", margin:0 }}>Disponível: R$ {balance.toLocaleString("pt-BR", { minimumFractionDigits:2 })}</p>
-                  </div>
-                </div>
-
-                <div style={{ marginBottom:14 }}>
-                  <label style={{ display:"block", fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.2, marginBottom:7 }}>Chave PIX</label>
-                  <input type="text" placeholder="CPF, e-mail, telefone ou chave aleatória" value={pixKey} onChange={e => setPixKey(e.target.value)}
-                    style={{ width:"100%", border:"1.5px solid #E5E7EB", borderRadius:12, padding:"12px 14px", fontSize:13, outline:"none", fontFamily:"inherit", boxSizing:"border-box" }} />
-                </div>
-
-                <div style={{ marginBottom:20 }}>
-                  <label style={{ display:"block", fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.2, marginBottom:7 }}>Valor (R$)</label>
-                  <div style={{ position:"relative" }}>
-                    <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", fontWeight:900, color:"#aaa", fontSize:13 }}>R$</span>
-                    <input type="number" placeholder="0,00" value={pixAmount} onChange={e => setPixAmount(e.target.value)} max={balance}
-                      style={{ width:"100%", border:"1.5px solid #E5E7EB", borderRadius:12, padding:"12px 14px 12px 40px", fontSize:13, outline:"none", fontFamily:"inherit", boxSizing:"border-box" }} />
-                  </div>
-                  <div style={{ display:"flex", gap:8, marginTop:8 }}>
-                    {[50, 100, 500, balance].map(v => (
-                      <button key={v} onClick={() => setPixAmount(String(v))} style={{ flex:1, padding:"6px 0", borderRadius:8, border:`1.5px solid ${pixAmount == v ? G : "#E5E7EB"}`, background: pixAmount == v ? G+"12" : "white", color: pixAmount == v ? G : "#888", fontWeight:800, fontSize:11, cursor:"pointer" }}>
-                        {v === balance ? "Tudo" : `R$${v}`}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                  <button onClick={() => { setShowPix(false); setPixKey(""); setPixAmount(""); }} style={{ padding:"13px 0", borderRadius:12, border:"1.5px solid #E5E7EB", background:"white", color:"#888", fontWeight:800, fontSize:13, cursor:"pointer" }}>Cancelar</button>
-                  <button onClick={handleWithdraw} disabled={processing || !pixKey.trim() || !pixAmount} style={{ padding:"13px 0", borderRadius:12, border:"none", background: pixKey.trim() && pixAmount ? `linear-gradient(135deg,${G},#16a34a)` : "#E5E7EB", color: pixKey.trim() && pixAmount ? "white" : "#aaa", fontWeight:900, fontSize:13, cursor: pixKey.trim() && pixAmount ? "pointer" : "default", display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow: pixKey.trim() && pixAmount ? `0 4px 12px ${G}44` : "none" }}>
-                    {processing ? <><span style={{ width:16, height:16, border:"2px solid white", borderTopColor:"transparent", borderRadius:"50%", display:"inline-block", animation:"spin .7s linear infinite" }} /> Enviando…</> : <><Check size={15} /> Confirmar</>}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div style={{ textAlign:"center", padding:"20px 0" }}>
-                <div style={{ width:72, height:72, borderRadius:"50%", background:`linear-gradient(135deg,${G},#16a34a)`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", boxShadow:`0 6px 20px ${G}44` }}>
-                  <CheckCircle2 size={36} color="white" />
-                </div>
-                <h3 style={{ fontSize:20, fontWeight:900, color:"#1a1a2e", margin:"0 0 8px" }}>Saque enviado!</h3>
-                <p style={{ fontSize:14, color:"#6B7280" }}>O valor chegará em até 60 segundos.</p>
-              </div>
-            )}
+        {history.length === 0 && (
+          <div style={{ padding:"24px 16px", textAlign:"center" }}>
+            <p style={{ fontSize:13, color:"#aaa", margin:0 }}>Nenhum serviço concluído ainda.</p>
           </div>
-        </div>
-      )}
+        )}
+        {history.map((h, i) => (
+          <div key={h.id} style={{ padding:"12px 16px", display:"flex", alignItems:"center", gap:12, borderBottom: i < history.length-1 ? "1px solid #F8F8F8" : "none" }}>
+            <div style={{ width:38, height:38, borderRadius:11, background:"#F0FDF4", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              <CheckCircle2 size={17} color={G} />
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <p style={{ fontSize:13, fontWeight:700, color:"#1a1a2e", margin:"0 0 2px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{h.service}</p>
+              <p style={{ fontSize:11, color:"#aaa", margin:0 }}>{h.date}</p>
+            </div>
+            <span style={{ fontSize:14, fontWeight:900, color:G, flexShrink:0 }}>
+              +R$ {h.value.toLocaleString("pt-BR", { minimumFractionDigits:2 })}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -3866,7 +3734,7 @@ function RankingScreen({ onBack, contratacoes }) {
   );
 }
 
-function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userName: initialUserName, userEmail, showRankingGlobal, onClearRankingGlobal, onUpgrade, onLogout, showToast, onOpenWallet, onOpenAdmin, docStatus, onDocStatusChange, onSwitchRole }) {
+function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userName: initialUserName, userEmail, showRankingGlobal, onClearRankingGlobal, onUpgrade, onLogout, showToast, onOpenWallet, meusGanhos, onOpenAdmin, docStatus, onDocStatusChange, onSwitchRole }) {
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [editMode,  setEditMode]  = useState(false);
@@ -4102,7 +3970,9 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
       {/* ── PROFESSIONAL SECTIONS ── */}
       {role === "professional" && (
         <>
-          {/* Wallet card — links to full WalletScreen */}
+          {/* Ganhos card — links to full histórico (ex-Carteira). Multi não
+              intermedia pagamento (cliente paga o profissional direto), então
+              isso é só um resumo informativo dos serviços concluídos. */}
           <div style={{ padding:"0 16px", marginTop:-20, position:"relative", zIndex:2 }}>
             <div onClick={onOpenWallet} style={{ background:"white", borderRadius:20, padding:18, boxShadow:"0 4px 20px rgba(0,0,0,.10)", border:"1px solid #F0F0F0", cursor:"pointer" }}>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
@@ -4111,18 +3981,20 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
                     <Wallet size={20} color="white" />
                   </div>
                   <div>
-                    <p style={{ fontSize:11, color:"#aaa", fontWeight:700, margin:0 }}>Saldo disponível</p>
-                    <p style={{ fontSize:24, fontWeight:900, color:G, margin:0 }}>R$ 1.240,00</p>
+                    <p style={{ fontSize:11, color:"#aaa", fontWeight:700, margin:0 }}>Total recebido</p>
+                    <p style={{ fontSize:24, fontWeight:900, color:G, margin:0 }}>
+                      R$ {(meusGanhos || []).reduce((a, p) => a + (p.value || 0), 0).toLocaleString("pt-BR", { minimumFractionDigits:2 })}
+                    </p>
                   </div>
                 </div>
                 <div style={{ textAlign:"right" }}>
-                  <p style={{ fontSize:11, color:"#aaa", fontWeight:700, marginBottom:3 }}>Pendente</p>
-                  <p style={{ fontSize:14, fontWeight:800, color:O }}>R$ 680</p>
+                  <p style={{ fontSize:11, color:"#aaa", fontWeight:700, marginBottom:3 }}>Serviços</p>
+                  <p style={{ fontSize:14, fontWeight:800, color:B }}>{(meusGanhos || []).length}</p>
                 </div>
               </div>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 0 0", borderTop:"1px solid #F0F0F0" }}>
                 <span style={{ fontSize:12, color:B, fontWeight:800, display:"flex", alignItems:"center", gap:5 }}>
-                  <Wallet size={13} /> Ver Carteira Completa
+                  <Wallet size={13} /> Ver Histórico Completo
                 </span>
                 <ChevronRight size={15} color={B} />
               </div>
@@ -7204,6 +7076,11 @@ export default function App() {
   }, [meusPedidos, role]);
   const meusPedidosComCandidatos = meusPedidos.map(p => ({ ...p, candidates: candidatosPorPedido[p.id] || 0 }));
 
+  // Ganhos reais do profissional — pivot de modelo (Multi não intermedia mais
+  // pagamento, cliente paga o profissional direto) vira histórico informativo
+  // a partir dos próprios pedidos concluídos, sem saldo/saque fictício.
+  const meusGanhos = role === "professional" ? meusPedidos.filter(p => p.status === "concluido") : [];
+
   // Propostas recebidas pelo cliente — alimenta AlertsScreen. Antes vinha de
   // um "notifications" mockado em memória (nunca persistido, alimentado por
   // um canal realtime dentro de ProfessionalHome que não fazia sentido ali).
@@ -7239,7 +7116,6 @@ export default function App() {
     status: p.status === "pendente" ? "pending" : "accepted",
   }));
   const [userLocation,  setUserLocation]  = useState(localStorage.getItem("multiLocation") || savedSession?.location || "sua região");
-  const [walletBalance, setWalletBalance] = useState(1240);
   useEffect(() => {
     const sess = (() => { try { return JSON.parse(localStorage.getItem("multiUser")) || {}; } catch { return {}; } })();
     const email = sess.email || savedSession?.email || "";
@@ -7714,10 +7590,10 @@ const renderContent = () => {
     // Professional screens
     if (screen === "avaliacao" && avaliacaoSvc) return <AvaliacaoScreen service={avaliacaoSvc} onBack={()=>setScreen("orders")} setScreen={setScreen} userEmail={userEmail} showToast={showToast} />;
   if (screen === "upgrade") return <EscolherPlanoScreen titularTipo="usuario" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("home")} showToast={showToast} onDone={() => { carregarPlano("usuario", userEmail); setScreen("home"); }} />;
-    if (screen === "wallet") return <WalletScreen onBack={() => setScreen("profile")} showToast={showToast} walletBalance={walletBalance} setWalletBalance={setWalletBalance} />;
+    if (screen === "wallet") return <WalletScreen onBack={() => setScreen("profile")} pedidos={meusGanhos} />;
     if (screen === "profile") {
       if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
-      return <ProfileScreen role="professional" userName={userName} userEmail={userEmail} isPro={isPro} plano={plano} planoStatus={planoStatus} planoExpiraEm={planoExpiraEm} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenWallet={() => setScreen("wallet")} onOpenAdmin={() => setShowAdmin(true)} docStatus={docStatus} onDocStatusChange={(id, st) => setDocStatus(d => ({ ...d, [id]: st }))} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
+      return <ProfileScreen role="professional" userName={userName} userEmail={userEmail} isPro={isPro} plano={plano} planoStatus={planoStatus} planoExpiraEm={planoExpiraEm} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenWallet={() => setScreen("wallet")} meusGanhos={meusGanhos} onOpenAdmin={() => setShowAdmin(true)} docStatus={docStatus} onDocStatusChange={(id, st) => setDocStatus(d => ({ ...d, [id]: st }))} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
     }
     if (screen === "service" && selected) return <ServiceDetailPro service={selected} onBack={() => setScreen("home")} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onOpenPinEntry={() => setScreen("pinjob")} />;
     if (screen === "pinjob"  && selected) return <ServiceDetailPinEntry service={selected} onBack={() => setScreen("service")} onStatusChange={handlePedidoStatusChange} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
