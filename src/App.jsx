@@ -5700,9 +5700,20 @@ function CompletarPerfilScreen({ userEmail, onDone, showToast }) {
 
   return (
     <div style={{ minHeight:"100vh", background:"#F8F9FA", display:"flex", flexDirection:"column" }}>
+      <style>{`.completar-perfil-bio::placeholder { color: #6B7280; }`}</style>
       <div style={{ background:`linear-gradient(160deg,${B} 0%,#0055d4 100%)`, padding:"28px 20px 32px", borderRadius:"0 0 32px 32px", textAlign:"center" }}>
         <h2 style={{ color:"white", fontSize:20, fontWeight:900, margin:"0 0 6px" }}>Complete seu perfil</h2>
-        <p style={{ color:"rgba(255,255,255,.75)", fontSize:13, margin:0 }}>Isso ajuda clientes e empresas a confiarem em você</p>
+        <p style={{ color:"rgba(255,255,255,.75)", fontSize:13, margin:"0 0 14px" }}>Isso ajuda clientes e empresas a confiarem em você</p>
+
+        {/* Progresso — Passo 2 (Completar Perfil) de 2 desde a escolha do plano */}
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+          <div style={{ display:"flex", gap:5, width:120 }}>
+            {[0, 1].map(i => (
+              <div key={i} style={{ flex:1, height:5, borderRadius:99, background: "white" }} />
+            ))}
+          </div>
+          <span style={{ fontSize:11, fontWeight:800, color:"rgba(255,255,255,.8)" }}>Passo 2 de 2</span>
+        </div>
       </div>
 
       <div style={{ flex:1, padding:"20px 20px 40px", display:"flex", flexDirection:"column", gap:20 }}>
@@ -5713,6 +5724,7 @@ function CompletarPerfilScreen({ userEmail, onDone, showToast }) {
             Sobre você <span style={{ color:O }}>*</span>
           </label>
           <textarea
+            className="completar-perfil-bio"
             value={bio}
             maxLength={MAX_BIO}
             onChange={e => { setBio(e.target.value); if (errorBio) setErrorBio(""); }}
@@ -5762,11 +5774,15 @@ function CompletarPerfilScreen({ userEmail, onDone, showToast }) {
         </div>
 
         <div style={{ flex:1 }} />
+      </div>
 
+      {/* Rodapé fixo — visível sem depender de rolar até o fim, mesmo com
+          várias fotos de portfólio adicionadas (conteúdo acima pode crescer). */}
+      <div style={{ position:"sticky", bottom:0, background:"#F8F9FA", padding:"12px 20px 20px", boxShadow:"0 -4px 16px rgba(0,0,0,.06)" }}>
         <button onClick={handleContinuar} disabled={saving} style={{ width:"100%", padding:"16px 0", borderRadius:16, border:"none", background:`linear-gradient(135deg,${B},#0055d4)`, color:"white", fontWeight:900, fontSize:15, cursor: saving ? "default" : "pointer" }}>
           {saving ? "Salvando..." : "Salvar e continuar"}
         </button>
-        <button onClick={handleContinuar} disabled={saving} style={{ background:"none", border:"none", color:"#9CA3AF", fontWeight:700, fontSize:13, cursor: saving ? "default" : "pointer", padding:"4px 0", textAlign:"center" }}>
+        <button onClick={handleContinuar} disabled={saving} style={{ width:"100%", background:"none", border:"none", color:"#9CA3AF", fontWeight:700, fontSize:13, cursor: saving ? "default" : "pointer", padding:"8px 0 0", textAlign:"center" }}>
           Pular fotos por agora
         </button>
       </div>
