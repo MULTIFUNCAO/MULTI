@@ -662,7 +662,7 @@ function formatTimeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString("pt-BR");
 }
 
-function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGoToEditar }) {
+function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGoToEditar, onGoToBanco }) {
   const [empresa, setEmpresa] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showFullPreview, setShowFullPreview] = useState(false);
@@ -878,6 +878,13 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
           </button>
         </div>
 
+        {/* Banco de Profissionais — feature Empresa Plus; o gate real (plano
+            ativo/trial) é decidido no router, aqui é só o ponto de entrada */}
+        <button onClick={onGoToBanco} style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px 0", borderRadius:16, border:"none", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", color:"white", fontWeight:800, fontSize:13, cursor:"pointer", marginBottom:12, boxShadow:"0 4px 14px rgba(124,58,237,.3)" }}>
+          <Users size={15} /> Banco de Profissionais
+          <span style={{ marginLeft:2, fontSize:9, fontWeight:900, background:"rgba(255,255,255,.25)", borderRadius:99, padding:"2px 6px" }}>PLUS</span>
+        </button>
+
         {/* atalho rápido pra edição, sem depender só da nav inferior */}
         <button onClick={onGoToEditar} style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px 0", borderRadius:16, border:"1.5px solid #E5E7EB", background:"white", color:"#374151", fontWeight:800, fontSize:13, cursor:"pointer", marginBottom:18, boxShadow:"0 3px 14px rgba(0,0,0,.05)" }}>
           <Pencil size={15} /> Editar Perfil
@@ -890,6 +897,130 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
           <p style={{ fontSize:12, fontWeight:800, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1.2, margin:"0 0 10px" }}>Como você aparece pros clientes</p>
           <EmpresaCard emp={empresa} onVerPerfil={() => setShowFullPreview(true)} />
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────────────── EMPRESA PLUS — BANCO DE PROFISSIONAIS ───────────── */
+// Busca real de profissionais (tabela "usuarios"), exclusiva do plano Empresa
+// Plus — o gate de acesso (plano ativo/trial) fica no router em App(), não
+// aqui; esta tela assume que quem a renderiza já tem direito a ela.
+function BancoProfissionaisScreen({ onBack }) {
+  const [loading,           setLoading]           = useState(true);
+  const [profissionais,     setProfissionais]     = useState([]);
+  const [notas,             setNotas]              = useState({}); // email -> média
+  const [busca,             setBusca]              = useState("");
+  const [catsSelecionadas,  setCatsSelecionadas]   = useState([]);
+  const [soDisponiveis,     setSoDisponiveis]      = useState(false);
+
+  useEffect(() => {
+    supabase.from("usuarios").select("email,name,whatsapp,foto_perfil_url,bio,categoria_servico,status")
+      .eq("role", "professional")
+      .then(({ data }) => {
+        const lista = data || [];
+        setProfissionais(lista);
+        setLoading(false);
+        const emails = lista.map(p => p.email).filter(Boolean);
+        if (!emails.length) return;
+        // Nota média por profissional — hoje não existe agregação de
+        // "avaliacoes" em nenhuma outra tela, então calcula client-side
+        // (mesmo padrão já usado pra enriquecer PropostasScreen).
+        supabase.from("avaliacoes").select("profissional_id,nota").in("profissional_id", emails)
+          .then(({ data: avals }) => {
+            const soma = {}, count = {};
+            (avals || []).forEach(a => {
+              soma[a.profissional_id] = (soma[a.profissional_id] || 0) + (a.nota || 0);
+              count[a.profissional_id] = (count[a.profissional_id] || 0) + 1;
+            });
+            const medias = {};
+            Object.keys(count).forEach(email => { medias[email] = soma[email] / count[email]; });
+            setNotas(medias);
+          }).catch(() => {});
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const toggleCat = (id) => setCatsSelecionadas(c => c.includes(id) ? c.filter(x => x !== id) : [...c, id]);
+
+  const filtrados = profissionais
+    .filter(p => {
+      if (busca.trim() && !(p.name || "").toLowerCase().includes(busca.trim().toLowerCase())) return false;
+      if (catsSelecionadas.length && !(p.categoria_servico || []).some(c => catsSelecionadas.includes(c))) return false;
+      if (soDisponiveis && p.status !== true) return false;
+      return true;
+    })
+    .sort((a, b) => (notas[b.email] || 0) - (notas[a.email] || 0));
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#F8F9FA", paddingBottom:40 }}>
+      <div style={{ background:"linear-gradient(160deg,#0F3460 0%,#1a4a7a 100%)", padding:"16px 18px 20px", borderRadius:"0 0 28px 28px" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16 }}>
+          <button onClick={onBack} style={{ background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:34, height:34, display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <ArrowLeft size={17} color="white" />
+          </button>
+          <div>
+            <h2 style={{ fontSize:18, fontWeight:900, color:"white", margin:0 }}>Banco de Profissionais</h2>
+            <p style={{ fontSize:11, color:"rgba(255,255,255,.6)", margin:0 }}>Busque e filtre profissionais reais da plataforma</p>
+          </div>
+        </div>
+        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome..."
+          style={{ width:"100%", border:"none", borderRadius:12, padding:"12px 14px", fontSize:13, outline:"none", fontFamily:"inherit", boxSizing:"border-box" }} />
+      </div>
+
+      <div style={{ padding:"14px 16px 0" }}>
+        <div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:6 }}>
+          {CATS.map(c => {
+            const active = catsSelecionadas.includes(c.id);
+            return (
+              <button key={c.id} onClick={() => toggleCat(c.id)} style={{ flexShrink:0, display:"flex", alignItems:"center", gap:5, padding:"7px 12px", borderRadius:99, border:`1.5px solid ${active ? B : "#E5E7EB"}`, background: active ? B+"12" : "white", color: active ? B : "#666", fontWeight:800, fontSize:12, cursor:"pointer", whiteSpace:"nowrap" }}>
+                {c.emoji} {c.label}
+              </button>
+            );
+          })}
+        </div>
+        <button onClick={() => setSoDisponiveis(s => !s)} style={{ marginTop:8, display:"flex", alignItems:"center", gap:6, padding:"7px 12px", borderRadius:99, border:`1.5px solid ${soDisponiveis ? G : "#E5E7EB"}`, background: soDisponiveis ? G+"12" : "white", color: soDisponiveis ? G : "#666", fontWeight:800, fontSize:12, cursor:"pointer" }}>
+          <span style={{ width:8, height:8, borderRadius:"50%", background: soDisponiveis ? G : "#ccc" }} /> Só disponíveis agora
+        </button>
+      </div>
+
+      <div style={{ padding:"16px 16px 0", display:"flex", flexDirection:"column", gap:12 }}>
+        {loading && <p style={{ textAlign:"center", color:"#aaa", fontSize:13 }}>Carregando...</p>}
+        {!loading && filtrados.length === 0 && <p style={{ textAlign:"center", color:"#aaa", fontSize:13, padding:"20px 0" }}>Nenhum profissional encontrado com esses filtros.</p>}
+        {filtrados.map(p => {
+          const cats = resolveCats(p.categoria_servico);
+          const nota = notas[p.email];
+          return (
+            <div key={p.email} style={{ background:"white", borderRadius:20, padding:16, boxShadow:"0 4px 20px rgba(0,0,0,.08)", border:"1px solid #F0F0F0" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:10 }}>
+                <div style={{ width:52, height:52, borderRadius:16, overflow:"hidden", background:"#F8F9FA", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  {p.foto_perfil_url
+                    ? <img src={p.foto_perfil_url} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt="" />
+                    : <User size={24} color="#B0B4C0" />}
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                    <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:0 }}>{p.name || "Profissional"}</p>
+                    {p.status === true && <span style={{ width:7, height:7, borderRadius:"50%", background:G, flexShrink:0 }} title="Disponível agora" />}
+                  </div>
+                  {cats.length > 0 && <p style={{ fontSize:11, color:"#888", margin:"2px 0 0" }}>{cats.map(c => `${c.emoji} ${c.label}`).join(" · ")}</p>}
+                </div>
+                {nota != null && (
+                  <div style={{ display:"flex", alignItems:"center", gap:3, background:"#FFF8E7", border:"1px solid #FDE68A", borderRadius:99, padding:"3px 8px", flexShrink:0 }}>
+                    <Star size={12} color="#F9A825" fill="#F9A825" />
+                    <span style={{ fontSize:11, fontWeight:800, color:"#92400E" }}>{nota.toFixed(1)}</span>
+                  </div>
+                )}
+              </div>
+              {p.bio && <p style={{ fontSize:12.5, color:"#555", lineHeight:1.5, margin:"0 0 12px" }}>{p.bio}</p>}
+              {p.whatsapp && (
+                <a href={`https://wa.me/55${p.whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{ textDecoration:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"11px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:12 }}>
+                  <MessageCircle size={14} /> Chamar no WhatsApp
+                </a>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -7565,7 +7696,15 @@ const renderContent = () => {
       if (screen === "pedidos") return <EmpresaPedidosScreen userEmail={userEmail} />;
       if (screen === "upgrade") return <EscolherPlanoScreen titularTipo="empresa" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("editar")} showToast={showToast} onDone={() => { carregarPlano("empresa", userEmail); setScreen("editar"); }} />;
       if (screen === "editar")  return <EmpresaEditProfileScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} isPro={isPro} plano={plano} planoStatus={planoStatus} planoExpiraEm={planoExpiraEm} onUpgrade={() => setScreen("upgrade")} />;
-      return <EmpresaHomeScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} onGoToPedidos={() => setScreen("pedidos")} onGoToEditar={() => setScreen("editar")} />;
+      if (screen === "banco-profissionais") {
+        // Gate real do Banco de Profissionais: só empresa_plus ativo/trial.
+        // Quem não tem, cai direto na tela de escolher plano — o botão em
+        // EmpresaHomeScreen não precisa saber o plano pra decidir o que mostrar.
+        const temEmpresaPlus = plano === "empresa_plus" && (planoStatus === "trial" || planoStatus === "ativa");
+        if (!temEmpresaPlus) return <EscolherPlanoScreen titularTipo="empresa" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("home")} showToast={showToast} onDone={() => { carregarPlano("empresa", userEmail); setScreen("banco-profissionais"); }} />;
+        return <BancoProfissionaisScreen onBack={() => setScreen("home")} />;
+      }
+      return <EmpresaHomeScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} onGoToPedidos={() => setScreen("pedidos")} onGoToEditar={() => setScreen("editar")} onGoToBanco={() => setScreen("banco-profissionais")} />;
     }
 
     // Route guard: logged-in clients must never see the professional feed.
