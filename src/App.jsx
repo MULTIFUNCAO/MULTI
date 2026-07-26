@@ -7656,10 +7656,15 @@ export default function App() {
   // redundantes, um real e um mock.
   const handleAceitarProposta = (proposta) => {
     supabase.from("propostas").update({ status:"aceita" }).eq("id", proposta.id).then(()=>{});
+    // Grava o valor negociado/aceito no pedido — sem isso, "pedidos.valor"
+    // ficava travado no valor original do cliente pra sempre, e Ganhos do
+    // Mês (e qualquer outra tela que leia service.value) somava o valor
+    // errado quando a proposta aceita tinha um valor diferente do postado.
     supabase.from("pedidos").update({
       status:"em_andamento",
       profissional_aceito: proposta.profissional_id,
       profissional_nome: proposta.profissional_nome,
+      valor: proposta.valor,
     }).eq("id", proposta.pedido_id).then(()=>refreshMeusPedidos());
     openChatFromService({
       id: proposta.pedido_id,
@@ -7682,6 +7687,7 @@ export default function App() {
       status:"em_andamento",
       profissional_aceito: proposta.profissional_id,
       profissional_nome: proposta.profissional_nome,
+      valor: proposta.valor,
     }).eq("id", proposta.pedido_id).then(() => {
       showToast?.("✅ Proposta aceita!", G);
       openChatFromService({
