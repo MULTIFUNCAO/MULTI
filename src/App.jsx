@@ -2583,6 +2583,15 @@ function ServiceDetailClient({ service, onBack, onStatusChange, onConfirmarConcl
   const pin  = generatePin(service.id);
   const jaConfirmeiConclusao = !!service.concluido_cliente_em;
 
+  // Sem isso, quando o outro lado confirma depois e o pedido vira
+  // "concluido" no banco, essa tela ficava travada na fase antiga até sair
+  // e voltar — phase/released só eram lidos de service.status na primeira
+  // renderização (useState initial value não reage a mudança de prop).
+  useEffect(() => {
+    setPhase(statusToPhase(service.status));
+    setReleased(service.status === "concluido");
+  }, [service.status]);
+
   const phaseColors = ["#6366F1", B, O, G];
   const currentColor = phaseColors[phase];
 
@@ -7760,9 +7769,15 @@ export default function App() {
         const outroJaConfirmou = lado === "cliente" ? data?.concluido_profissional_em : data?.concluido_cliente_em;
         const updates = { [campoTempo]: new Date().toISOString(), [campoObs]: observacao || null, [campoFotos]: (fotos && fotos.length) ? fotos : null };
         if (outroJaConfirmou) { updates.status = "concluido"; updates.concluido_em = new Date().toISOString(); }
-        return supabase.from("pedidos").update(updates).eq("id", pedidoId);
+        return supabase.from("pedidos").update(updates).eq("id", pedidoId).select().maybeSingle();
       })
-      .then(() => refreshMeusPedidos())
+      .then(({ data }) => {
+        refreshMeusPedidos();
+        // Sem isso, a tela de detalhe aberta (selected) ficava com o
+        // snapshot antigo — o pedido virava "concluido" no banco mas a UI
+        // continuava presa em "Em Execução" até sair e voltar pra tela.
+        if (data) setSelected(sel => sel?.id === pedidoId ? mapPedidoRow(data) : sel);
+      })
       .catch(() => {});
   };
 
