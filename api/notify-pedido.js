@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { categoria, descricao, publicoAlvo } = req.body || {};
+  const { categoria, descricao, publicoAlvo, cidade } = req.body || {};
   if (!categoria) {
     res.status(400).json({ error: 'categoria é obrigatória' });
     return;
@@ -52,7 +52,9 @@ export default async function handler(req, res) {
         return;
       }
 
-      const { data: profissionaisPro, error: profissionaisError } = await supabase
+      // Demanda precisa de cidade pra saber quem avisar — profissional sem
+      // cidade combatível não recebe (evita ruído fora da região dele).
+      let query = supabase
         .from('usuarios')
         .select('onesignal_player_id')
         .eq('role', 'professional')
@@ -60,6 +62,8 @@ export default async function handler(req, res) {
         .eq('status', true)
         .in('email', emailsPro)
         .not('onesignal_player_id', 'is', null);
+      if (cidade) query = query.ilike('city', cidade);
+      const { data: profissionaisPro, error: profissionaisError } = await query;
       if (profissionaisError) throw profissionaisError;
 
       playerIds = [...new Set((profissionaisPro || []).map(p => p.onesignal_player_id).filter(Boolean))];

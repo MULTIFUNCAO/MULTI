@@ -1292,7 +1292,7 @@ const PRAZO_OPTIONS = [
 ];
 
 function NovaDemandaScreen({ userEmail, userName, onBack, showToast }) {
-  const [form, setForm] = useState({ cat:"", desc:"", value:"", prazo:"sem_pressa" });
+  const [form, setForm] = useState({ cat:"", desc:"", value:"", prazo:"sem_pressa", cidade:"" });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
@@ -1301,6 +1301,7 @@ function NovaDemandaScreen({ userEmail, userName, onBack, showToast }) {
     if (!form.cat) e.cat = "Selecione a categoria do profissional";
     if (!form.desc.trim()) e.desc = "Descreva a demanda";
     if (!form.value || Number(form.value) <= 0) e.value = "Informe um valor";
+    if (!form.cidade.trim()) e.cidade = "Informe a cidade da demanda";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -1309,12 +1310,14 @@ function NovaDemandaScreen({ userEmail, userName, onBack, showToast }) {
     if (!validate()) return;
     setSaving(true);
     try {
+      const cidade = form.cidade.trim();
       const { error } = await supabase.from("pedidos").insert({
         cliente_id: userEmail,
         cliente_nome: userName,
         categoria: form.cat,
         descricao: form.desc.trim(),
         valor: Number(form.value),
+        cidade,
         status: "aberto",
         publico_alvo: "pro",
         prazo: form.prazo,
@@ -1323,9 +1326,9 @@ function NovaDemandaScreen({ userEmail, userName, onBack, showToast }) {
       // Best-effort — não bloqueia a publicação se o push falhar.
       fetch("/api/notify-pedido", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ categoria: form.cat, descricao: form.desc.trim(), publicoAlvo: "pro" }),
+        body: JSON.stringify({ categoria: form.cat, descricao: form.desc.trim(), publicoAlvo: "pro", cidade }),
       }).catch(() => {});
-      showToast?.("✅ Demanda publicada! Profissionais Multi Pro da categoria já podem ver.", G);
+      showToast?.("✅ Demanda publicada! Profissionais Multi Pro da categoria e cidade já podem ver.", G);
       onBack?.();
     } catch (e) {
       showToast?.("❌ Erro ao publicar demanda: " + (e.message || ""), "#DC2626");
@@ -1378,6 +1381,16 @@ function NovaDemandaScreen({ userEmail, userName, onBack, showToast }) {
             value={form.value}
             onChange={e => { setForm(f => ({ ...f, value: e.target.value })); if (errors.value) setErrors(p => ({ ...p, value: undefined })); }} />
           {errors.value && <p style={{ fontSize:11, color:"#E53935", margin:"5px 0 0", fontWeight:700 }}>{errors.value}</p>}
+        </div>
+
+        <div>
+          <label style={L}>Cidade da demanda</label>
+          <input type="text" placeholder="Ex: Guarulhos"
+            style={{ ...F, borderColor: errors.cidade ? "#E53935" : undefined }}
+            value={form.cidade}
+            onChange={e => { setForm(f => ({ ...f, cidade: e.target.value })); if (errors.cidade) setErrors(p => ({ ...p, cidade: undefined })); }} />
+          {errors.cidade && <p style={{ fontSize:11, color:"#E53935", margin:"5px 0 0", fontWeight:700 }}>{errors.cidade}</p>}
+          <p style={{ fontSize:11, color:"#aaa", margin:"5px 0 0" }}>Só profissionais dessa cidade recebem o alerta.</p>
         </div>
 
         <div>
@@ -6664,6 +6677,7 @@ function GuestMural({ onSignup, allDocsVerified }) {
 function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro, plano, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet, onAcceptOrder }) {
   const [online,       setOnline]       = useState(false);
   const [categoriaServico, setCategoriaServico] = useState([]);
+  const [userCity, setUserCity] = useState("");
   const [newOrder, setNewOrder] = useState(null);
   const [activeFilter, setActiveFilter] = useState("all");
   const [realPedidos, setRealPedidos] = useState(SEED_FEED);
@@ -6680,9 +6694,10 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   const userToggledRef = useRef(false);
   useEffect(() => {
     if (!userEmail) return;
-    supabase.from("usuarios").select("categoria_servico,status").eq("email", userEmail).maybeSingle()
+    supabase.from("usuarios").select("categoria_servico,status,city").eq("email", userEmail).maybeSingle()
       .then(({ data }) => {
         setCategoriaServico(data?.categoria_servico || []);
+        setUserCity(data?.city || "");
         if (!userToggledRef.current) setOnline(!!data?.status);
       })
       .catch(() => {});
@@ -6698,6 +6713,14 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   ];
 
   const filtered = realPedidos.filter(s => {
+    // Demanda de empresa (publico_alvo:"pro") só aparece pra quem bate
+    // categoria E cidade — sem isso, toda demanda aparecia pra qualquer
+    // Multi Pro, de qualquer categoria/cidade, diluindo o mural.
+    if (s.publicoAlvo === "pro") {
+      const catOk = categoriaServico.includes(s.cat);
+      const cityOk = !!userCity && !!s.loc && s.loc.toLowerCase() === userCity.toLowerCase();
+      if (!catOk || !cityOk) return false;
+    }
     if (activeFilter === "urgent") return s.urgent;
     if (activeFilter === "topPay") return s.value >= 400;
     return true;
@@ -7736,11 +7759,29 @@ export default function App() {
     refreshMeusPedidos();
   };
 
+  // Avisa (push) e marca como "recusada" os outros candidatos de um pedido/
+  // demanda depois que um é escolhido — antes ficavam "pendente" pra sempre,
+  // sem nenhuma sinalização de que a vaga já foi preenchida.
+  const notificarCandidatosRecusados = (pedidoId, propostaEscolhidaId) => {
+    supabase.from("propostas").select("id,profissional_email,profissional_id").eq("pedido_id", pedidoId).eq("status", "pendente").neq("id", propostaEscolhidaId)
+      .then(({ data }) => {
+        const outras = data || [];
+        if (!outras.length) return;
+        supabase.from("propostas").update({ status: "recusada" }).in("id", outras.map(p => p.id)).then(()=>{});
+        const emails = outras.map(p => p.profissional_email || p.profissional_id).filter(Boolean);
+        if (emails.length) {
+          fetch("/api/notify-recusado", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ emails }) }).catch(()=>{});
+        }
+      })
+      .catch(()=>{});
+  };
+
   // Usada tanto por PropostasScreen ("Ver Propostas" → aceitar) quanto por
   // AlertsScreen ("Aceitar" direto no alerta) — antes eram dois caminhos
   // redundantes, um real e um mock.
   const handleAceitarProposta = (proposta) => {
     supabase.from("propostas").update({ status:"aceita" }).eq("id", proposta.id).then(()=>{});
+    notificarCandidatosRecusados(proposta.pedido_id, proposta.id);
     // Grava o valor negociado/aceito no pedido — sem isso, "pedidos.valor"
     // ficava travado no valor original do cliente pra sempre, e Ganhos do
     // Mês (e qualquer outra tela que leia service.value) somava o valor
@@ -7765,6 +7806,7 @@ export default function App() {
   // chat in-app (Fase 1), espelhando o fluxo de cliente+profissional individual.
   const handleAceitarPropostaEmpresa = (proposta) => {
     supabase.from("propostas").update({ status:"aceita" }).eq("id", proposta.id).then(()=>{});
+    notificarCandidatosRecusados(proposta.pedido_id, proposta.id);
     // Só abre o chat depois do update de "pedidos" terminar — antes disso,
     // MinhasDemandasScreen podia remontar e buscar o pedido ainda com o status
     // antigo (a escrita ainda não tinha chegado no banco).
