@@ -90,6 +90,35 @@ function resolveCats(ids) {
     .filter(Boolean);
 }
 
+// Reputação de longo prazo — calculada ao vivo (sem coluna de cache, mesmo
+// raciocínio de "Minha Rede": evita dessincronizar) a partir de avaliacoes +
+// pedidos. Soma pedidos como cliente + como profissional/empresa (visão de
+// confiabilidade geral na plataforma, não separada por papel). Simétrico:
+// funciona igual pra qualquer email, dos dois lados.
+async function fetchReputacao(email) {
+  if (!email) return { mediaEstrelas: null, totalAvaliacoes: 0, concluidos: 0, taxaConclusao: null };
+  try {
+    const [{ data: avals }, { data: comoCliente }, { data: comoProfissional }] = await Promise.all([
+      supabase.from("avaliacoes").select("estrelas").eq("avaliado_email", email),
+      supabase.from("pedidos").select("status").eq("cliente_id", email),
+      supabase.from("pedidos").select("status").eq("profissional_aceito", email),
+    ]);
+    const todos = [...(comoCliente || []), ...(comoProfissional || [])];
+    const concluidos = todos.filter(p => p.status === "concluido").length;
+    const cancelados = todos.filter(p => p.status === "cancelado").length;
+    const disputas   = todos.filter(p => p.status === "em_disputa").length;
+    const totalTerminado = concluidos + cancelados + disputas;
+    return {
+      mediaEstrelas: avals?.length ? avals.reduce((s, a) => s + (a.estrelas || 0), 0) / avals.length : null,
+      totalAvaliacoes: avals?.length || 0,
+      concluidos,
+      taxaConclusao: totalTerminado ? concluidos / totalTerminado : null,
+    };
+  } catch {
+    return { mediaEstrelas: null, totalAvaliacoes: 0, concluidos: 0, taxaConclusao: null };
+  }
+}
+
 const NEARBY = [
   { id:"n1", title:"Pintar parede sala",    cat:"pintor",     rating:4.4, price:380, dist:"0,8 km", emoji:"🖌️", bg:"#F3E5F5" },
   { id:"n2", title:"Conserto de encanação", cat:"encanador",  rating:4.8, price:220, dist:"1,1 km", emoji:"🔧", bg:"#E8F4FF" },
@@ -119,6 +148,29 @@ function MiniStars({ v, size = 10 }) {
         <Star key={s} size={size} fill={v >= s ? "#F9A825" : "none"} stroke={v >= s ? "#F9A825" : "#ddd"} />
       ))}
     </span>
+  );
+}
+
+// Reputação de longo prazo — estrela como número principal, volume e taxa de
+// conclusão como texto de apoio (transparente, sem score único opaco que
+// esconda de onde vêm os números). null = sem dado ainda, não renderiza nada.
+function ReputacaoBadge({ mediaEstrelas, totalAvaliacoes, concluidos, taxaConclusao }) {
+  if (mediaEstrelas == null && !concluidos) return null;
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+      {mediaEstrelas != null && (
+        <div style={{ display:"flex", alignItems:"center", gap:3, background:"#FFF8E7", border:"1px solid #FDE68A", borderRadius:99, padding:"3px 8px" }}>
+          <Star size={12} color="#F9A825" fill="#F9A825" />
+          <span style={{ fontSize:11, fontWeight:800, color:"#92400E" }}>{mediaEstrelas.toFixed(1)}</span>
+          {totalAvaliacoes > 0 && <span style={{ fontSize:10, color:"#92400E99" }}>({totalAvaliacoes})</span>}
+        </div>
+      )}
+      {!!concluidos && (
+        <span style={{ fontSize:10.5, color:"#888" }}>
+          {concluidos} concluído{concluidos > 1 ? "s" : ""}{taxaConclusao != null ? ` · ${Math.round(taxaConclusao * 100)}% concluídos` : ""}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -638,6 +690,8 @@ function EmpresaProfileScreen({ empresa, onBack, onLogout }) {
    no preview "Como você aparece pros clientes" do EmpresaHomeScreen. */
 function EmpresaCard({ emp, onVerPerfil }) {
   const isOnline = emp.status === true;
+  const [reputacao, setReputacao] = useState(null);
+  useEffect(() => { if (emp.email) fetchReputacao(emp.email).then(setReputacao); }, [emp.email]);
   return (
     <div style={{ background:"white", borderRadius:20, overflow:"hidden", boxShadow:"0 4px 20px rgba(0,0,0,.08)", border:"1px solid #F0F0F0", padding:"14px 16px", opacity: isOnline ? 1 : .7 }}>
       <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
@@ -660,6 +714,7 @@ function EmpresaCard({ emp, onVerPerfil }) {
             )}
           </div>
           {emp.descricao && <p style={{ fontSize:12, color:"#888", margin:0 }}>{emp.descricao}</p>}
+          {reputacao && <div style={{ marginTop:4 }}><ReputacaoBadge {...reputacao} /></div>}
         </div>
       </div>
       <div style={{ display:"grid", gridTemplateColumns: emp.telefone_contato ? "1fr 1fr" : "1fr", gap:9 }}>
@@ -956,7 +1011,7 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
 function BancoProfissionaisScreen({ onBack, empresaEmail }) {
   const [loading,           setLoading]           = useState(true);
   const [profissionais,     setProfissionais]     = useState([]);
-  const [notas,             setNotas]              = useState({}); // email -> média
+  const [reputacoes,        setReputacoes]         = useState({}); // email -> { mediaEstrelas, totalAvaliacoes, concluidos, taxaConclusao }
   const [busca,             setBusca]              = useState("");
   const [catsSelecionadas,  setCatsSelecionadas]   = useState([]);
   const [soDisponiveis,     setSoDisponiveis]      = useState(false);
@@ -981,20 +1036,12 @@ function BancoProfissionaisScreen({ onBack, empresaEmail }) {
         setLoading(false);
         const emails = lista.map(p => p.email).filter(Boolean);
         if (!emails.length) return;
-        // Nota média por profissional — hoje não existe agregação de
-        // "avaliacoes" em nenhuma outra tela, então calcula client-side
-        // (mesmo padrão já usado pra enriquecer PropostasScreen).
-        supabase.from("avaliacoes").select("profissional_id,estrelas").in("profissional_id", emails)
-          .then(({ data: avals }) => {
-            const soma = {}, count = {};
-            (avals || []).forEach(a => {
-              soma[a.profissional_id] = (soma[a.profissional_id] || 0) + (a.estrelas || 0);
-              count[a.profissional_id] = (count[a.profissional_id] || 0) + 1;
-            });
-            const medias = {};
-            Object.keys(count).forEach(email => { medias[email] = soma[email] / count[email]; });
-            setNotas(medias);
-          }).catch(() => {});
+        // Reputação real por profissional (nota + volume + taxa de conclusão),
+        // via avaliado_email — a coluna genérica, não a legada profissional_id
+        // (que só cobre metade dos casos e não seria simétrica).
+        Promise.all(emails.map(email => fetchReputacao(email).then(r => [email, r])))
+          .then(pares => setReputacoes(Object.fromEntries(pares)))
+          .catch(() => {});
       })
       .catch(() => setLoading(false));
     carregarRede();
@@ -1040,7 +1087,7 @@ function BancoProfissionaisScreen({ onBack, empresaEmail }) {
       if (soDisponiveis && p.status !== true) return false;
       return true;
     })
-    .sort((a, b) => (notas[b.email] || 0) - (notas[a.email] || 0));
+    .sort((a, b) => (reputacoes[b.email]?.mediaEstrelas || 0) - (reputacoes[a.email]?.mediaEstrelas || 0));
 
   return (
     <div style={{ minHeight:"100vh", background:"#F8F9FA", paddingBottom:40 }}>
@@ -1079,7 +1126,7 @@ function BancoProfissionaisScreen({ onBack, empresaEmail }) {
         {!loading && filtrados.length === 0 && <p style={{ textAlign:"center", color:"#aaa", fontSize:13, padding:"20px 0" }}>Nenhum profissional encontrado com esses filtros.</p>}
         {filtrados.map(p => {
           const cats = resolveCats(p.categoria_servico);
-          const nota = notas[p.email];
+          const reputacao = reputacoes[p.email];
           return (
             <div key={p.email} style={{ background:"white", borderRadius:20, padding:16, boxShadow:"0 4px 20px rgba(0,0,0,.08)", border:"1px solid #F0F0F0" }}>
               <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:10 }}>
@@ -1094,13 +1141,8 @@ function BancoProfissionaisScreen({ onBack, empresaEmail }) {
                     {p.status === true && <span style={{ width:7, height:7, borderRadius:"50%", background:G, flexShrink:0 }} title="Disponível agora" />}
                   </div>
                   {cats.length > 0 && <p style={{ fontSize:11, color:"#888", margin:"2px 0 0" }}>{cats.map(c => `${c.emoji} ${c.label}`).join(" · ")}</p>}
+                  {reputacao && <div style={{ marginTop:4 }}><ReputacaoBadge {...reputacao} /></div>}
                 </div>
-                {nota != null && (
-                  <div style={{ display:"flex", alignItems:"center", gap:3, background:"#FFF8E7", border:"1px solid #FDE68A", borderRadius:99, padding:"3px 8px", flexShrink:0 }}>
-                    <Star size={12} color="#F9A825" fill="#F9A825" />
-                    <span style={{ fontSize:11, fontWeight:800, color:"#92400E" }}>{nota.toFixed(1)}</span>
-                  </div>
-                )}
                 <button onClick={() => toggleFavorito(p.email)} title={rede[p.email] ? "Remover da Minha Rede" : "Adicionar à Minha Rede"} style={{ background:"none", border:"none", cursor:"pointer", padding:4, flexShrink:0, display:"flex" }}>
                   <Star size={20} color={rede[p.email] ? "#7C3AED" : "#D1D5DB"} fill={rede[p.email] ? "#7C3AED" : "none"} />
                 </button>
@@ -1132,7 +1174,7 @@ function BancoProfissionaisScreen({ onBack, empresaEmail }) {
 function MinhaRedeScreen({ onBack, empresaEmail }) {
   const [loading,       setLoading]       = useState(true);
   const [profissionais, setProfissionais] = useState([]);
-  const [notas,         setNotas]         = useState({});
+  const [reputacoes,    setReputacoes]    = useState({}); // email -> { mediaEstrelas, totalAvaliacoes, concluidos, taxaConclusao }
 
   const carregar = () => {
     if (!empresaEmail) { setLoading(false); return; }
@@ -1156,17 +1198,9 @@ function MinhaRedeScreen({ onBack, empresaEmail }) {
         .then(({ data }) => {
           setProfissionais((data || []).map(p => ({ ...p, ...origemPorEmail[p.email] })));
           setLoading(false);
-          supabase.from("avaliacoes").select("profissional_id,estrelas").in("profissional_id", emails)
-            .then(({ data: avals }) => {
-              const soma = {}, count = {};
-              (avals || []).forEach(a => {
-                soma[a.profissional_id] = (soma[a.profissional_id] || 0) + (a.estrelas || 0);
-                count[a.profissional_id] = (count[a.profissional_id] || 0) + 1;
-              });
-              const medias = {};
-              Object.keys(count).forEach(email => { medias[email] = soma[email] / count[email]; });
-              setNotas(medias);
-            }).catch(() => {});
+          Promise.all(emails.map(email => fetchReputacao(email).then(r => [email, r])))
+            .then(pares => setReputacoes(Object.fromEntries(pares)))
+            .catch(() => {});
         }).catch(() => setLoading(false));
     }).catch(() => setLoading(false));
   };
@@ -1203,7 +1237,7 @@ function MinhaRedeScreen({ onBack, empresaEmail }) {
         )}
         {profissionais.map(p => {
           const cats = resolveCats(p.categoria_servico);
-          const nota = notas[p.email];
+          const reputacao = reputacoes[p.email];
           return (
             <div key={p.email} style={{ background:"white", borderRadius:20, padding:16, boxShadow:"0 4px 20px rgba(0,0,0,.08)", border:"1px solid #F0F0F0" }}>
               <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:10 }}>
@@ -1218,17 +1252,12 @@ function MinhaRedeScreen({ onBack, empresaEmail }) {
                     {p.status === true && <span style={{ width:7, height:7, borderRadius:"50%", background:G, flexShrink:0 }} title="Disponível agora" />}
                   </div>
                   {cats.length > 0 && <p style={{ fontSize:11, color:"#888", margin:"2px 0 0" }}>{cats.map(c => `${c.emoji} ${c.label}`).join(" · ")}</p>}
+                  {reputacao && <div style={{ marginTop:4 }}><ReputacaoBadge {...reputacao} /></div>}
                   <div style={{ display:"flex", gap:6, marginTop:4 }}>
                     {p.historico && <span style={{ fontSize:10, fontWeight:800, color:G, background:G+"18", borderRadius:99, padding:"2px 7px" }}>Já trabalhou com você</span>}
                     {(p.favoritado || p.convidado) && <span style={{ fontSize:10, fontWeight:800, color:"#7C3AED", background:"#7C3AED18", borderRadius:99, padding:"2px 7px" }}>{p.convidado ? "Convidado" : "Favoritado"}</span>}
                   </div>
                 </div>
-                {nota != null && (
-                  <div style={{ display:"flex", alignItems:"center", gap:3, background:"#FFF8E7", border:"1px solid #FDE68A", borderRadius:99, padding:"3px 8px", flexShrink:0 }}>
-                    <Star size={12} color="#F9A825" fill="#F9A825" />
-                    <span style={{ fontSize:11, fontWeight:800, color:"#92400E" }}>{nota.toFixed(1)}</span>
-                  </div>
-                )}
               </div>
               {p.bio && <p style={{ fontSize:12.5, color:"#555", lineHeight:1.5, margin:"0 0 12px" }}>{p.bio}</p>}
               <div style={{ display:"flex", gap:8 }}>
@@ -1803,7 +1832,7 @@ function EmpresaPedidosScreen({ userEmail }) {
   );
 }
 
-function RadarSearchScreen({ service, onFound }) {
+function RadarSearchScreen({ service, onFound, onStatusChange, showToast }) {
   const [phase, setPhase] = useState(0); // 0=searching, 1=found // v3
   const [raio, setRaio] = useState(2);
   const [expandMsg, setExpandMsg] = useState('');
@@ -1909,9 +1938,9 @@ function RadarSearchScreen({ service, onFound }) {
         <div style={{ margin:'12px 16px 0', padding:'14px', borderRadius:14, border:'1px solid #FFE0E0', background:'#FFF5F5', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div>
             <p style={{ margin:0, fontSize:13, fontWeight:700, color:'#C0392B' }}>Profissional nao apareceu?</p>
-            <p style={{ margin:0, fontSize:11, color:'#888' }}>Reembolso automatico em ate 1h</p>
+            <p style={{ margin:0, fontSize:11, color:'#888' }}>Você pode cancelar o pedido</p>
           </div>
-          <button onClick={() => { if(window.confirm('Confirma cancelamento? Reembolso em ate 1h.')) { onStatusChange && onStatusChange(service.id, 'cancelled'); showToast && showToast('Pedido cancelado. Reembolso em ate 1h.', 'E'); } }} style={{ padding:'8px 14px', borderRadius:10, border:'none', background:'#C0392B', color:'white', fontWeight:700, fontSize:12, cursor:'pointer' }}>Cancelar pedido</button>
+          <button onClick={() => { if(window.confirm('Cancelar esse pedido? O profissional será avisado.')) { onStatusChange && onStatusChange(service.id, 'cancelado'); showToast && showToast('Pedido cancelado.', 'E'); } }} style={{ padding:'8px 14px', borderRadius:10, border:'none', background:'#C0392B', color:'white', fontWeight:700, fontSize:12, cursor:'pointer' }}>Cancelar pedido</button>
         </div>
         {/* interest banner */}
           <div style={{ marginTop:12, padding:"10px 14px", borderRadius:14, background:G+"12", border:`1px solid ${G}40`, display:"flex", alignItems:"center", gap:8 }}>
@@ -2453,6 +2482,7 @@ function statusToPhase(status) {
   if (status === "executando")   return 2;
   if (status === "em_disputa")   return 2;
   if (status === "concluido")    return 3;
+  if (status === "cancelado")    return 3;
   return 0;
 }
 
@@ -4437,6 +4467,8 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
       .then(({ data }) => setAvatarUrl(data?.foto_perfil_url || null))
       .catch(() => {});
   }, [userEmail]);
+  const [reputacao, setReputacao] = useState(null);
+  useEffect(() => { fetchReputacao(userEmail).then(setReputacao); }, [userEmail]);
   const [portfolioImgs, setPortfolioImgs] = useState([]);
   const [uploadingPortfolio, setUploadingPortfolio] = useState(false);
   const [bio, setBio] = useState("");
@@ -4564,9 +4596,12 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
     if (error) showToast?.("❌ Erro ao salvar bio: " + (error.message || ""), "#DC2626");
   };
 
-  const stats = role === "client"
-    ? { rating: 4.9, count: 12, label: "contratações" }
-    : { rating: 4.8, count: 47, label: "serviços feitos" };
+  const stats = {
+    rating: reputacao?.mediaEstrelas != null ? reputacao.mediaEstrelas.toFixed(1) : "—",
+    count: reputacao?.concluidos || 0,
+    label: role === "client" ? "contratações" : "serviços feitos",
+    taxaConclusao: reputacao?.taxaConclusao != null ? `${Math.round(reputacao.taxaConclusao * 100)}%` : "—",
+  };
 
   // ── shared menu row
   const MenuRow = ({ Icon, iconBg, iconColor, label, sub, right, danger, onClick }) => (
@@ -4645,7 +4680,7 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
             {[
               { val: `⭐ ${stats.rating}`, lbl:"Avaliação" },
               { val: stats.count,          lbl: stats.label },
-              { val: role === "client" ? "2 anos" : "3 anos",  lbl:"No Multi" },
+              { val: stats.taxaConclusao,  lbl:"Conclusão" },
             ].map((st, i) => (
               <div key={i} style={{ padding:"10px 18px", borderRight: i < 2 ? "1px solid rgba(255,255,255,.15)" : "none", textAlign:"center" }}>
                 <p style={{ fontSize:15, fontWeight:900, color:"white", marginBottom:2 }}>{st.val}</p>
@@ -4858,6 +4893,12 @@ function isEmAndamentoTab(status) {
   return status === "em_andamento" || status === "executando" || status === "em_disputa";
 }
 
+// Cancelado entra no mesmo bucket terminal de concluído — senão some da
+// lista (nenhuma das 3 abas bateria com o status exato).
+function isConcluidoTab(status) {
+  return status === "concluido" || status === "cancelado";
+}
+
 function MyServicesScreen({ myServices, onOpenService, onOpenChat, onViewPropostas, isPro, initialTab = "aberto" }) {
   const [tab, setTab] = useState(initialTab);
 
@@ -4867,7 +4908,7 @@ function MyServicesScreen({ myServices, onOpenService, onOpenChat, onViewPropost
     { id:"concluido",    label:"Concluído",    color:G },
   ];
 
-  const matchesTab = (s, tabId) => tabId === "em_andamento" ? isEmAndamentoTab(s.status) : s.status === tabId;
+  const matchesTab = (s, tabId) => tabId === "em_andamento" ? isEmAndamentoTab(s.status) : tabId === "concluido" ? isConcluidoTab(s.status) : s.status === tabId;
   const filtered = myServices.filter(s => matchesTab(s, tab));
 
   return (
@@ -4900,8 +4941,8 @@ function MyServicesScreen({ myServices, onOpenService, onOpenChat, onViewPropost
         )}
         {filtered.map(s => {
           const cat = CATS.find(c => c.id === s.cat);
-          const statusColor = s.status === "aberto" ? B : isEmAndamentoTab(s.status) ? O : G;
-          const statusLabel = s.status === "aberto" ? "Aguardando propostas" : s.status === "concluido" ? "Concluído" : "Em andamento";
+          const statusColor = s.status === "aberto" ? B : isEmAndamentoTab(s.status) ? O : s.status === "cancelado" ? "#DC2626" : G;
+          const statusLabel = s.status === "aberto" ? "Aguardando propostas" : s.status === "concluido" ? "Concluído" : s.status === "cancelado" ? "Cancelado" : "Em andamento";
           return (
             <div key={s.id} style={{ background:"white", borderRadius:16, padding:16, boxShadow:"0 2px 10px rgba(0,0,0,.06)", border:"1px solid #F0F0F0" }}>
               <div style={{ display:"flex", alignItems:"flex-start", gap:10, marginBottom:10 }}>
@@ -4949,6 +4990,9 @@ function MyServicesScreen({ myServices, onOpenService, onOpenChat, onViewPropost
                   </div>
                   <button onClick={() => onOpenService(s)} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${G}`, background:"white", color:G, fontSize:12, fontWeight:800, cursor:"pointer" }}>✅ Ver detalhes</button>
                 </div>
+              )}
+              {s.status === "cancelado" && (
+                <span style={{ fontSize:12, fontWeight:700, color:"#DC2626" }}>❌ Cancelado</span>
               )}
             </div>
           );
@@ -7754,6 +7798,7 @@ export default function App() {
   function PropostasScreen({ pedido, onBack, onAceitarProposta }) {
   const [propostas, setPropostas] = useState([]);
   const [perfis, setPerfis] = useState({}); // email -> { foto_perfil_url, bio, categoria_servico }
+  const [reputacoes, setReputacoes] = useState({}); // email -> { mediaEstrelas, totalAvaliacoes, concluidos, taxaConclusao }
   const [loading, setLoading] = useState(true);
   useEffect(()=>{
     if(!pedido) return;
@@ -7770,6 +7815,9 @@ export default function App() {
           const map = {};
           (usuarios || []).forEach(u => { map[u.email] = u; });
           setPerfis(map);
+          Promise.all(emails.map(email => fetchReputacao(email).then(r => [email, r])))
+            .then(pares => setReputacoes(Object.fromEntries(pares)))
+            .catch(() => {});
         }
       })
       .catch(()=>setLoading(false));
@@ -7782,6 +7830,7 @@ export default function App() {
       {!loading && propostas.length===0 && <p style={{color:"#888"}}>Nenhuma proposta ainda.</p>}
       {propostas.map(p=>{
         const perfil = perfis[p.profissional_email || p.profissional_id];
+        const reputacao = reputacoes[p.profissional_email || p.profissional_id];
         const cats = resolveCats(perfil?.categoria_servico);
         return (
           <div key={p.id} style={{background:"white",borderRadius:12,padding:16,marginBottom:12,boxShadow:"0 2px 8px rgba(0,0,0,.08)"}}>
@@ -7794,6 +7843,7 @@ export default function App() {
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontWeight:700,fontSize:15}}>{p.profissional_nome||"Profissional"}</div>
                 {cats.length > 0 && <div style={{fontSize:11,color:"#888"}}>{cats.map(c=>`${c.emoji} ${c.label}`).join(" · ")}</div>}
+                {reputacao && <div style={{marginTop:3}}><ReputacaoBadge {...reputacao} /></div>}
               </div>
             </div>
             {perfil?.bio && (
@@ -7862,7 +7912,7 @@ const renderContent = () => {
     </div>
   );
   
-  if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onFound={(pro, svc) => { setSelectedPro({pro, svc}); }} />;
+  if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onFound={(pro, svc) => { setSelectedPro({pro, svc}); }} onStatusChange={handlePedidoStatusChange} showToast={showToast} />;
       if (screen === "alerts") return <AlertsScreen notifications={notificationsFromPropostas} onAccept={handleAceitarPropostaPorId} onOpenChat={openChatFromNotif} />;
       if (screen === "chat")   return <ChatInbox myServices={meusPedidosComCandidatos} onOpenChat={openChatFromService} />;
       if (screen === "orders") return <MyServicesScreen initialTab="aberto" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} isPro={isPro} />;
