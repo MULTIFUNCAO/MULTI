@@ -4899,7 +4899,7 @@ function isConcluidoTab(status) {
   return status === "concluido" || status === "cancelado";
 }
 
-function MyServicesScreen({ myServices, onOpenService, onOpenChat, onViewPropostas, isPro, initialTab = "aberto" }) {
+function MyServicesScreen({ myServices, onOpenService, onOpenChat, onViewPropostas, onCancelarPedido, isPro, initialTab = "aberto" }) {
   const [tab, setTab] = useState(initialTab);
 
   const tabs = [
@@ -4960,9 +4960,14 @@ function MyServicesScreen({ myServices, onOpenService, onOpenChat, onViewPropost
               <p style={{ fontSize:12, color:"#aaa", lineHeight:1.5, marginBottom:12 }}>{s.desc}</p>
 
               {s.status === "aberto" && (
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
                   <span style={{ fontSize:12, color:"#aaa" }}>👥 {s.candidates || 0} candidatos</span>
-                  <button onClick={() => { onViewPropostas(s); }} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${B}`, background:"white", color:B, fontSize:12, fontWeight:800, cursor:"pointer" }}>Ver Propostas</button>
+                  <div style={{ display:"flex", gap:8 }}>
+                    {onCancelarPedido && (
+                      <button onClick={() => onCancelarPedido(s)} style={{ padding:"8px 14px", borderRadius:10, border:"1.5px solid #DC2626", background:"white", color:"#DC2626", fontSize:12, fontWeight:800, cursor:"pointer" }}>Cancelar</button>
+                    )}
+                    <button onClick={() => { onViewPropostas(s); }} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${B}`, background:"white", color:B, fontSize:12, fontWeight:800, cursor:"pointer" }}>Ver Propostas</button>
+                  </div>
                 </div>
               )}
 
@@ -7915,7 +7920,7 @@ const renderContent = () => {
   if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onFound={(pro, svc) => { setSelectedPro({pro, svc}); }} onStatusChange={handlePedidoStatusChange} showToast={showToast} />;
       if (screen === "alerts") return <AlertsScreen notifications={notificationsFromPropostas} onAccept={handleAceitarPropostaPorId} onOpenChat={openChatFromNotif} />;
       if (screen === "chat")   return <ChatInbox myServices={meusPedidosComCandidatos} onOpenChat={openChatFromService} />;
-      if (screen === "orders") return <MyServicesScreen initialTab="aberto" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} isPro={isPro} />;
+      if (screen === "orders") return <MyServicesScreen initialTab="aberto" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} onCancelarPedido={(s) => { if (window.confirm('Cancelar esse pedido? O profissional será avisado.')) { handlePedidoStatusChange(s.id, 'cancelado'); showToast?.('Pedido cancelado.', '#DC2626'); } }} isPro={isPro} />;
       if (screen === "profile") {
         if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
         return <ProfileScreen role="client" userName={userName} isPro={false} showRankingGlobal={showRankingGlobal} onClearRankingGlobal={() => setShowRankingGlobal(false)} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenAdmin={() => setShowAdmin(true)} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
