@@ -2512,6 +2512,8 @@ function mapPedidoRow(p) {
     concluido_em: p.concluido_em,
     contestado_em: p.contestado_em,
     contestacao_motivo: p.contestacao_motivo,
+    cancelado_motivo: p.cancelado_motivo,
+    cancelado_por: p.cancelado_por,
     concluido_cliente_em: p.concluido_cliente_em,
     concluido_profissional_em: p.concluido_profissional_em,
     conclusao_fotos_cliente: p.conclusao_fotos_cliente,
@@ -2571,7 +2573,7 @@ function ServiceStatusStepper({ phase }) {
 }
 
 /* ───────────────────────── SERVICE DETAIL — CLIENT VIEW ─────────────────────── */
-function ServiceDetailClient({ service, onBack, onStatusChange, onConfirmarConclusao, onAvaliar, showToast }) {
+function ServiceDetailClient({ service, onBack, onStatusChange, onConfirmarConclusao, onCancelarPedido, onAvaliar, showToast }) {
   const [phase,      setPhase]      = useState(statusToPhase(service.status));
   const [showSOS,    setShowSOS]    = useState(false);
   const [released,   setReleased]   = useState(service.status === "concluido");
@@ -2579,6 +2581,9 @@ function ServiceDetailClient({ service, onBack, onStatusChange, onConfirmarConcl
   const [confirmando,setConfirmando]= useState(false);
   const [fotos,       setFotos]       = useState([]);
   const [enviandoFoto,setEnviandoFoto]= useState(false);
+  const [showCancelar,    setShowCancelar]    = useState(false);
+  const [motivoCancelar,  setMotivoCancelar]  = useState("");
+  const [cancelando,      setCancelando]      = useState(false);
   const cat  = CATS.find(c => c.id === service.cat);
   const pin  = generatePin(service.id);
   const jaConfirmeiConclusao = !!service.concluido_cliente_em;
@@ -2631,6 +2636,14 @@ function ServiceDetailClient({ service, onBack, onStatusChange, onConfirmarConcl
     setConfirmando(true);
     showToast?.("✅ Confirmação registrada.", G);
     onConfirmarConclusao?.(service.id, "cliente", observacao, fotos);
+  };
+
+  const confirmarCancelamento = () => {
+    if (cancelando || !motivoCancelar.trim()) return;
+    if (!window.confirm("Cancelar esse pedido? O profissional será avisado pelo chat.")) return;
+    setCancelando(true);
+    onCancelarPedido?.(service.id, "cliente", motivoCancelar.trim());
+    showToast?.("Pedido cancelado.", "#DC2626");
   };
 
   return (
@@ -2791,6 +2804,36 @@ function ServiceDetailClient({ service, onBack, onStatusChange, onConfirmarConcl
               <button onClick={() => setShowSOS(false)} style={{ marginTop:10, width:"100%", padding:"10px", borderRadius:12, border:"1.5px solid #E5E7EB", background:"white", color:"#888", fontWeight:700, fontSize:12, cursor:"pointer" }}>
                 Estou bem, cancelar
               </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── CANCELAR PEDIDO (pós-aceite: Acordo Fechado / Em Execução / Disputa) ── */}
+      {isEmAndamentoTab(service.status) && (
+        <div>
+          {!showCancelar ? (
+            <button onClick={() => setShowCancelar(true)} style={{ width:"100%", padding:"12px 0", borderRadius:14, border:"1.5px solid #FECACA", background:"white", color:"#DC2626", fontWeight:700, fontSize:13, cursor:"pointer" }}>
+              Cancelar pedido
+            </button>
+          ) : (
+            <div style={{ background:"white", borderRadius:20, padding:"16px", boxShadow:"0 2px 12px rgba(0,0,0,.07)", border:"1.5px solid #FECACA" }}>
+              <p style={{ fontSize:13, fontWeight:900, color:"#DC2626", margin:"0 0 8px" }}>Cancelar pedido</p>
+              <p style={{ fontSize:12, color:"#555", lineHeight:1.5, margin:"0 0 10px" }}>O profissional será avisado pelo chat. Conte o motivo:</p>
+              <textarea
+                value={motivoCancelar}
+                onChange={e => setMotivoCancelar(e.target.value)}
+                placeholder="Ex: imprevisto, não preciso mais do serviço..."
+                style={{ width:"100%", minHeight:70, borderRadius:12, border:"1.5px solid #eee", padding:12, fontSize:13.5, fontFamily:"Nunito", resize:"none", boxSizing:"border-box" }}
+              />
+              <div style={{ display:"flex", gap:8, marginTop:10 }}>
+                <button onClick={() => { setShowCancelar(false); setMotivoCancelar(""); }} style={{ flex:1, padding:"11px 0", borderRadius:12, border:"1.5px solid #E5E7EB", background:"white", color:"#888", fontWeight:700, fontSize:12.5, cursor:"pointer" }}>
+                  Voltar
+                </button>
+                <button onClick={confirmarCancelamento} disabled={cancelando || !motivoCancelar.trim()} style={{ flex:1, padding:"11px 0", borderRadius:12, border:"none", background: (cancelando || !motivoCancelar.trim()) ? "#F3B4AE" : "#DC2626", color:"white", fontWeight:800, fontSize:12.5, cursor: (cancelando || !motivoCancelar.trim()) ? "default" : "pointer" }}>
+                  Confirmar cancelamento
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -3104,9 +3147,21 @@ function ProfessionalFeed({ onViewService, isPro, feedServices, embedded = false
 }
 
 /* ───────────────────────── SERVICE DETAIL PRO ───────────────────────────────── */
-function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry, onAvaliar }) {
+function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry, onAvaliar, onCancelarPedido, showToast }) {
   const cat   = CATS.find(c => c.id === service.cat);
   const phase = statusToPhase(service.status);
+  const [showCancelar,  setShowCancelar]  = useState(false);
+  const [motivoCancelar,setMotivoCancelar]= useState("");
+  const [cancelando,    setCancelando]    = useState(false);
+
+  const confirmarCancelamento = () => {
+    if (cancelando || !motivoCancelar.trim()) return;
+    if (!window.confirm("Cancelar esse pedido? O cliente será avisado pelo chat.")) return;
+    setCancelando(true);
+    onCancelarPedido?.(service.id, "profissional", motivoCancelar.trim());
+    showToast?.("Pedido cancelado.", "#DC2626");
+  };
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:14, padding:"18px 16px 40px" }}>
       <BackBtn onClick={onBack} />
@@ -3176,6 +3231,36 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry, o
         <button onClick={onOpenPinEntry} style={{ width:"100%", padding:"15px 0", borderRadius:16, border:"none", cursor:"pointer", background:"linear-gradient(135deg,#1a1a2e,#2d2d44)", color:"white", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:10, boxShadow:"0 5px 18px rgba(0,0,0,.2)" }}>
           <KeyRound size={18} /> Inserir Codigo do Cliente (Finalizar)
         </button>
+      )}
+
+      {/* ── CANCELAR PEDIDO (pós-aceite: Acordo Fechado / Em Execução / Disputa) ── */}
+      {isEmAndamentoTab(service.status) && (
+        <div>
+          {!showCancelar ? (
+            <button onClick={() => setShowCancelar(true)} style={{ width:"100%", padding:"12px 0", borderRadius:14, border:"1.5px solid #FECACA", background:"white", color:"#DC2626", fontWeight:700, fontSize:13, cursor:"pointer" }}>
+              Cancelar pedido
+            </button>
+          ) : (
+            <div style={{ background:"white", borderRadius:20, padding:"16px", boxShadow:"0 2px 12px rgba(0,0,0,.07)", border:"1.5px solid #FECACA" }}>
+              <p style={{ fontSize:13, fontWeight:900, color:"#DC2626", margin:"0 0 8px" }}>Cancelar pedido</p>
+              <p style={{ fontSize:12, color:"#555", lineHeight:1.5, margin:"0 0 10px" }}>O cliente será avisado pelo chat. Conte o motivo:</p>
+              <textarea
+                value={motivoCancelar}
+                onChange={e => setMotivoCancelar(e.target.value)}
+                placeholder="Ex: imprevisto, não vou conseguir atender..."
+                style={{ width:"100%", minHeight:70, borderRadius:12, border:"1.5px solid #eee", padding:12, fontSize:13.5, fontFamily:"Nunito", resize:"none", boxSizing:"border-box" }}
+              />
+              <div style={{ display:"flex", gap:8, marginTop:10 }}>
+                <button onClick={() => { setShowCancelar(false); setMotivoCancelar(""); }} style={{ flex:1, padding:"11px 0", borderRadius:12, border:"1.5px solid #E5E7EB", background:"white", color:"#888", fontWeight:700, fontSize:12.5, cursor:"pointer" }}>
+                  Voltar
+                </button>
+                <button onClick={confirmarCancelamento} disabled={cancelando || !motivoCancelar.trim()} style={{ flex:1, padding:"11px 0", borderRadius:12, border:"none", background: (cancelando || !motivoCancelar.trim()) ? "#F3B4AE" : "#DC2626", color:"white", fontWeight:800, fontSize:12.5, cursor: (cancelando || !motivoCancelar.trim()) ? "default" : "pointer" }}>
+                  Confirmar cancelamento
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -7787,6 +7872,30 @@ export default function App() {
       .catch(() => {});
   };
 
+  // Cancelamento pós-aceite (Fase 5): diferente do cancelamento de "aberto"
+  // (handlePedidoStatusChange), esse exige motivo e avisa o outro lado via
+  // chat — o pedido já tem profissional aceito, então sumir sem explicação
+  // deixaria o outro lado no vácuo. Conta como "cancelado" na reputação,
+  // mesma lógica que já vale pra qualquer pedido cancelado (fetchReputacao).
+  const handleCancelarPedidoPosAceite = (pedidoId, lado, motivo) => {
+    supabase.from("pedidos").update({
+      status: "cancelado",
+      cancelado_motivo: motivo,
+      cancelado_por: lado,
+      updated_at: new Date().toISOString(),
+    }).eq("id", pedidoId).select().maybeSingle()
+      .then(({ data }) => {
+        refreshMeusPedidos();
+        if (data) setSelected(sel => sel?.id === pedidoId ? mapPedidoRow(data) : sel);
+        supabase.from("mensagens").insert({
+          pedido_id: pedidoId,
+          remetente_email: userEmail,
+          texto: `❌ Pedido cancelado. Motivo: ${motivo}`,
+        }).then(()=>{}).catch(()=>{});
+      })
+      .catch(() => {});
+  };
+
   const handleProFeedAction = (payload) => {
     if (payload._upgrade) { setScreen("upgrade"); return; }
     if (payload._notify)  {
@@ -7947,7 +8056,7 @@ const renderContent = () => {
         return <ProfileScreen role="client" userName={userName} isPro={false} showRankingGlobal={showRankingGlobal} onClearRankingGlobal={() => setShowRankingGlobal(false)} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenAdmin={() => setShowAdmin(true)} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
       }
       if (screen === "propostas" && selected) return <PropostasScreen pedido={selected} onBack={()=>setScreen("orders")} onAceitarProposta={handleAceitarProposta} />;
-      if (screen === "service" && selected) return <ServiceDetailClient key={selected.id} service={selected} onBack={() => setScreen("orders")} onStatusChange={handlePedidoStatusChange} onConfirmarConclusao={handleConfirmarConclusao} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
+      if (screen === "service" && selected) return <ServiceDetailClient key={selected.id} service={selected} onBack={() => setScreen("orders")} onStatusChange={handlePedidoStatusChange} onConfirmarConclusao={handleConfirmarConclusao} onCancelarPedido={handleCancelarPedidoPosAceite} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
 
       // ── GUEST TOGGLE: show professional mural preview when guest selects "Profissional"
       if (!isLoggedIn && guestRole === "professional") {
@@ -8045,7 +8154,7 @@ const renderContent = () => {
       if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
       return <ProfileScreen role="professional" userName={userName} userEmail={userEmail} isPro={isPro} plano={plano} planoStatus={planoStatus} planoExpiraEm={planoExpiraEm} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenWallet={() => setScreen("wallet")} meusGanhos={meusGanhos} onOpenAdmin={() => setShowAdmin(true)} docStatus={docStatus} onDocStatusChange={(id, st) => setDocStatus(d => ({ ...d, [id]: st }))} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
     }
-    if (screen === "service" && selected) return <ServiceDetailPro key={selected.id} service={selected} onBack={() => setScreen("home")} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onOpenPinEntry={() => setScreen("pinjob")} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
+    if (screen === "service" && selected) return <ServiceDetailPro key={selected.id} service={selected} onBack={() => setScreen("home")} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onOpenPinEntry={() => setScreen("pinjob")} onCancelarPedido={handleCancelarPedidoPosAceite} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
     if (screen === "pinjob"  && selected) return <ServiceDetailPinEntry key={selected.id} service={selected} onBack={() => setScreen("service")} onStatusChange={handlePedidoStatusChange} onConfirmarConclusao={handleConfirmarConclusao} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
     if (screen === "orders") return <MyServicesScreen initialTab="concluido" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} isPro={isPro} />;
     // Pro home — shows professional-specific banner + filters + feed
