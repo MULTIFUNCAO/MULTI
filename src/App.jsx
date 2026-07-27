@@ -7458,7 +7458,9 @@ export default function App() {
     crim:    "pending",
     address: "pending",
   });
-  const allDocsVerified = true; // liberado para todos
+  // TODO: docStatus não persiste no Supabase ainda (só estado local) — até isso
+  // existir, manter liberado geral em vez de bloquear todo profissional a cada reload.
+  const allDocsVerified = true;
 
   // ── RESTORE SESSION FROM LOCALSTORAGE ────────────────────────────────────
   const savedSession = (() => {
@@ -7588,10 +7590,10 @@ export default function App() {
   useEffect(() => {
     const sess = (() => { try { return JSON.parse(localStorage.getItem("multiUser")) || {}; } catch { return {}; } })();
     const email = sess.email || savedSession?.email || "";
-     if (!email) { console.log("EMAIL VAZIO - multiUser:", JSON.stringify(JSON.parse(localStorage.getItem("multiUser")||"{}"))); return; }
+     if (!email) { return; }
     fetch("https://multi-backend-lfwp.onrender.com/api/enderecos/" + encodeURIComponent(email))
       .then(r => r.json())
-      .then(data => { console.log("ENDERECOS DATA:", JSON.stringify(data));
+      .then(data => {
         if (Array.isArray(data) && data.length > 0) {
           if (data[0].city) { setUserLocation(data[0].city + ", SP"); localStorage.setItem("multiLocation", data[0].city + ", SP"); }
           const cep = data[0].cep.replace(/\D/g,"");
@@ -7606,10 +7608,10 @@ export default function App() {
   useEffect(() => {
     const sess = (() => { try { return JSON.parse(localStorage.getItem("multiUser")) || {}; } catch { return {}; } })();
     const email = sess.email || savedSession?.email || "";
-     if (!email) { console.log("EMAIL VAZIO - multiUser:", JSON.stringify(JSON.parse(localStorage.getItem("multiUser")||"{}"))); return; }
+     if (!email) { return; }
     fetch("https://multi-backend-lfwp.onrender.com/api/enderecos/" + encodeURIComponent(email))
       .then(r => r.json())
-      .then(data => { console.log("ENDERECOS DATA:", JSON.stringify(data));
+      .then(data => {
         if (Array.isArray(data) && data.length > 0) {
           if (data[0].city) { setUserLocation(data[0].city + ", SP"); localStorage.setItem("multiLocation", data[0].city + ", SP"); }
           const cep = data[0].cep.replace(/\D/g,"");
@@ -7636,56 +7638,26 @@ export default function App() {
   const sendWelcomeEmail = async ({ name, email, role }) => {
     const firstName = name?.trim().split(/\s+/)[0] || "Usuário";
 
-    // ── LOG 1: o que chegou à função ──
-    console.group("📧 sendWelcomeEmail — iniciando");
-    console.log("name    :", name);
-    console.log("email   :", email);
-    console.log("role    :", role);
-    console.log("API_URL :", API_URL);
-
-    // Guarda: sem e-mail não adianta tentar
-    if (!email || !email.includes("@")) {
-      console.warn("⚠️  E-mail inválido ou vazio — envio cancelado:", email);
-      console.groupEnd();
-      return;
-    }
+    if (!email || !email.includes("@")) return;
 
     try {
-      // ── LOG 2: chamada ao backend ──
-      console.log("📡 Chamando:", `${API_URL}/api/email/boas-vindas`);
-
       const response = await fetch(`${API_URL}/api/email/boas-vindas`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ name, email, role }),
       });
 
-      // ── LOG 3: status HTTP ──
-      console.log("HTTP status :", response.status, response.statusText);
-
-      const data = await response.json();
-
-      // ── LOG 4: resposta do backend ──
-      console.log("Resposta    :", data);
-
       if (response.ok) {
-        console.log("✅ E-mail enviado com sucesso pelo SendGrid");
         showToast(`📧 E-mail enviado para ${email}`, role === "client" ? B : O);
       } else {
-        // Erro retornado pelo backend (ex: chave inválida, domínio não autenticado)
-        console.error("❌ Backend retornou erro:", data.error || data);
+        const data = await response.json().catch(() => ({}));
+        console.error("Falha ao enviar e-mail de boas-vindas:", data.error || response.status);
         showToast("⚠️ E-mail não enviado. Verifique o terminal.", "#EF4444");
       }
 
     } catch (err) {
-      // ── LOG 5: erro de rede (backend offline, CORS, etc.) ──
-      console.error("❌ Erro de rede ao chamar o backend:");
-      console.error("   Mensagem  :", err.message);
-      console.error("   Dica      : O backend está rodando em", API_URL, "?");
-      console.error("   Dica      : VITE_API_URL está configurado no .env?");
+      console.error("Erro de rede ao chamar o backend de e-mail:", err.message);
     }
-
-    console.groupEnd();
   };
 
   // ── INTENT-BASED AUTH GATE ──────────────────────────────────────────────────
