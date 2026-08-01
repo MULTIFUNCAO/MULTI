@@ -215,9 +215,9 @@ function Pill({ children, color = B, solid = false, sm = false }) {
   );
 }
 
-function Card({ children, style = {} }) {
+function Card({ children, style = {}, onClick, className }) {
   return (
-    <div style={{
+    <div className={className} onClick={onClick} style={{
       background:"white", borderRadius:16, padding:16,
       boxShadow:"0 2px 10px rgba(0,0,0,.06)",
       border:"1px solid #F0F0F0", ...style,
@@ -535,7 +535,7 @@ function ProposalModal({ service, onClose, onSend }) {
 }
 
 /* ───────────────────────── ALERTS SCREEN ────────────────────────────────────── */
-function AlertsScreen({ notifications, onAccept, onOpenChat }) {
+function AlertsScreen({ notifications, onAccept, onOpenChat, onOpenPedido }) {
   if (notifications.length === 0) {
     return (
       <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"80px 32px", gap:14, textAlign:"center" }}>
@@ -550,9 +550,15 @@ function AlertsScreen({ notifications, onAccept, onOpenChat }) {
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:12, padding:"18px 16px 40px" }}>
+      <style>{`.alert-card-click:hover, .alert-card-click:active { background:#FAFBFC; box-shadow:0 4px 14px rgba(0,0,0,.09); }`}</style>
       <h2 style={{ fontSize:18, fontWeight:900, color:"#1a1a2e", margin:0 }}>Alertas</h2>
       {notifications.map(n => n.kind === "evento" ? (
-        <Card key={n.id}>
+        <Card
+          key={n.id}
+          className={n.pedido_id ? "alert-card-click" : ""}
+          style={{ cursor: n.pedido_id ? "pointer" : "default", transition:"background .15s, box-shadow .15s" }}
+          onClick={() => onOpenPedido && onOpenPedido(n)}
+        >
           <div style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
             <div style={{ width:40, height:40, borderRadius:12, background:G+"18", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>🎉</div>
             <div style={{ flex:1 }}>
@@ -7663,7 +7669,7 @@ export default function App() {
       status: p.status === "pendente" ? "pending" : "accepted",
     })),
     ...eventNotifications.map(n => ({
-      kind: "evento", id: n.id, titulo: n.titulo, mensagem: n.mensagem, lida: n.lida, created_at: n.created_at,
+      kind: "evento", id: n.id, titulo: n.titulo, mensagem: n.mensagem, lida: n.lida, created_at: n.created_at, pedido_id: n.pedido_id,
     })),
   ];
   const [userLocation,  setUserLocation]  = useState(localStorage.getItem("multiLocation") || savedSession?.location || "sua região");
@@ -7968,6 +7974,20 @@ export default function App() {
     setScreen("activechat");
   };
 
+  // Card de evento no sino (proposta aceita / pedido aceito / mensagem de
+  // chat / confirmação de agendamento) leva direto pro chat do pedido
+  // relacionado — os 4 tipos só existem depois que o pedido já tem
+  // profissional aceito, então abrir o chat é sempre a ação certa.
+  const handleOpenNotificacao = (n) => {
+    if (!n.pedido_id) { showToast?.("Não foi possível abrir — pedido não encontrado.", "#DC2626"); return; }
+    supabase.from("pedidos").select("*").eq("id", n.pedido_id).maybeSingle()
+      .then(({ data }) => {
+        if (!data) { showToast?.("Esse pedido não existe mais.", "#DC2626"); return; }
+        openChatFromService(mapPedidoRow(data));
+      })
+      .catch(() => showToast?.("Não foi possível abrir o pedido.", "#DC2626"));
+  };
+
   const handleFinishService = () => {
     if (!activeChat?.pedidoId) { setActiveChat(null); setScreen("orders"); return; }
     const pedidoId = activeChat.pedidoId;
@@ -8159,7 +8179,7 @@ const renderContent = () => {
     // role==="client", então o profissional clicava no sino e nada
     // acontecia (o setScreen("alerts") rodava, mas nenhuma rota tratava
     // essa tela fora do papel de cliente).
-    if (screen === "alerts") return <AlertsScreen notifications={notificationsFromPropostas} onAccept={handleAceitarPropostaPorId} onOpenChat={openChatFromNotif} />;
+    if (screen === "alerts") return <AlertsScreen notifications={notificationsFromPropostas} onAccept={handleAceitarPropostaPorId} onOpenChat={openChatFromNotif} onOpenPedido={handleOpenNotificacao} />;
 
   if (!role && !authScreen) { setAuthScreen("role-select"); return null; }
     if (role === "client") {
