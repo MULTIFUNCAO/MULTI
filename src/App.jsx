@@ -7954,12 +7954,21 @@ export default function App() {
         // silenciosamente contas que tinham virado "professional" depois do
         // cadastro original. Troca de role fora do cadastro só acontece pelo
         // fluxo explícito (onSwitchRole, "Sou profissional"/"Sou cliente").
-        const upsertPayload = { email: session.email, name: session.name, whatsapp: session.whatsapp||null, city: session.location||null };
+        const upsertPayload = { email: session.email, name: session.name };
         // Cadastro novo por aqui é sempre client/professional (empresa tem seu próprio
         // fluxo/upsert em CadastroEmpresaScreen) — zera empresa_id pra não herdar o
         // vínculo de um teste/conta anterior que usou o mesmo e-mail como empresa,
         // o que travava esse e-mail pra sempre como "empresa" no login (ver abaixo).
         if (isNewAccount) { upsertPayload.role = session.role || "client"; upsertPayload.empresa_id = null; }
+        // whatsapp/city só entram no payload quando vêm com valor de verdade
+        // (cadastro novo, via fast-form). Login normal sempre chama isso com
+        // whatsapp="" e location="" (LoginScreen não coleta nenhum dos dois),
+        // e incluir a chave no upsert com "" -> null sobrescrevia o que já
+        // estava salvo em ProfileScreen a cada login — o telefone cadastrado
+        // depois do cadastro original sumia toda vez que a sessão precisava
+        // logar de novo (ex: aba anônima, sessão expirada, outro navegador).
+        if (session.whatsapp) upsertPayload.whatsapp = session.whatsapp;
+        if (session.location) upsertPayload.city = session.location;
         supabase.from("usuarios").upsert(upsertPayload, { onConflict: "email" }).then(()=>{}).catch(()=>{});
       } catch {}
 
