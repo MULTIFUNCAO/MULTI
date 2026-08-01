@@ -705,7 +705,7 @@ function EmpresaCard({ emp, onVerPerfil }) {
   const [reputacao, setReputacao] = useState(null);
   useEffect(() => { if (emp.email) fetchReputacao(emp.email).then(setReputacao); }, [emp.email]);
   return (
-    <div style={{ background:"white", borderRadius:20, overflow:"hidden", boxShadow:"0 4px 20px rgba(0,0,0,.08)", border:"1px solid #F0F0F0", padding:"14px 16px", opacity: isOnline ? 1 : .7 }}>
+    <div style={{ background:"white", borderRadius:20, overflow:"hidden", boxShadow:"0 4px 20px rgba(249,168,37,.22)", border:"1.5px solid #F9A825", padding:"14px 16px", opacity: isOnline ? 1 : .7 }}>
       <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
         <div style={{ width:52, height:52, borderRadius:16, overflow:"hidden", background:"#F8F9FA", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
           {emp.logo_url
@@ -715,6 +715,12 @@ function EmpresaCard({ emp, onVerPerfil }) {
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:3, flexWrap:"wrap" }}>
             <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:0 }}>{emp.nome}</p>
+            {/* selo extra de prioridade — além do "Empresa Parceira" já existente,
+                sinaliza destaque na ordem de exibição (sempre acima dos autônomos) */}
+            <span style={{ display:"flex", alignItems:"center", gap:3, background:"linear-gradient(135deg,#F9A825,#F57F17)", borderRadius:99, padding:"2px 8px" }}>
+              <Star size={10} color="white" fill="white" />
+              <span style={{ fontSize:9.5, fontWeight:900, color:"white", letterSpacing:.3 }}>PRIORIDADE</span>
+            </span>
             <span style={{ display:"flex", alignItems:"center", gap:3, background:"#E8F4FF", border:"1px solid #B8DBFF", borderRadius:99, padding:"2px 8px" }}>
               <ShieldCheck size={11} color={B} />
               <span style={{ fontSize:10, fontWeight:800, color:B }}>Empresa Parceira</span>
@@ -1894,12 +1900,17 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted }) {
     if (!service?.id) return;
     let cancelled = false;
 
+    // Empresas parceiras sempre acima dos profissionais autônomos na lista de
+    // candidatos reais (não misturadas) — sort estável, só reordena por tipo,
+    // preserva a ordem relativa dentro de cada grupo.
+    const comEmpresasNoTopo = arr => [...arr].sort((a, b) => (b.isEmpresa ? 1 : 0) - (a.isEmpresa ? 1 : 0));
+
     const enrich = async (lista) => {
       const emails = [...new Set(lista.map(p => p.profissional_email || p.profissional_id).filter(Boolean))];
       let perfis = {};
       if (emails.length) {
         const { data } = await supabase.from("usuarios").select("email,name,categoria_servico,foto_perfil_url,bio").in("email", emails);
-        (data || []).forEach(u => { perfis[u.email] = u; });
+        (data || []).forEach(u => { perfis[u.email] = { ...u, isEmpresa: false }; });
         // Fallback pra empresas parceiras — candidato pode não ter linha em
         // "usuarios" (é uma empresa, não um profissional individual). Só
         // busca quem sobrou sem perfil, usando os campos equivalentes de
@@ -1907,7 +1918,7 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted }) {
         const faltando = emails.filter(e => !perfis[e]);
         if (faltando.length) {
           const { data: emps } = await supabase.from("empresas").select("email,nome,categoria_servico,logo_url,descricao").in("email", faltando);
-          (emps || []).forEach(e => { perfis[e.email] = { name: e.nome, categoria_servico: e.categoria_servico, foto_perfil_url: e.logo_url, bio: e.descricao }; });
+          (emps || []).forEach(e => { perfis[e.email] = { name: e.nome, categoria_servico: e.categoria_servico, foto_perfil_url: e.logo_url, bio: e.descricao, isEmpresa: true }; });
         }
       }
       return lista.map(p => {
@@ -1919,19 +1930,20 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted }) {
           categoria_servico: perfil?.categoria_servico || null,
           foto_perfil_url: perfil?.foto_perfil_url || null,
           bio: perfil?.bio || null,
+          isEmpresa: perfil?.isEmpresa || false,
         };
       });
     };
 
     supabase.from("propostas").select("*").eq("pedido_id", service.id).eq("status", "pendente")
-      .then(async ({ data }) => { const enriched = await enrich(data || []); if (!cancelled) setPros(enriched); })
+      .then(async ({ data }) => { const enriched = await enrich(data || []); if (!cancelled) setPros(comEmpresasNoTopo(enriched)); })
       .catch(() => { if (!cancelled) setPros([]); });
 
     const ch = supabase.channel("propostas_radar_" + service.id)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "propostas", filter: `pedido_id=eq.${service.id}` },
         async payload => {
           const [enriched] = await enrich([payload.new]);
-          if (!cancelled) setPros(prev => prev.some(p => p.email === enriched.email) ? prev : [...prev, enriched]);
+          if (!cancelled) setPros(prev => prev.some(p => p.email === enriched.email) ? prev : comEmpresasNoTopo([...prev, enriched]));
         })
       .subscribe();
 
@@ -2103,7 +2115,8 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted }) {
           {pros.map(pro => (
             <div key={pro.email} style={{
               background:"white", borderRadius:20, overflow:"hidden",
-              boxShadow:"0 4px 20px rgba(0,0,0,.08)", border:"1px solid #F0F0F0",
+              boxShadow: pro.isEmpresa ? "0 4px 20px rgba(249,168,37,.22)" : "0 4px 20px rgba(0,0,0,.08)",
+              border: pro.isEmpresa ? "1.5px solid #F9A825" : "1px solid #F0F0F0",
             }}>
               <div style={{ padding:"14px 16px" }}>
                 {/* pro info row */}
@@ -2112,8 +2125,25 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted }) {
                     {pro.foto_perfil_url ? <img src={pro.foto_perfil_url} alt={pro.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : "👷"}
                   </div>
                   <div style={{ flex:1 }}>
-                    <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:0 }}>{pro.name || "Profissional"}</p>
-                    <p style={{ fontSize:12, color:"#aaa", margin:0 }}>{resolveCats(pro.categoria_servico).map(c => c.label).join(", ") || service.title}</p>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+                      <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:0 }}>{pro.name || "Profissional"}</p>
+                      {/* candidato empresa parceira — mesmo selo de prioridade do
+                          EmpresaCard, pra ficar consistente mesmo quando ela
+                          aparece aqui (candidatos reais) e não na lista de cima */}
+                      {pro.isEmpresa && (
+                        <span style={{ display:"flex", alignItems:"center", gap:3, background:"linear-gradient(135deg,#F9A825,#F57F17)", borderRadius:99, padding:"2px 7px" }}>
+                          <Star size={9} color="white" fill="white" />
+                          <span style={{ fontSize:9, fontWeight:900, color:"white", letterSpacing:.3 }}>PRIORIDADE</span>
+                        </span>
+                      )}
+                    </div>
+                    {pro.isEmpresa && (
+                      <span style={{ display:"inline-flex", alignItems:"center", gap:3, marginTop:3, background:"#E8F4FF", border:"1px solid #B8DBFF", borderRadius:99, padding:"1px 7px" }}>
+                        <ShieldCheck size={10} color={B} />
+                        <span style={{ fontSize:9.5, fontWeight:800, color:B }}>Empresa Parceira</span>
+                      </span>
+                    )}
+                    <p style={{ fontSize:12, color:"#aaa", margin: pro.isEmpresa ? "3px 0 0" : 0 }}>{resolveCats(pro.categoria_servico).map(c => c.label).join(", ") || service.title}</p>
                   </div>
                 </div>
 
