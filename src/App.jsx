@@ -8109,6 +8109,11 @@ const renderContent = () => {
     // "Professional screens", então o cliente nunca conseguia abrir essa
     // tela de fato (Fase 4).
     if (screen === "avaliacao" && avaliacaoSvc) return <AvaliacaoScreen key={avaliacaoSvc.id} service={avaliacaoSvc} onBack={()=>setScreen("orders")} setScreen={setScreen} userEmail={userEmail} showToast={showToast} />;
+    // Idem pro sino de Alertas — antes só existia dentro do bloco
+    // role==="client", então o profissional clicava no sino e nada
+    // acontecia (o setScreen("alerts") rodava, mas nenhuma rota tratava
+    // essa tela fora do papel de cliente).
+    if (screen === "alerts") return <AlertsScreen notifications={notificationsFromPropostas} onAccept={handleAceitarPropostaPorId} onOpenChat={openChatFromNotif} />;
 
   if (!role && !authScreen) { setAuthScreen("role-select"); return null; }
     if (role === "client") {
@@ -8147,7 +8152,6 @@ const renderContent = () => {
   );
   
   if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onFound={(pro, svc) => { setSelectedPro({pro, svc}); }} onStatusChange={handlePedidoStatusChange} showToast={showToast} />;
-      if (screen === "alerts") return <AlertsScreen notifications={notificationsFromPropostas} onAccept={handleAceitarPropostaPorId} onOpenChat={openChatFromNotif} />;
       if (screen === "chat")   return <ChatInbox myServices={meusPedidosComCandidatos} onOpenChat={openChatFromService} />;
       if (screen === "orders") return <MyServicesScreen initialTab="aberto" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} onCancelarPedido={(s) => { if (window.confirm('Cancelar esse pedido? O profissional será avisado.')) { handlePedidoStatusChange(s.id, 'cancelado'); showToast?.('Pedido cancelado.', '#DC2626'); } }} isPro={isPro} />;
       if (screen === "profile") {
