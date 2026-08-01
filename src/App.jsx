@@ -7079,13 +7079,18 @@ function GuestMural({ onSignup, allDocsVerified }) {
 }
 
 /* ───────────────────────── PROFESSIONAL HOME ────────────────────────────────── */
-function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro, plano, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet, onAcceptOrder }) {
+function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro, plano, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet, onAcceptOrder, meusGanhos }) {
   const [online,       setOnline]       = useState(false);
   const [categoriaServico, setCategoriaServico] = useState([]);
   const [userCity, setUserCity] = useState("");
   const [newOrder, setNewOrder] = useState(null);
   const [activeFilter, setActiveFilter] = useState("all");
   const [realPedidos, setRealPedidos] = useState(SEED_FEED);
+  // Mesma reputação real (avaliacoes) já usada em ProfileScreen/ReputacaoBadge
+  // — antes o card de estatísticas do Home era hardcoded (R$1.240/47/4.8)
+  // igual pra todo mundo.
+  const [reputacao, setReputacao] = useState(null);
+  useEffect(() => { if (userEmail) fetchReputacao(userEmail).then(setReputacao); }, [userEmail]);
   // Demandas de empresa (publico_alvo:"pro") só entram no feed de quem é
   // Multi Pro — Autônomo continua vendo só pedido normal de cliente.
   const isPlanoPro = plano === "pro";
@@ -7214,12 +7219,13 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
             </div>
           </div>
 
-          {/* stats */}
+          {/* stats — mesma lógica real de ProfileScreen (meusGanhos + reputação
+              via avaliacoes), não mais hardcoded igual pra todo mundo */}
           <div style={{ display:"flex", gap:8, marginBottom:16 }}>
             {[
-              { label:"Ganhos do mes",   val:"R$ 1.240", color:"#4ade80" },
-              { label:"Servicos feitos", val:"47",       color:"white"    },
-              { label:"Avaliacao",       val:"4.8 estrelas",  color:"#F9A825"  },
+              { label:"Total recebido",  val:`R$ ${(meusGanhos || []).reduce((a, p) => a + (p.value || 0), 0).toLocaleString("pt-BR", { minimumFractionDigits:2 })}`, color:"#4ade80" },
+              { label:"Servicos feitos", val:String((meusGanhos || []).length), color:"white" },
+              { label:"Avaliacao",       val: reputacao?.mediaEstrelas != null ? `${reputacao.mediaEstrelas.toFixed(1)} estrelas` : "—", color:"#F9A825" },
             ].map((s, i) => (
               <div key={i} onClick={i===0 ? onGoToWallet : i===1 ? onGoToOrders : undefined} style={{ flex:1, background:"rgba(255,255,255,.08)", borderRadius:12, padding:"9px 10px", cursor:(i===0||i===1)?"pointer":"default" }}>
                 <p style={{ fontSize:11, color:"rgba(255,255,255,.45)", fontWeight:700, margin:0, lineHeight:1.3 }}>{s.label}</p>
@@ -8656,6 +8662,7 @@ const renderContent = () => {
         onGoToProfile={() => setScreen("profile")}
         isPro={isPro}
         plano={plano}
+        meusGanhos={meusGanhos}
         onViewService={handleProFeedAction}
         onUpgrade={() => setScreen("upgrade")}
         userLocation={localStorage.getItem("multiLocation") || userLocation}
