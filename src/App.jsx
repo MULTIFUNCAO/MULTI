@@ -1857,7 +1857,7 @@ function EmpresaPedidosScreen({ userEmail }) {
   );
 }
 
-function RadarSearchScreen({ service, onStatusChange, showToast }) {
+function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted }) {
   const [phase, setPhase] = useState(0); // 0=searching, 1=found // v3
   const [raio, setRaio] = useState(2);
   const [expandMsg, setExpandMsg] = useState('');
@@ -1897,6 +1897,25 @@ function RadarSearchScreen({ service, onStatusChange, showToast }) {
     if (service.cidade) q = q.ilike("city", service.cidade);
     q.then(({ data }) => setPros(data || [])).catch(() => setPros([]));
   }, [service?.cat, service?.cidade]);
+
+  // Essa tela agora fica fixa até o cliente sair manualmente, então precisa
+  // reagir sozinha quando um profissional aceita o pedido enquanto o cliente
+  // ainda está olhando — mesmo padrão realtime já usado pelo sino de Alertas
+  // (supabase.channel(...).on("postgres_changes", ...)), só que escutando o
+  // próprio pedido em vez da tabela de notificações.
+  useEffect(() => {
+    if (!service?.id) return;
+    const ch = supabase.channel("pedido_radar_" + service.id)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "pedidos", filter: `id=eq.${service.id}` },
+        payload => {
+          if (payload.new?.status === "em_andamento") {
+            showToast && showToast("🎉 Um profissional aceitou seu pedido!", G);
+            onAccepted && onAccepted(payload.new);
+          }
+        })
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }, [service?.id]);
 
   if (viewingEmpresa) {
     return <EmpresaProfileScreen empresa={viewingEmpresa} onBack={() => setViewingEmpresa(null)} />;
@@ -8382,7 +8401,7 @@ const renderContent = () => {
   if (!role && !authScreen) { setAuthScreen("role-select"); return null; }
     if (role === "client") {
       if (screen === "post")   return <PostServiceScreen onBack={() => setScreen("home")} onSuccess={handlePostServiceSuccess} />;
-      if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onStatusChange={handlePedidoStatusChange} showToast={showToast} />;
+      if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onStatusChange={handlePedidoStatusChange} showToast={showToast} onAccepted={(pedidoRow) => { setSelected(mapPedidoRow(pedidoRow)); setScreen("service"); }} />;
       if (screen === "chat")   return <ChatInbox myServices={meusPedidosComCandidatos} onOpenChat={openChatFromService} />;
       if (screen === "orders") return <MyServicesScreen initialTab="aberto" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} onCancelarPedido={(s) => { if (window.confirm('Cancelar esse pedido? O profissional será avisado.')) { handlePedidoStatusChange(s.id, 'cancelado'); showToast?.('Pedido cancelado.', '#DC2626'); } }} isPro={isPro} />;
       if (screen === "profile") {
