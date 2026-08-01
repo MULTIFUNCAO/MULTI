@@ -8363,6 +8363,16 @@ export default function App() {
           const { data: usuarios } = await supabase.from("usuarios").select("email,foto_perfil_url,bio,categoria_servico").in("email", emails);
           const map = {};
           (usuarios || []).forEach(u => { map[u.email] = u; });
+          // Fallback pra empresas parceiras — candidato pode não ter linha em
+          // "usuarios" (é uma empresa, não um profissional individual). Mesmo
+          // padrão de RadarSearchScreen: busca quem sobrou sem perfil usando
+          // os campos equivalentes de "empresas" (logo_url/descricao no
+          // lugar de foto_perfil_url/bio).
+          const faltando = emails.filter(e => !map[e]);
+          if (faltando.length) {
+            const { data: emps } = await supabase.from("empresas").select("email,logo_url,descricao,categoria_servico").in("email", faltando);
+            (emps || []).forEach(e => { map[e.email] = { foto_perfil_url: e.logo_url, bio: e.descricao, categoria_servico: e.categoria_servico }; });
+          }
           setPerfis(map);
           Promise.all(emails.map(email => fetchReputacao(email).then(r => [email, r])))
             .then(pares => setReputacoes(Object.fromEntries(pares)))
