@@ -565,6 +565,11 @@ function AlertsScreen({ notifications, onAccept, onOpenChat, onOpenPedido }) {
               <p style={{ fontWeight:800, fontSize:13, color:"#1a1a2e", marginBottom:2 }}>{n.titulo}</p>
               <p style={{ fontSize:12, color:"#555", lineHeight:1.4, marginBottom:4 }}>{n.mensagem}</p>
               {n.created_at && <p style={{ fontSize:11, color:"#aaa" }}>{new Date(n.created_at).toLocaleString("pt-BR")}</p>}
+              {n.pedido_id && (
+                <p style={{ fontSize:11, fontWeight:800, color:B, textAlign:"right", margin:"6px 0 0" }}>
+                  {n.titulo && n.titulo.startsWith("Nova mensagem") ? "Ver mensagem →" : "Ver conversa →"}
+                </p>
+              )}
             </div>
             {!n.lida && <span style={{ width:8, height:8, borderRadius:"50%", background:"#FF4444", flexShrink:0, marginTop:4 }} />}
           </div>
