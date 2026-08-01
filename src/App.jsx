@@ -1900,6 +1900,15 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted }) {
       if (emails.length) {
         const { data } = await supabase.from("usuarios").select("email,name,categoria_servico,foto_perfil_url,bio").in("email", emails);
         (data || []).forEach(u => { perfis[u.email] = u; });
+        // Fallback pra empresas parceiras — candidato pode não ter linha em
+        // "usuarios" (é uma empresa, não um profissional individual). Só
+        // busca quem sobrou sem perfil, usando os campos equivalentes de
+        // "empresas" (nome/logo_url/descricao no lugar de name/foto/bio).
+        const faltando = emails.filter(e => !perfis[e]);
+        if (faltando.length) {
+          const { data: emps } = await supabase.from("empresas").select("email,nome,categoria_servico,logo_url,descricao").in("email", faltando);
+          (emps || []).forEach(e => { perfis[e.email] = { name: e.nome, categoria_servico: e.categoria_servico, foto_perfil_url: e.logo_url, bio: e.descricao }; });
+        }
       }
       return lista.map(p => {
         const email = p.profissional_email || p.profissional_id;
