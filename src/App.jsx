@@ -749,6 +749,57 @@ function EmpresaCard({ emp, onVerPerfil }) {
   );
 }
 
+/* Card de candidato enriquecido (foto, categorias, reputação real, bio, valor
+   proposto, mensagem de interesse e ação de aceitar) — compartilhado entre
+   PropostasScreen ("Ver Propostas") e RadarSearchScreen (Fase 1, candidatos
+   em tempo real), pra ambas as telas mostrarem exatamente a mesma coisa em
+   vez de duas versões divergentes do mesmo card. `perfil.isEmpresa` liga o
+   mesmo selo de prioridade usado no EmpresaCard. */
+function CandidatoCard({ proposta: p, perfil, reputacao, onAceitar }) {
+  const cats = resolveCats(perfil?.categoria_servico);
+  const isEmpresa = !!perfil?.isEmpresa;
+  return (
+    <div style={{
+      background:"white", borderRadius:16, padding:16, marginBottom:12,
+      boxShadow: isEmpresa ? "0 4px 20px rgba(249,168,37,.22)" : "0 2px 8px rgba(0,0,0,.08)",
+      border: isEmpresa ? "1.5px solid #F9A825" : "1px solid transparent",
+    }}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+        <div style={{width:48,height:48,borderRadius:"50%",overflow:"hidden",background:"#EEF0F5",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+          {perfil?.foto_perfil_url
+            ? <img src={perfil.foto_perfil_url} style={{width:"100%",height:"100%",objectFit:"cover"}} alt="" />
+            : <User size={22} color="#B0B4C0" />}
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+            <div style={{fontWeight:700,fontSize:15}}>{p.profissional_nome || perfil?.name || "Profissional"}</div>
+            {isEmpresa && (
+              <span style={{ display:"flex", alignItems:"center", gap:3, background:"linear-gradient(135deg,#F9A825,#F57F17)", borderRadius:99, padding:"2px 7px" }}>
+                <Star size={9} color="white" fill="white" />
+                <span style={{ fontSize:9, fontWeight:900, color:"white", letterSpacing:.3 }}>PRIORIDADE</span>
+              </span>
+            )}
+          </div>
+          {isEmpresa && (
+            <span style={{ display:"inline-flex", alignItems:"center", gap:3, marginTop:3, background:"#E8F4FF", border:"1px solid #B8DBFF", borderRadius:99, padding:"1px 7px" }}>
+              <ShieldCheck size={10} color={B} />
+              <span style={{ fontSize:9.5, fontWeight:800, color:B }}>Empresa Parceira</span>
+            </span>
+          )}
+          {cats.length > 0 && <div style={{fontSize:11,color:"#888",marginTop: isEmpresa ? 3 : 0}}>{cats.map(c=>`${c.emoji} ${c.label}`).join(" · ")}</div>}
+          {reputacao && <div style={{marginTop:3}}><ReputacaoBadge {...reputacao} /></div>}
+        </div>
+      </div>
+      {perfil?.bio && (
+        <div style={{color:"#555",fontSize:12.5,lineHeight:1.5,marginBottom:10,background:"#F8F9FB",borderRadius:10,padding:"8px 10px"}}>{perfil.bio}</div>
+      )}
+      <div style={{color:"#007BFF",fontWeight:800,fontSize:18,margin:"6px 0"}}>R$ {p.valor||0}</div>
+      <div style={{color:"#666",fontSize:13,marginBottom:12}}>{p.mensagem||""}</div>
+      <button onClick={()=>onAceitar&&onAceitar(p)} style={{width:"100%",padding:"12px",background:"#22c55e",color:"white",border:"none",borderRadius:10,fontWeight:800,fontSize:14,cursor:"pointer"}}>✅ Aceitar Proposta</button>
+    </div>
+  );
+}
+
 /* ───────────────────────── EMPRESA HOME (área logada, somente leitura) ─────────── */
 function formatTimeAgo(dateStr) {
   if (!dateStr) return "";
@@ -1863,14 +1914,15 @@ function EmpresaPedidosScreen({ userEmail }) {
   );
 }
 
-function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted }) {
+function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted, onAceitarProposta }) {
   const [phase, setPhase] = useState(0); // 0=searching, 1=found // v3
   const [raio, setRaio] = useState(2);
   const [expandMsg, setExpandMsg] = useState('');
   const [empresas, setEmpresas] = useState([]);
   const [viewingEmpresa, setViewingEmpresa] = useState(null);
-  const [pros, setPros] = useState([]);
-  const [viewingPro, setViewingPro] = useState(null);
+  const [propostas, setPropostas] = useState([]); // candidatos reais (linhas de "propostas")
+  const [perfis, setPerfis] = useState({}); // email -> { foto_perfil_url, bio, categoria_servico, isEmpresa }
+  const [reputacoes, setReputacoes] = useState({}); // email -> { mediaEstrelas, totalAvaliacoes, concluidos, taxaConclusao }
 
   useEffect(() => {
     const t1 = setTimeout(() => { setRaio(5); setExpandMsg('Expandindo para 5km...'); }, 8000);
@@ -1902,15 +1954,20 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted }) {
 
     // Empresas parceiras sempre acima dos profissionais autônomos na lista de
     // candidatos reais (não misturadas) — sort estável, só reordena por tipo,
-    // preserva a ordem relativa dentro de cada grupo.
-    const comEmpresasNoTopo = arr => [...arr].sort((a, b) => (b.isEmpresa ? 1 : 0) - (a.isEmpresa ? 1 : 0));
+    // preserva a ordem relativa dentro de cada grupo. Usa a flag já embutida
+    // em cada linha (_isEmpresa) pra não depender de um mapa externo em
+    // sincronia toda vez que a lista muda (ex: no INSERT em tempo real).
+    const comEmpresasNoTopo = arr => [...arr].sort((a, b) => (b._isEmpresa ? 1 : 0) - (a._isEmpresa ? 1 : 0));
 
-    const enrich = async (lista) => {
-      const emails = [...new Set(lista.map(p => p.profissional_email || p.profissional_id).filter(Boolean))];
-      let perfis = {};
+    // Mesmo enriquecimento (foto/bio/categorias + fallback pra empresas
+    // parceiras) já usado em PropostasScreen ("Ver Propostas") — reaproveitado
+    // aqui pra essa tela mostrar o candidato completo sem precisar navegar
+    // pra outra tela só pra ver reputação/foto real.
+    const buscarPerfis = async (emails) => {
+      const perfisNovos = {};
       if (emails.length) {
         const { data } = await supabase.from("usuarios").select("email,name,categoria_servico,foto_perfil_url,bio,role").in("email", emails);
-        (data || []).forEach(u => { perfis[u.email] = { ...u, isEmpresa: u.role === "empresa" }; });
+        (data || []).forEach(u => { perfisNovos[u.email] = { ...u, isEmpresa: u.role === "empresa" }; });
         // Fallback pra empresas parceiras — cobre dois casos: (a) candidato
         // sem nenhuma linha em "usuarios" (empresa antiga, sem conta de
         // login própria), e (b) candidato COM linha em "usuarios" mas
@@ -1918,35 +1975,41 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted }) {
         // pra login/vínculo — foto/bio reais ficam em "empresas", nunca em
         // "usuarios" nesse caso, então teria ficado sem foto se parasse
         // na primeira busca).
-        const emailsEmpresa = emails.filter(e => !perfis[e] || perfis[e].isEmpresa);
+        const emailsEmpresa = emails.filter(e => !perfisNovos[e] || perfisNovos[e].isEmpresa);
         if (emailsEmpresa.length) {
           const { data: emps } = await supabase.from("empresas").select("email,nome,categoria_servico,logo_url,descricao").in("email", emailsEmpresa);
-          (emps || []).forEach(e => { perfis[e.email] = { name: e.nome, categoria_servico: e.categoria_servico, foto_perfil_url: e.logo_url, bio: e.descricao, isEmpresa: true }; });
+          (emps || []).forEach(e => { perfisNovos[e.email] = { name: e.nome, categoria_servico: e.categoria_servico, foto_perfil_url: e.logo_url, bio: e.descricao, isEmpresa: true }; });
         }
       }
-      return lista.map(p => {
-        const email = p.profissional_email || p.profissional_id;
-        const perfil = perfis[email];
-        return {
-          email,
-          name: perfil?.name || p.profissional_nome || "Profissional",
-          categoria_servico: perfil?.categoria_servico || null,
-          foto_perfil_url: perfil?.foto_perfil_url || null,
-          bio: perfil?.bio || null,
-          isEmpresa: perfil?.isEmpresa || false,
-        };
-      });
+      return perfisNovos;
     };
 
     supabase.from("propostas").select("*").eq("pedido_id", service.id).eq("status", "pendente")
-      .then(async ({ data }) => { const enriched = await enrich(data || []); if (!cancelled) setPros(comEmpresasNoTopo(enriched)); })
-      .catch(() => { if (!cancelled) setPros([]); });
+      .then(async ({ data }) => {
+        const lista = data || [];
+        const emails = [...new Set(lista.map(p => p.profissional_email || p.profissional_id).filter(Boolean))];
+        const perfisNovos = await buscarPerfis(emails);
+        if (cancelled) return;
+        setPerfis(perfisNovos);
+        const comFlag = lista.map(p => ({ ...p, _isEmpresa: !!perfisNovos[p.profissional_email || p.profissional_id]?.isEmpresa }));
+        setPropostas(comEmpresasNoTopo(comFlag));
+        Promise.all(emails.map(email => fetchReputacao(email).then(r => [email, r])))
+          .then(pares => { if (!cancelled) setReputacoes(Object.fromEntries(pares)); })
+          .catch(() => {});
+      })
+      .catch(() => { if (!cancelled) setPropostas([]); });
 
     const ch = supabase.channel("propostas_radar_" + service.id)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "propostas", filter: `pedido_id=eq.${service.id}` },
         async payload => {
-          const [enriched] = await enrich([payload.new]);
-          if (!cancelled) setPros(prev => prev.some(p => p.email === enriched.email) ? prev : comEmpresasNoTopo([...prev, enriched]));
+          const novo = payload.new;
+          const email = novo.profissional_email || novo.profissional_id;
+          const perfisNovos = email ? await buscarPerfis([email]) : {};
+          if (cancelled) return;
+          if (Object.keys(perfisNovos).length) setPerfis(prev => ({ ...prev, ...perfisNovos }));
+          const comFlag = { ...novo, _isEmpresa: !!perfisNovos[email]?.isEmpresa };
+          setPropostas(prev => prev.some(p => p.id === novo.id) ? prev : comEmpresasNoTopo([...prev, comFlag]));
+          if (email) fetchReputacao(email).then(r => { if (!cancelled) setReputacoes(prev => ({ ...prev, [email]: r })); }).catch(() => {});
         })
       .subscribe();
 
@@ -1974,31 +2037,6 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted }) {
 
   if (viewingEmpresa) {
     return <EmpresaProfileScreen empresa={viewingEmpresa} onBack={() => setViewingEmpresa(null)} />;
-  }
-
-  if (viewingPro) {
-    return (
-      <div style={{minHeight:"100vh",background:"#f5f5f5"}}>
-        <div style={{background:"linear-gradient(135deg,#1565C0,#0D47A1)",padding:"40px 20px 60px",textAlign:"center",position:"relative"}}>
-          <button onClick={()=>setViewingPro(null)} style={{position:"absolute",top:16,left:16,background:"rgba(255,255,255,.2)",border:"none",borderRadius:20,padding:"6px 14px",color:"white",cursor:"pointer",fontSize:14}}>← Voltar</button>
-          <div style={{width:80,height:80,borderRadius:"50%",background:"rgba(255,255,255,.2)",margin:"0 auto 12px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:36,overflow:"hidden"}}>
-            {viewingPro.foto_perfil_url ? <img src={viewingPro.foto_perfil_url} alt={viewingPro.name} style={{width:"100%",height:"100%",objectFit:"cover"}} /> : "👷"}
-          </div>
-          <h2 style={{color:"white",margin:"0 0 4px",fontSize:22}}>{viewingPro.name||"Profissional"}</h2>
-          <div style={{color:"rgba(255,255,255,.8)",fontSize:13}}>{resolveCats(viewingPro.categoria_servico).map(c=>c.label).join(", ")||"Profissional verificado"}</div>
-        </div>
-        <div style={{padding:"16px",marginTop:-20}}>
-          <div style={{background:"white",borderRadius:16,padding:"16px",marginBottom:12,boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}>
-            <h3 style={{margin:"0 0 8px",fontSize:15,color:"#333"}}>Sobre o profissional</h3>
-            <p style={{margin:0,fontSize:13,color:"#555",lineHeight:1.6}}>{viewingPro.bio||"Esse profissional ainda não preencheu uma bio."}</p>
-          </div>
-          <div style={{background:"#EEF4FF",borderRadius:16,padding:"16px",marginBottom:12}}>
-            <p style={{margin:0,fontSize:13,color:"#1565C0",fontWeight:700}}>Esse profissional demonstrou interesse no seu pedido.</p>
-            <p style={{margin:"6px 0 0",fontSize:12,color:"#555"}}>Para fechar com ele, escolha a proposta dele em "Meus Pedidos".</p>
-          </div>
-        </div>
-      </div>
-    );
   }
 
   const cat = CATS.find(c => c.id === service.cat);
@@ -2088,7 +2126,7 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted }) {
             <span style={{ fontSize:18 }}>📣</span>
             <div>
               <p style={{ fontSize:13, fontWeight:900, color:"#166534", margin:0 }}>
-                {pros.length > 0 ? `${pros.length} candidato${pros.length > 1 ? "s" : ""} ${pros.length > 1 ? "demonstraram" : "demonstrou"} interesse` : "Aguardando candidatos…"}
+                {propostas.length > 0 ? `${propostas.length} candidato${propostas.length > 1 ? "s" : ""} ${propostas.length > 1 ? "demonstraram" : "demonstrou"} interesse` : "Aguardando candidatos…"}
               </p>
               <p style={{ fontSize:11, color:"#4ade80", margin:0 }}>Essa lista atualiza sozinha assim que alguém demonstrar interesse</p>
             </div>
@@ -2107,55 +2145,25 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted }) {
           </div>
         )}
 
-        {/* candidate cards — candidatos reais (propostas recebidas), atualiza em tempo real */}
-        <div style={{ display:"flex", flexDirection:"column", gap:14, padding:"18px 16px 0" }}>
-          {pros.length === 0 && (
+        {/* candidate cards — candidatos reais (propostas recebidas), atualiza em tempo
+            real. Mesmo card enriquecido de PropostasScreen ("Ver Propostas"): foto,
+            reputação real, taxa de conclusão, valor proposto, mensagem e ação de
+            aceitar direto aqui — sem precisar navegar pra outra tela. */}
+        <div style={{ padding:"18px 16px 0" }}>
+          {propostas.length === 0 && (
             <div style={{ textAlign:"center", padding:"24px 16px", color:"#aaa", background:"white", borderRadius:16, border:"1px solid #F0F0F0" }}>
               <p style={{ fontSize:13, fontWeight:700, margin:0, color:"#666" }}>Nenhum candidato ainda.</p>
               <p style={{ fontSize:12, margin:"6px 0 0" }}>Seu pedido já está publicado e visível no mural — assim que alguém demonstrar interesse, aparece aqui na hora.</p>
             </div>
           )}
-          {pros.map(pro => (
-            <div key={pro.email} style={{
-              background:"white", borderRadius:20, overflow:"hidden",
-              boxShadow: pro.isEmpresa ? "0 4px 20px rgba(249,168,37,.22)" : "0 4px 20px rgba(0,0,0,.08)",
-              border: pro.isEmpresa ? "1.5px solid #F9A825" : "1px solid #F0F0F0",
-            }}>
-              <div style={{ padding:"14px 16px" }}>
-                {/* pro info row */}
-                <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
-                  <div style={{ width:52, height:52, borderRadius:16, background:B+"15", display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, flexShrink:0, overflow:"hidden" }}>
-                    {pro.foto_perfil_url ? <img src={pro.foto_perfil_url} alt={pro.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : "👷"}
-                  </div>
-                  <div style={{ flex:1 }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-                      <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:0 }}>{pro.name || "Profissional"}</p>
-                      {/* candidato empresa parceira — mesmo selo de prioridade do
-                          EmpresaCard, pra ficar consistente mesmo quando ela
-                          aparece aqui (candidatos reais) e não na lista de cima */}
-                      {pro.isEmpresa && (
-                        <span style={{ display:"flex", alignItems:"center", gap:3, background:"linear-gradient(135deg,#F9A825,#F57F17)", borderRadius:99, padding:"2px 7px" }}>
-                          <Star size={9} color="white" fill="white" />
-                          <span style={{ fontSize:9, fontWeight:900, color:"white", letterSpacing:.3 }}>PRIORIDADE</span>
-                        </span>
-                      )}
-                    </div>
-                    {pro.isEmpresa && (
-                      <span style={{ display:"inline-flex", alignItems:"center", gap:3, marginTop:3, background:"#E8F4FF", border:"1px solid #B8DBFF", borderRadius:99, padding:"1px 7px" }}>
-                        <ShieldCheck size={10} color={B} />
-                        <span style={{ fontSize:9.5, fontWeight:800, color:B }}>Empresa Parceira</span>
-                      </span>
-                    )}
-                    <p style={{ fontSize:12, color:"#aaa", margin: pro.isEmpresa ? "3px 0 0" : 0 }}>{resolveCats(pro.categoria_servico).map(c => c.label).join(", ") || service.title}</p>
-                  </div>
-                </div>
-
-                {/* action button */}
-                <button onClick={() => setViewingPro(pro)} style={{ width:"100%", padding:"12px 0", borderRadius:12, border:`1.5px solid ${B}`, background:"white", color:B, fontWeight:800, fontSize:12, cursor:"pointer" }}>
-                  VER PERFIL
-                </button>
-              </div>
-            </div>
+          {propostas.map(p => (
+            <CandidatoCard
+              key={p.id}
+              proposta={p}
+              perfil={perfis[p.profissional_email || p.profissional_id]}
+              reputacao={reputacoes[p.profissional_email || p.profissional_id]}
+              onAceitar={onAceitarProposta}
+            />
           ))}
         </div>
       </div>
@@ -8395,16 +8403,16 @@ export default function App() {
         if (emails.length) {
           const { data: usuarios } = await supabase.from("usuarios").select("email,foto_perfil_url,bio,categoria_servico,role").in("email", emails);
           const map = {};
-          (usuarios || []).forEach(u => { map[u.email] = u; });
+          (usuarios || []).forEach(u => { map[u.email] = { ...u, isEmpresa: u.role === "empresa" }; });
           // Fallback pra empresas parceiras — cobre dois casos: (a) candidato
           // sem nenhuma linha em "usuarios", e (b) candidato COM linha em
           // "usuarios" mas role "empresa" (CadastroEmpresaScreen sempre cria
           // essa linha só pra login/vínculo, sem foto/bio — os dados reais
           // ficam em "empresas"). Mesmo padrão de RadarSearchScreen.
-          const emailsEmpresa = emails.filter(e => !map[e] || map[e].role === "empresa");
+          const emailsEmpresa = emails.filter(e => !map[e] || map[e].isEmpresa);
           if (emailsEmpresa.length) {
             const { data: emps } = await supabase.from("empresas").select("email,logo_url,descricao,categoria_servico").in("email", emailsEmpresa);
-            (emps || []).forEach(e => { map[e.email] = { foto_perfil_url: e.logo_url, bio: e.descricao, categoria_servico: e.categoria_servico }; });
+            (emps || []).forEach(e => { map[e.email] = { foto_perfil_url: e.logo_url, bio: e.descricao, categoria_servico: e.categoria_servico, isEmpresa: true }; });
           }
           setPerfis(map);
           Promise.all(emails.map(email => fetchReputacao(email).then(r => [email, r])))
@@ -8420,33 +8428,15 @@ export default function App() {
       <h2 style={{fontSize:18,fontWeight:800,marginBottom:16}}>Propostas recebidas</h2>
       {loading && <p>Carregando...</p>}
       {!loading && propostas.length===0 && <p style={{color:"#888"}}>Nenhuma proposta ainda.</p>}
-      {propostas.map(p=>{
-        const perfil = perfis[p.profissional_email || p.profissional_id];
-        const reputacao = reputacoes[p.profissional_email || p.profissional_id];
-        const cats = resolveCats(perfil?.categoria_servico);
-        return (
-          <div key={p.id} style={{background:"white",borderRadius:12,padding:16,marginBottom:12,boxShadow:"0 2px 8px rgba(0,0,0,.08)"}}>
-            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-              <div style={{width:48,height:48,borderRadius:"50%",overflow:"hidden",background:"#EEF0F5",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                {perfil?.foto_perfil_url
-                  ? <img src={perfil.foto_perfil_url} style={{width:"100%",height:"100%",objectFit:"cover"}} alt="" />
-                  : <User size={22} color="#B0B4C0" />}
-              </div>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontWeight:700,fontSize:15}}>{p.profissional_nome||"Profissional"}</div>
-                {cats.length > 0 && <div style={{fontSize:11,color:"#888"}}>{cats.map(c=>`${c.emoji} ${c.label}`).join(" · ")}</div>}
-                {reputacao && <div style={{marginTop:3}}><ReputacaoBadge {...reputacao} /></div>}
-              </div>
-            </div>
-            {perfil?.bio && (
-              <div style={{color:"#555",fontSize:12.5,lineHeight:1.5,marginBottom:10,background:"#F8F9FB",borderRadius:10,padding:"8px 10px"}}>{perfil.bio}</div>
-            )}
-            <div style={{color:"#007BFF",fontWeight:800,fontSize:18,margin:"6px 0"}}>R$ {p.valor||0}</div>
-            <div style={{color:"#666",fontSize:13,marginBottom:12}}>{p.mensagem||""}</div>
-            <button onClick={()=>onAceitarProposta&&onAceitarProposta(p)} style={{width:"100%",padding:"12px",background:"#22c55e",color:"white",border:"none",borderRadius:10,fontWeight:800,fontSize:14,cursor:"pointer"}}>✅ Aceitar Proposta</button>
-          </div>
-        );
-      })}
+      {propostas.map(p=>(
+        <CandidatoCard
+          key={p.id}
+          proposta={p}
+          perfil={perfis[p.profissional_email || p.profissional_id]}
+          reputacao={reputacoes[p.profissional_email || p.profissional_id]}
+          onAceitar={onAceitarProposta}
+        />
+      ))}
     </div>
   );
 }
@@ -8476,7 +8466,7 @@ const renderContent = () => {
   if (!role && !authScreen) { setAuthScreen("role-select"); return null; }
     if (role === "client") {
       if (screen === "post")   return <PostServiceScreen onBack={() => setScreen("home")} onSuccess={handlePostServiceSuccess} />;
-      if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onStatusChange={handlePedidoStatusChange} showToast={showToast} onAccepted={(pedidoRow) => { setSelected(mapPedidoRow(pedidoRow)); setScreen("service"); }} />;
+      if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onStatusChange={handlePedidoStatusChange} showToast={showToast} onAccepted={(pedidoRow) => { setSelected(mapPedidoRow(pedidoRow)); setScreen("service"); }} onAceitarProposta={handleAceitarProposta} />;
       if (screen === "chat")   return <ChatInbox myServices={meusPedidosComCandidatos} onOpenChat={openChatFromService} />;
       if (screen === "orders") return <MyServicesScreen initialTab="aberto" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} onCancelarPedido={(s) => { if (window.confirm('Cancelar esse pedido? O profissional será avisado.')) { handlePedidoStatusChange(s.id, 'cancelado'); showToast?.('Pedido cancelado.', '#DC2626'); } }} isPro={isPro} />;
       if (screen === "profile") {
