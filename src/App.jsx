@@ -638,15 +638,6 @@ const CAT_GRID = [
   },
 ];
 
-const MOCK_PROS = [
-  { id:1, name:"Ricardo Alves",  cat:"Encanador",  rating:5.0, jobs:127, value:180, verified:true,  avatar:"👨", tag:"Mais rápido"    },
-  { id:2, name:"Miguel Santos",  cat:"Encanador",  rating:4.9, jobs:89,  value:220, verified:true,  avatar:"👷", tag:"Melhor avaliado" },
-  { id:3, name:"Carla Freitas",  cat:"Encanadora", rating:4.8, jobs:54,  value:160, verified:false, avatar:"👩", tag:"Mais barato"     },
-  { id:4, name:"João Oliveira",  cat:"Encanador",  rating:4.7, jobs:203, value:190, verified:true,  avatar:"🧑", tag:"" },
-  { id:5, name:"Paula Mendes",   cat:"Encanadora", rating:4.6, jobs:41,  value:175, verified:true,  avatar:"👩", tag:"" },
-  { id:6, name:"Roberto Lima",   cat:"Encanador",  rating:4.5, jobs:88,  value:200, verified:false, avatar:"👨", tag:"" },
-  { id:7, name:"Sandra Costa",   cat:"Encanadora", rating:4.4, jobs:62,  value:155, verified:true,  avatar:"👩", tag:"" },
-];
 /* ───────────────────────── RADAR SCREEN ────────────────────────────────────── */
 /* ───────────────────────── EMPRESA PROFILE SCREEN ───────────────────────────── */
 function EmpresaProfileScreen({ empresa, onBack, onLogout }) {
@@ -1866,12 +1857,13 @@ function EmpresaPedidosScreen({ userEmail }) {
   );
 }
 
-function RadarSearchScreen({ service, onFound, onStatusChange, showToast }) {
+function RadarSearchScreen({ service, onFound, onStatusChange, showToast, onDone }) {
   const [phase, setPhase] = useState(0); // 0=searching, 1=found // v3
   const [raio, setRaio] = useState(2);
   const [expandMsg, setExpandMsg] = useState('');
   const [empresas, setEmpresas] = useState([]);
   const [viewingEmpresa, setViewingEmpresa] = useState(null);
+  const [pros, setPros] = useState([]);
 
   useEffect(() => {
     const t1 = setTimeout(() => { setRaio(5); setExpandMsg('Expandindo para 5km...'); }, 8000);
@@ -1889,6 +1881,30 @@ function RadarSearchScreen({ service, onFound, onStatusChange, showToast }) {
       })
       .catch((err) => { console.error("EMPRESAS PARCEIRAS erro:", err); setEmpresas([]); });
   }, [service?.cat]);
+
+  // Profissionais reais que batem categoria (+ cidade, se conhecida) e estão
+  // online agora — mesmo critério usado por api/notify-pedido.js pro push,
+  // já que o mural (ProfessionalHome) não filtra pedido geral por categoria.
+  // Sem ranking por proximidade/velocidade de resposta: esse dado nunca
+  // existiu no banco (nem coluna de lat/lng, nem de tempo de resposta).
+  useEffect(() => {
+    if (!service?.cat) return;
+    let q = supabase.from("usuarios").select("email,name,categoria_servico,city,foto_perfil_url,bio")
+      .eq("role", "professional")
+      .contains("categoria_servico", [service.cat])
+      .eq("status", true);
+    if (service.cidade) q = q.ilike("city", service.cidade);
+    q.then(({ data }) => setPros(data || [])).catch(() => setPros([]));
+  }, [service?.cat, service?.cidade]);
+
+  // Avança sozinho pra tela normal de "Aguardando propostas" depois de um
+  // tempo fixo na fase 1 — essa tela é só transição, o pedido já está
+  // publicado desde antes dela aparecer.
+  useEffect(() => {
+    if (phase !== 1) return;
+    const t = setTimeout(() => { onDone && onDone(); }, 6000);
+    return () => clearTimeout(t);
+  }, [phase]);
 
   if (viewingEmpresa) {
     return <EmpresaProfileScreen empresa={viewingEmpresa} onBack={() => setViewingEmpresa(null)} />;
@@ -1978,10 +1994,12 @@ function RadarSearchScreen({ service, onFound, onStatusChange, showToast }) {
         </div>
         {/* interest banner */}
           <div style={{ marginTop:12, padding:"10px 14px", borderRadius:14, background:G+"12", border:`1px solid ${G}40`, display:"flex", alignItems:"center", gap:8 }}>
-            <span style={{ fontSize:18 }}>🎉</span>
+            <span style={{ fontSize:18 }}>📣</span>
             <div>
-              <p style={{ fontSize:13, fontWeight:900, color:"#166534", margin:0 }}>${MOCK_PROS.length} Profissionais Interessados!</p>
-              <p style={{ fontSize:11, color:"#4ade80", margin:0 }}>Selecione o melhor para você</p>
+              <p style={{ fontSize:13, fontWeight:900, color:"#166534", margin:0 }}>
+                {pros.length > 0 ? `${pros.length} profissional${pros.length > 1 ? "is" : ""} notificado${pros.length > 1 ? "s" : ""}` : "Buscando profissionais na sua região"}
+              </p>
+              <p style={{ fontSize:11, color:"#4ade80", margin:0 }}>Assim que alguém enviar uma proposta, ela aparece em "Meus Pedidos"</p>
             </div>
           </div>
         </div>
@@ -1998,59 +2016,35 @@ function RadarSearchScreen({ service, onFound, onStatusChange, showToast }) {
           </div>
         )}
 
-        {/* candidate cards */}
+        {/* candidate cards — profissionais reais que batem categoria/cidade e estão online agora */}
         <div style={{ display:"flex", flexDirection:"column", gap:14, padding:"18px 16px 0" }}>
-          {MOCK_PROS.map((pro, i) => (
-            <div key={pro.id} style={{
+          {pros.length === 0 && (
+            <div style={{ textAlign:"center", padding:"24px 16px", color:"#aaa", background:"white", borderRadius:16, border:"1px solid #F0F0F0" }}>
+              <p style={{ fontSize:13, fontWeight:700, margin:0, color:"#666" }}>Nenhum profissional online agora nessa categoria{service.cidade ? " e cidade" : ""}.</p>
+              <p style={{ fontSize:12, margin:"6px 0 0" }}>Seu pedido já está publicado e visível no mural — você será avisado assim que alguém propor.</p>
+            </div>
+          )}
+          {pros.map(pro => (
+            <div key={pro.email} style={{
               background:"white", borderRadius:20, overflow:"hidden",
               boxShadow:"0 4px 20px rgba(0,0,0,.08)", border:"1px solid #F0F0F0",
             }}>
-              {/* tag ribbon */}
-              {pro.tag && (
-                <div style={{ padding:"6px 14px", background: i === 0 ? O : i === 1 ? B : "#8B2FC9", display:"inline-block" }}>
-                  <span style={{ fontSize:10, fontWeight:900, color:"white", letterSpacing:.5 }}>{pro.tag.toUpperCase()}</span>
-                </div>
-              )}
-
               <div style={{ padding:"14px 16px" }}>
                 {/* pro info row */}
                 <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
-                  <div style={{ width:52, height:52, borderRadius:16, background:B+"15", display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, flexShrink:0 }}>{pro.avatar}</div>
+                  <div style={{ width:52, height:52, borderRadius:16, background:B+"15", display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, flexShrink:0, overflow:"hidden" }}>
+                    {pro.foto_perfil_url ? <img src={pro.foto_perfil_url} alt={pro.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : "👷"}
+                  </div>
                   <div style={{ flex:1 }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:3 }}>
-                      <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:0 }}>{pro.name}</p>
-                      {pro.verified && (
-                        <span style={{ display:"flex", alignItems:"center", gap:3, background:"#FFF9E0", border:"1px solid #F9A82540", borderRadius:99, padding:"2px 7px" }}>
-                          <BadgeCheck size={11} color="#F9A825" />
-                          <span style={{ fontSize:10, fontWeight:800, color:"#B7791F" }}>Verificado</span>
-                        </span>
-                      )}
-                    </div>
-                    <p style={{ fontSize:12, color:"#aaa", margin:0 }}>{pro.cat} · {pro.jobs} serviços</p>
+                    <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:0 }}>{pro.name || "Profissional"}</p>
+                    <p style={{ fontSize:12, color:"#aaa", margin:0 }}>{resolveCats(pro.categoria_servico).map(c => c.label).join(", ") || service.title}</p>
                   </div>
                 </div>
 
-                {/* rating + value */}
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14, padding:"10px 12px", background:"#F8F9FA", borderRadius:12 }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-                    {[1,2,3,4,5].map(s => <Star key={s} size={15} fill={pro.rating >= s ? "#F9A825" : "#E5E7EB"} stroke="none" />)}
-                    <span style={{ fontSize:13, fontWeight:800, color:"#1a1a2e", marginLeft:3 }}>{pro.rating.toFixed(1)}</span>
-                  </div>
-                  <div style={{ textAlign:"right" }}>
-                    <p style={{ fontSize:10, color:"#aaa", margin:0 }}>Proposta</p>
-                    <p style={{ fontSize:18, fontWeight:900, color:B, margin:0 }}>R$ {pro.value}</p>
-                  </div>
-                </div>
-
-                {/* action buttons */}
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:9 }}>
-                  <button onClick={() => onFound(pro, service)} style={{ padding:"12px 0", borderRadius:12, border:`1.5px solid ${B}`, background:"white", color:B, fontWeight:800, fontSize:12, cursor:"pointer" }}>
-                    VER PERFIL
-                  </button>
-                  <button onClick={() => onFound(pro, service)} style={{ padding:"12px 0", borderRadius:12, border:"none", background:`linear-gradient(135deg,${B},#0056c7)`, color:"white", fontWeight:800, fontSize:12, cursor:"pointer", boxShadow:`0 4px 12px ${B}44`, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
-                    <MessageCircle size={14} /> ABRIR CHAT
-                  </button>
-                </div>
+                {/* action button */}
+                <button onClick={() => onFound(pro, service)} style={{ width:"100%", padding:"12px 0", borderRadius:12, border:`1.5px solid ${B}`, background:"white", color:B, fontWeight:800, fontSize:12, cursor:"pointer" }}>
+                  VER PERFIL
+                </button>
               </div>
             </div>
           ))}
@@ -2495,7 +2489,7 @@ function PostServiceScreen({ onBack, onSuccess }) {
       </div>
 
         <button
-            onClick={() => { if (canPublish) { (async()=>{ const ts=Date.now(); const urls=await Promise.all((window._photos||[]).map(async(b64,i)=>{ const res=await fetch(b64); const blob=await res.blob(); const ext=blob.type.includes("png")?"png":"jpg"; const path="pedido_"+ts+"_"+i+"."+ext; const{error:ue}=await supabase.storage.from("pedidos-fotos").upload(path,blob,{contentType:blob.type,upsert:true}); if(ue){console.warn("upload:",ue);return null;} return supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl; })); const fotos=urls.filter(Boolean); const{data:novoPedido,error}=await supabase.from("pedidos").insert({cliente_id:safeGetUser().email||"anonimo",cliente_nome:safeGetUser().name||"Cliente",categoria:form.cat,descricao:form.desc,valor:Number(form.value),cep:form.cep,fotos,status:"aberto"}).select().single(); if(error){alert("Erro ao publicar serviço: "+(error.message||"")); return;} fetch("/api/notify-pedido",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({categoria:form.cat,descricao:form.desc})}).catch(()=>{}); (async()=>{ const clienteEmail=safeGetUser().email; if(!clienteEmail) return; const playerId=await getOneSignalPlayerId(); if(playerId){ supabase.from("usuarios").update({onesignal_player_id:playerId}).eq("email",clienteEmail).then(()=>{}); } })(); onSuccess({...mapPedidoRow(novoPedido), cepInfo, material:form.material}); })(); }}}
+            onClick={() => { if (canPublish) { (async()=>{ const ts=Date.now(); const urls=await Promise.all((window._photos||[]).map(async(b64,i)=>{ const res=await fetch(b64); const blob=await res.blob(); const ext=blob.type.includes("png")?"png":"jpg"; const path="pedido_"+ts+"_"+i+"."+ext; const{error:ue}=await supabase.storage.from("pedidos-fotos").upload(path,blob,{contentType:blob.type,upsert:true}); if(ue){console.warn("upload:",ue);return null;} return supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl; })); const fotos=urls.filter(Boolean); const{data:novoPedido,error}=await supabase.from("pedidos").insert({cliente_id:safeGetUser().email||"anonimo",cliente_nome:safeGetUser().name||"Cliente",categoria:form.cat,descricao:form.desc,valor:Number(form.value),cep:form.cep,cidade:cepInfo.cidade||null,fotos,status:"aberto"}).select().single(); if(error){alert("Erro ao publicar serviço: "+(error.message||"")); return;} fetch("/api/notify-pedido",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({categoria:form.cat,descricao:form.desc})}).catch(()=>{}); (async()=>{ const clienteEmail=safeGetUser().email; if(!clienteEmail) return; const playerId=await getOneSignalPlayerId(); if(playerId){ supabase.from("usuarios").update({onesignal_player_id:playerId}).eq("email",clienteEmail).then(()=>{}); } })(); onSuccess({...mapPedidoRow(novoPedido), cepInfo, material:form.material}); })(); }}}
             style={{ padding:"15px 0", borderRadius:14, border:"none", cursor: canPublish ? "pointer" : "not-allowed", background: canPublish ? `linear-gradient(135deg,${0},#E64A19)` : "#9CA3AF", color: canPublish ? "white" : "#4B5563", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow: canPublish ? "0 5px 18px rgba(255,87,34,.30)" : "none", transition:"all .2s" }}>
             <Send size={15} /> Publicar Serviço
           </button>
@@ -2541,6 +2535,7 @@ function mapPedidoRow(p) {
     photos: p.fotos || [],
     photo: (p.fotos || [])[0] || null,
     loc: p.cidade || "sua região",
+    cidade: p.cidade || null,
     status: p.status,
     time: p.created_at,
     concluido_em: p.concluido_em,
@@ -8000,7 +7995,7 @@ export default function App() {
   // ── SERVICE HANDLERS (Fase 1: fluxo único real, nada aqui é mock) ───────────
   const handlePostServiceSuccess = (pedidoReal) => {
     setSelected(pedidoReal);
-    setScreen("orders");
+    setScreen("radar");
     refreshMeusPedidos();
   };
 
@@ -8375,36 +8370,26 @@ const renderContent = () => {
     <div style={{minHeight:"100vh",background:"#f5f5f5"}}>
       <div style={{background:"linear-gradient(135deg,#1565C0,#0D47A1)",padding:"40px 20px 60px",textAlign:"center",position:"relative"}}>
         <button onClick={()=>setSelectedPro(null)} style={{position:"absolute",top:16,left:16,background:"rgba(255,255,255,.2)",border:"none",borderRadius:20,padding:"6px 14px",color:"white",cursor:"pointer",fontSize:14}}>← Voltar</button>
-        <div style={{width:80,height:80,borderRadius:"50%",background:"rgba(255,255,255,.2)",margin:"0 auto 12px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:36}}>{selectedPro.pro.avatar||"👷"}</div>
-        <h2 style={{color:"white",margin:"0 0 4px",fontSize:22}}>{selectedPro.pro.name}</h2>
-        <div style={{color:"rgba(255,255,255,.8)",fontSize:13}}>{selectedPro.pro.specialty||"Profissional verificado"} · {selectedPro.pro.jobs||0} serviços</div>
-        <div style={{marginTop:8}}>{"⭐".repeat(Math.round(selectedPro.pro.rating||5))}<span style={{color:"rgba(255,255,255,.9)",fontSize:13,marginLeft:4}}>{selectedPro.pro.rating||"5.0"}</span></div>
+        <div style={{width:80,height:80,borderRadius:"50%",background:"rgba(255,255,255,.2)",margin:"0 auto 12px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:36,overflow:"hidden"}}>
+          {selectedPro.pro.foto_perfil_url ? <img src={selectedPro.pro.foto_perfil_url} alt={selectedPro.pro.name} style={{width:"100%",height:"100%",objectFit:"cover"}} /> : "👷"}
+        </div>
+        <h2 style={{color:"white",margin:"0 0 4px",fontSize:22}}>{selectedPro.pro.name||"Profissional"}</h2>
+        <div style={{color:"rgba(255,255,255,.8)",fontSize:13}}>{resolveCats(selectedPro.pro.categoria_servico).map(c=>c.label).join(", ")||"Profissional verificado"}</div>
       </div>
       <div style={{padding:"16px",marginTop:-20}}>
         <div style={{background:"white",borderRadius:16,padding:"16px",marginBottom:12,boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}>
-          <h3 style={{margin:"0 0 8px",fontSize:15,color:"#333"}}>Proposta</h3>
-          <div style={{fontSize:24,fontWeight:800,color:"#1565C0"}}>R$ {selectedPro.pro.value}</div>
-          <div style={{fontSize:12,color:"#888",marginTop:4}}>Valor proposto para este serviço</div>
-        </div>
-        <div style={{background:"white",borderRadius:16,padding:"16px",marginBottom:12,boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}>
           <h3 style={{margin:"0 0 8px",fontSize:15,color:"#333"}}>Sobre o profissional</h3>
-          <p style={{margin:0,fontSize:13,color:"#555",lineHeight:1.6}}>{selectedPro.pro.bio||"Profissional experiente e dedicado, com histórico comprovado de excelência no serviço."}</p>
+          <p style={{margin:0,fontSize:13,color:"#555",lineHeight:1.6}}>{selectedPro.pro.bio||"Esse profissional ainda não preencheu uma bio."}</p>
         </div>
-        <div style={{background:"white",borderRadius:16,padding:"16px",marginBottom:20,boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}>
-          <h3 style={{margin:"0 0 12px",fontSize:15,color:"#333"}}>Avaliações recentes</h3>
-          {[{name:"Maria S.",text:"Ótimo profissional, muito pontual!",rating:5},{name:"João P.",text:"Serviço impecável, recomendo.",rating:5}].map((r,i)=>(
-            <div key={i} style={{borderBottom:i===0?"1px solid #f0f0f0":"none",paddingBottom:i===0?12:0,marginBottom:i===0?12:0}}>
-              <div style={{fontWeight:600,fontSize:13}}>{r.name} {"⭐".repeat(r.rating)}</div>
-              <div style={{fontSize:12,color:"#666",marginTop:2}}>{r.text}</div>
-            </div>
-          ))}
+        <div style={{background:"#EEF4FF",borderRadius:16,padding:"16px",marginBottom:12}}>
+          <p style={{margin:0,fontSize:13,color:"#1565C0",fontWeight:700}}>Esse profissional foi notificado sobre o seu pedido.</p>
+          <p style={{margin:"6px 0 0",fontSize:12,color:"#555"}}>Assim que ele enviar uma proposta, ela aparece em "Meus Pedidos" e você pode conversar por lá.</p>
         </div>
-        <button onClick={()=>{openChatFromService({...selectedPro.svc,pro:selectedPro.pro.name,proposalValue:selectedPro.pro.value,contactUnlocked:true,status:"inprogress"});setSelectedPro(null);}} style={{width:"100%",padding:"16px",borderRadius:16,border:"none",background:"linear-gradient(135deg,#1565C0,#0D47A1)",color:"white",fontWeight:800,fontSize:16,cursor:"pointer",boxShadow:"0 4px 12px rgba(21,101,192,.4)"}}>💬 Abrir Chat</button>
       </div>
     </div>
   );
   
-  if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onFound={(pro, svc) => { setSelectedPro({pro, svc}); }} onStatusChange={handlePedidoStatusChange} showToast={showToast} />;
+  if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onFound={(pro, svc) => { setSelectedPro({pro, svc}); }} onStatusChange={handlePedidoStatusChange} showToast={showToast} onDone={() => setScreen("orders")} />;
       if (screen === "chat")   return <ChatInbox myServices={meusPedidosComCandidatos} onOpenChat={openChatFromService} />;
       if (screen === "orders") return <MyServicesScreen initialTab="aberto" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} onCancelarPedido={(s) => { if (window.confirm('Cancelar esse pedido? O profissional será avisado.')) { handlePedidoStatusChange(s.id, 'cancelado'); showToast?.('Pedido cancelado.', '#DC2626'); } }} isPro={isPro} />;
       if (screen === "profile") {
