@@ -1902,7 +1902,7 @@ function RadarSearchScreen({ service, onFound, onStatusChange, showToast, onDone
   // publicado desde antes dela aparecer.
   useEffect(() => {
     if (phase !== 1) return;
-    const t = setTimeout(() => { onDone && onDone(); }, 6000);
+    const t = setTimeout(() => { onDone && onDone(); }, 8000);
     return () => clearTimeout(t);
   }, [phase]);
 
