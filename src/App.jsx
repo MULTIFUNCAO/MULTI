@@ -545,7 +545,7 @@ function AlertsScreen({ notifications, onAccept, onOpenChat }) {
           <Bell size={28} color={B} />
         </div>
         <p style={{ fontWeight:800, fontSize:16, color:"#1a1a2e" }}>Nenhuma notificação</p>
-        <p style={{ fontSize:13, color:"#aaa", lineHeight:1.5 }}>Quando um profissional enviar uma proposta, ela aparecerá aqui.</p>
+        <p style={{ fontSize:13, color:"#aaa", lineHeight:1.5 }}>Quando um profissional enviar uma proposta ou aceitar seu pedido, aparecerá aqui.</p>
       </div>
     );
   }
@@ -553,7 +553,18 @@ function AlertsScreen({ notifications, onAccept, onOpenChat }) {
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:12, padding:"18px 16px 40px" }}>
       <h2 style={{ fontSize:18, fontWeight:900, color:"#1a1a2e", margin:0 }}>Alertas</h2>
-      {notifications.map(n => (
+      {notifications.map(n => n.kind === "evento" ? (
+        <Card key={n.id}>
+          <div style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
+            <div style={{ width:40, height:40, borderRadius:12, background:G+"18", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>🎉</div>
+            <div style={{ flex:1 }}>
+              <p style={{ fontWeight:800, fontSize:13, color:"#1a1a2e", marginBottom:2 }}>{n.titulo}</p>
+              <p style={{ fontSize:12, color:"#555", lineHeight:1.4 }}>{n.mensagem}</p>
+            </div>
+            {!n.lida && <span style={{ width:8, height:8, borderRadius:"50%", background:"#FF4444", flexShrink:0, marginTop:4 }} />}
+          </div>
+        </Card>
+      ) : (
         <Card key={n.id}>
           <div style={{ display:"flex", alignItems:"flex-start", gap:12, marginBottom:10 }}>
             <div style={{ width:40, height:40, borderRadius:12, background:O+"18", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>💼</div>
@@ -7581,11 +7592,42 @@ export default function App() {
     }).catch(() => {});
   }, [propostasRecebidas]);
 
-  const notificationsFromPropostas = propostasRecebidas.map(p => ({
-    id: p.id, proName: p.profissional_nome, proposal: p.mensagem,
-    serviceTitle: pedidoTitlesById[p.pedido_id] || "Serviço", value: p.valor,
-    status: p.status === "pendente" ? "pending" : "accepted",
-  }));
+  // Notificações de evento (proposta aceita / pedido aceito direto) — pro sino
+  // funcionar pros dois lados (cliente e profissional), diferente das
+  // propostasRecebidas acima que só cobrem o cliente recebendo proposta nova.
+  const [eventNotifications, setEventNotifications] = useState([]);
+  useEffect(() => {
+    if (!userEmail) { setEventNotifications([]); return; }
+    supabase.from("notificacoes").select("*").eq("destinatario_email", userEmail)
+      .order("created_at", { ascending: false }).limit(30)
+      .then(({ data }) => setEventNotifications(data || []));
+    const ch = supabase.channel("notificacoes_" + userEmail)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notificacoes", filter: `destinatario_email=eq.${userEmail}` },
+        payload => setEventNotifications(p => [payload.new, ...p]))
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }, [userEmail]);
+
+  // Marca como lidas quando o usuário abre a tela de Alertas.
+  useEffect(() => {
+    if (screen !== "alerts" || !userEmail) return;
+    const unreadIds = eventNotifications.filter(n => !n.lida).map(n => n.id);
+    if (unreadIds.length) {
+      supabase.from("notificacoes").update({ lida: true }).in("id", unreadIds).then(()=>{});
+      setEventNotifications(evs => evs.map(n => unreadIds.includes(n.id) ? { ...n, lida: true } : n));
+    }
+  }, [screen]);
+
+  const notificationsFromPropostas = [
+    ...propostasRecebidas.map(p => ({
+      kind: "proposta", id: p.id, proName: p.profissional_nome, proposal: p.mensagem,
+      serviceTitle: pedidoTitlesById[p.pedido_id] || "Serviço", value: p.valor,
+      status: p.status === "pendente" ? "pending" : "accepted",
+    })),
+    ...eventNotifications.map(n => ({
+      kind: "evento", id: n.id, titulo: n.titulo, mensagem: n.mensagem, lida: n.lida, created_at: n.created_at,
+    })),
+  ];
   const [userLocation,  setUserLocation]  = useState(localStorage.getItem("multiLocation") || savedSession?.location || "sua região");
   useEffect(() => {
     const sess = (() => { try { return JSON.parse(localStorage.getItem("multiUser")) || {}; } catch { return {}; } })();
@@ -7762,7 +7804,14 @@ export default function App() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: proposta.profissional_id, servico: pedidoTitlesById[proposta.pedido_id] }),
     }).catch(()=>{});
-    // Grava o valor negociado/aceito no pedido — sem isso, "pedidos.valor"
+    // Grava também no sino de notificações in-app (independente do push),
+    // pra aparecer em Alertas mesmo se o navegador não entregar a notificação.
+    supabase.from("notificacoes").insert({
+      destinatario_email: proposta.profissional_id,
+      titulo: "Proposta aceita! 🎉",
+      mensagem: `O cliente aceitou sua proposta para "${pedidoTitlesById[proposta.pedido_id] || "Serviço"}".`,
+      pedido_id: proposta.pedido_id,
+    }).then(()=>{});
     // ficava travado no valor original do cliente pra sempre, e Ganhos do
     // Mês (e qualquer outra tela que leia service.value) somava o valor
     // errado quando a proposta aceita tinha um valor diferente do postado.
@@ -7794,6 +7843,12 @@ export default function App() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: proposta.profissional_id, servico: pedidoTitlesById[proposta.pedido_id] }),
     }).catch(()=>{});
+    supabase.from("notificacoes").insert({
+      destinatario_email: proposta.profissional_id,
+      titulo: "Proposta aceita! 🎉",
+      mensagem: `O cliente aceitou sua proposta para "${pedidoTitlesById[proposta.pedido_id] || "Serviço"}".`,
+      pedido_id: proposta.pedido_id,
+    }).then(()=>{});
     // Só abre o chat depois do update de "pedidos" terminar — antes disso,
     // MinhasDemandasScreen podia remontar e buscar o pedido ainda com o status
     // antigo (a escrita ainda não tinha chegado no banco).
@@ -7841,6 +7896,12 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: clienteId, servico, profissionalNome: userName }),
       }).catch(()=>{});
+      supabase.from("notificacoes").insert({
+        destinatario_email: clienteId,
+        titulo: "Pedido aceito! 🎉",
+        mensagem: `${userName || "Um profissional"} aceitou seu pedido${servico ? ` de "${servico}"` : ""}.`,
+        pedido_id: pedidoId,
+      }).then(()=>{});
     }
   };
 
@@ -7966,7 +8027,7 @@ export default function App() {
     showToast("👋 Até logo!");
   };
 
-  const notifCount = notificationsFromPropostas.filter(n => n.status === "pending").length;
+  const notifCount = notificationsFromPropostas.filter(n => n.kind === "evento" ? !n.lida : n.status === "pending").length;
 
   // ── SCREEN ROUTER ───────────────────────────────────────────────────────────
   function PropostasScreen({ pedido, onBack, onAceitarProposta }) {
