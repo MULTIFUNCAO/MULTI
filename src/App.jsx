@@ -1857,13 +1857,14 @@ function EmpresaPedidosScreen({ userEmail }) {
   );
 }
 
-function RadarSearchScreen({ service, onFound, onStatusChange, showToast }) {
+function RadarSearchScreen({ service, onStatusChange, showToast }) {
   const [phase, setPhase] = useState(0); // 0=searching, 1=found // v3
   const [raio, setRaio] = useState(2);
   const [expandMsg, setExpandMsg] = useState('');
   const [empresas, setEmpresas] = useState([]);
   const [viewingEmpresa, setViewingEmpresa] = useState(null);
   const [pros, setPros] = useState([]);
+  const [viewingPro, setViewingPro] = useState(null);
 
   useEffect(() => {
     const t1 = setTimeout(() => { setRaio(5); setExpandMsg('Expandindo para 5km...'); }, 8000);
@@ -1899,6 +1900,31 @@ function RadarSearchScreen({ service, onFound, onStatusChange, showToast }) {
 
   if (viewingEmpresa) {
     return <EmpresaProfileScreen empresa={viewingEmpresa} onBack={() => setViewingEmpresa(null)} />;
+  }
+
+  if (viewingPro) {
+    return (
+      <div style={{minHeight:"100vh",background:"#f5f5f5"}}>
+        <div style={{background:"linear-gradient(135deg,#1565C0,#0D47A1)",padding:"40px 20px 60px",textAlign:"center",position:"relative"}}>
+          <button onClick={()=>setViewingPro(null)} style={{position:"absolute",top:16,left:16,background:"rgba(255,255,255,.2)",border:"none",borderRadius:20,padding:"6px 14px",color:"white",cursor:"pointer",fontSize:14}}>← Voltar</button>
+          <div style={{width:80,height:80,borderRadius:"50%",background:"rgba(255,255,255,.2)",margin:"0 auto 12px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:36,overflow:"hidden"}}>
+            {viewingPro.foto_perfil_url ? <img src={viewingPro.foto_perfil_url} alt={viewingPro.name} style={{width:"100%",height:"100%",objectFit:"cover"}} /> : "👷"}
+          </div>
+          <h2 style={{color:"white",margin:"0 0 4px",fontSize:22}}>{viewingPro.name||"Profissional"}</h2>
+          <div style={{color:"rgba(255,255,255,.8)",fontSize:13}}>{resolveCats(viewingPro.categoria_servico).map(c=>c.label).join(", ")||"Profissional verificado"}</div>
+        </div>
+        <div style={{padding:"16px",marginTop:-20}}>
+          <div style={{background:"white",borderRadius:16,padding:"16px",marginBottom:12,boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}>
+            <h3 style={{margin:"0 0 8px",fontSize:15,color:"#333"}}>Sobre o profissional</h3>
+            <p style={{margin:0,fontSize:13,color:"#555",lineHeight:1.6}}>{viewingPro.bio||"Esse profissional ainda não preencheu uma bio."}</p>
+          </div>
+          <div style={{background:"#EEF4FF",borderRadius:16,padding:"16px",marginBottom:12}}>
+            <p style={{margin:0,fontSize:13,color:"#1565C0",fontWeight:700}}>Esse profissional foi notificado sobre o seu pedido.</p>
+            <p style={{margin:"6px 0 0",fontSize:12,color:"#555"}}>Assim que ele enviar uma proposta, ela aparece em "Meus Pedidos" e você pode conversar por lá.</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const cat = CATS.find(c => c.id === service.cat);
@@ -2033,7 +2059,7 @@ function RadarSearchScreen({ service, onFound, onStatusChange, showToast }) {
                 </div>
 
                 {/* action button */}
-                <button onClick={() => onFound(pro, service)} style={{ width:"100%", padding:"12px 0", borderRadius:12, border:`1.5px solid ${B}`, background:"white", color:B, fontWeight:800, fontSize:12, cursor:"pointer" }}>
+                <button onClick={() => setViewingPro(pro)} style={{ width:"100%", padding:"12px 0", borderRadius:12, border:`1.5px solid ${B}`, background:"white", color:B, fontWeight:800, fontSize:12, cursor:"pointer" }}>
                   VER PERFIL
                 </button>
               </div>
@@ -7630,7 +7656,6 @@ function AvaliacaoScreen({ service, onBack, setScreen, userEmail, showToast }) {
 
 export default function App() {
   console.log("APP FUNCTION START");
-  const [selectedPro, setSelectedPro] = useState(null);
   const [role,      setRole]      = useState(() => {
     try { return JSON.parse(localStorage.getItem("multiSession") || "null")?.role || "client"; }
     catch { return "client"; }
@@ -8357,30 +8382,7 @@ const renderContent = () => {
   if (!role && !authScreen) { setAuthScreen("role-select"); return null; }
     if (role === "client") {
       if (screen === "post")   return <PostServiceScreen onBack={() => setScreen("home")} onSuccess={handlePostServiceSuccess} />;
-      if (selectedPro) return (
-    <div style={{minHeight:"100vh",background:"#f5f5f5"}}>
-      <div style={{background:"linear-gradient(135deg,#1565C0,#0D47A1)",padding:"40px 20px 60px",textAlign:"center",position:"relative"}}>
-        <button onClick={()=>setSelectedPro(null)} style={{position:"absolute",top:16,left:16,background:"rgba(255,255,255,.2)",border:"none",borderRadius:20,padding:"6px 14px",color:"white",cursor:"pointer",fontSize:14}}>← Voltar</button>
-        <div style={{width:80,height:80,borderRadius:"50%",background:"rgba(255,255,255,.2)",margin:"0 auto 12px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:36,overflow:"hidden"}}>
-          {selectedPro.pro.foto_perfil_url ? <img src={selectedPro.pro.foto_perfil_url} alt={selectedPro.pro.name} style={{width:"100%",height:"100%",objectFit:"cover"}} /> : "👷"}
-        </div>
-        <h2 style={{color:"white",margin:"0 0 4px",fontSize:22}}>{selectedPro.pro.name||"Profissional"}</h2>
-        <div style={{color:"rgba(255,255,255,.8)",fontSize:13}}>{resolveCats(selectedPro.pro.categoria_servico).map(c=>c.label).join(", ")||"Profissional verificado"}</div>
-      </div>
-      <div style={{padding:"16px",marginTop:-20}}>
-        <div style={{background:"white",borderRadius:16,padding:"16px",marginBottom:12,boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}>
-          <h3 style={{margin:"0 0 8px",fontSize:15,color:"#333"}}>Sobre o profissional</h3>
-          <p style={{margin:0,fontSize:13,color:"#555",lineHeight:1.6}}>{selectedPro.pro.bio||"Esse profissional ainda não preencheu uma bio."}</p>
-        </div>
-        <div style={{background:"#EEF4FF",borderRadius:16,padding:"16px",marginBottom:12}}>
-          <p style={{margin:0,fontSize:13,color:"#1565C0",fontWeight:700}}>Esse profissional foi notificado sobre o seu pedido.</p>
-          <p style={{margin:"6px 0 0",fontSize:12,color:"#555"}}>Assim que ele enviar uma proposta, ela aparece em "Meus Pedidos" e você pode conversar por lá.</p>
-        </div>
-      </div>
-    </div>
-  );
-  
-  if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onFound={(pro, svc) => { setSelectedPro({pro, svc}); }} onStatusChange={handlePedidoStatusChange} showToast={showToast} />;
+      if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onStatusChange={handlePedidoStatusChange} showToast={showToast} />;
       if (screen === "chat")   return <ChatInbox myServices={meusPedidosComCandidatos} onOpenChat={openChatFromService} />;
       if (screen === "orders") return <MyServicesScreen initialTab="aberto" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} onCancelarPedido={(s) => { if (window.confirm('Cancelar esse pedido? O profissional será avisado.')) { handlePedidoStatusChange(s.id, 'cancelado'); showToast?.('Pedido cancelado.', '#DC2626'); } }} isPro={isPro} />;
       if (screen === "profile") {
