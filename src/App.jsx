@@ -1954,7 +1954,7 @@ function RadarSearchScreen({ service, onFound, onStatusChange, showToast, onDone
         </svg>
         <style>{"`@keyframes radarSweep { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`"}</style>
         <p style={{ color:'white', fontSize:16, fontWeight:700, marginBottom:6 }}>Buscando profissional...</p>
-        <p style={{ color:'#ffffff60', fontSize:12, marginBottom:24 }}>3 profissionais na sua região</p>
+        <p style={{ color:'#ffffff60', fontSize:12, marginBottom:24 }}>Localizando profissionais perto de você</p>
         <div style={{ display:'flex', gap:16 }}>
           <div style={{ display:'flex', alignItems:'center', gap:5 }}>
             <div style={{ width:8, height:8, borderRadius:'50%', background:'#4CAF50' }}></div>
