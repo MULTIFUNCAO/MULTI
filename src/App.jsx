@@ -7825,13 +7825,23 @@ export default function App() {
   // pega o pedido direto, sem passar por "propostas" (não existe proposta
   // nenhuma nesse caminho). Só grava em "pedidos"; abrir a tela de detalhe
   // continua sendo responsabilidade de quem chama.
-  const handleAceitarPedidoDireto = (pedidoId) => {
+  const handleAceitarPedidoDireto = (pedidoId, clienteId, servico) => {
     if (!pedidoId) return;
     supabase.from("pedidos").update({
       status: "em_andamento",
       profissional_aceito: userEmail,
       profissional_nome: userName,
     }).eq("id", pedidoId).then(()=>refreshMeusPedidos());
+    // Avisa o cliente que o profissional aceitou o pedido direto — esse
+    // caminho (sem proposta) não tinha nenhuma notificação pro cliente,
+    // diferente do fluxo de propostas (ver handleAceitarProposta).
+    if (clienteId) {
+      fetch("/api/notify-aceito-cliente", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: clienteId, servico, profissionalNome: userName }),
+      }).catch(()=>{});
+    }
   };
 
   const openChatFromNotif = (notif) => {
@@ -8200,7 +8210,7 @@ const renderContent = () => {
         userLocation={localStorage.getItem("multiLocation") || userLocation}
         allDocsVerified={allDocsVerified}
         docStatus={docStatus}
-        onGoToDocs={() => setScreen("profile")} onGoToOrders={() => setScreen("orders")} onGoToWallet={() => setScreen("wallet")} onAcceptOrder={(order) => { handleAceitarPedidoDireto(order.id); setSelected(order); setScreen("service"); }}
+        onGoToDocs={() => setScreen("profile")} onGoToOrders={() => setScreen("orders")} onGoToWallet={() => setScreen("wallet")} onAcceptOrder={(order) => { handleAceitarPedidoDireto(order.id, order.cliente_id, order.title || order.category); setSelected(order); setScreen("service"); }}
       />
     );
   };
