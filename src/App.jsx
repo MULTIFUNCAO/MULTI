@@ -5232,6 +5232,13 @@ function ChatInbox({ myServices, onOpenChat }) {
 }
 
 
+// Versão do Termo de Isenção de Responsabilidade exigido antes da liberação de
+// contato (Fase 3). Texto ainda em revisão jurídica — placeholder por ora.
+// Quando o texto definitivo entrar, muda TERMO_VERSAO junto (ex: "v2") pra
+// rastrear quem aceitou qual versão em "aceites_termo".
+const TERMO_VERSAO = "v1-placeholder";
+const TERMO_TEXTO_PLACEHOLDER = "Termo de isenção de responsabilidade (texto a definir).";
+
 // Chat de negociação real (Fase 1) — mensagens persistidas em "mensagens",
 // chaveadas por pedido_id (um pedido em_andamento só tem uma proposta aceita,
 // então pedido_id já desambigua a negociação sem precisar de proposta_id).
@@ -5245,6 +5252,9 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
   const [aceitando, setAceitando] = useState(false);
   const [dataInput, setDataInput] = useState("");
   const [contraparteWhatsapp, setContraparteWhatsapp] = useState(null);
+  const [aceitesTermo, setAceitesTermo] = useState([]);
+  const [aceitandoTermo, setAceitandoTermo] = useState(false);
+  const [termoChecked, setTermoChecked] = useState(false);
   const endRef = useRef(null);
 
   const carregar = () => {
@@ -5256,6 +5266,13 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
       .select("cliente_id,cliente_nome,profissional_aceito,profissional_nome,aceite_formal_cliente_em,aceite_formal_profissional_em,data_agendada")
       .eq("id", chat.pedidoId).maybeSingle()
       .then(({ data }) => setPedido(data || null))
+      .catch(() => {});
+    // Gate jurídico (Fase 3): cada lado precisa aceitar o Termo de Isenção de
+    // Responsabilidade antes do WhatsApp aparecer, mesmo já tendo confirmado
+    // a data (aceite_formal_*). Tabela separada porque isso rastreia versão
+    // do termo aceito, e não é 1-pra-1 com uma coluna fixa como aceite_formal.
+    supabase.from("aceites_termo").select("*").eq("pedido_id", chat.pedidoId)
+      .then(({ data }) => setAceitesTermo(data || []))
       .catch(() => {});
   };
 
@@ -5328,10 +5345,29 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
   const meuAceite   = pedido && (souCliente ? pedido.aceite_formal_cliente_em : pedido.aceite_formal_profissional_em);
   const liberado    = !!(pedido?.aceite_formal_cliente_em && pedido?.aceite_formal_profissional_em);
 
+  // Gate jurídico (Fase 3): além da confirmação mútua de data (liberado acima),
+  // cada lado também precisa aceitar o Termo de Isenção de Responsabilidade
+  // antes do WhatsApp de fato aparecer.
+  const contraparteEmail = pedido ? (souCliente ? pedido.profissional_aceito : pedido.cliente_id) : null;
+  const meuAceiteTermo   = aceitesTermo.some(a => a.usuario_id === meuEmail);
+  const outroAceiteTermo = aceitesTermo.some(a => a.usuario_id === contraparteEmail);
+  const termoLiberado    = meuAceiteTermo && outroAceiteTermo;
+
+  const aceitarTermo = () => {
+    if (!pedido || aceitandoTermo || meuAceiteTermo) return;
+    setAceitandoTermo(true);
+    supabase.from("aceites_termo")
+      .upsert({ pedido_id: chat.pedidoId, usuario_id: meuEmail, versao_termo: TERMO_VERSAO }, { onConflict: "pedido_id,usuario_id" })
+      .then(() => carregar())
+      .catch(() => {})
+      .finally(() => setAceitandoTermo(false));
+  };
+
   // Indicador de estágio (pra quem usa pela primeira vez saber o que esperar
   // em cada etapa): 0 = ainda combinando os detalhes, 1 = data proposta mas
-  // faltando confirmação de um dos lados, 2 = confirmado dos dois lados.
-  const estagioAtual = liberado ? 2 : (pedido?.data_agendada ? 1 : 0);
+  // faltando confirmação de um dos lados (ou termo pendente), 2 = confirmado
+  // e termo aceito dos dois lados — só aí o contato é liberado de fato.
+  const estagioAtual = (liberado && termoLiberado) ? 2 : (pedido?.data_agendada ? 1 : 0);
   const ESTAGIOS = ["📍 Combine os detalhes", "📅 Confirmem a data", "📱 Contato liberado"];
 
   const aceitarContratacao = () => {
@@ -5378,7 +5414,7 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
             <p style={{ fontSize:15, fontWeight:900, color:"white", margin:0 }}>{chat.proName || "Conversa"}</p>
             {chat.serviceTitle && <p style={{ fontSize:11, color:"rgba(255,255,255,.75)", margin:0 }}>{chat.serviceTitle}</p>}
           </div>
-          {liberado && contraparteWhatsapp && (
+          {liberado && termoLiberado && contraparteWhatsapp && (
             <a
               href={`https://wa.me/55${contraparteWhatsapp.replace(/\D/g, "")}`}
               target="_blank" rel="noreferrer"
@@ -5430,23 +5466,51 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
 
       {pedido && mensagens.length > 0 && (
         liberado ? (
-          <div style={{ flexShrink:0, margin:"0 14px 10px", padding:"10px 14px", borderRadius:12, background:"#F0FDF4", border:`1px solid ${G}44` }}>
-            <p style={{ fontSize:12.5, fontWeight:800, color:G, margin:0 }}>🤝 Contratação confirmada — telefone liberado.</p>
-            {pedido.data_agendada && (
-              <p style={{ fontSize:12, fontWeight:700, color:G, margin:"4px 0 0" }}>📅 Agendado pra {dataAgendadaFmt(pedido.data_agendada)}</p>
-            )}
-            {contraparteWhatsapp ? (
-              <a
-                href={`https://wa.me/55${contraparteWhatsapp.replace(/\D/g, "")}`}
-                target="_blank" rel="noreferrer"
-                style={{ marginTop:8, display:"flex", alignItems:"center", justifyContent:"center", gap:7, padding:"10px 0", borderRadius:10, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:12.5, textDecoration:"none" }}
+          termoLiberado ? (
+            <div style={{ flexShrink:0, margin:"0 14px 10px", padding:"10px 14px", borderRadius:12, background:"#F0FDF4", border:`1px solid ${G}44` }}>
+              <p style={{ fontSize:12.5, fontWeight:800, color:G, margin:0 }}>🤝 Contratação confirmada — telefone liberado.</p>
+              {pedido.data_agendada && (
+                <p style={{ fontSize:12, fontWeight:700, color:G, margin:"4px 0 0" }}>📅 Agendado pra {dataAgendadaFmt(pedido.data_agendada)}</p>
+              )}
+              {contraparteWhatsapp ? (
+                <a
+                  href={`https://wa.me/55${contraparteWhatsapp.replace(/\D/g, "")}`}
+                  target="_blank" rel="noreferrer"
+                  style={{ marginTop:8, display:"flex", alignItems:"center", justifyContent:"center", gap:7, padding:"10px 0", borderRadius:10, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:12.5, textDecoration:"none" }}
+                >
+                  <MessageCircle size={14} /> Chamar no WhatsApp: {maskPhone(contraparteWhatsapp)}
+                </a>
+              ) : (
+                <p style={{ fontSize:11.5, color:"#B45309", margin:"6px 0 0" }}>⚠️ O outro lado ainda não cadastrou um WhatsApp — peça pra completar o perfil.</p>
+              )}
+            </div>
+          ) : !meuAceiteTermo ? (
+            <div style={{ flexShrink:0, margin:"0 14px 10px", padding:"12px 14px", borderRadius:12, background:"#FFFBEB", border:"1px solid #F59E0B44" }}>
+              <p style={{ fontSize:12.5, fontWeight:800, color:"#92400E", margin:"0 0 8px" }}>📄 Antes de liberar o contato, aceite o termo abaixo:</p>
+              <div
+                onClick={() => setTermoChecked(v => !v)}
+                style={{ display:"flex", alignItems:"flex-start", gap:10, cursor:"pointer", padding:"10px 12px", borderRadius:10, background: termoChecked ? "#F0FDF4" : "white", border:`1.5px solid ${termoChecked ? G : "#E5E7EB"}`, marginBottom:8 }}
               >
-                <MessageCircle size={14} /> Chamar no WhatsApp: {maskPhone(contraparteWhatsapp)}
-              </a>
-            ) : (
-              <p style={{ fontSize:11.5, color:"#B45309", margin:"6px 0 0" }}>⚠️ O outro lado ainda não cadastrou um WhatsApp — peça pra completar o perfil.</p>
-            )}
-          </div>
+                <div style={{ width:20, height:20, borderRadius:6, border:`2px solid ${termoChecked ? G : "#D1D5DB"}`, background: termoChecked ? G : "white", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:1 }}>
+                  {termoChecked && <Check size={12} color="white" strokeWidth={3} />}
+                </div>
+                <p style={{ fontSize:11.5, color:"#555", lineHeight:1.5, margin:0 }}>
+                  Li e aceito os <strong>Termos de Uso e Isenção de Responsabilidade</strong>. {TERMO_TEXTO_PLACEHOLDER}
+                </p>
+              </div>
+              <button
+                onClick={aceitarTermo}
+                disabled={!termoChecked || aceitandoTermo}
+                style={{ width:"100%", padding:"10px 0", borderRadius:10, border:"none", background:G, color:"white", fontWeight:800, fontSize:12.5, cursor: (!termoChecked || aceitandoTermo) ? "default" : "pointer", opacity: (!termoChecked || aceitandoTermo) ? .5 : 1 }}
+              >
+                ✅ Aceitar e continuar
+              </button>
+            </div>
+          ) : (
+            <div style={{ flexShrink:0, margin:"0 14px 10px", padding:"10px 14px", borderRadius:12, background:"#F8F9FA", border:"1px solid #E5E7EB" }}>
+              <p style={{ fontSize:12.5, fontWeight:700, color:"#555", margin:0 }}>✅ Você aceitou os termos. Aguardando o outro lado aceitar os termos.</p>
+            </div>
+          )
         ) : meuAceite ? (
           <div style={{ flexShrink:0, margin:"0 14px 10px", padding:"10px 14px", borderRadius:12, background:"#F8F9FA", border:"1px solid #E5E7EB" }}>
             <p style={{ fontSize:12.5, fontWeight:700, color:"#555", margin:0 }}>✅ Você confirmou. Aguardando confirmação do outro lado.</p>
