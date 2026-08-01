@@ -559,7 +559,8 @@ function AlertsScreen({ notifications, onAccept, onOpenChat }) {
             <div style={{ width:40, height:40, borderRadius:12, background:G+"18", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>🎉</div>
             <div style={{ flex:1 }}>
               <p style={{ fontWeight:800, fontSize:13, color:"#1a1a2e", marginBottom:2 }}>{n.titulo}</p>
-              <p style={{ fontSize:12, color:"#555", lineHeight:1.4 }}>{n.mensagem}</p>
+              <p style={{ fontSize:12, color:"#555", lineHeight:1.4, marginBottom:4 }}>{n.mensagem}</p>
+              {n.created_at && <p style={{ fontSize:11, color:"#aaa" }}>{new Date(n.created_at).toLocaleString("pt-BR")}</p>}
             </div>
             {!n.lida && <span style={{ width:8, height:8, borderRadius:"50%", background:"#FF4444", flexShrink:0, marginTop:4 }} />}
           </div>
@@ -7880,7 +7881,7 @@ export default function App() {
   // pega o pedido direto, sem passar por "propostas" (não existe proposta
   // nenhuma nesse caminho). Só grava em "pedidos"; abrir a tela de detalhe
   // continua sendo responsabilidade de quem chama.
-  const handleAceitarPedidoDireto = (pedidoId, clienteId, servico) => {
+  const handleAceitarPedidoDireto = (pedidoId, clienteId, servico, valor) => {
     if (!pedidoId) return;
     supabase.from("pedidos").update({
       status: "em_andamento",
@@ -7899,7 +7900,7 @@ export default function App() {
       supabase.from("notificacoes").insert({
         destinatario_email: clienteId,
         titulo: "Pedido aceito! 🎉",
-        mensagem: `${userName || "Um profissional"} aceitou seu pedido${servico ? ` de "${servico}"` : ""}.`,
+        mensagem: `${userName || "Um profissional"} aceitou seu pedido${servico ? ` de "${servico}"` : ""}${valor ? ` (R$ ${valor})` : ""}.`,
         pedido_id: pedidoId,
       }).then(()=>{});
     }
@@ -8271,7 +8272,7 @@ const renderContent = () => {
         userLocation={localStorage.getItem("multiLocation") || userLocation}
         allDocsVerified={allDocsVerified}
         docStatus={docStatus}
-        onGoToDocs={() => setScreen("profile")} onGoToOrders={() => setScreen("orders")} onGoToWallet={() => setScreen("wallet")} onAcceptOrder={(order) => { handleAceitarPedidoDireto(order.id, order.cliente_id, order.title || order.category); setSelected(order); setScreen("service"); }}
+        onGoToDocs={() => setScreen("profile")} onGoToOrders={() => setScreen("orders")} onGoToWallet={() => setScreen("wallet")} onAcceptOrder={(order) => { handleAceitarPedidoDireto(order.id, order.cliente_id, order.title || order.category, order.value); setSelected(order); setScreen("service"); }}
       />
     );
   };
