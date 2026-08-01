@@ -4587,7 +4587,7 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
   const [editMode,  setEditMode]  = useState(false);
   const [name, setName] = useState(initialUserName || "");
   const [whatsapp, setWhatsapp] = useState("");
-  const [savingWhatsapp, setSavingWhatsapp] = useState(false);
+  const [savingPerfil, setSavingPerfil] = useState(false);
   useEffect(() => { if (initialUserName) setName(initialUserName); }, [initialUserName]);
   // Antes disso, avatar/portfólio só viviam em sessionStorage/estado local —
   // nunca eram lidos do Supabase, então "salvavam" só até fechar a aba. O
@@ -4770,20 +4770,38 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
       <div style={{ background:`linear-gradient(160deg,${B} 0%,#0056c7 100%)`, padding:"28px 20px 36px", position:"relative" }}>
         {/* edit toggle */}
         <button
-          disabled={savingWhatsapp}
+          disabled={savingPerfil}
           onClick={async () => {
             if (editMode) {
-              if (userEmail) {
-                setSavingWhatsapp(true);
-                const { error } = await supabase.from("usuarios").update({ whatsapp: whatsapp || null }).eq("email", userEmail);
-                setSavingWhatsapp(false);
-                if (error) { showToast("❌ Erro ao salvar WhatsApp: " + (error.message || ""), "#DC2626"); return; }
+              if (!userEmail) { showToast("❌ Não foi possível salvar — sessão sem e-mail.", "#DC2626"); return; }
+              setSavingPerfil(true);
+              // Nome e WhatsApp salvos juntos aqui — antes "Salvar" só mexia no
+              // state local (name nunca era gravado; whatsapp tinha o update
+              // mas rodava condicionado a um userEmail que a tela de cliente
+              // nem recebia como prop, então nunca disparava). Depois de
+              // salvar, relê do banco em vez de confiar no state local, pra
+              // garantir que o que aparece na tela é o que está realmente
+              // persistido (evita o mesmo bug voltar de outro jeito).
+              const updates = { whatsapp: whatsapp || null };
+              if (name.trim()) updates.name = name.trim();
+              const { error } = await supabase.from("usuarios").update(updates).eq("email", userEmail);
+              if (error) {
+                setSavingPerfil(false);
+                showToast("❌ Erro ao salvar perfil: " + (error.message || ""), "#DC2626");
+                return;
+              }
+              const { data } = await supabase.from("usuarios").select("name,whatsapp,foto_perfil_url").eq("email", userEmail).maybeSingle();
+              setSavingPerfil(false);
+              if (data) {
+                setName(data.name || "");
+                setWhatsapp(data.whatsapp || "");
+                setAvatarUrl(data.foto_perfil_url || null);
               }
               showToast("✅ Perfil salvo!");
             }
             setEditMode(e => !e);
           }}
-          style={{ position:"absolute", top:16, right:16, background:"rgba(255,255,255,.2)", border:"none", borderRadius:99, padding:"6px 14px", color:"white", fontSize:12, fontWeight:800, cursor: savingWhatsapp ? "default" : "pointer", opacity: savingWhatsapp ? .6 : 1, display:"flex", alignItems:"center", gap:6 }}>
+          style={{ position:"absolute", top:16, right:16, background:"rgba(255,255,255,.2)", border:"none", borderRadius:99, padding:"6px 14px", color:"white", fontSize:12, fontWeight:800, cursor: savingPerfil ? "default" : "pointer", opacity: savingPerfil ? .6 : 1, display:"flex", alignItems:"center", gap:6 }}>
           <Pencil size={12} /> {editMode ? "Salvar" : "Editar"}
         </button>
 
@@ -8382,7 +8400,7 @@ const renderContent = () => {
       if (screen === "orders") return <MyServicesScreen initialTab="aberto" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} onCancelarPedido={(s) => { if (window.confirm('Cancelar esse pedido? O profissional será avisado.')) { handlePedidoStatusChange(s.id, 'cancelado'); showToast?.('Pedido cancelado.', '#DC2626'); } }} isPro={isPro} />;
       if (screen === "profile") {
         if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
-        return <ProfileScreen role="client" userName={userName} isPro={false} showRankingGlobal={showRankingGlobal} onClearRankingGlobal={() => setShowRankingGlobal(false)} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenAdmin={() => setShowAdmin(true)} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
+        return <ProfileScreen role="client" userName={userName} userEmail={userEmail} isPro={false} showRankingGlobal={showRankingGlobal} onClearRankingGlobal={() => setShowRankingGlobal(false)} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenAdmin={() => setShowAdmin(true)} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
       }
       if (screen === "propostas" && selected) return <PropostasScreen pedido={selected} onBack={()=>setScreen("orders")} onAceitarProposta={handleAceitarProposta} />;
       if (screen === "service" && selected) return <ServiceDetailClient key={selected.id} service={selected} onBack={() => setScreen("orders")} onStatusChange={handlePedidoStatusChange} onConfirmarConclusao={handleConfirmarConclusao} onCancelarPedido={handleCancelarPedidoPosAceite} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
