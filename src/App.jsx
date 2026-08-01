@@ -8114,12 +8114,20 @@ export default function App() {
   };
 
   const handleLoginComplete = (name = "", email = "", isNewAccount = false, location = "", registeredRole = "", whatsapp = "") => {
-    const firstName = name.trim().split(/\s+/)[0];
+    const finishLogin = (resolvedRole, nomeSalvo) => {
+      // Nome de exibição: no cadastro, usa o que a pessoa digitou em "Nome
+      // Completo" (única fonte confiável). Em logins seguintes, prioriza o
+      // que já está salvo em "usuarios" (nosso banco) em vez do "name" que
+      // o backend de autenticação devolve — esse backend é externo e só
+      // confirma senha; em contas mais antigas ele devolve o prefixo do
+      // e-mail como nome, e usar isso aqui sobrescrevia o nome certo a cada
+      // login (mesmo tipo de bug já corrigido abaixo pra whatsapp/city).
+      const nomeFinal = isNewAccount ? name : (nomeSalvo || name);
+      const firstName = (nomeFinal || "").trim().split(/\s+/)[0];
 
-    const finishLogin = (resolvedRole) => {
       setIsLoggedIn(true);
       setAuthScreen(null);
-      if (name)     setUserName(firstName);
+      if (nomeFinal) setUserName(firstName);
       if (email)    setUserEmail(email);
       if (location && location !== "sua região") setUserLocation(location);
       setUserRole(resolvedRole);
@@ -8136,12 +8144,13 @@ export default function App() {
         // silenciosamente contas que tinham virado "professional" depois do
         // cadastro original. Troca de role fora do cadastro só acontece pelo
         // fluxo explícito (onSwitchRole, "Sou profissional"/"Sou cliente").
-        const upsertPayload = { email: session.email, name: session.name };
+        const upsertPayload = { email: session.email };
         // Cadastro novo por aqui é sempre client/professional (empresa tem seu próprio
         // fluxo/upsert em CadastroEmpresaScreen) — zera empresa_id pra não herdar o
         // vínculo de um teste/conta anterior que usou o mesmo e-mail como empresa,
         // o que travava esse e-mail pra sempre como "empresa" no login (ver abaixo).
-        if (isNewAccount) { upsertPayload.role = session.role || "client"; upsertPayload.empresa_id = null; }
+        // "name" segue o mesmo raciocínio: só grava na criação da conta.
+        if (isNewAccount) { upsertPayload.name = session.name; upsertPayload.role = session.role || "client"; upsertPayload.empresa_id = null; }
         // whatsapp/city só entram no payload quando vêm com valor de verdade
         // (cadastro novo, via fast-form). Login normal sempre chama isso com
         // whatsapp="" e location="" (LoginScreen não coleta nenhum dos dois),
@@ -8159,7 +8168,7 @@ export default function App() {
       // logo abaixo — dispara tanto aqui (login) quanto na restauração de
       // sessão do localStorage num reload de página.
       if (isNewAccount) {
-        setTimeout(() => sendWelcomeEmail({ name, email, role: resolvedRole }), 400);
+        setTimeout(() => sendWelcomeEmail({ name: nomeFinal, email, role: resolvedRole }), 400);
       }
       if (pendingIntent?.fn) {
         const fn = pendingIntent.fn;
@@ -8174,8 +8183,9 @@ export default function App() {
     // Uma conta com empresa_id vinculado é sempre "empresa", mesmo que o role
     // devolvido pelo login/cadastro diga outra coisa — evita que login/registro
     // regrave "client"/"professional" por cima de uma conta de empresa parceira.
-    supabase.from("usuarios").select("empresa_id").eq("email", email).maybeSingle()
-      .then(({ data }) => finishLogin(data?.empresa_id ? "empresa" : fallbackRole))
+    // "name" vem junto pelo mesmo motivo do comentário em finishLogin.
+    supabase.from("usuarios").select("empresa_id,name").eq("email", email).maybeSingle()
+      .then(({ data }) => finishLogin(data?.empresa_id ? "empresa" : fallbackRole, data?.name))
       .catch(() => finishLogin(fallbackRole));
   };
 
