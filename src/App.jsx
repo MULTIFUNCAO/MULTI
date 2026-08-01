@@ -755,9 +755,10 @@ function EmpresaCard({ emp, onVerPerfil }) {
    em tempo real), pra ambas as telas mostrarem exatamente a mesma coisa em
    vez de duas versões divergentes do mesmo card. `perfil.isEmpresa` liga o
    mesmo selo de prioridade usado no EmpresaCard. */
-function CandidatoCard({ proposta: p, perfil, reputacao, onAceitar }) {
+function CandidatoCard({ proposta: p, perfil, reputacao, onAceitar, onVerPerfil }) {
   const cats = resolveCats(perfil?.categoria_servico);
   const isEmpresa = !!perfil?.isEmpresa;
+  const email = p.profissional_email || p.profissional_id;
   return (
     <div style={{
       background:"white", borderRadius:16, padding:16, marginBottom:12,
@@ -795,9 +796,98 @@ function CandidatoCard({ proposta: p, perfil, reputacao, onAceitar }) {
       )}
       <div style={{color:"#007BFF",fontWeight:800,fontSize:18,margin:"6px 0"}}>R$ {p.valor||0}</div>
       <div style={{color:"#666",fontSize:13,marginBottom:12}}>{p.mensagem||""}</div>
-      <button onClick={()=>onAceitar&&onAceitar(p)} style={{width:"100%",padding:"12px",background:"#22c55e",color:"white",border:"none",borderRadius:10,fontWeight:800,fontSize:14,cursor:"pointer"}}>✅ Aceitar Proposta</button>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:9 }}>
+        <button onClick={()=>onVerPerfil&&onVerPerfil({ email, isEmpresa })} style={{padding:"12px 0",borderRadius:10,border:`1.5px solid ${B}`,background:"white",color:B,fontWeight:800,fontSize:13,cursor:"pointer"}}>
+          VER PERFIL
+        </button>
+        <button onClick={()=>onAceitar&&onAceitar(p)} style={{padding:"12px 0",background:"#22c55e",color:"white",border:"none",borderRadius:10,fontWeight:800,fontSize:12.5,cursor:"pointer"}}>✅ Aceitar Proposta</button>
+      </div>
     </div>
   );
+}
+
+/* Perfil público de profissional individual — mesmo padrão de
+   EmpresaProfileScreen (foto, sobre, categorias), mas com portfólio no lugar
+   de CNPJ/WhatsApp direto: contato só é liberado depois que a proposta é
+   aceita (chat abre automaticamente via handleAceitarProposta), então essa
+   tela deliberadamente não expõe telefone/WhatsApp. Usada pelo "Ver Perfil"
+   do CandidatoCard. */
+function ProfissionalProfileScreen({ perfil, reputacao, onBack }) {
+  const cats = resolveCats(perfil?.categoria_servico);
+  const portfolio = perfil?.portfolio || [];
+  return (
+    <div style={{ minHeight:"100vh", background:"#f5f5f5" }}>
+      <div style={{ background:"linear-gradient(135deg,#1565C0,#0D47A1)", padding:"40px 20px 60px", textAlign:"center", position:"relative" }}>
+        {onBack && (
+          <button onClick={onBack} style={{ position:"absolute", top:16, left:16, background:"rgba(255,255,255,.2)", border:"none", borderRadius:20, padding:"6px 14px", color:"white", cursor:"pointer", fontSize:14 }}>← Voltar</button>
+        )}
+        <div style={{ width:80, height:80, borderRadius:"50%", overflow:"hidden", background:"rgba(255,255,255,.2)", margin:"0 auto 12px", display:"flex", alignItems:"center", justifyContent:"center", fontSize:36 }}>
+          {perfil?.foto_perfil_url
+            ? <img src={perfil.foto_perfil_url} alt={perfil?.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+            : <User size={36} color="white" />}
+        </div>
+        <h2 style={{ color:"white", margin:"0 0 8px", fontSize:22 }}>{perfil?.name || "Profissional"}</h2>
+        {reputacao && <div style={{ display:"flex", justifyContent:"center" }}><ReputacaoBadge {...reputacao} /></div>}
+      </div>
+      <div style={{ padding:"16px", marginTop:-20 }}>
+        <div style={{ background:"white", borderRadius:16, padding:"16px", marginBottom:12, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
+          <h3 style={{ margin:"0 0 8px", fontSize:15, color:"#333" }}>Sobre o profissional</h3>
+          <p style={{ margin:0, fontSize:13, color:"#555", lineHeight:1.6 }}>{perfil?.bio || "Esse profissional ainda não preencheu uma bio."}</p>
+        </div>
+        <div style={{ background:"white", borderRadius:16, padding:"16px", marginBottom:12, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
+          <h3 style={{ margin:"0 0 8px", fontSize:15, color:"#333" }}>{cats.length > 1 ? "Categorias" : "Categoria"}</h3>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+            {cats.length ? cats.map(c => (
+              <span key={c.id} style={{ fontSize:13, color:"#1565C0", fontWeight:700, background:"#EBF4FF", borderRadius:99, padding:"5px 12px" }}>{c.emoji} {c.label}</span>
+            )) : <span style={{ fontSize:14, color:"#555" }}>—</span>}
+          </div>
+        </div>
+        {portfolio.length > 0 && (
+          <div style={{ background:"white", borderRadius:16, padding:"16px", marginBottom:12, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
+            <h3 style={{ margin:"0 0 10px", fontSize:15, color:"#333" }}>Portfólio</h3>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+              {portfolio.map((url, i) => (
+                <img key={i} src={url} style={{ width:88, height:88, borderRadius:12, objectFit:"cover" }} alt="" />
+              ))}
+            </div>
+          </div>
+        )}
+        <div style={{ background:"#EEF4FF", borderRadius:16, padding:"16px" }}>
+          <p style={{ margin:0, fontSize:13, color:"#1565C0", fontWeight:700 }}>Esse profissional demonstrou interesse no seu pedido.</p>
+          <p style={{ margin:"6px 0 0", fontSize:12, color:"#555" }}>Pra fechar com ele, use o botão "Aceitar Proposta" no card.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Ponte entre o "Ver Perfil" do CandidatoCard e a tela de perfil completa —
+   busca sob demanda (só quando o cliente clica, não pra cada candidato da
+   lista) e decide entre EmpresaProfileScreen (candidato é empresa parceira)
+   ou ProfissionalProfileScreen (autônomo), reaproveitado por PropostasScreen
+   e RadarSearchScreen. */
+function CandidatoPerfilScreen({ email, isEmpresa, onBack }) {
+  const [dados, setDados] = useState(null);
+  const [reputacao, setReputacao] = useState(null);
+  useEffect(() => {
+    if (!email) return;
+    fetchReputacao(email).then(setReputacao).catch(() => {});
+    const tabela = isEmpresa ? "empresas" : "usuarios";
+    supabase.from(tabela).select("*").eq("email", email).maybeSingle()
+      .then(({ data }) => setDados(data))
+      .catch(() => setDados({}));
+  }, [email, isEmpresa]);
+
+  if (!dados) {
+    return (
+      <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#f5f5f5" }}>
+        <p style={{ color:"#888", fontSize:13 }}>Carregando perfil...</p>
+      </div>
+    );
+  }
+  return isEmpresa
+    ? <EmpresaProfileScreen empresa={dados} onBack={onBack} />
+    : <ProfissionalProfileScreen perfil={dados} reputacao={reputacao} onBack={onBack} />;
 }
 
 /* ───────────────────────── EMPRESA HOME (área logada, somente leitura) ─────────── */
@@ -1923,6 +2013,7 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted, onA
   const [propostas, setPropostas] = useState([]); // candidatos reais (linhas de "propostas")
   const [perfis, setPerfis] = useState({}); // email -> { foto_perfil_url, bio, categoria_servico, isEmpresa }
   const [reputacoes, setReputacoes] = useState({}); // email -> { mediaEstrelas, totalAvaliacoes, concluidos, taxaConclusao }
+  const [viewingCandidato, setViewingCandidato] = useState(null); // { email, isEmpresa }
 
   useEffect(() => {
     const t1 = setTimeout(() => { setRaio(5); setExpandMsg('Expandindo para 5km...'); }, 8000);
@@ -2037,6 +2128,10 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted, onA
 
   if (viewingEmpresa) {
     return <EmpresaProfileScreen empresa={viewingEmpresa} onBack={() => setViewingEmpresa(null)} />;
+  }
+
+  if (viewingCandidato) {
+    return <CandidatoPerfilScreen email={viewingCandidato.email} isEmpresa={viewingCandidato.isEmpresa} onBack={() => setViewingCandidato(null)} />;
   }
 
   const cat = CATS.find(c => c.id === service.cat);
@@ -2163,6 +2258,7 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted, onA
               perfil={perfis[p.profissional_email || p.profissional_id]}
               reputacao={reputacoes[p.profissional_email || p.profissional_id]}
               onAceitar={onAceitarProposta}
+              onVerPerfil={setViewingCandidato}
             />
           ))}
         </div>
@@ -8390,6 +8486,7 @@ export default function App() {
   const [perfis, setPerfis] = useState({}); // email -> { foto_perfil_url, bio, categoria_servico }
   const [reputacoes, setReputacoes] = useState({}); // email -> { mediaEstrelas, totalAvaliacoes, concluidos, taxaConclusao }
   const [loading, setLoading] = useState(true);
+  const [viewingCandidato, setViewingCandidato] = useState(null); // { email, isEmpresa }
   useEffect(()=>{
     if(!pedido) return;
     supabase.from("propostas").select("*").eq("pedido_id",pedido.id).order("created_at",{ascending:false})
@@ -8422,6 +8519,11 @@ export default function App() {
       })
       .catch(()=>setLoading(false));
   },[pedido?.id]);
+
+  if (viewingCandidato) {
+    return <CandidatoPerfilScreen email={viewingCandidato.email} isEmpresa={viewingCandidato.isEmpresa} onBack={() => setViewingCandidato(null)} />;
+  }
+
   return (
     <div style={{padding:"16px",maxWidth:480,margin:"0 auto"}}>
       <button onClick={onBack} style={{background:"none",border:"none",fontSize:16,cursor:"pointer",marginBottom:12}}>← Voltar</button>
@@ -8435,6 +8537,7 @@ export default function App() {
           perfil={perfis[p.profissional_email || p.profissional_id]}
           reputacao={reputacoes[p.profissional_email || p.profissional_id]}
           onAceitar={onAceitarProposta}
+          onVerPerfil={setViewingCandidato}
         />
       ))}
     </div>
