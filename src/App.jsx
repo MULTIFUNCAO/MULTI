@@ -1883,20 +1883,51 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted }) {
       .catch((err) => { console.error("EMPRESAS PARCEIRAS erro:", err); setEmpresas([]); });
   }, [service?.cat]);
 
-  // Profissionais reais que batem categoria (+ cidade, se conhecida) e estão
-  // online agora — mesmo critério usado por api/notify-pedido.js pro push,
-  // já que o mural (ProfessionalHome) não filtra pedido geral por categoria.
-  // Sem ranking por proximidade/velocidade de resposta: esse dado nunca
-  // existiu no banco (nem coluna de lat/lng, nem de tempo de resposta).
+  // Candidatos reais — quem de fato demonstrou interesse no pedido, via
+  // "Tenho Interesse" no mural ou "Aceitar agora" no popup (os dois caminhos
+  // gravam em "propostas" desde a unificação de handleCandidatarPedidoDireto).
+  // Substitui a lista antiga de "quem está online na categoria", que só
+  // indicava quem *poderia* responder, não quem respondeu de fato. Atualiza
+  // sozinho conforme novas propostas chegam, mesmo padrão realtime do sino
+  // de Alertas (supabase.channel + postgres_changes).
   useEffect(() => {
-    if (!service?.cat) return;
-    let q = supabase.from("usuarios").select("email,name,categoria_servico,city,foto_perfil_url,bio")
-      .eq("role", "professional")
-      .contains("categoria_servico", [service.cat])
-      .eq("status", true);
-    if (service.cidade) q = q.ilike("city", service.cidade);
-    q.then(({ data }) => setPros(data || [])).catch(() => setPros([]));
-  }, [service?.cat, service?.cidade]);
+    if (!service?.id) return;
+    let cancelled = false;
+
+    const enrich = async (lista) => {
+      const emails = [...new Set(lista.map(p => p.profissional_email || p.profissional_id).filter(Boolean))];
+      let perfis = {};
+      if (emails.length) {
+        const { data } = await supabase.from("usuarios").select("email,name,categoria_servico,foto_perfil_url,bio").in("email", emails);
+        (data || []).forEach(u => { perfis[u.email] = u; });
+      }
+      return lista.map(p => {
+        const email = p.profissional_email || p.profissional_id;
+        const perfil = perfis[email];
+        return {
+          email,
+          name: perfil?.name || p.profissional_nome || "Profissional",
+          categoria_servico: perfil?.categoria_servico || null,
+          foto_perfil_url: perfil?.foto_perfil_url || null,
+          bio: perfil?.bio || null,
+        };
+      });
+    };
+
+    supabase.from("propostas").select("*").eq("pedido_id", service.id).eq("status", "pendente")
+      .then(async ({ data }) => { const enriched = await enrich(data || []); if (!cancelled) setPros(enriched); })
+      .catch(() => { if (!cancelled) setPros([]); });
+
+    const ch = supabase.channel("propostas_radar_" + service.id)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "propostas", filter: `pedido_id=eq.${service.id}` },
+        async payload => {
+          const [enriched] = await enrich([payload.new]);
+          if (!cancelled) setPros(prev => prev.some(p => p.email === enriched.email) ? prev : [...prev, enriched]);
+        })
+      .subscribe();
+
+    return () => { cancelled = true; supabase.removeChannel(ch); };
+  }, [service?.id]);
 
   // Essa tela agora fica fixa até o cliente sair manualmente, então precisa
   // reagir sozinha quando um profissional aceita o pedido enquanto o cliente
@@ -1938,8 +1969,8 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted }) {
             <p style={{margin:0,fontSize:13,color:"#555",lineHeight:1.6}}>{viewingPro.bio||"Esse profissional ainda não preencheu uma bio."}</p>
           </div>
           <div style={{background:"#EEF4FF",borderRadius:16,padding:"16px",marginBottom:12}}>
-            <p style={{margin:0,fontSize:13,color:"#1565C0",fontWeight:700}}>Esse profissional foi notificado sobre o seu pedido.</p>
-            <p style={{margin:"6px 0 0",fontSize:12,color:"#555"}}>Assim que ele enviar uma proposta, ela aparece em "Meus Pedidos" e você pode conversar por lá.</p>
+            <p style={{margin:0,fontSize:13,color:"#1565C0",fontWeight:700}}>Esse profissional demonstrou interesse no seu pedido.</p>
+            <p style={{margin:"6px 0 0",fontSize:12,color:"#555"}}>Para fechar com ele, escolha a proposta dele em "Meus Pedidos".</p>
           </div>
         </div>
       </div>
@@ -2033,9 +2064,9 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted }) {
             <span style={{ fontSize:18 }}>📣</span>
             <div>
               <p style={{ fontSize:13, fontWeight:900, color:"#166534", margin:0 }}>
-                {pros.length > 0 ? `${pros.length} profissional${pros.length > 1 ? "is" : ""} notificado${pros.length > 1 ? "s" : ""}` : "Buscando profissionais na sua região"}
+                {pros.length > 0 ? `${pros.length} candidato${pros.length > 1 ? "s" : ""} ${pros.length > 1 ? "demonstraram" : "demonstrou"} interesse` : "Aguardando candidatos…"}
               </p>
-              <p style={{ fontSize:11, color:"#4ade80", margin:0 }}>Assim que alguém enviar uma proposta, ela aparece em "Meus Pedidos"</p>
+              <p style={{ fontSize:11, color:"#4ade80", margin:0 }}>Essa lista atualiza sozinha assim que alguém demonstrar interesse</p>
             </div>
           </div>
         </div>
@@ -2052,12 +2083,12 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted }) {
           </div>
         )}
 
-        {/* candidate cards — profissionais reais que batem categoria/cidade e estão online agora */}
+        {/* candidate cards — candidatos reais (propostas recebidas), atualiza em tempo real */}
         <div style={{ display:"flex", flexDirection:"column", gap:14, padding:"18px 16px 0" }}>
           {pros.length === 0 && (
             <div style={{ textAlign:"center", padding:"24px 16px", color:"#aaa", background:"white", borderRadius:16, border:"1px solid #F0F0F0" }}>
-              <p style={{ fontSize:13, fontWeight:700, margin:0, color:"#666" }}>Nenhum profissional online agora nessa categoria{service.cidade ? " e cidade" : ""}.</p>
-              <p style={{ fontSize:12, margin:"6px 0 0" }}>Seu pedido já está publicado e visível no mural — você será avisado assim que alguém propor.</p>
+              <p style={{ fontSize:13, fontWeight:700, margin:0, color:"#666" }}>Nenhum candidato ainda.</p>
+              <p style={{ fontSize:12, margin:"6px 0 0" }}>Seu pedido já está publicado e visível no mural — assim que alguém demonstrar interesse, aparece aqui na hora.</p>
             </div>
           )}
           {pros.map(pro => (
