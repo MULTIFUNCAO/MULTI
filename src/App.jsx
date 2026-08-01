@@ -5204,6 +5204,7 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
   const [sending,   setSending]   = useState(false);
   const [aceitando, setAceitando] = useState(false);
   const [dataInput, setDataInput] = useState("");
+  const [contraparteWhatsapp, setContraparteWhatsapp] = useState(null);
   const endRef = useRef(null);
 
   const carregar = () => {
@@ -5225,6 +5226,20 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
   }, [chat.pedidoId]);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior:"smooth" }); }, [mensagens]);
+
+  // Busca o WhatsApp do outro lado da conversa assim que souber quem ele é —
+  // o telefone já existe em "usuarios" (coletado no cadastro), só faltava
+  // essa tela buscar e mostrar um botão de fato (antes só existia o texto
+  // "telefone liberado", sem nenhum jeito de ligar/chamar no WhatsApp).
+  useEffect(() => {
+    if (!pedido) { setContraparteWhatsapp(null); return; }
+    const souCliente = pedido.cliente_id === meuEmail;
+    const contraparteEmail = souCliente ? pedido.profissional_aceito : pedido.cliente_id;
+    if (!contraparteEmail) { setContraparteWhatsapp(null); return; }
+    supabase.from("usuarios").select("whatsapp").eq("email", contraparteEmail).maybeSingle()
+      .then(({ data }) => setContraparteWhatsapp(data?.whatsapp || null))
+      .catch(() => setContraparteWhatsapp(null));
+  }, [pedido?.cliente_id, pedido?.profissional_aceito, meuEmail]);
 
   // Avisa o outro lado da conversa (push + sino in-app) — mesmo padrão de
   // handleAceitarProposta/handleAceitarPedidoDireto lá em App(). Debounce
@@ -5273,6 +5288,12 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
   const meuAceite   = pedido && (souCliente ? pedido.aceite_formal_cliente_em : pedido.aceite_formal_profissional_em);
   const liberado    = !!(pedido?.aceite_formal_cliente_em && pedido?.aceite_formal_profissional_em);
 
+  // Indicador de estágio (pra quem usa pela primeira vez saber o que esperar
+  // em cada etapa): 0 = ainda combinando os detalhes, 1 = data proposta mas
+  // faltando confirmação de um dos lados, 2 = confirmado dos dois lados.
+  const estagioAtual = liberado ? 2 : (pedido?.data_agendada ? 1 : 0);
+  const ESTAGIOS = ["📍 Combine os detalhes", "📅 Confirmem a data", "📱 Contato liberado"];
+
   const aceitarContratacao = () => {
     if (!pedido || aceitando) return;
     if (!pedido.data_agendada && !dataInput) return;
@@ -5317,7 +5338,26 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
             <p style={{ fontSize:15, fontWeight:900, color:"white", margin:0 }}>{chat.proName || "Conversa"}</p>
             {chat.serviceTitle && <p style={{ fontSize:11, color:"rgba(255,255,255,.75)", margin:0 }}>{chat.serviceTitle}</p>}
           </div>
+          {liberado && contraparteWhatsapp && (
+            <a
+              href={`https://wa.me/55${contraparteWhatsapp.replace(/\D/g, "")}`}
+              target="_blank" rel="noreferrer"
+              style={{ display:"flex", alignItems:"center", gap:6, background:"linear-gradient(135deg,#25D366,#1EBE57)", borderRadius:20, padding:"8px 12px", textDecoration:"none", flexShrink:0, boxShadow:"0 2px 8px rgba(0,0,0,.2)" }}
+            >
+              <MessageCircle size={14} color="white" />
+              <span style={{ color:"white", fontWeight:800, fontSize:11.5, whiteSpace:"nowrap" }}>{maskPhone(contraparteWhatsapp)}</span>
+            </a>
+          )}
         </div>
+        {pedido && (
+          <div style={{ marginTop:10, fontSize:10.5 }}>
+            {ESTAGIOS.map((label, i) => (
+              <span key={i} style={{ color: i === estagioAtual ? "white" : "rgba(255,255,255,.55)", fontWeight: i === estagioAtual ? 900 : 600 }}>
+                {i > 0 ? " → " : ""}{label}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <div style={{ flex:1, overflowY:"auto", padding:"16px 14px", display:"flex", flexDirection:"column", gap:8 }}>
@@ -5354,6 +5394,17 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
             <p style={{ fontSize:12.5, fontWeight:800, color:G, margin:0 }}>🤝 Contratação confirmada — telefone liberado.</p>
             {pedido.data_agendada && (
               <p style={{ fontSize:12, fontWeight:700, color:G, margin:"4px 0 0" }}>📅 Agendado pra {dataAgendadaFmt(pedido.data_agendada)}</p>
+            )}
+            {contraparteWhatsapp ? (
+              <a
+                href={`https://wa.me/55${contraparteWhatsapp.replace(/\D/g, "")}`}
+                target="_blank" rel="noreferrer"
+                style={{ marginTop:8, display:"flex", alignItems:"center", justifyContent:"center", gap:7, padding:"10px 0", borderRadius:10, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:12.5, textDecoration:"none" }}
+              >
+                <MessageCircle size={14} /> Chamar no WhatsApp: {maskPhone(contraparteWhatsapp)}
+              </a>
+            ) : (
+              <p style={{ fontSize:11.5, color:"#B45309", margin:"6px 0 0" }}>⚠️ O outro lado ainda não cadastrou um WhatsApp — peça pra completar o perfil.</p>
             )}
           </div>
         ) : meuAceite ? (
