@@ -4586,13 +4586,19 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [editMode,  setEditMode]  = useState(false);
   const [name, setName] = useState(initialUserName || "");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [savingWhatsapp, setSavingWhatsapp] = useState(false);
   useEffect(() => { if (initialUserName) setName(initialUserName); }, [initialUserName]);
   // Antes disso, avatar/portfólio só viviam em sessionStorage/estado local —
-  // nunca eram lidos do Supabase, então "salvavam" só até fechar a aba.
+  // nunca eram lidos do Supabase, então "salvavam" só até fechar a aba. O
+  // WhatsApp já é coletado no cadastro (RegisterScreen), mas até aqui não
+  // existia jeito nenhum de ver/corrigir depois — Editar Perfil não tinha
+  // esse campo, então quem errou ou pulou o cadastro ficava sem contato
+  // liberável pra sempre.
   useEffect(() => {
     if (!userEmail) return;
-    supabase.from("usuarios").select("foto_perfil_url").eq("email", userEmail).maybeSingle()
-      .then(({ data }) => setAvatarUrl(data?.foto_perfil_url || null))
+    supabase.from("usuarios").select("foto_perfil_url,whatsapp").eq("email", userEmail).maybeSingle()
+      .then(({ data }) => { setAvatarUrl(data?.foto_perfil_url || null); setWhatsapp(data?.whatsapp || ""); })
       .catch(() => {});
   }, [userEmail]);
   const [reputacao, setReputacao] = useState(null);
@@ -4764,8 +4770,20 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
       <div style={{ background:`linear-gradient(160deg,${B} 0%,#0056c7 100%)`, padding:"28px 20px 36px", position:"relative" }}>
         {/* edit toggle */}
         <button
-          onClick={() => { if (editMode) showToast("✅ Perfil salvo!"); setEditMode(e => !e); }}
-          style={{ position:"absolute", top:16, right:16, background:"rgba(255,255,255,.2)", border:"none", borderRadius:99, padding:"6px 14px", color:"white", fontSize:12, fontWeight:800, cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
+          disabled={savingWhatsapp}
+          onClick={async () => {
+            if (editMode) {
+              if (userEmail) {
+                setSavingWhatsapp(true);
+                const { error } = await supabase.from("usuarios").update({ whatsapp: whatsapp || null }).eq("email", userEmail);
+                setSavingWhatsapp(false);
+                if (error) { showToast("❌ Erro ao salvar WhatsApp: " + (error.message || ""), "#DC2626"); return; }
+              }
+              showToast("✅ Perfil salvo!");
+            }
+            setEditMode(e => !e);
+          }}
+          style={{ position:"absolute", top:16, right:16, background:"rgba(255,255,255,.2)", border:"none", borderRadius:99, padding:"6px 14px", color:"white", fontSize:12, fontWeight:800, cursor: savingWhatsapp ? "default" : "pointer", opacity: savingWhatsapp ? .6 : 1, display:"flex", alignItems:"center", gap:6 }}>
           <Pencil size={12} /> {editMode ? "Salvar" : "Editar"}
         </button>
 
@@ -4802,6 +4820,28 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
             <MapPin size={12} color="rgba(255,255,255,.65)" />
                 <span style={{ fontSize:12, color:"rgba(255,255,255,.65)", fontWeight:600 }}>{localStorage.getItem("multiLocation") || "Sua localização"}</span>
           </div>
+
+          {/* WhatsApp — sem isso, a liberação de contato no chat (Fase 2)
+              nunca tem um número pra mostrar. Editável aqui pra cobrir quem
+              se cadastrou antes desse campo existir ou pulou/errou no
+              cadastro. */}
+          {editMode ? (
+            <input
+              value={whatsapp}
+              onChange={e => setWhatsapp(maskPhone(e.target.value))}
+              placeholder="(11) 91234-5678"
+              style={{ fontSize:13, fontWeight:700, color:"white", background:"rgba(255,255,255,.15)", border:"1.5px solid rgba(255,255,255,.4)", borderRadius:10, padding:"6px 14px", textAlign:"center", outline:"none", fontFamily:"inherit", marginBottom:8 }}
+            />
+          ) : whatsapp ? (
+            <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:8 }}>
+              <MessageCircle size={12} color="rgba(255,255,255,.65)" />
+              <span style={{ fontSize:12, color:"rgba(255,255,255,.65)", fontWeight:600 }}>{whatsapp}</span>
+            </div>
+          ) : (
+            <div onClick={() => setEditMode(true)} style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8, cursor:"pointer", background:"rgba(255,193,7,.18)", border:"1px solid rgba(255,193,7,.5)", borderRadius:99, padding:"4px 12px" }}>
+              <span style={{ fontSize:11, color:"#FFD54F", fontWeight:800 }}>⚠️ Cadastre seu WhatsApp para receber contato</span>
+            </div>
+          )}
 
           {/* stats row */}
           <div style={{ display:"flex", gap:0, background:"rgba(255,255,255,.12)", borderRadius:14, overflow:"hidden", marginTop:4 }}>
