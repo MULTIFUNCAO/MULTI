@@ -327,12 +327,10 @@ function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua
           </div>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          {!isProfessional && (
-            <button onClick={onAlerts} style={{ background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:32, height:32, display:"flex", alignItems:"center", justifyContent:"center", position:"relative" }}>
-              <Bell size={15} color="white" />
-              {notifCount > 0 && <span style={{ position:"absolute", top:5, right:5, width:7, height:7, background:"#FF4444", borderRadius:"50%", border:"1.5px solid rgba(0,0,0,.3)" }} />}
-            </button>
-          )}
+          <button onClick={onAlerts} style={{ background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:32, height:32, display:"flex", alignItems:"center", justifyContent:"center", position:"relative" }}>
+            <Bell size={15} color="white" />
+            {notifCount > 0 && <span style={{ position:"absolute", top:5, right:5, width:7, height:7, background:"#FF4444", borderRadius:"50%", border:"1.5px solid rgba(0,0,0,.3)" }} />}
+          </button>
           <div style={{ position:"relative" }}>
             <div style={{ width:34, height:34, borderRadius:"50%", background:"rgba(255,255,255,.2)", border:"2px solid rgba(255,255,255,.4)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:17 }}>
               {isProfessional ? "👨‍🔧" : "👩"}
