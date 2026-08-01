@@ -1909,15 +1909,18 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted }) {
       const emails = [...new Set(lista.map(p => p.profissional_email || p.profissional_id).filter(Boolean))];
       let perfis = {};
       if (emails.length) {
-        const { data } = await supabase.from("usuarios").select("email,name,categoria_servico,foto_perfil_url,bio").in("email", emails);
-        (data || []).forEach(u => { perfis[u.email] = { ...u, isEmpresa: false }; });
-        // Fallback pra empresas parceiras — candidato pode não ter linha em
-        // "usuarios" (é uma empresa, não um profissional individual). Só
-        // busca quem sobrou sem perfil, usando os campos equivalentes de
-        // "empresas" (nome/logo_url/descricao no lugar de name/foto/bio).
-        const faltando = emails.filter(e => !perfis[e]);
-        if (faltando.length) {
-          const { data: emps } = await supabase.from("empresas").select("email,nome,categoria_servico,logo_url,descricao").in("email", faltando);
+        const { data } = await supabase.from("usuarios").select("email,name,categoria_servico,foto_perfil_url,bio,role").in("email", emails);
+        (data || []).forEach(u => { perfis[u.email] = { ...u, isEmpresa: u.role === "empresa" }; });
+        // Fallback pra empresas parceiras — cobre dois casos: (a) candidato
+        // sem nenhuma linha em "usuarios" (empresa antiga, sem conta de
+        // login própria), e (b) candidato COM linha em "usuarios" mas
+        // role "empresa" (CadastroEmpresaScreen sempre cria essa linha só
+        // pra login/vínculo — foto/bio reais ficam em "empresas", nunca em
+        // "usuarios" nesse caso, então teria ficado sem foto se parasse
+        // na primeira busca).
+        const emailsEmpresa = emails.filter(e => !perfis[e] || perfis[e].isEmpresa);
+        if (emailsEmpresa.length) {
+          const { data: emps } = await supabase.from("empresas").select("email,nome,categoria_servico,logo_url,descricao").in("email", emailsEmpresa);
           (emps || []).forEach(e => { perfis[e.email] = { name: e.nome, categoria_servico: e.categoria_servico, foto_perfil_url: e.logo_url, bio: e.descricao, isEmpresa: true }; });
         }
       }
@@ -8390,17 +8393,17 @@ export default function App() {
         // antes disso a tela só mostrava nome+valor+mensagem, perfil vazio.
         const emails = [...new Set(lista.map(p => p.profissional_email || p.profissional_id).filter(Boolean))];
         if (emails.length) {
-          const { data: usuarios } = await supabase.from("usuarios").select("email,foto_perfil_url,bio,categoria_servico").in("email", emails);
+          const { data: usuarios } = await supabase.from("usuarios").select("email,foto_perfil_url,bio,categoria_servico,role").in("email", emails);
           const map = {};
           (usuarios || []).forEach(u => { map[u.email] = u; });
-          // Fallback pra empresas parceiras — candidato pode não ter linha em
-          // "usuarios" (é uma empresa, não um profissional individual). Mesmo
-          // padrão de RadarSearchScreen: busca quem sobrou sem perfil usando
-          // os campos equivalentes de "empresas" (logo_url/descricao no
-          // lugar de foto_perfil_url/bio).
-          const faltando = emails.filter(e => !map[e]);
-          if (faltando.length) {
-            const { data: emps } = await supabase.from("empresas").select("email,logo_url,descricao,categoria_servico").in("email", faltando);
+          // Fallback pra empresas parceiras — cobre dois casos: (a) candidato
+          // sem nenhuma linha em "usuarios", e (b) candidato COM linha em
+          // "usuarios" mas role "empresa" (CadastroEmpresaScreen sempre cria
+          // essa linha só pra login/vínculo, sem foto/bio — os dados reais
+          // ficam em "empresas"). Mesmo padrão de RadarSearchScreen.
+          const emailsEmpresa = emails.filter(e => !map[e] || map[e].role === "empresa");
+          if (emailsEmpresa.length) {
+            const { data: emps } = await supabase.from("empresas").select("email,logo_url,descricao,categoria_servico").in("email", emailsEmpresa);
             (emps || []).forEach(e => { map[e.email] = { foto_perfil_url: e.logo_url, bio: e.descricao, categoria_servico: e.categoria_servico }; });
           }
           setPerfis(map);
