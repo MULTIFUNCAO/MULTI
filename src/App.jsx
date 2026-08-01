@@ -5201,7 +5201,7 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
       .catch(() => {})
       .finally(() => setLoading(false));
     supabase.from("pedidos")
-      .select("cliente_id,profissional_aceito,aceite_formal_cliente_em,aceite_formal_profissional_em,data_agendada")
+      .select("cliente_id,cliente_nome,profissional_aceito,profissional_nome,aceite_formal_cliente_em,aceite_formal_profissional_em,data_agendada")
       .eq("id", chat.pedidoId).maybeSingle()
       .then(({ data }) => setPedido(data || null))
       .catch(() => {});
@@ -5215,13 +5215,43 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior:"smooth" }); }, [mensagens]);
 
+  // Avisa o outro lado da conversa (push + sino in-app) — mesmo padrão de
+  // handleAceitarProposta/handleAceitarPedidoDireto lá em App(). Debounce
+  // simples (1 aviso a cada 30s por pedido) pra não floodar quando a pessoa
+  // manda várias mensagens seguidas rapidamente.
+  const lastChatNotifRef = useRef(0);
+  const notificarOutroLado = (titulo, mensagem) => {
+    if (!pedido) return;
+    const souCliente = pedido.cliente_id === meuEmail;
+    const destinatario = souCliente ? pedido.profissional_aceito : pedido.cliente_id;
+    if (!destinatario || destinatario === meuEmail) return;
+    const agora = Date.now();
+    if (agora - lastChatNotifRef.current < 30000) return;
+    lastChatNotifRef.current = agora;
+    fetch("/api/notify-chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: destinatario, heading: titulo, content: mensagem }),
+    }).catch(() => {});
+    supabase.from("notificacoes").insert({
+      destinatario_email: destinatario,
+      titulo,
+      mensagem,
+      pedido_id: chat.pedidoId,
+    }).then(() => {});
+  };
+
   const enviar = () => {
     const texto = text.trim();
     if (!texto || sending) return;
     setSending(true);
     setText("");
     supabase.from("mensagens").insert({ pedido_id: chat.pedidoId, remetente_email: meuEmail, texto })
-      .then(() => carregar())
+      .then(() => {
+        carregar();
+        const meuNome = pedido?.cliente_id === meuEmail ? pedido?.cliente_nome : pedido?.profissional_nome;
+        notificarOutroLado("Nova mensagem 💬", `${meuNome || "Alguém"} enviou uma mensagem${chat.serviceTitle ? ` sobre "${chat.serviceTitle}"` : ""}.`);
+      })
       .catch(() => {})
       .finally(() => setSending(false));
   };
@@ -5240,7 +5270,11 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
     const updates = { [campo]: new Date().toISOString() };
     if (!pedido.data_agendada) updates.data_agendada = new Date(dataInput).toISOString();
     supabase.from("pedidos").update(updates).eq("id", chat.pedidoId)
-      .then(() => carregar())
+      .then(() => {
+        carregar();
+        const meuNome = souCliente ? pedido.cliente_nome : pedido.profissional_nome;
+        notificarOutroLado("Data confirmada 📅", `${meuNome || "O outro lado"} confirmou a data do serviço${chat.serviceTitle ? ` "${chat.serviceTitle}"` : ""}.`);
+      })
       .catch(() => {})
       .finally(() => setAceitando(false));
   };
