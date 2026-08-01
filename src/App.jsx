@@ -7566,6 +7566,11 @@ export default function App() {
   // um "notifications" mockado em memória (nunca persistido, alimentado por
   // um canal realtime dentro de ProfessionalHome que não fazia sentido ali).
   const [propostasRecebidas, setPropostasRecebidas] = useState([]);
+  // Trava sincrona (não é state) contra clique duplo/repetido no mesmo card
+  // antes do re-render remover a proposta de propostasRecebidas — sem isso,
+  // dois cliques no mesmo tick ainda enxergam a proposta como "pendente" e
+  // disparam notify-aceito/insert em "notificacoes" de novo.
+  const acceptingPropostaIds = useRef(new Set());
   useEffect(() => {
     if (!userEmail || role !== "client") { setPropostasRecebidas([]); return; }
     supabase.from("propostas").select("*").eq("cliente_email", userEmail).eq("status", "pendente")
@@ -7793,6 +7798,10 @@ export default function App() {
   // AlertsScreen ("Aceitar" direto no alerta) — antes eram dois caminhos
   // redundantes, um real e um mock.
   const handleAceitarProposta = (proposta) => {
+    // Remove do estado local na hora — a query em propostasRecebidas só busca
+    // status "pendente" mesmo, então isso já reflete o que um refetch traria,
+    // e faz o card sumir de AlertsScreen sem esperar round-trip do Supabase.
+    setPropostasRecebidas(prev => prev.filter(p => p.id !== proposta.id));
     supabase.from("propostas").update({ status:"aceita" }).eq("id", proposta.id).then(()=>{});
     notificarCandidatosRecusados(proposta.pedido_id, proposta.id);
     // Avisa o profissional vencedor que a proposta dele foi aceita — antes
@@ -7833,6 +7842,7 @@ export default function App() {
   // Mesma lógica de handleAceitarProposta, versão empresa: agora também abre o
   // chat in-app (Fase 1), espelhando o fluxo de cliente+profissional individual.
   const handleAceitarPropostaEmpresa = (proposta) => {
+    setPropostasRecebidas(prev => prev.filter(p => p.id !== proposta.id));
     supabase.from("propostas").update({ status:"aceita" }).eq("id", proposta.id).then(()=>{});
     notificarCandidatosRecusados(proposta.pedido_id, proposta.id);
     // Avisa o profissional vencedor que a proposta dele foi aceita (mesmo
@@ -7872,7 +7882,9 @@ export default function App() {
   // completa antes de aceitar.
   const handleAceitarPropostaPorId = (propostaId) => {
     const proposta = propostasRecebidas.find(p => p.id === propostaId);
-    if (proposta) handleAceitarProposta(proposta);
+    if (!proposta || proposta.status !== "pendente" || acceptingPropostaIds.current.has(propostaId)) return;
+    acceptingPropostaIds.current.add(propostaId);
+    handleAceitarProposta(proposta);
   };
 
   // "Aceitar agora" no popup de novo pedido (NewOrderCard) — o profissional
