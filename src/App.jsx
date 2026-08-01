@@ -2462,23 +2462,6 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName }
           </div>
         </div>
       )}
-
-      {/* ── TRUST STRIP ── */}
-      <div style={{ margin:"28px 20px 0", borderRadius:20, background:"white", padding:"16px 20px", boxShadow:"0 2px 10px rgba(0,0,0,.05)", border:"1px solid #F0F2F5" }}>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-around" }}>
-          {[
-            { val:"12k+", lbl:"Profissionais" },
-            { val:"98%",  lbl:"Satisfação" },
-            { val:"4,9★", lbl:"Avaliação" },
-          ].map((item, i) => (
-            <div key={i} style={{ textAlign:"center", flex:1, borderRight: i < 2 ? "1px solid #F0F2F5" : "none" }}>
-              <p style={{ fontSize:18, fontWeight:900, color:B, margin:0 }}>{item.val}</p>
-              <p style={{ fontSize:11, color:"#9CA3AF", margin:"2px 0 0" }}>{item.lbl}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
     </div>
   );
 }
@@ -5917,20 +5900,6 @@ function WelcomeScreen({ onGoogle, onEmail, onBack, onEmpresa }) {
         <p style={{ fontSize:14, color:"#9CA3AF", textAlign:"center", lineHeight:1.6, margin:"0 0 36px" }}>
           Conectamos você aos melhores profissionais<br/>verificados da sua região.
         </p>
-
-        {/* trust badges */}
-        <div style={{ display:"flex", gap:20, marginBottom:36, justifyContent:"center" }}>
-          {[
-            { val:"12k+", lbl:"Profissionais" },
-            { val:"98%",  lbl:"Satisfação"    },
-            { val:"4,9★", lbl:"Avaliação"     },
-          ].map((b, i) => (
-            <div key={i} style={{ textAlign:"center" }}>
-              <p style={{ fontSize:17, fontWeight:900, color:B, margin:0 }}>{b.val}</p>
-              <p style={{ fontSize:11, color:"#9CA3AF", margin:0 }}>{b.lbl}</p>
-            </div>
-          ))}
-        </div>
 
         {/* free seal */}
         <div style={{ display:"flex", alignItems:"center", gap:7, background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:12, padding:"8px 16px", marginBottom:28 }}>
