@@ -1857,7 +1857,7 @@ function EmpresaPedidosScreen({ userEmail }) {
   );
 }
 
-function RadarSearchScreen({ service, onFound, onStatusChange, showToast, onDone }) {
+function RadarSearchScreen({ service, onFound, onStatusChange, showToast }) {
   const [phase, setPhase] = useState(0); // 0=searching, 1=found // v3
   const [raio, setRaio] = useState(2);
   const [expandMsg, setExpandMsg] = useState('');
@@ -1896,15 +1896,6 @@ function RadarSearchScreen({ service, onFound, onStatusChange, showToast, onDone
     if (service.cidade) q = q.ilike("city", service.cidade);
     q.then(({ data }) => setPros(data || [])).catch(() => setPros([]));
   }, [service?.cat, service?.cidade]);
-
-  // Avança sozinho pra tela normal de "Aguardando propostas" depois de um
-  // tempo fixo na fase 1 — essa tela é só transição, o pedido já está
-  // publicado desde antes dela aparecer.
-  useEffect(() => {
-    if (phase !== 1) return;
-    const t = setTimeout(() => { onDone && onDone(); }, 8000);
-    return () => clearTimeout(t);
-  }, [phase]);
 
   if (viewingEmpresa) {
     return <EmpresaProfileScreen empresa={viewingEmpresa} onBack={() => setViewingEmpresa(null)} />;
@@ -8389,7 +8380,7 @@ const renderContent = () => {
     </div>
   );
   
-  if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onFound={(pro, svc) => { setSelectedPro({pro, svc}); }} onStatusChange={handlePedidoStatusChange} showToast={showToast} onDone={() => setScreen("orders")} />;
+  if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onFound={(pro, svc) => { setSelectedPro({pro, svc}); }} onStatusChange={handlePedidoStatusChange} showToast={showToast} />;
       if (screen === "chat")   return <ChatInbox myServices={meusPedidosComCandidatos} onOpenChat={openChatFromService} />;
       if (screen === "orders") return <MyServicesScreen initialTab="aberto" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} onCancelarPedido={(s) => { if (window.confirm('Cancelar esse pedido? O profissional será avisado.')) { handlePedidoStatusChange(s.id, 'cancelado'); showToast?.('Pedido cancelado.', '#DC2626'); } }} isPro={isPro} />;
       if (screen === "profile") {
