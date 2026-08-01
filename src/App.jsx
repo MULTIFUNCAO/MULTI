@@ -7754,6 +7754,14 @@ export default function App() {
   const handleAceitarProposta = (proposta) => {
     supabase.from("propostas").update({ status:"aceita" }).eq("id", proposta.id).then(()=>{});
     notificarCandidatosRecusados(proposta.pedido_id, proposta.id);
+    // Avisa o profissional vencedor que a proposta dele foi aceita — antes
+    // só os recusados recebiam push (notificarCandidatosRecusados), o
+    // vencedor não tinha nenhum sinal e só descobria abrindo o app.
+    fetch("/api/notify-aceito", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: proposta.profissional_id, servico: pedidoTitlesById[proposta.pedido_id] }),
+    }).catch(()=>{});
     // Grava o valor negociado/aceito no pedido — sem isso, "pedidos.valor"
     // ficava travado no valor original do cliente pra sempre, e Ganhos do
     // Mês (e qualquer outra tela que leia service.value) somava o valor
@@ -7779,6 +7787,13 @@ export default function App() {
   const handleAceitarPropostaEmpresa = (proposta) => {
     supabase.from("propostas").update({ status:"aceita" }).eq("id", proposta.id).then(()=>{});
     notificarCandidatosRecusados(proposta.pedido_id, proposta.id);
+    // Avisa o profissional vencedor que a proposta dele foi aceita (mesmo
+    // motivo do handleAceitarProposta acima).
+    fetch("/api/notify-aceito", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: proposta.profissional_id, servico: pedidoTitlesById[proposta.pedido_id] }),
+    }).catch(()=>{});
     // Só abre o chat depois do update de "pedidos" terminar — antes disso,
     // MinhasDemandasScreen podia remontar e buscar o pedido ainda com o status
     // antigo (a escrita ainda não tinha chegado no banco).
