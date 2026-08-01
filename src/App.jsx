@@ -5348,7 +5348,7 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
   }, [pedido?.cliente_id, pedido?.profissional_aceito, meuEmail]);
 
   // Avisa o outro lado da conversa (push + sino in-app) — mesmo padrão de
-  // handleAceitarProposta/handleAceitarPedidoDireto lá em App(). Debounce
+  // handleAceitarProposta lá em App(). Debounce
   // simples (1 aviso a cada 30s por pedido) pra não floodar quando a pessoa
   // manda várias mensagens seguidas rapidamente.
   const lastChatNotifRef = useRef(0);
@@ -7110,7 +7110,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
       {/* Modal fixed inset:0 — precisa ficar fora do <button> "Ficar Online"
           (botão dentro de botão é HTML inválido e quebra o clique real do
           navegador em "Aceitar agora"/"Recusar"). */}
-      {newOrder && <NewOrderCard order={newOrder} onAccept={()=>{stopNewOrderSound();setNewOrder(null);setOnline(false);onAcceptOrder&&onAcceptOrder({id:newOrder.id,cliente_id:newOrder.cliente_id,title:newOrder.category,category:newOrder.category,clientName:safeGetUser().name||"Cliente",location:newOrder.location,value:newOrder.value,description:newOrder.description,photo:newOrder.photo,photos:newOrder.photos||[],status:"em_andamento",phase:1});}} onReject={()=>{stopNewOrderSound();setNewOrder(null);}} />}
+      {newOrder && <NewOrderCard order={newOrder} onAccept={()=>{stopNewOrderSound();setNewOrder(null);setOnline(false);onAcceptOrder&&onAcceptOrder({id:newOrder.id,cliente_id:newOrder.cliente_id,title:newOrder.category,category:newOrder.category,clientName:safeGetUser().name||"Cliente",location:newOrder.location,value:newOrder.value,description:newOrder.description,photo:newOrder.photo,photos:newOrder.photos||[]});}} onReject={()=>{stopNewOrderSound();setNewOrder(null);}} />}
 
       {/* ── PRO TRIAL BANNER (free users) ── */}
       {!isPro && (
@@ -8144,33 +8144,25 @@ export default function App() {
     handleAceitarProposta(proposta);
   };
 
-  // "Aceitar agora" no popup de novo pedido (NewOrderCard) — o profissional
-  // pega o pedido direto, sem passar por "propostas" (não existe proposta
-  // nenhuma nesse caminho). Só grava em "pedidos"; abrir a tela de detalhe
-  // continua sendo responsabilidade de quem chama.
-  const handleAceitarPedidoDireto = (pedidoId, clienteId, servico, valor) => {
-    if (!pedidoId) return;
-    supabase.from("pedidos").update({
-      status: "em_andamento",
-      profissional_aceito: userEmail,
-      profissional_nome: userName,
-    }).eq("id", pedidoId).then(()=>refreshMeusPedidos());
-    // Avisa o cliente que o profissional aceitou o pedido direto — esse
-    // caminho (sem proposta) não tinha nenhuma notificação pro cliente,
-    // diferente do fluxo de propostas (ver handleAceitarProposta).
-    if (clienteId) {
-      fetch("/api/notify-aceito-cliente", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: clienteId, servico, profissionalNome: userName }),
-      }).catch(()=>{});
-      supabase.from("notificacoes").insert({
-        destinatario_email: clienteId,
-        titulo: "Pedido aceito! 🎉",
-        mensagem: `${userName || "Um profissional"} aceitou seu pedido${servico ? ` de "${servico}"` : ""}${valor ? ` (R$ ${valor})` : ""}.`,
-        pedido_id: pedidoId,
-      }).then(()=>{});
-    }
+  // "Aceitar agora" no popup de novo pedido (NewOrderCard) — antes gravava
+  // direto em pedidos.status="em_andamento", travando o pedido pro primeiro
+  // que clicasse, sem o cliente poder ver outros candidatos. Agora só entra
+  // como candidatura em "propostas", exatamente como o "Tenho Interesse" do
+  // mural (App.jsx, upsert com onConflict:"pedido_id,profissional_id") — o
+  // cliente escolhe entre todos os candidatos em PropostasScreen, e só nesse
+  // momento (handleAceitarProposta) o pedido de fato trava.
+  const handleCandidatarPedidoDireto = (pedidoId, clienteId, valor) => {
+    if (!pedidoId || !userEmail) return;
+    supabase.from("propostas").upsert({
+      pedido_id: pedidoId,
+      profissional_id: userEmail,
+      profissional_nome: userName || "Profissional",
+      profissional_email: userEmail,
+      valor: valor || 0,
+      mensagem: "Tenho interesse neste serviço!",
+      status: "pendente",
+      cliente_email: clienteId || "",
+    }, { onConflict: "pedido_id,profissional_id" }).then(()=>{});
   };
 
   const openChatFromNotif = (notif) => {
@@ -8524,7 +8516,7 @@ const renderContent = () => {
         userLocation={localStorage.getItem("multiLocation") || userLocation}
         allDocsVerified={allDocsVerified}
         docStatus={docStatus}
-        onGoToDocs={() => setScreen("profile")} onGoToOrders={() => setScreen("orders")} onGoToWallet={() => setScreen("wallet")} onAcceptOrder={(order) => { handleAceitarPedidoDireto(order.id, order.cliente_id, order.title || order.category, order.value); setSelected(order); setScreen("service"); }}
+        onGoToDocs={() => setScreen("profile")} onGoToOrders={() => setScreen("orders")} onGoToWallet={() => setScreen("wallet")} onAcceptOrder={(order) => { handleCandidatarPedidoDireto(order.id, order.cliente_id, order.value); showToast?.("💼 Interesse enviado! Aguarde o cliente escolher.", B); }}
       />
     );
   };
