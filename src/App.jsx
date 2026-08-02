@@ -706,7 +706,7 @@ function EmpresaCard({ emp, onVerPerfil }) {
   const [reputacao, setReputacao] = useState(null);
   useEffect(() => { if (emp.email) fetchReputacao(emp.email).then(setReputacao); }, [emp.email]);
   return (
-    <div style={{ background:"white", borderRadius:20, overflow:"hidden", boxShadow:"0 4px 20px rgba(249,168,37,.22)", border:"1.5px solid #F9A825", padding:"14px 16px", opacity: isOnline ? 1 : .7 }}>
+    <div style={{ background:"white", borderRadius:20, overflow:"hidden", boxShadow:"0 2px 8px rgba(0,0,0,.08)", border:"1px solid transparent", padding:"14px 16px", opacity: isOnline ? 1 : .7 }}>
       <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
         <div style={{ width:52, height:52, borderRadius:16, overflow:"hidden", background:"#F8F9FA", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
           {emp.logo_url
@@ -716,12 +716,6 @@ function EmpresaCard({ emp, onVerPerfil }) {
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:3, flexWrap:"wrap" }}>
             <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:0 }}>{emp.nome}</p>
-            {/* selo extra de prioridade — além do "Empresa Parceira" já existente,
-                sinaliza destaque na ordem de exibição (sempre acima dos autônomos) */}
-            <span style={{ display:"flex", alignItems:"center", gap:3, background:"linear-gradient(135deg,#F9A825,#F57F17)", borderRadius:99, padding:"2px 8px" }}>
-              <Star size={10} color="white" fill="white" />
-              <span style={{ fontSize:9.5, fontWeight:900, color:"white", letterSpacing:.3 }}>PRIORIDADE</span>
-            </span>
             <span style={{ display:"flex", alignItems:"center", gap:3, background:"#E8F4FF", border:"1px solid #B8DBFF", borderRadius:99, padding:"2px 8px" }}>
               <ShieldCheck size={11} color={B} />
               <span style={{ fontSize:10, fontWeight:800, color:B }}>Empresa Parceira</span>
@@ -2093,9 +2087,7 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted, onA
   const [phase, setPhase] = useState(0); // 0=searching, 1=found // v3
   const [raio, setRaio] = useState(2);
   const [expandMsg, setExpandMsg] = useState('');
-  const [empresas, setEmpresas] = useState([]);
-  const [viewingEmpresa, setViewingEmpresa] = useState(null);
-  const [propostas, setPropostas] = useState([]); // candidatos reais (linhas de "propostas")
+  const [propostas, setPropostas] = useState([]); // candidatos reais (linhas de "propostas") — empresa e autônomo, sem distinção
   const [perfis, setPerfis] = useState({}); // email -> { foto_perfil_url, bio, categoria_servico, isEmpresa }
   const [reputacoes, setReputacoes] = useState({}); // email -> { mediaEstrelas, totalAvaliacoes, concluidos, taxaConclusao }
   const [viewingCandidato, setViewingCandidato] = useState(null); // { email, isEmpresa }
@@ -2106,16 +2098,6 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted, onA
     const t3 = setTimeout(() => setPhase(1), 24000);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, []);
-
-  useEffect(() => {
-    if (!service?.cat) return;
-    supabase.from("empresas").select("*").contains("categoria_servico", [service.cat]).eq("ativo", true)
-      .then(({ data, error }) => {
-        console.log("EMPRESAS PARCEIRAS busca:", { categoria_servico_buscada: service.cat, data, error });
-        setEmpresas(data || []);
-      })
-      .catch((err) => { console.error("EMPRESAS PARCEIRAS erro:", err); setEmpresas([]); });
-  }, [service?.cat]);
 
   // Candidatos reais — quem de fato demonstrou interesse no pedido, via
   // "Tenho Interesse" no mural ou "Aceitar agora" no popup (os dois caminhos
@@ -2206,10 +2188,6 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted, onA
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, [service?.id]);
-
-  if (viewingEmpresa) {
-    return <EmpresaProfileScreen empresa={viewingEmpresa} onBack={() => setViewingEmpresa(null)} />;
-  }
 
   if (viewingCandidato) {
     return <CandidatoPerfilScreen email={viewingCandidato.email} isEmpresa={viewingCandidato.isEmpresa} onBack={() => setViewingCandidato(null)} />;
@@ -2308,18 +2286,6 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted, onA
             </div>
           </div>
         </div>
-
-        {/* empresas parceiras — sempre no topo, antes dos profissionais autônomos */}
-        {empresas.length > 0 && (
-          <div style={{ padding:"18px 16px 0" }}>
-            <p style={{ fontSize:12, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.2, margin:"0 0 12px" }}>Empresas Parceiras</p>
-            <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-              {empresas.map(emp => (
-                <EmpresaCard key={emp.id} emp={emp} onVerPerfil={setViewingEmpresa} />
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* candidate cards — candidatos reais (propostas recebidas), atualiza em tempo
             real. Mesmo card enriquecido de PropostasScreen ("Ver Propostas"): foto,
