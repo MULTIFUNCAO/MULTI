@@ -1618,7 +1618,7 @@ function MinhasDemandasScreen({ userEmail, onBack, onVerPropostas, onOpenChat })
       .catch(() => setLoading(false));
   }, [userEmail]);
 
-  const statusLabel = (s) => s === "aberto" ? "Aguardando propostas" : s === "em_andamento" ? "Em andamento" : s === "concluido" ? "Concluído" : s;
+  const statusLabel = (s) => s === "aberto" ? "Aguardando propostas" : s === "em_andamento" ? "Em andamento" : s === "confirmado" ? "🟢 Serviço agendado" : s === "concluido" ? "Concluído" : s;
 
   return (
     <div style={{ minHeight:"100vh", background:"#F8F9FA", paddingBottom:40 }}>
@@ -2704,6 +2704,7 @@ function PostServiceScreen({ onBack, onSuccess }) {
 function statusToPhase(status) {
   if (status === "aberto")       return 0;
   if (status === "em_andamento") return 1;
+  if (status === "confirmado")   return 1;
   if (status === "executando")   return 2;
   if (status === "em_disputa")   return 2;
   if (status === "concluido")    return 3;
@@ -5264,11 +5265,13 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
 }
 
 /* ───────────────────────── MY SERVICES SCREEN ───────────────────────────────── */
-// Vocabulário real tem 5 estados (aberto/em_andamento/executando/concluido/
-// em_disputa); a tela tem 3 abas — em_andamento/executando/em_disputa ficam
-// juntas em "Em Andamento" (em_disputa ganha um badge extra de alerta).
+// Vocabulário real tem 6 estados (aberto/em_andamento/confirmado/executando/
+// concluido/em_disputa); a tela tem 3 abas — em_andamento/confirmado/
+// executando/em_disputa ficam juntas em "Em Andamento" (em_disputa ganha um
+// badge extra de alerta). "confirmado" (Fase 4) = serviço agendado, com data/
+// termo aceitos pelos dois lados, mas ainda não iniciado.
 function isEmAndamentoTab(status) {
-  return status === "em_andamento" || status === "executando" || status === "em_disputa";
+  return status === "em_andamento" || status === "confirmado" || status === "executando" || status === "em_disputa";
 }
 
 // Cancelado entra no mesmo bucket terminal de concluído — senão some da
@@ -5482,13 +5485,14 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
   const [anexo,     setAnexo]     = useState(null); // { file, previewUrl, tipo, nome }
   const [enviandoAnexo, setEnviandoAnexo] = useState(false);
   const [showQuickMsgs, setShowQuickMsgs] = useState(false);
-  const [aceitando, setAceitando] = useState(false);
   const [dataInput, setDataInput] = useState("");
   const [contraparteWhatsapp, setContraparteWhatsapp] = useState(null);
   const [profissionalRole, setProfissionalRole] = useState(null);
   const [aceitesTermo, setAceitesTermo] = useState([]);
-  const [aceitandoTermo, setAceitandoTermo] = useState(false);
   const [termoChecked, setTermoChecked] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showTermoCompleto, setShowTermoCompleto] = useState(false);
+  const [confirmandoServico, setConfirmandoServico] = useState(false);
   const endRef = useRef(null);
 
   const carregar = () => {
@@ -5497,7 +5501,7 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
       .catch(() => {})
       .finally(() => setLoading(false));
     supabase.from("pedidos")
-      .select("cliente_id,cliente_nome,profissional_aceito,profissional_nome,aceite_formal_cliente_em,aceite_formal_profissional_em,data_agendada")
+      .select("cliente_id,cliente_nome,profissional_aceito,profissional_nome,aceite_formal_cliente_em,aceite_formal_profissional_em,data_agendada,valor,status,categoria")
       .eq("id", chat.pedidoId).maybeSingle()
       .then(({ data }) => setPedido(data || null))
       .catch(() => {});
@@ -5656,39 +5660,58 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
   // só libera quando confirmado que o role é "empresa".
   const whatsappBloqueado = profissionalRole !== "empresa";
 
-  const aceitarTermo = () => {
-    if (!pedido || aceitandoTermo || meuAceiteTermo) return;
-    setAceitandoTermo(true);
-    supabase.from("aceites_termo")
-      .upsert({ pedido_id: chat.pedidoId, usuario_id: meuEmail, versao_termo: TERMO_VERSAO }, { onConflict: "pedido_id,usuario_id" })
-      .then(() => carregar())
-      .catch(() => {})
-      .finally(() => setAceitandoTermo(false));
-  };
-
   // Indicador de estágio (pra quem usa pela primeira vez saber o que esperar
-  // em cada etapa): 0 = ainda combinando os detalhes, 1 = data proposta mas
-  // faltando confirmação de um dos lados (ou termo pendente), 2 = confirmado
-  // e termo aceito dos dois lados — só aí o contato é liberado de fato.
+  // em cada etapa): 0 = ainda combinando os detalhes, 1 = já tem data
+  // proposta mas falta algum dos dois confirmar o serviço, 2 = confirmado
+  // (data + termo aceitos) dos dois lados.
   const estagioAtual = (liberado && termoLiberado) ? 2 : (pedido?.data_agendada ? 1 : 0);
-  const ESTAGIOS = ["📍 Combine os detalhes", "📅 Confirmem a data", whatsappBloqueado ? "✅ Contratação confirmada" : "📱 Contato liberado"];
+  const ESTAGIOS = ["📍 Combine os detalhes", "📅 Confirme o serviço", "🟢 Serviço agendado"];
 
-  const aceitarContratacao = () => {
-    if (!pedido || aceitando) return;
+  // Fase 4 — "Confirmar Serviço": uma única ação por usuário que substitui os
+  // dois aceites separados de antes (data + termo) por um resumo com os dois
+  // já dentro do mesmo modal. Cada parte só grava o que ainda falta desse
+  // usuário — se ele já tinha aceitado antes (pedido criado antes da Fase 4,
+  // ou reabriu o modal depois de já ter confirmado a data), não repete o
+  // write. Quando os dois lados completam os dois aceites, o efeito abaixo
+  // promove pedidos.status pra "confirmado" e o chat mostra "🟢 Serviço agendado".
+  const confirmarServico = () => {
+    if (!pedido || confirmandoServico) return;
     if (!pedido.data_agendada && !dataInput) return;
-    setAceitando(true);
-    const campo = souCliente ? "aceite_formal_cliente_em" : "aceite_formal_profissional_em";
-    const updates = { [campo]: new Date().toISOString() };
-    if (!pedido.data_agendada) updates.data_agendada = new Date(dataInput).toISOString();
-    supabase.from("pedidos").update(updates).eq("id", chat.pedidoId)
+    if (!meuAceiteTermo && !termoChecked) return;
+    setConfirmandoServico(true);
+    const tasks = [];
+    if (!meuAceite) {
+      const campo = souCliente ? "aceite_formal_cliente_em" : "aceite_formal_profissional_em";
+      const updates = { [campo]: new Date().toISOString() };
+      if (!pedido.data_agendada) updates.data_agendada = new Date(dataInput).toISOString();
+      tasks.push(supabase.from("pedidos").update(updates).eq("id", chat.pedidoId));
+    }
+    if (!meuAceiteTermo) {
+      tasks.push(supabase.from("aceites_termo").upsert(
+        { pedido_id: chat.pedidoId, usuario_id: meuEmail, versao_termo: TERMO_VERSAO },
+        { onConflict: "pedido_id,usuario_id" }
+      ));
+    }
+    Promise.all(tasks)
       .then(() => {
         carregar();
+        setShowConfirmModal(false);
         const meuNome = souCliente ? pedido.cliente_nome : pedido.profissional_nome;
-        notificarOutroLado("Data confirmada 📅", `${meuNome || "O outro lado"} confirmou a data do serviço${chat.serviceTitle ? ` "${chat.serviceTitle}"` : ""}.`);
+        notificarOutroLado("Serviço confirmado ✅", `${meuNome || "O outro lado"} confirmou o serviço${chat.serviceTitle ? ` "${chat.serviceTitle}"` : ""}.`);
       })
       .catch(() => {})
-      .finally(() => setAceitando(false));
+      .finally(() => setConfirmandoServico(false));
   };
+
+  // Assim que os dois lados completam data + termo, promove o pedido pra
+  // "confirmado" — guard em pedido.status evita repetir o update a cada
+  // poll de 5s depois que já virou "confirmado" (ou já passou disso).
+  useEffect(() => {
+    if (!pedido || pedido.status !== "em_andamento") return;
+    if (liberado && termoLiberado) {
+      supabase.from("pedidos").update({ status: "confirmado" }).eq("id", chat.pedidoId).then(() => carregar());
+    }
+  }, [liberado, termoLiberado, pedido?.status]);
 
   const horaFmt = (iso) => {
     const d = new Date(iso);
@@ -5788,84 +5811,50 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
       </div>
 
       {pedido && mensagens.length > 0 && (
-        liberado ? (
-          termoLiberado ? (
-            <div style={{ flexShrink:0, margin:"0 14px 10px", padding:"10px 14px", borderRadius:12, background:"#F0FDF4", border:`1px solid ${G}44` }}>
-              <p style={{ fontSize:12.5, fontWeight:800, color:G, margin:0 }}>🤝 Contratação confirmada{whatsappBloqueado ? "" : " — telefone liberado"}.</p>
-              {pedido.data_agendada && (
-                <p style={{ fontSize:12, fontWeight:700, color:G, margin:"4px 0 0" }}>📅 Agendado pra {dataAgendadaFmt(pedido.data_agendada)}</p>
-              )}
-              {whatsappBloqueado ? (
-                <div style={{ marginTop:8, display:"flex", alignItems:"flex-start", gap:7, padding:"9px 11px", borderRadius:10, background:"white", border:"1px solid #E5E7EB" }}>
-                  <Lock size={13} color="#666" style={{ flexShrink:0, marginTop:1 }} />
-                  <p style={{ fontSize:11.5, color:"#555", lineHeight:1.4, margin:0 }}>
-                    Por segurança e para garantir o acompanhamento do serviço, a comunicação entre cliente e profissional acontece pelo chat do MULTI.
-                  </p>
-                </div>
-              ) : contraparteWhatsapp ? (
-                <a
-                  href={`https://wa.me/55${contraparteWhatsapp.replace(/\D/g, "")}`}
-                  target="_blank" rel="noreferrer"
-                  style={{ marginTop:8, display:"flex", alignItems:"center", justifyContent:"center", gap:7, padding:"10px 0", borderRadius:10, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:12.5, textDecoration:"none" }}
-                >
-                  <MessageCircle size={14} /> Chamar no WhatsApp: {maskPhone(contraparteWhatsapp)}
-                </a>
-              ) : (
-                <p style={{ fontSize:11.5, color:"#B45309", margin:"6px 0 0" }}>⚠️ O outro lado ainda não cadastrou um WhatsApp — peça pra completar o perfil.</p>
-              )}
-            </div>
-          ) : !meuAceiteTermo ? (
-            <div style={{ flexShrink:0, margin:"0 14px 10px", padding:"12px 14px", borderRadius:12, background:"#FFFBEB", border:"1px solid #F59E0B44" }}>
-              <p style={{ fontSize:12.5, fontWeight:800, color:"#92400E", margin:"0 0 8px" }}>📄 Antes de liberar o contato, aceite o termo abaixo:</p>
-              <div
-                onClick={() => setTermoChecked(v => !v)}
-                style={{ display:"flex", alignItems:"flex-start", gap:10, cursor:"pointer", padding:"10px 12px", borderRadius:10, background: termoChecked ? "#F0FDF4" : "white", border:`1.5px solid ${termoChecked ? G : "#E5E7EB"}`, marginBottom:8 }}
-              >
-                <div style={{ width:20, height:20, borderRadius:6, border:`2px solid ${termoChecked ? G : "#D1D5DB"}`, background: termoChecked ? G : "white", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:1 }}>
-                  {termoChecked && <Check size={12} color="white" strokeWidth={3} />}
-                </div>
-                <p style={{ fontSize:11.5, color:"#555", lineHeight:1.5, margin:0 }}>
-                  Li e aceito os <strong>Termos de Uso e Isenção de Responsabilidade</strong>. {TERMO_TEXTO_PLACEHOLDER}
+        (liberado && termoLiberado) ? (
+          <div style={{ flexShrink:0, margin:"0 14px 10px", padding:"10px 14px", borderRadius:12, background:"#F0FDF4", border:`1px solid ${G}44` }}>
+            <p style={{ fontSize:12.5, fontWeight:800, color:G, margin:0 }}>🟢 Serviço agendado</p>
+            {pedido.data_agendada && (
+              <p style={{ fontSize:12, fontWeight:700, color:G, margin:"4px 0 0" }}>📅 {dataAgendadaFmt(pedido.data_agendada)}</p>
+            )}
+            {whatsappBloqueado ? (
+              <div style={{ marginTop:8, display:"flex", alignItems:"flex-start", gap:7, padding:"9px 11px", borderRadius:10, background:"white", border:"1px solid #E5E7EB" }}>
+                <Lock size={13} color="#666" style={{ flexShrink:0, marginTop:1 }} />
+                <p style={{ fontSize:11.5, color:"#555", lineHeight:1.4, margin:0 }}>
+                  Por segurança e para garantir o acompanhamento do serviço, a comunicação entre cliente e profissional acontece pelo chat do MULTI.
                 </p>
               </div>
-              <button
-                onClick={aceitarTermo}
-                disabled={!termoChecked || aceitandoTermo}
-                style={{ width:"100%", padding:"10px 0", borderRadius:10, border:"none", background:G, color:"white", fontWeight:800, fontSize:12.5, cursor: (!termoChecked || aceitandoTermo) ? "default" : "pointer", opacity: (!termoChecked || aceitandoTermo) ? .5 : 1 }}
+            ) : contraparteWhatsapp ? (
+              <a
+                href={`https://wa.me/55${contraparteWhatsapp.replace(/\D/g, "")}`}
+                target="_blank" rel="noreferrer"
+                style={{ marginTop:8, display:"flex", alignItems:"center", justifyContent:"center", gap:7, padding:"10px 0", borderRadius:10, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:12.5, textDecoration:"none" }}
               >
-                ✅ Aceitar e continuar
-              </button>
-            </div>
-          ) : (
-            <div style={{ flexShrink:0, margin:"0 14px 10px", padding:"10px 14px", borderRadius:12, background:"#F8F9FA", border:"1px solid #E5E7EB" }}>
-              <p style={{ fontSize:12.5, fontWeight:700, color:"#555", margin:0 }}>✅ Você aceitou os termos. Aguardando o outro lado aceitar os termos.</p>
-            </div>
-          )
-        ) : meuAceite ? (
+                <MessageCircle size={14} /> Chamar no WhatsApp: {maskPhone(contraparteWhatsapp)}
+              </a>
+            ) : (
+              <p style={{ fontSize:11.5, color:"#B45309", margin:"6px 0 0" }}>⚠️ O outro lado ainda não cadastrou um WhatsApp — peça pra completar o perfil.</p>
+            )}
+          </div>
+        ) : (meuAceite && meuAceiteTermo) ? (
           <div style={{ flexShrink:0, margin:"0 14px 10px", padding:"10px 14px", borderRadius:12, background:"#F8F9FA", border:"1px solid #E5E7EB" }}>
-            <p style={{ fontSize:12.5, fontWeight:700, color:"#555", margin:0 }}>✅ Você confirmou. Aguardando confirmação do outro lado.</p>
+            <p style={{ fontSize:12.5, fontWeight:700, color:"#555", margin:0 }}>✅ Você confirmou o serviço. Aguardando confirmação do outro lado.</p>
             {pedido.data_agendada && (
               <p style={{ fontSize:12, color:"#888", margin:"4px 0 0" }}>📅 Data proposta: {dataAgendadaFmt(pedido.data_agendada)}</p>
             )}
           </div>
         ) : (
           <div style={{ flexShrink:0, margin:"0 14px 10px", padding:"10px 14px", borderRadius:12, background:"#EFF6FF", border:`1px solid ${B}33` }}>
-            {pedido.data_agendada ? (
-              <p style={{ fontSize:12, color:"#555", margin:"0 0 8px" }}>📅 Data proposta: <strong>{dataAgendadaFmt(pedido.data_agendada)}</strong>. Confirmar libera o telefone pros dois lados.</p>
-            ) : (
-              <>
-                <p style={{ fontSize:12, color:"#555", margin:"0 0 8px" }}>Já combinaram os detalhes? Escolha a data/hora do serviço e confirme — libera o telefone pros dois lados.</p>
-                <input
-                  type="datetime-local"
-                  value={dataInput}
-                  min={agoraLocalStr()}
-                  onChange={e => setDataInput(e.target.value)}
-                  style={{ width:"100%", padding:"9px 12px", borderRadius:10, border:"1.5px solid #DBEAFE", fontSize:13, marginBottom:8, boxSizing:"border-box" }}
-                />
-              </>
-            )}
-            <button onClick={aceitarContratacao} disabled={aceitando || (!pedido.data_agendada && !dataInput)} style={{ width:"100%", padding:"9px 0", borderRadius:10, border:"none", background:G, color:"white", fontWeight:800, fontSize:12.5, cursor: (aceitando || (!pedido.data_agendada && !dataInput)) ? "default" : "pointer", opacity: (aceitando || (!pedido.data_agendada && !dataInput)) ? .5 : 1 }}>
-              ✅ {pedido.data_agendada ? "Aceitar contratação" : "Propor data e aceitar"}
+            <p style={{ fontSize:12, color:"#555", margin:"0 0 8px" }}>
+              {pedido.data_agendada
+                ? <>📅 Data proposta: <strong>{dataAgendadaFmt(pedido.data_agendada)}</strong>. Confirme o serviço pra travar os detalhes.</>
+                : "Já combinaram os detalhes? Confirme o serviço pra travar data, horário e valor."}
+            </p>
+            <button
+              onClick={() => setShowConfirmModal(true)}
+              style={{ width:"100%", padding:"10px 0", borderRadius:10, border:"none", background:B, color:"white", fontWeight:800, fontSize:12.5, cursor:"pointer" }}
+            >
+              ✅ Confirmar Serviço
             </button>
           </div>
         )
@@ -5942,6 +5931,99 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
           <Send size={16} />
         </button>
       </div>
+
+      {/* Fase 4 — modal "Confirmar Serviço": resumo (data/horário/valor) +
+          aceite do Termo de Isenção, tudo numa ação só por usuário. */}
+      {showConfirmModal && pedido && (
+        <div
+          onClick={() => !confirmandoServico && setShowConfirmModal(false)}
+          style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.5)", display:"flex", alignItems:"flex-end", justifyContent:"center", zIndex:60 }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:480, maxHeight:"88vh", overflowY:"auto", background:"white", borderRadius:"20px 20px 0 0", padding:"20px 20px 26px", boxSizing:"border-box" }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+              <p style={{ fontSize:16, fontWeight:900, color:"#1a1a2e", margin:0 }}>Confirmar Serviço</p>
+              <button onClick={() => setShowConfirmModal(false)} style={{ background:"#F0F2F5", border:"none", borderRadius:"50%", width:28, height:28, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
+                <X size={14} color="#555" />
+              </button>
+            </div>
+
+            <div style={{ background:"#F8F9FA", borderRadius:14, padding:"12px 14px", marginBottom:16, display:"flex", flexDirection:"column", gap:8 }}>
+              {chat.serviceTitle && (
+                <div style={{ display:"flex", justifyContent:"space-between", gap:10 }}>
+                  <span style={{ fontSize:12, color:"#888" }}>Serviço</span>
+                  <span style={{ fontSize:12.5, fontWeight:800, color:"#1a1a2e", textAlign:"right" }}>{chat.serviceTitle}</span>
+                </div>
+              )}
+              <div style={{ display:"flex", justifyContent:"space-between", gap:10 }}>
+                <span style={{ fontSize:12, color:"#888" }}>Data/Horário</span>
+                <span style={{ fontSize:12.5, fontWeight:800, color:"#1a1a2e", textAlign:"right" }}>{pedido.data_agendada ? dataAgendadaFmt(pedido.data_agendada) : "A combinar abaixo"}</span>
+              </div>
+              <div style={{ display:"flex", justifyContent:"space-between", gap:10 }}>
+                <span style={{ fontSize:12, color:"#888" }}>Valor</span>
+                <span style={{ fontSize:12.5, fontWeight:800, color:"#1a1a2e", textAlign:"right" }}>{pedido.valor != null ? `R$ ${pedido.valor}` : "A combinar"}</span>
+              </div>
+            </div>
+
+            {!pedido.data_agendada && (
+              <div style={{ marginBottom:16 }}>
+                <p style={{ fontSize:12, fontWeight:700, color:"#555", margin:"0 0 6px" }}>Data e horário do serviço</p>
+                <input
+                  type="datetime-local"
+                  value={dataInput}
+                  min={agoraLocalStr()}
+                  onChange={e => setDataInput(e.target.value)}
+                  style={{ width:"100%", padding:"10px 12px", borderRadius:10, border:"1.5px solid #DBEAFE", fontSize:13, boxSizing:"border-box" }}
+                />
+              </div>
+            )}
+
+            {meuAceiteTermo ? (
+              <p style={{ fontSize:12, color:"#555", margin:"0 0 16px" }}>✅ Você já aceitou o Termo de Isenção de Responsabilidade.</p>
+            ) : (
+              <div style={{ marginBottom:16 }}>
+                <div
+                  onClick={() => setTermoChecked(v => !v)}
+                  style={{ display:"flex", alignItems:"flex-start", gap:10, cursor:"pointer", padding:"10px 12px", borderRadius:10, background: termoChecked ? "#F0FDF4" : "#F8F9FA", border:`1.5px solid ${termoChecked ? G : "#E5E7EB"}`, marginBottom:6 }}
+                >
+                  <div style={{ width:20, height:20, borderRadius:6, border:`2px solid ${termoChecked ? G : "#D1D5DB"}`, background: termoChecked ? G : "white", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:1 }}>
+                    {termoChecked && <Check size={12} color="white" strokeWidth={3} />}
+                  </div>
+                  <p style={{ fontSize:11.5, color:"#555", lineHeight:1.5, margin:0 }}>
+                    Li e aceito o <strong>Termo de Isenção de Responsabilidade</strong>.
+                  </p>
+                </div>
+                <button onClick={() => setShowTermoCompleto(true)} style={{ background:"none", border:"none", padding:0, color:B, fontWeight:700, fontSize:11.5, cursor:"pointer", textDecoration:"underline" }}>
+                  Ler termo completo
+                </button>
+              </div>
+            )}
+
+            <button
+              onClick={confirmarServico}
+              disabled={confirmandoServico || (!pedido.data_agendada && !dataInput) || (!meuAceiteTermo && !termoChecked)}
+              style={{
+                width:"100%", padding:"12px 0", borderRadius:10, border:"none", background:G, color:"white", fontWeight:800, fontSize:13.5,
+                cursor: (confirmandoServico || (!pedido.data_agendada && !dataInput) || (!meuAceiteTermo && !termoChecked)) ? "default" : "pointer",
+                opacity: (confirmandoServico || (!pedido.data_agendada && !dataInput) || (!meuAceiteTermo && !termoChecked)) ? .5 : 1,
+              }}
+            >
+              {confirmandoServico ? "Confirmando..." : "✅ Confirmar"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showTermoCompleto && (
+        <div onClick={() => setShowTermoCompleto(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:70, padding:20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:420, maxHeight:"70vh", overflowY:"auto", background:"white", borderRadius:16, padding:20 }}>
+            <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:"0 0 12px" }}>Termo de Isenção de Responsabilidade</p>
+            <p style={{ fontSize:13, color:"#555", lineHeight:1.6, margin:0 }}>{TERMO_TEXTO_PLACEHOLDER}</p>
+            <button onClick={() => setShowTermoCompleto(false)} style={{ marginTop:16, width:"100%", padding:"10px 0", borderRadius:10, border:"none", background:"#F0F2F5", color:"#333", fontWeight:800, fontSize:13, cursor:"pointer" }}>
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
