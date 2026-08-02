@@ -2736,6 +2736,8 @@ function mapPedidoRow(p) {
     cidade: p.cidade || null,
     status: p.status,
     time: p.created_at,
+    chegada_solicitada_em: p.chegada_solicitada_em,
+    inicio_confirmado_em: p.inicio_confirmado_em,
     concluido_em: p.concluido_em,
     contestado_em: p.contestado_em,
     contestacao_motivo: p.contestacao_motivo,
@@ -2752,6 +2754,15 @@ function mapPedidoRow(p) {
 function generatePin(serviceId) {
   const seed = String(serviceId).split("").reduce((a, c) => a + c.charCodeAt(0), 0);
   return String((seed * 7919) % 10000).padStart(4, "0");
+}
+
+// Código de confirmação de início (Fase 5) — mesmo padrão determinístico do
+// PIN de conclusão (generatePin), multiplicador diferente pra não coincidir
+// com o código de conclusão do mesmo pedido. Sem geração/persistência no
+// banco: os dois lados computam o mesmo valor localmente a partir do id.
+function generateCodigoInicio(serviceId) {
+  const seed = String(serviceId).split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  return String((seed * 3571) % 10000).padStart(4, "0");
 }
 
 const PHASES = [
@@ -2800,7 +2811,7 @@ function ServiceStatusStepper({ phase }) {
 }
 
 /* ───────────────────────── SERVICE DETAIL — CLIENT VIEW ─────────────────────── */
-function ServiceDetailClient({ service, onBack, onStatusChange, onConfirmarConclusao, onCancelarPedido, onAvaliar, showToast }) {
+function ServiceDetailClient({ service, onBack, onConfirmarConclusao, onCancelarPedido, onAvaliar, showToast }) {
   const [phase,      setPhase]      = useState(statusToPhase(service.status));
   const [showSOS,    setShowSOS]    = useState(false);
   const [released,   setReleased]   = useState(service.status === "concluido");
@@ -2813,6 +2824,7 @@ function ServiceDetailClient({ service, onBack, onStatusChange, onConfirmarConcl
   const [cancelando,      setCancelando]      = useState(false);
   const cat  = CATS.find(c => c.id === service.cat);
   const pin  = generatePin(service.id);
+  const codigoInicio = generateCodigoInicio(service.id);
   const jaConfirmeiConclusao = !!service.concluido_cliente_em;
 
   // Sem isso, quando o outro lado confirma depois e o pedido vira
@@ -2826,13 +2838,6 @@ function ServiceDetailClient({ service, onBack, onStatusChange, onConfirmarConcl
 
   const phaseColors = ["#6366F1", B, O, G];
   const currentColor = phaseColors[phase];
-
-  // Check-in do profissional
-  const handleCheckin = () => {
-    setPhase(2);
-    showToast?.("🛠️ Status atualizado: O profissional está no local!", O);
-    onStatusChange?.(service.id, "executando");
-  };
 
   // Foto da conclusão — opcional, mesmo padrão de handlePortfolio
   // (ProfileScreen): upload eager ao selecionar, acumula URLs no estado.
@@ -2899,6 +2904,32 @@ function ServiceDetailClient({ service, onBack, onStatusChange, onConfirmarConcl
         <p style={{ fontSize:12, fontWeight:800, color:"#1a1a2e", margin:"0 0 14px" }}>Progresso do Serviço</p>
         <ServiceStatusStepper phase={phase} />
       </div>
+
+      {/* ── CÓDIGO DE INÍCIO (Fase 5) — só na fase "Acordo Fechado", some
+          quando o profissional confirma a chegada (status vira executando).
+          Etapa nova, adicional ao PIN de conclusão logo abaixo. ── */}
+      {phase === 1 && (
+        <div style={{ background:"white", borderRadius:20, overflow:"hidden", boxShadow:"0 2px 12px rgba(0,0,0,.07)" }}>
+          {service.chegada_solicitada_em ? (
+            <div style={{ padding:16 }}>
+              <p style={{ fontSize:13, fontWeight:900, color:"#1a1a2e", margin:"0 0 4px" }}>📍 O profissional chegou!</p>
+              <p style={{ fontSize:12, color:"#666", lineHeight:1.5, margin:"0 0 12px" }}>Informe o código abaixo pra ele confirmar o início do serviço.</p>
+              <div style={{ background:"#F8F9FA", borderRadius:14, padding:"12px 16px", display:"flex", gap:8, justifyContent:"center", border:`1.5px dashed ${O}` }}>
+                {codigoInicio.split("").map((d, i) => (
+                  <div key={i} style={{ width:36, height:44, borderRadius:10, background:"white", border:`2px solid ${O}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, fontWeight:900, color:"#1a1a2e", boxShadow:"0 2px 8px rgba(0,0,0,.08)" }}>
+                    {d}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div style={{ padding:16, display:"flex", alignItems:"center", gap:10 }}>
+              <Clock size={18} color="#aaa" />
+              <p style={{ fontSize:12.5, color:"#888", margin:0 }}>Aguardando o profissional chegar ao local para iniciar o serviço.</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── CUSTODY CARD (phases 1–3) ── */}
       {phase >= 1 && !released && (
@@ -2994,13 +3025,6 @@ function ServiceDetailClient({ service, onBack, onStatusChange, onConfirmarConcl
               </div>
             )}
           </div>
-
-          {/* simulate arrival button — demo only, phase 1 */}
-          {phase === 1 && (
-            <button onClick={handleCheckin} style={{ marginTop:12, width:"100%", padding:"11px 0", borderRadius:12, border:`1.5px solid ${O}`, background:"white", color:O, fontWeight:800, fontSize:13, cursor:"pointer" }}>
-              🛠️ Simular: Profissional chegou
-            </button>
-          )}
         </div>
       )}
 
@@ -3374,12 +3398,16 @@ function ProfessionalFeed({ onViewService, isPro, feedServices, embedded = false
 }
 
 /* ───────────────────────── SERVICE DETAIL PRO ───────────────────────────────── */
-function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry, onAvaliar, onCancelarPedido, showToast }) {
+function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry, onAvaliar, onCancelarPedido, onSolicitarChegada, onConfirmarInicio, showToast }) {
   const cat   = CATS.find(c => c.id === service.cat);
   const phase = statusToPhase(service.status);
   const [showCancelar,  setShowCancelar]  = useState(false);
   const [motivoCancelar,setMotivoCancelar]= useState("");
   const [cancelando,    setCancelando]    = useState(false);
+  const [solicitandoChegada, setSolicitandoChegada] = useState(false);
+  const [codigoInput,   setCodigoInput]   = useState("");
+  const [codigoErro,    setCodigoErro]    = useState(false);
+  const [confirmandoInicio, setConfirmandoInicio] = useState(false);
 
   const confirmarCancelamento = () => {
     if (cancelando || !motivoCancelar.trim()) return;
@@ -3387,6 +3415,35 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry, o
     setCancelando(true);
     onCancelarPedido?.(service.id, "profissional", motivoCancelar.trim());
     showToast?.("Pedido cancelado.", "#DC2626");
+  };
+
+  // Fase 5 — código de confirmação de início: etapa nova antes da execução,
+  // adicional ao PIN de conclusão (que continua existindo mais abaixo/na
+  // tela de PIN). "Cheguei ao local" só marca a chegada (mostra o código pro
+  // cliente); o status só vira "executando" depois que o profissional digita
+  // de volta o código certo, recebido verbalmente do cliente.
+  const handleCheguei = () => {
+    if (solicitandoChegada || service.chegada_solicitada_em) return;
+    setSolicitandoChegada(true);
+    onSolicitarChegada?.(service.id);
+  };
+
+  const handleDigitoInicio = (d) => {
+    if (confirmandoInicio || codigoInput.length >= 4) return;
+    const next = codigoInput + d;
+    setCodigoInput(next);
+    setCodigoErro(false);
+    if (next.length === 4) {
+      setTimeout(() => {
+        if (next === generateCodigoInicio(service.id)) {
+          setConfirmandoInicio(true);
+          onConfirmarInicio?.(service.id);
+        } else {
+          setCodigoErro(true);
+          setCodigoInput("");
+        }
+      }, 200);
+    }
   };
 
   return (
@@ -3404,18 +3461,36 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry, o
         <div style={{ background:"white", borderRadius:20, padding:"16px 12px", boxShadow:"0 2px 12px rgba(0,0,0,.07)" }}>
           <p style={{ fontSize:12, fontWeight:800, color:"#1a1a2e", margin:"0 0 14px" }}>Progresso do Job</p>
           <ServiceStatusStepper phase={phase} />
-          {/* Avança aberto→em_andamento→executando. A partir daqui, a
-              conclusão é bilateral — só pelo botão de PIN mais abaixo, não
-              por esse atalho (que fechava o pedido sozinho). */}
-          {phase < 2 && (
-            <button onClick={()=>{
-              const nextStatus=["aberto","em_andamento","executando"][Math.min(phase+1,2)];
-              supabase.from("pedidos").update({status:nextStatus,updated_at:new Date().toISOString()}).eq("id",service.id).then(()=>{
-                onBack&&onBack();
-              }).catch(()=>{});
-            }} style={{marginTop:12,width:"100%",padding:"12px",background:"#007BFF",color:"white",border:"none",borderRadius:12,fontWeight:700,fontSize:15,cursor:"pointer"}}>
-              {["Iniciar Serviço","Marcar Em Execução"][phase]||"Avançar"}
-            </button>
+          {/* Fase 5 — chegada + código de início. Só some daqui quando o
+              status vira "executando" (o pedido bilateral de conclusão fica
+              a cargo do botão de PIN mais abaixo, sem mudanças). */}
+          {phase === 1 && (
+            !service.chegada_solicitada_em ? (
+              <button onClick={handleCheguei} disabled={solicitandoChegada} style={{marginTop:12,width:"100%",padding:"12px",background:O,color:"white",border:"none",borderRadius:12,fontWeight:700,fontSize:15,cursor: solicitandoChegada ? "default" : "pointer",opacity: solicitandoChegada ? .6 : 1}}>
+                📍 {solicitandoChegada ? "Avisando..." : "Cheguei ao local / Iniciar Serviço"}
+              </button>
+            ) : (
+              <div style={{ marginTop:14 }}>
+                <p style={{ fontSize:12.5, fontWeight:700, color:"#555", margin:"0 0 10px", textAlign:"center" }}>
+                  Peça o código de início ao cliente e digite abaixo:
+                </p>
+                <div style={{ display:"flex", gap:8, justifyContent:"center", marginBottom:12 }}>
+                  {[0,1,2,3].map(i => (
+                    <div key={i} style={{ width:42, height:50, borderRadius:12, border:`2px solid ${codigoErro ? "#EF4444" : i < codigoInput.length ? O : "#E5E7EB"}`, background: i < codigoInput.length ? O+"12" : "#F8F9FA", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, fontWeight:900, color: codigoErro ? "#EF4444" : "#1a1a2e" }}>
+                      {i < codigoInput.length ? "●" : ""}
+                    </div>
+                  ))}
+                </div>
+                {codigoErro && <p style={{ textAlign:"center", color:"#EF4444", fontWeight:800, fontSize:12.5, marginBottom:12 }}>Código incorreto. Tente novamente.</p>}
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8 }}>
+                  {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((d, i) => (
+                    <button key={i} disabled={confirmandoInicio} onClick={() => { if (d === "⌫") { setCodigoInput(p => p.slice(0,-1)); setCodigoErro(false); } else if (d) handleDigitoInicio(d); }} style={{ padding:"13px 0", borderRadius:12, border:"1.5px solid #E5E7EB", background: d === "⌫" ? "#FFF5F5" : "white", color: d === "⌫" ? "#EF4444" : "#1a1a2e", fontWeight:900, fontSize:17, cursor: d && !confirmandoInicio ? "pointer" : "default", visibility: d === "" ? "hidden" : "visible" }}>
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
           )}
         </div>
       )}
@@ -3454,7 +3529,7 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry, o
         <button onClick={()=>onAvaliar&&onAvaliar(service)} style={{ width:"100%", padding:"15px 0", borderRadius:16, border:"none", cursor:"pointer", background:"#FF9500", color:"white", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:10, boxShadow:"0 5px 18px rgba(255,149,0,.35)" }}>
           ⭐ Avaliar
         </button>
-      ) : phase >= 1 && (
+      ) : phase >= 2 && (
         <button onClick={onOpenPinEntry} style={{ width:"100%", padding:"15px 0", borderRadius:16, border:"none", cursor:"pointer", background:"linear-gradient(135deg,#1a1a2e,#2d2d44)", color:"white", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:10, boxShadow:"0 5px 18px rgba(0,0,0,.2)" }}>
           <KeyRound size={18} /> Inserir Codigo do Cliente (Finalizar)
         </button>
@@ -8612,15 +8687,50 @@ export default function App() {
     setScreen("avaliacao");
   };
 
-  // Centraliza a persistência de mudança de status do pedido — usada tanto
-  // pelo check-in/liberação do cliente (ServiceDetailClient) quanto pela
-  // finalização via PIN do profissional (ServiceDetailPinEntry). Não cobre
-  // mais a transição pra "concluido" — isso é bilateral, ver
-  // handleConfirmarConclusao.
+  // Centraliza a persistência de mudança de status do pedido — hoje usada
+  // pelo cancelamento de pedido ainda "aberto" (RadarSearchScreen). Não
+  // cobre a transição pra "concluido" (bilateral, ver handleConfirmarConclusao)
+  // nem pra "executando" (Fase 5, ver handleConfirmarInicio — exige código).
   const handlePedidoStatusChange = (id, novoStatus) => {
     const extra = novoStatus === "concluido" ? { concluido_em: new Date().toISOString() } : {};
     supabase.from("pedidos").update({ status: novoStatus, updated_at: new Date().toISOString(), ...extra })
       .eq("id", id).then(()=>refreshMeusPedidos()).catch(()=>{});
+  };
+
+  // Fase 5 — código de confirmação de início. "Cheguei ao local" só grava o
+  // timestamp de chegada (o código em si é determinístico, calculado local
+  // dos dois lados — ver generateCodigoInicio); o status só avança pra
+  // "executando" depois que o profissional digita o código de volta.
+  const handleSolicitarChegada = (pedidoId) => {
+    supabase.from("pedidos").update({ chegada_solicitada_em: new Date().toISOString() }).eq("id", pedidoId).select().maybeSingle()
+      .then(({ data }) => {
+        refreshMeusPedidos();
+        if (data) setSelected(sel => sel?.id === pedidoId ? mapPedidoRow(data) : sel);
+        supabase.from("mensagens").insert({
+          pedido_id: pedidoId,
+          remetente_email: userEmail,
+          texto: "📍 Cheguei ao local! Confira o código de início no seu app e informe pra mim confirmar.",
+        }).then(() => {}).catch(() => {});
+      })
+      .catch(() => {});
+  };
+
+  // Chamado só depois que o componente já validou localmente que o código
+  // digitado bate com generateCodigoInicio(pedidoId) — aqui só persiste.
+  const handleConfirmarInicio = (pedidoId) => {
+    supabase.from("pedidos").update({
+      status: "executando", inicio_confirmado_em: new Date().toISOString(), updated_at: new Date().toISOString(),
+    }).eq("id", pedidoId).select().maybeSingle()
+      .then(({ data }) => {
+        refreshMeusPedidos();
+        if (data) setSelected(sel => sel?.id === pedidoId ? mapPedidoRow(data) : sel);
+        supabase.from("mensagens").insert({
+          pedido_id: pedidoId,
+          remetente_email: userEmail,
+          texto: "✅ Início do serviço confirmado! Status: Em execução.",
+        }).then(() => {}).catch(() => {});
+      })
+      .catch(() => {});
   };
 
   // Conclusão bilateral (Fase 4): cada lado só grava sua própria coluna
@@ -8801,7 +8911,7 @@ const renderContent = () => {
         return <ProfileScreen role="client" userName={userName} userEmail={userEmail} isPro={false} showRankingGlobal={showRankingGlobal} onClearRankingGlobal={() => setShowRankingGlobal(false)} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenAdmin={() => setShowAdmin(true)} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
       }
       if (screen === "propostas" && selected) return <PropostasScreen pedido={selected} onBack={()=>setScreen("orders")} onAceitarProposta={handleAceitarProposta} />;
-      if (screen === "service" && selected) return <ServiceDetailClient key={selected.id} service={selected} onBack={() => setScreen("orders")} onStatusChange={handlePedidoStatusChange} onConfirmarConclusao={handleConfirmarConclusao} onCancelarPedido={handleCancelarPedidoPosAceite} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
+      if (screen === "service" && selected) return <ServiceDetailClient key={selected.id} service={selected} onBack={() => setScreen("orders")} onConfirmarConclusao={handleConfirmarConclusao} onCancelarPedido={handleCancelarPedidoPosAceite} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
 
       // ── GUEST TOGGLE: show professional mural preview when guest selects "Profissional"
       if (!isLoggedIn && guestRole === "professional") {
@@ -8899,7 +9009,7 @@ const renderContent = () => {
       if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
       return <ProfileScreen role="professional" userName={userName} userEmail={userEmail} isPro={isPro} plano={plano} planoStatus={planoStatus} planoExpiraEm={planoExpiraEm} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenWallet={() => setScreen("wallet")} meusGanhos={meusGanhos} onOpenAdmin={() => setShowAdmin(true)} docStatus={docStatus} onDocStatusChange={(id, st) => setDocStatus(d => ({ ...d, [id]: st }))} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
     }
-    if (screen === "service" && selected) return <ServiceDetailPro key={selected.id} service={selected} onBack={() => setScreen("home")} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onOpenPinEntry={() => setScreen("pinjob")} onCancelarPedido={handleCancelarPedidoPosAceite} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
+    if (screen === "service" && selected) return <ServiceDetailPro key={selected.id} service={selected} onBack={() => setScreen("home")} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onOpenPinEntry={() => setScreen("pinjob")} onCancelarPedido={handleCancelarPedidoPosAceite} onSolicitarChegada={handleSolicitarChegada} onConfirmarInicio={handleConfirmarInicio} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
     if (screen === "pinjob"  && selected) return <ServiceDetailPinEntry key={selected.id} service={selected} onBack={() => setScreen("service")} onStatusChange={handlePedidoStatusChange} onConfirmarConclusao={handleConfirmarConclusao} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
     if (screen === "orders") return <MyServicesScreen initialTab="concluido" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} isPro={isPro} />;
     // Pro home — shows professional-specific banner + filters + feed
