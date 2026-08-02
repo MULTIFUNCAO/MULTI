@@ -20,6 +20,7 @@ import {
   CreditCard, HeartHandshake, HelpCircle, KeyRound,
   BellRing, BadgeCheck, Users, ShieldCheck,
   Activity, BarChart2, Package, ChevronUp, Eye, EyeOff,
+  Paperclip, Download,
 } from "lucide-react";
 
 /* ───────────────────────── DESIGN TOKENS ──────────────────────────────────── */
@@ -5458,6 +5459,8 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
   const [loading,   setLoading]   = useState(true);
   const [text,      setText]      = useState("");
   const [sending,   setSending]   = useState(false);
+  const [anexo,     setAnexo]     = useState(null); // { file, previewUrl, tipo, nome }
+  const [enviandoAnexo, setEnviandoAnexo] = useState(false);
   const [aceitando, setAceitando] = useState(false);
   const [dataInput, setDataInput] = useState("");
   const [contraparteWhatsapp, setContraparteWhatsapp] = useState(null);
@@ -5547,12 +5550,51 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
     }).then(() => {});
   };
 
-  const enviar = () => {
+  // Fase 2 — anexos (foto/vídeo/arquivo): seleção só monta a preview local
+  // (URL.createObjectURL), o upload de fato só acontece no envio, junto com
+  // a mensagem — evita subir arquivo pro storage e o usuário desistir antes
+  // de mandar. Limite de 20MB alinhado com o que o Supabase free tier aguenta
+  // bem num upload direto do client.
+  const ANEXO_MAX_BYTES = 20 * 1024 * 1024;
+  const handleSelecionarAnexo = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.size > ANEXO_MAX_BYTES) { alert("Arquivo muito grande (máximo 20MB)."); return; }
+    const tipo = file.type.startsWith("image/") ? "imagem" : file.type.startsWith("video/") ? "video" : "arquivo";
+    const previewUrl = tipo === "arquivo" ? null : URL.createObjectURL(file);
+    setAnexo({ file, previewUrl, tipo, nome: file.name });
+  };
+  const cancelarAnexo = () => {
+    if (anexo?.previewUrl) URL.revokeObjectURL(anexo.previewUrl);
+    setAnexo(null);
+  };
+
+  const enviar = async () => {
     const texto = text.trim();
-    if (!texto || sending) return;
+    if ((!texto && !anexo) || sending || enviandoAnexo) return;
     setSending(true);
+    let anexoFields = {};
+    try {
+      if (anexo) {
+        setEnviandoAnexo(true);
+        const ext = anexo.nome.includes(".") ? anexo.nome.split(".").pop() : "bin";
+        const path = `chat_${chat.pedidoId}_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, anexo.file, { contentType: anexo.file.type, upsert: true });
+        if (upErr) throw upErr;
+        const anexoUrl = supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl;
+        anexoFields = { anexo_url: anexoUrl, anexo_tipo: anexo.tipo, anexo_nome: anexo.nome };
+      }
+    } catch (err) {
+      setSending(false);
+      setEnviandoAnexo(false);
+      alert("Erro ao enviar anexo: " + (err.message || ""));
+      return;
+    }
+    setEnviandoAnexo(false);
     setText("");
-    supabase.from("mensagens").insert({ pedido_id: chat.pedidoId, remetente_email: meuEmail, texto })
+    cancelarAnexo();
+    supabase.from("mensagens").insert({ pedido_id: chat.pedidoId, remetente_email: meuEmail, texto, ...anexoFields })
       .then(() => {
         carregar();
         const meuNome = pedido?.cliente_id === meuEmail ? pedido?.cliente_nome : pedido?.profissional_nome;
@@ -5677,13 +5719,33 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
           return (
             <div key={m.id} style={{ display:"flex", justifyContent: minha ? "flex-end" : "flex-start" }}>
               <div style={{
-                maxWidth:"78%", padding:"9px 13px", borderRadius:14,
+                maxWidth:"78%", padding: m.anexo_tipo === "imagem" || m.anexo_tipo === "video" ? 6 : "9px 13px", borderRadius:14,
                 borderBottomRightRadius: minha ? 4 : 14, borderBottomLeftRadius: minha ? 14 : 4,
                 background: minha ? B : "white", color: minha ? "white" : "#1a1a2e",
                 boxShadow: minha ? "none" : "0 1px 4px rgba(0,0,0,.07)",
               }}>
-                <p style={{ fontSize:13.5, lineHeight:1.4, margin:0, whiteSpace:"pre-wrap", wordBreak:"break-word" }}>{m.texto}</p>
-                <p style={{ fontSize:10, margin:"4px 0 0", textAlign:"right", color: minha ? "rgba(255,255,255,.7)" : "#bbb" }}>{horaFmt(m.criado_em)}</p>
+                {m.anexo_tipo === "imagem" && m.anexo_url && (
+                  <a href={m.anexo_url} target="_blank" rel="noreferrer">
+                    <img src={m.anexo_url} alt="Anexo" style={{ display:"block", maxWidth:"100%", maxHeight:260, borderRadius:10, marginBottom: m.texto ? 6 : 0 }} />
+                  </a>
+                )}
+                {m.anexo_tipo === "video" && m.anexo_url && (
+                  <video src={m.anexo_url} controls style={{ display:"block", maxWidth:"100%", maxHeight:260, borderRadius:10, marginBottom: m.texto ? 6 : 0 }} />
+                )}
+                {m.anexo_tipo === "arquivo" && m.anexo_url && (
+                  <a href={m.anexo_url} target="_blank" rel="noreferrer" style={{
+                    display:"flex", alignItems:"center", gap:8, padding:"8px 10px", borderRadius:10, textDecoration:"none",
+                    background: minha ? "rgba(255,255,255,.15)" : "#F8F9FA", marginBottom: m.texto ? 6 : 0,
+                  }}>
+                    <FileText size={18} color={minha ? "white" : "#555"} style={{ flexShrink:0 }} />
+                    <span style={{ fontSize:12.5, fontWeight:700, color: minha ? "white" : "#333", wordBreak:"break-word", flex:1 }}>{m.anexo_nome || "Arquivo"}</span>
+                    <Download size={15} color={minha ? "white" : "#555"} style={{ flexShrink:0 }} />
+                  </a>
+                )}
+                {m.texto && (
+                  <p style={{ fontSize:13.5, lineHeight:1.4, margin:0, padding: m.anexo_tipo ? "0 6px" : 0, whiteSpace:"pre-wrap", wordBreak:"break-word" }}>{m.texto}</p>
+                )}
+                <p style={{ fontSize:10, margin:"4px 0 0", padding: m.anexo_tipo ? "0 6px" : 0, textAlign:"right", color: minha ? "rgba(255,255,255,.7)" : "#bbb" }}>{horaFmt(m.criado_em)}</p>
               </div>
             </div>
           );
@@ -5775,7 +5837,38 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
         )
       )}
 
+      {anexo && (
+        <div style={{ flexShrink:0, margin:"0 14px 8px", padding:"8px 10px", borderRadius:12, background:"#F8F9FA", border:"1px solid #E5E7EB", display:"flex", alignItems:"center", gap:10 }}>
+          {anexo.tipo === "imagem" ? (
+            <img src={anexo.previewUrl} alt="" style={{ width:44, height:44, borderRadius:8, objectFit:"cover", flexShrink:0 }} />
+          ) : anexo.tipo === "video" ? (
+            <video src={anexo.previewUrl} style={{ width:44, height:44, borderRadius:8, objectFit:"cover", flexShrink:0 }} />
+          ) : (
+            <div style={{ width:44, height:44, borderRadius:8, background:"#EEF1F5", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              <FileText size={20} color="#666" />
+            </div>
+          )}
+          <span style={{ flex:1, fontSize:12, fontWeight:700, color:"#444", wordBreak:"break-word" }}>{anexo.nome}</span>
+          <button onClick={cancelarAnexo} disabled={enviandoAnexo} style={{ background:"none", border:"none", cursor:"pointer", padding:4, flexShrink:0, display:"flex" }}>
+            <X size={16} color="#999" />
+          </button>
+        </div>
+      )}
       <div style={{ flexShrink:0, padding:"10px 14px", background:"white", borderTop:"1px solid #F0F0F0", display:"flex", gap:8, alignItems:"center" }}>
+        <input
+          id="chat-anexo-input"
+          type="file"
+          accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.txt"
+          onChange={handleSelecionarAnexo}
+          style={{ display:"none" }}
+        />
+        <button
+          onClick={() => document.getElementById("chat-anexo-input").click()}
+          disabled={sending}
+          style={{ width:38, height:38, borderRadius:"50%", border:"none", background:"#F0F2F5", color:"#555", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}
+        >
+          <Paperclip size={17} />
+        </button>
         <input
           value={text}
           onChange={e => setText(e.target.value)}
@@ -5783,11 +5876,11 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
           placeholder="Escreva uma mensagem..."
           style={{ flex:1, padding:"11px 14px", borderRadius:99, border:"1.5px solid #EEE", fontSize:13.5, outline:"none" }}
         />
-        <button onClick={enviar} disabled={!text.trim() || sending} style={{
+        <button onClick={enviar} disabled={(!text.trim() && !anexo) || sending} style={{
           width:40, height:40, borderRadius:"50%", border:"none",
-          background: text.trim() ? B : "#E0E0E0", color:"white",
+          background: (text.trim() || anexo) ? B : "#E0E0E0", color:"white",
           display:"flex", alignItems:"center", justifyContent:"center",
-          cursor: text.trim() ? "pointer" : "default", flexShrink:0,
+          cursor: (text.trim() || anexo) ? "pointer" : "default", flexShrink:0,
         }}>
           <Send size={16} />
         </button>
