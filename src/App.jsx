@@ -2587,7 +2587,10 @@ function PostServiceScreen({ onBack, onSuccess }) {
       try {
         const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
         const d = await r.json();
-        if (d.erro) { setCepError("CEP não encontrado"); }
+        // ViaCEP às vezes responde erro:false mas sem "localidade" preenchida
+        // (CEPs genéricos/promocionais) — sem essa checagem, o pedido era
+        // publicado com cidade:null, invisível pro radar de empresa/cidade.
+        if (d.erro || !d.localidade) { setCepError("CEP não encontrado"); }
         else { setCepInfo({ bairro: d.bairro, cidade: d.localidade, uf: d.uf, logradouro: d.logradouro }); }
       } catch { setCepError("Erro ao buscar CEP"); }
       finally { setCepLoading(false); }
@@ -2597,7 +2600,7 @@ function PostServiceScreen({ onBack, onSuccess }) {
   const F = { background:"white", border:"1.5px solid #EBEBEB", borderRadius:12, padding:"13px 14px", fontSize:13, color:"#1a1a2e", outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit" };
   const L = { display:"block", fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.2, marginBottom:6 };
 
-  const canPublish = form.cat && form.desc && form.value && cepInfo;
+  const canPublish = form.cat && form.desc && form.value && cepInfo && cepInfo.cidade;
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:18, padding:"18px 16px 40px" }}>
