@@ -2083,7 +2083,7 @@ function EmpresaPedidosScreen({ userEmail }) {
   );
 }
 
-function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted, onAceitarProposta }) {
+function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted, onAceitarProposta, onBack }) {
   const [phase, setPhase] = useState(0); // 0=searching, 1=found // v3
   const [raio, setRaio] = useState(2);
   const [expandMsg, setExpandMsg] = useState('');
@@ -2197,7 +2197,10 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted, onA
 
   if (phase === 0) {
     return (
-      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'100vh', background:'#0f1117', padding:24 }}>
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'100vh', background:'#0f1117', padding:24, position:'relative' }}>
+        <button onClick={onBack} style={{ position:'absolute', top:20, left:20, display:'flex', alignItems:'center', gap:6, color:'#ffffff99', fontSize:13, fontWeight:700, background:'none', border:'none', cursor:'pointer' }}>
+          <ArrowLeft size={15} /> Voltar
+        </button>
         <p style={{ color:'#ffffff99', fontSize:12, marginBottom:4, textTransform:'uppercase', letterSpacing:1 }}>{service.title}</p>
         <p style={{ color:'white', fontSize:16, fontWeight:700, marginBottom:32 }}>R$ {service.value}</p>
         <svg width="240" height="240" viewBox="0 0 240 240" style={{ marginBottom:24 }}>
@@ -2260,7 +2263,8 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted, onA
       <div style={{ display:"flex", flexDirection:"column", paddingBottom:100 }}>
         {/* success header */}
         <div style={{ padding:"20px 20px 16px", background:"white", borderBottom:"1px solid #F0F0F0" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:4 }}>
+          <BackBtn onClick={onBack} />
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:12, marginBottom:4 }}>
             <div style={{ width:40, height:40, borderRadius:12, background:cat?.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>{cat?.emoji}</div>
             <div>
               <p style={{ fontSize:12, color:"#aaa", margin:0 }}>{service.title}</p>
@@ -2736,7 +2740,7 @@ function PostServiceScreen({ onBack, onSuccess }) {
 
         <button
             onClick={() => { if (canPublish) { (async()=>{ const ts=Date.now(); const urls=await Promise.all((window._photos||[]).map(async(b64,i)=>{ const res=await fetch(b64); const blob=await res.blob(); const ext=blob.type.includes("png")?"png":"jpg"; const path="pedido_"+ts+"_"+i+"."+ext; const{error:ue}=await supabase.storage.from("pedidos-fotos").upload(path,blob,{contentType:blob.type,upsert:true}); if(ue){console.warn("upload:",ue);return null;} return supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl; })); const fotos=urls.filter(Boolean); const{data:novoPedido,error}=await supabase.from("pedidos").insert({cliente_id:safeGetUser().email||"anonimo",cliente_nome:safeGetUser().name||"Cliente",categoria:form.cat,descricao:form.desc,valor:Number(form.value),cep:form.cep,cidade:cepInfo.cidade||null,fotos,status:"aberto"}).select().single(); if(error){alert("Erro ao publicar serviço: "+(error.message||"")); return;} fetch("/api/notify-pedido",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({categoria:form.cat,descricao:form.desc})}).catch(()=>{}); (async()=>{ const clienteEmail=safeGetUser().email; if(!clienteEmail) return; const playerId=await getOneSignalPlayerId(); if(playerId){ supabase.from("usuarios").update({onesignal_player_id:playerId}).eq("email",clienteEmail).then(()=>{}); } })(); onSuccess({...mapPedidoRow(novoPedido), cepInfo, material:form.material}); })(); }}}
-            style={{ padding:"15px 0", borderRadius:14, border:"none", cursor: canPublish ? "pointer" : "not-allowed", background: canPublish ? `linear-gradient(135deg,${0},#E64A19)` : "#9CA3AF", color: canPublish ? "white" : "#4B5563", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow: canPublish ? "0 5px 18px rgba(255,87,34,.30)" : "none", transition:"all .2s" }}>
+            style={{ padding:"15px 0", borderRadius:14, border:"none", cursor: canPublish ? "pointer" : "not-allowed", background: canPublish ? `linear-gradient(135deg,${O},#E64A19)` : "#9CA3AF", color: canPublish ? "white" : "#4B5563", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow: canPublish ? "0 5px 18px rgba(255,87,34,.30)" : "none", transition:"all .2s" }}>
             <Send size={15} /> Publicar Serviço
           </button>
         </div>
@@ -9098,7 +9102,7 @@ const renderContent = () => {
   if (!role && !authScreen) { setAuthScreen("role-select"); return null; }
     if (role === "client") {
       if (screen === "post")   return <PostServiceScreen onBack={() => setScreen("home")} onSuccess={handlePostServiceSuccess} />;
-      if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onStatusChange={handlePedidoStatusChange} showToast={showToast} onAccepted={(pedidoRow) => { setSelected(mapPedidoRow(pedidoRow)); setScreen("service"); }} onAceitarProposta={handleAceitarProposta} />;
+      if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onStatusChange={handlePedidoStatusChange} showToast={showToast} onAccepted={(pedidoRow) => { setSelected(mapPedidoRow(pedidoRow)); setScreen("service"); }} onAceitarProposta={handleAceitarProposta} onBack={() => setScreen("orders")} />;
       if (screen === "chat")   return <ChatInbox myServices={meusPedidosComCandidatos} onOpenChat={openChatFromService} />;
       if (screen === "orders") return <MyServicesScreen initialTab="aberto" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} onCancelarPedido={(s) => { if (window.confirm('Cancelar esse pedido? O profissional será avisado.')) { handlePedidoStatusChange(s.id, 'cancelado'); showToast?.('Pedido cancelado.', '#DC2626'); } }} isPro={isPro} />;
       if (screen === "profile") {
