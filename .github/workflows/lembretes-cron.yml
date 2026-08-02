@@ -1,8 +1,14 @@
 name: Lembretes de agendamento
 
 on:
-  schedule:
-    - cron: "0 * * * *"
+  # Desativado em favor do Cron Job nativo do Render (mesmo endpoint,
+  # horario confiavel - o schedule daqui tinha atrasos de disparo de ate
+  # 3h+ em relacao ao agendado, ver historico de runs). Mantido comentado
+  # (em vez de apagar o arquivo) pra preservar o historico de execucoes no
+  # Actions e permitir reverter rapido se o cron do Render precisar ser
+  # desfeito. Pra reativar, so descomentar o bloco "schedule" abaixo.
+  # schedule:
+  #   - cron: "0 * * * *"
   workflow_dispatch: {}
 
 jobs:
