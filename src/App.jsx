@@ -5547,6 +5547,61 @@ const QUICK_MSGS_CLIENTE = [
   "Qual o valor total?",
 ];
 
+// Barra de acompanhamento visual (Fase 6) — 5 etapas do ciclo de vida a
+// partir do agendamento (antes disso, "em_andamento" ainda é negociação
+// pura, sem nenhuma etapa concluída). Deriva do mesmo pedido que já é
+// buscado por polling no resto do chat, sem fonte de dado extra.
+const CHAT_STAGES = [
+  { icon:"📅", label:"Agendado" },
+  { icon:"📍", label:"Início do serviço" },
+  { icon:"🛠️", label:"Em execução" },
+  { icon:"✅", label:"Concluído" },
+  { icon:"⭐", label:"Avaliação" },
+];
+
+function chatStageIndex(pedido) {
+  if (!pedido) return -1;
+  if (pedido.status === "concluido")  return 4; // falta só avaliar
+  if (pedido.status === "executando") return 2;
+  if (pedido.chegada_solicitada_em)   return 1;
+  if (pedido.status === "confirmado") return 0;
+  return -1; // ainda negociando (em_andamento) — nenhuma etapa concluída
+}
+
+function ChatProgressBar({ pedido }) {
+  const idx = chatStageIndex(pedido);
+  const n = CHAT_STAGES.length;
+  return (
+    <div style={{ flexShrink:0, background:"white", padding:"12px 16px 8px", borderBottom:"1px solid #F0F0F0" }}>
+      <div style={{ display:"flex", alignItems:"flex-start", position:"relative" }}>
+        <div style={{ position:"absolute", top:12, left:12, right:12, height:2, background:"#E5E7EB", zIndex:0 }} />
+        <div style={{ position:"absolute", top:12, left:12, height:2, zIndex:1, transition:"width .5s", background:G, width: idx <= 0 ? 0 : `${(idx / (n - 1)) * (100 - 16)}%` }} />
+        {CHAT_STAGES.map((s, i) => {
+          const done   = i < idx;
+          const active = i === idx;
+          const col    = done || active ? G : "#D1D5DB";
+          return (
+            <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4, position:"relative", zIndex:2 }}>
+              <div style={{
+                width:24, height:24, borderRadius:"50%",
+                background: done ? G : active ? "white" : "#F3F4F6",
+                border:`2px solid ${col}`,
+                display:"flex", alignItems:"center", justifyContent:"center",
+                fontSize: done ? 10 : 11,
+                boxShadow: active ? `0 0 0 3px ${G}22` : "none",
+                transition:"all .3s",
+              }}>
+                {done ? <Check size={11} color="white" /> : <span style={{ fontSize:11 }}>{s.icon}</span>}
+              </div>
+              <p style={{ fontSize:8.5, fontWeight: active ? 900 : 700, color: (done || active) ? "#1a1a2e" : "#B0B4C0", margin:0, textAlign:"center", lineHeight:1.15 }}>{s.label}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // Chat de negociação real (Fase 1) — mensagens persistidas em "mensagens",
 // chaveadas por pedido_id (um pedido em_andamento só tem uma proposta aceita,
 // então pedido_id já desambigua a negociação sem precisar de proposta_id).
@@ -5576,7 +5631,7 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
       .catch(() => {})
       .finally(() => setLoading(false));
     supabase.from("pedidos")
-      .select("cliente_id,cliente_nome,profissional_aceito,profissional_nome,aceite_formal_cliente_em,aceite_formal_profissional_em,data_agendada,valor,status,categoria")
+      .select("cliente_id,cliente_nome,profissional_aceito,profissional_nome,aceite_formal_cliente_em,aceite_formal_profissional_em,data_agendada,valor,status,categoria,chegada_solicitada_em,inicio_confirmado_em,concluido_em")
       .eq("id", chat.pedidoId).maybeSingle()
       .then(({ data }) => setPedido(data || null))
       .catch(() => {});
@@ -5735,12 +5790,6 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
   // só libera quando confirmado que o role é "empresa".
   const whatsappBloqueado = profissionalRole !== "empresa";
 
-  // Indicador de estágio (pra quem usa pela primeira vez saber o que esperar
-  // em cada etapa): 0 = ainda combinando os detalhes, 1 = já tem data
-  // proposta mas falta algum dos dois confirmar o serviço, 2 = confirmado
-  // (data + termo aceitos) dos dois lados.
-  const estagioAtual = (liberado && termoLiberado) ? 2 : (pedido?.data_agendada ? 1 : 0);
-  const ESTAGIOS = ["📍 Combine os detalhes", "📅 Confirme o serviço", "🟢 Serviço agendado"];
 
   // Fase 4 — "Confirmar Serviço": uma única ação por usuário que substitui os
   // dois aceites separados de antes (data + termo) por um resumo com os dois
@@ -5826,16 +5875,12 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
             </a>
           )}
         </div>
-        {pedido && (
-          <div style={{ marginTop:10, fontSize:10.5 }}>
-            {ESTAGIOS.map((label, i) => (
-              <span key={i} style={{ color: i === estagioAtual ? "white" : "rgba(255,255,255,.55)", fontWeight: i === estagioAtual ? 900 : 600 }}>
-                {i > 0 ? " → " : ""}{label}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
+
+      {/* Fase 6 — barra de acompanhamento visual: reflete o status real do
+          pedido em tempo real (mesmo polling de 5s do resto do chat), do
+          agendamento até a avaliação. */}
+      {pedido && <ChatProgressBar pedido={pedido} />}
 
       <div style={{ flex:1, overflowY:"auto", padding:"16px 14px", display:"flex", flexDirection:"column", gap:8 }}>
         {loading && <p style={{ textAlign:"center", color:"#aaa", fontSize:13 }}>Carregando...</p>}
