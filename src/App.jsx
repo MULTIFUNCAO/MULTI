@@ -5461,6 +5461,7 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
   const [aceitando, setAceitando] = useState(false);
   const [dataInput, setDataInput] = useState("");
   const [contraparteWhatsapp, setContraparteWhatsapp] = useState(null);
+  const [profissionalRole, setProfissionalRole] = useState(null);
   const [aceitesTermo, setAceitesTermo] = useState([]);
   const [aceitandoTermo, setAceitandoTermo] = useState(false);
   const [termoChecked, setTermoChecked] = useState(false);
@@ -5506,6 +5507,19 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
       .then(({ data }) => setContraparteWhatsapp(data?.whatsapp || null))
       .catch(() => setContraparteWhatsapp(null));
   }, [pedido?.cliente_id, pedido?.profissional_aceito, meuEmail]);
+
+  // Restrição de WhatsApp (Fase 1): profissional autônomo (role "professional")
+  // nunca libera WhatsApp — toda comunicação fica no chat interno do Multi.
+  // Empresa parceira (role "empresa") continua liberando normalmente. Busca o
+  // role de quem prestou o serviço direto pelo email do pedido (independe de
+  // quem está olhando a tela), e assume bloqueado por padrão até confirmar
+  // que é empresa, pra nunca vazar o botão enquanto o role ainda carrega.
+  useEffect(() => {
+    if (!pedido?.profissional_aceito) { setProfissionalRole(null); return; }
+    supabase.from("usuarios").select("role").eq("email", pedido.profissional_aceito).maybeSingle()
+      .then(({ data }) => setProfissionalRole(data?.role || null))
+      .catch(() => setProfissionalRole(null));
+  }, [pedido?.profissional_aceito]);
 
   // Avisa o outro lado da conversa (push + sino in-app) — mesmo padrão de
   // handleAceitarProposta lá em App(). Debounce
@@ -5562,6 +5576,10 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
   const outroAceiteTermo = aceitesTermo.some(a => a.usuario_id === contraparteEmail);
   const termoLiberado    = meuAceiteTermo && outroAceiteTermo;
 
+  // Bloqueado por padrão (inclusive enquanto profissionalRole ainda carrega);
+  // só libera quando confirmado que o role é "empresa".
+  const whatsappBloqueado = profissionalRole !== "empresa";
+
   const aceitarTermo = () => {
     if (!pedido || aceitandoTermo || meuAceiteTermo) return;
     setAceitandoTermo(true);
@@ -5577,7 +5595,7 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
   // faltando confirmação de um dos lados (ou termo pendente), 2 = confirmado
   // e termo aceito dos dois lados — só aí o contato é liberado de fato.
   const estagioAtual = (liberado && termoLiberado) ? 2 : (pedido?.data_agendada ? 1 : 0);
-  const ESTAGIOS = ["📍 Combine os detalhes", "📅 Confirmem a data", "📱 Contato liberado"];
+  const ESTAGIOS = ["📍 Combine os detalhes", "📅 Confirmem a data", whatsappBloqueado ? "✅ Contratação confirmada" : "📱 Contato liberado"];
 
   const aceitarContratacao = () => {
     if (!pedido || aceitando) return;
@@ -5623,7 +5641,7 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
             <p style={{ fontSize:15, fontWeight:900, color:"white", margin:0 }}>{chat.proName || "Conversa"}</p>
             {chat.serviceTitle && <p style={{ fontSize:11, color:"rgba(255,255,255,.75)", margin:0 }}>{chat.serviceTitle}</p>}
           </div>
-          {liberado && termoLiberado && contraparteWhatsapp && (
+          {liberado && termoLiberado && !whatsappBloqueado && contraparteWhatsapp && (
             <a
               href={`https://wa.me/55${contraparteWhatsapp.replace(/\D/g, "")}`}
               target="_blank" rel="noreferrer"
@@ -5677,11 +5695,18 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
         liberado ? (
           termoLiberado ? (
             <div style={{ flexShrink:0, margin:"0 14px 10px", padding:"10px 14px", borderRadius:12, background:"#F0FDF4", border:`1px solid ${G}44` }}>
-              <p style={{ fontSize:12.5, fontWeight:800, color:G, margin:0 }}>🤝 Contratação confirmada — telefone liberado.</p>
+              <p style={{ fontSize:12.5, fontWeight:800, color:G, margin:0 }}>🤝 Contratação confirmada{whatsappBloqueado ? "" : " — telefone liberado"}.</p>
               {pedido.data_agendada && (
                 <p style={{ fontSize:12, fontWeight:700, color:G, margin:"4px 0 0" }}>📅 Agendado pra {dataAgendadaFmt(pedido.data_agendada)}</p>
               )}
-              {contraparteWhatsapp ? (
+              {whatsappBloqueado ? (
+                <div style={{ marginTop:8, display:"flex", alignItems:"flex-start", gap:7, padding:"9px 11px", borderRadius:10, background:"white", border:"1px solid #E5E7EB" }}>
+                  <Lock size={13} color="#666" style={{ flexShrink:0, marginTop:1 }} />
+                  <p style={{ fontSize:11.5, color:"#555", lineHeight:1.4, margin:0 }}>
+                    Por segurança e para garantir o acompanhamento do serviço, a comunicação entre cliente e profissional acontece pelo chat do MULTI.
+                  </p>
+                </div>
+              ) : contraparteWhatsapp ? (
                 <a
                   href={`https://wa.me/55${contraparteWhatsapp.replace(/\D/g, "")}`}
                   target="_blank" rel="noreferrer"
