@@ -754,8 +754,10 @@ function EmpresaCard({ emp, onVerPerfil }) {
    proposto, mensagem de interesse e ação de aceitar) — compartilhado entre
    PropostasScreen ("Ver Propostas") e RadarSearchScreen (Fase 1, candidatos
    em tempo real), pra ambas as telas mostrarem exatamente a mesma coisa em
-   vez de duas versões divergentes do mesmo card. `perfil.isEmpresa` liga o
-   mesmo selo de prioridade usado no EmpresaCard. */
+   vez de duas versões divergentes do mesmo card. `perfil.isEmpresa` só liga
+   o selo informativo "Empresa Parceira" — sem tratamento de prioridade,
+   candidatos de empresa e profissional autônomo aparecem na mesma ordem
+   (data de candidatura) e com o mesmo destaque visual. */
 function CandidatoCard({ proposta: p, perfil, reputacao, onAceitar, onVerPerfil }) {
   const cats = resolveCats(perfil?.categoria_servico);
   const isEmpresa = !!perfil?.isEmpresa;
@@ -763,8 +765,8 @@ function CandidatoCard({ proposta: p, perfil, reputacao, onAceitar, onVerPerfil 
   return (
     <div style={{
       background:"white", borderRadius:16, padding:16, marginBottom:12,
-      boxShadow: isEmpresa ? "0 4px 20px rgba(249,168,37,.22)" : "0 2px 8px rgba(0,0,0,.08)",
-      border: isEmpresa ? "1.5px solid #F9A825" : "1px solid transparent",
+      boxShadow: "0 2px 8px rgba(0,0,0,.08)",
+      border: "1px solid transparent",
     }}>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
         <div style={{width:48,height:48,borderRadius:"50%",overflow:"hidden",background:"#EEF0F5",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
@@ -775,12 +777,6 @@ function CandidatoCard({ proposta: p, perfil, reputacao, onAceitar, onVerPerfil 
         <div style={{flex:1,minWidth:0}}>
           <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
             <div style={{fontWeight:700,fontSize:15}}>{p.profissional_nome || perfil?.name || "Profissional"}</div>
-            {isEmpresa && (
-              <span style={{ display:"flex", alignItems:"center", gap:3, background:"linear-gradient(135deg,#F9A825,#F57F17)", borderRadius:99, padding:"2px 7px" }}>
-                <Star size={9} color="white" fill="white" />
-                <span style={{ fontSize:9, fontWeight:900, color:"white", letterSpacing:.3 }}>PRIORIDADE</span>
-              </span>
-            )}
           </div>
           {isEmpresa && (
             <span style={{ display:"inline-flex", alignItems:"center", gap:3, marginTop:3, background:"#E8F4FF", border:"1px solid #B8DBFF", borderRadius:99, padding:"1px 7px" }}>
@@ -2132,13 +2128,6 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted, onA
     if (!service?.id) return;
     let cancelled = false;
 
-    // Empresas parceiras sempre acima dos profissionais autônomos na lista de
-    // candidatos reais (não misturadas) — sort estável, só reordena por tipo,
-    // preserva a ordem relativa dentro de cada grupo. Usa a flag já embutida
-    // em cada linha (_isEmpresa) pra não depender de um mapa externo em
-    // sincronia toda vez que a lista muda (ex: no INSERT em tempo real).
-    const comEmpresasNoTopo = arr => [...arr].sort((a, b) => (b._isEmpresa ? 1 : 0) - (a._isEmpresa ? 1 : 0));
-
     // Mesmo enriquecimento (foto/bio/categorias + fallback pra empresas
     // parceiras) já usado em PropostasScreen ("Ver Propostas") — reaproveitado
     // aqui pra essa tela mostrar o candidato completo sem precisar navegar
@@ -2164,15 +2153,17 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted, onA
       return perfisNovos;
     };
 
+    // Ordenado por data de candidatura, sem tratamento especial pra empresa
+    // parceira — mesmo critério de PropostasScreen ("Ver Propostas").
     supabase.from("propostas").select("*").eq("pedido_id", service.id).eq("status", "pendente")
+      .order("created_at", { ascending: false })
       .then(async ({ data }) => {
         const lista = data || [];
         const emails = [...new Set(lista.map(p => p.profissional_email || p.profissional_id).filter(Boolean))];
         const perfisNovos = await buscarPerfis(emails);
         if (cancelled) return;
         setPerfis(perfisNovos);
-        const comFlag = lista.map(p => ({ ...p, _isEmpresa: !!perfisNovos[p.profissional_email || p.profissional_id]?.isEmpresa }));
-        setPropostas(comEmpresasNoTopo(comFlag));
+        setPropostas(lista);
         Promise.all(emails.map(email => fetchReputacao(email).then(r => [email, r])))
           .then(pares => { if (!cancelled) setReputacoes(Object.fromEntries(pares)); })
           .catch(() => {});
@@ -2187,8 +2178,9 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted, onA
           const perfisNovos = email ? await buscarPerfis([email]) : {};
           if (cancelled) return;
           if (Object.keys(perfisNovos).length) setPerfis(prev => ({ ...prev, ...perfisNovos }));
-          const comFlag = { ...novo, _isEmpresa: !!perfisNovos[email]?.isEmpresa };
-          setPropostas(prev => prev.some(p => p.id === novo.id) ? prev : comEmpresasNoTopo([...prev, comFlag]));
+          // Prepend — a proposta que acabou de chegar é a mais recente,
+          // mesmo critério de ordenação por data usado na busca inicial.
+          setPropostas(prev => prev.some(p => p.id === novo.id) ? prev : [novo, ...prev]);
           if (email) fetchReputacao(email).then(r => { if (!cancelled) setReputacoes(prev => ({ ...prev, [email]: r })); }).catch(() => {});
         })
       .subscribe();
