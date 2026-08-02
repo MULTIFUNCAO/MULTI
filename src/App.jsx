@@ -906,7 +906,7 @@ function formatTimeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString("pt-BR");
 }
 
-function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGoToEditar, onGoToBanco, onGoToRede, onGoToNovaDemanda, onGoToMinhasDemandas }) {
+function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGoToEditar, onGoToBanco, onGoToRede, onGoToNovaDemanda, onGoToMinhasDemandas, onAcceptOrder }) {
   const [empresa, setEmpresa] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showFullPreview, setShowFullPreview] = useState(false);
@@ -914,6 +914,16 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
   const [pedidosCount, setPedidosCount] = useState(0);
   const [pedidosPreview, setPedidosPreview] = useState([]);
   const [loadingPedidos, setLoadingPedidos] = useState(true);
+  // Radar de "Novo Pedido!" — mesmo mecanismo do profissional autônomo
+  // (ProfessionalHome): popup com timer ao surgir pedido compatível, com
+  // dedupe por pedido_id pra não reexibir quem a empresa já é candidata.
+  const [newOrder, setNewOrder] = useState(null);
+  const pedidosVistosRef = useRef(new Set());
+  const pedidosChannelRef = useRef(null);
+  const pararEscutaPedidos = () => {
+    if (pedidosChannelRef.current) { supabase.removeChannel(pedidosChannelRef.current); pedidosChannelRef.current = null; }
+  };
+  useEffect(() => () => pararEscutaPedidos(), []);
 
   useEffect(() => {
     if (!userEmail) { setLoading(false); return; }
@@ -976,6 +986,17 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
 
   const handleToggleOnline = async () => {
     const next = !empresa.status;
+
+    // Cidade obrigatória antes de ficar online (mesmo padrão da categoria
+    // obrigatória no profissional autônomo, ProfessionalHome) — sem isso, o
+    // radar de "Novo Pedido!" não teria como casar por cidade e a empresa
+    // ficaria "online" mas invisível pro filtro, sem entender por quê.
+    if (next && !empresa.cidade) {
+      showToast?.("⚠️ Defina a cidade da empresa antes de ficar online", "#DC2626");
+      onGoToEditar?.();
+      return;
+    }
+
     setEmpresa(e => ({ ...e, status: next }));
     setTogglingStatus(true);
     const updates = { status: next };
@@ -988,9 +1009,42 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
     if (error) {
       setEmpresa(e => ({ ...e, status: !next }));
       showToast?.("❌ Erro ao atualizar status: " + (error.message || ""), "#DC2626");
+      return;
+    }
+    setEmpresa(e => ({ ...e, ...updates }));
+    showToast?.(next ? "✅ Você está online!" : "Você ficou offline", next ? G : "#6B7280");
+
+    if (next) {
+      const categorias = empresa.categoria_servico || [];
+      // Comparação de cidade case-insensitive — mesmo critério já usado pro
+      // profissional autônomo (ProfessionalHome.filtered, "pro" demandas).
+      const cidadeEmpresa = (empresa.cidade || "").trim().toLowerCase();
+      // Pedidos que essa empresa já é candidata (linha em "propostas") não
+      // devem reaparecer como "Novo Pedido!", mesmo padrão do profissional.
+      supabase.from("propostas").select("pedido_id").eq("profissional_email", userEmail).then(({ data }) => {
+        (data || []).forEach(p => pedidosVistosRef.current.add(p.pedido_id));
+      }).catch(() => {});
+
+      // Match por categoria_servico + cidade da empresa.
+      supabase.from("pedidos").select("*").eq("status","aberto").eq("publico_alvo","geral")
+        .in("categoria", categorias).order("created_at",{ascending:false}).limit(20).then(({data})=>{
+          const proximo = (data || []).find(p => !pedidosVistosRef.current.has(p.id) && (p.cidade || "").trim().toLowerCase() === cidadeEmpresa);
+          if (proximo) { pedidosVistosRef.current.add(proximo.id); setNewOrder(mapPedidoParaNewOrder(proximo)); }
+        });
+
+      pararEscutaPedidos();
+      pedidosChannelRef.current = supabase.channel("pedidos_novos_empresa_" + userEmail)
+        .on("postgres_changes",{event:"INSERT",schema:"public",table:"pedidos",filter:"status=eq.aberto"},(payload)=>{
+          const p = payload.new;
+          if (!p || !p.fotos || p.fotos.length === 0 || p.publico_alvo === "pro") return;
+          if (!categorias.includes(p.categoria)) return;
+          if ((p.cidade || "").trim().toLowerCase() !== cidadeEmpresa) return;
+          if (pedidosVistosRef.current.has(p.id)) return;
+          pedidosVistosRef.current.add(p.id);
+          setNewOrder(mapPedidoParaNewOrder(p));
+        }).subscribe();
     } else {
-      setEmpresa(e => ({ ...e, ...updates }));
-      showToast?.(next ? "✅ Você está online!" : "Você ficou offline", next ? G : "#6B7280");
+      pararEscutaPedidos();
     }
   };
 
@@ -1068,6 +1122,23 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
             </button>
           </div>
         </div>
+
+        {/* Modal fixed inset:0 — precisa ficar fora do <button> "Ficar Online"
+            acima (mesmo motivo do ProfessionalHome: botão dentro de botão
+            quebra o clique real do navegador em "Aceitar agora"/"Recusar"). */}
+        {newOrder && (
+          <NewOrderCard
+            order={newOrder}
+            onAccept={() => {
+              stopNewOrderSound();
+              setNewOrder(null);
+              setEmpresa(e => ({ ...e, status: false }));
+              pararEscutaPedidos();
+              onAcceptOrder && onAcceptOrder({ id: newOrder.id, cliente_id: newOrder.cliente_id, value: newOrder.value, profissionalNome: empresa.nome });
+            }}
+            onReject={() => { stopNewOrderSound(); setNewOrder(null); }}
+          />
+        )}
 
         {/* dados da empresa — visão geral (também editáveis em "Editar Perfil") */}
         <div style={{ background:"white", borderRadius:16, padding:"16px 18px", marginBottom:18, boxShadow:"0 3px 14px rgba(0,0,0,.07)" }}>
@@ -1701,6 +1772,8 @@ function EmpresaEditProfileScreen({ userEmail, onLogout, showToast, isPro, plano
   const [descricao, setDescricao] = useState("");
   const [categoria, setCategoria] = useState([]);
   const [errorCategoria, setErrorCategoria] = useState("");
+  const [cidade, setCidade] = useState("");
+  const [errorCidade, setErrorCidade] = useState("");
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -1725,6 +1798,7 @@ function EmpresaEditProfileScreen({ userEmail, onLogout, showToast, isPro, plano
         setPhone(maskPhone(data?.telefone_contato || ""));
         setDescricao(data?.descricao || "");
         setCategoria(data?.categoria_servico || []);
+        setCidade(data?.cidade || "");
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -1757,7 +1831,9 @@ function EmpresaEditProfileScreen({ userEmail, onLogout, showToast, isPro, plano
 
   const handleSave = async () => {
     if (!categoria.length) { setErrorCategoria("Selecione ao menos uma categoria de serviço"); return; }
+    if (!cidade.trim()) { setErrorCidade("Informe a cidade"); return; }
     setErrorCategoria("");
+    setErrorCidade("");
     setSaving(true);
     try {
       let logoUrl = empresa.logo_url;
@@ -1768,7 +1844,7 @@ function EmpresaEditProfileScreen({ userEmail, onLogout, showToast, isPro, plano
         if (upErr) throw upErr;
         logoUrl = supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl;
       }
-      const updates = { telefone_contato: phone.replace(/\D/g, ""), descricao: descricao.trim() || null, logo_url: logoUrl, categoria_servico: categoria };
+      const updates = { telefone_contato: phone.replace(/\D/g, ""), descricao: descricao.trim() || null, logo_url: logoUrl, categoria_servico: categoria, cidade: cidade.trim() };
       const { error } = await supabase.from("empresas").update(updates).eq("id", empresa.id);
       if (error) throw error;
       setEmpresa(e => ({ ...e, ...updates }));
@@ -1821,6 +1897,18 @@ function EmpresaEditProfileScreen({ userEmail, onLogout, showToast, isPro, plano
           <CategoriaMultiSelect value={categoria} onChange={v => { setCategoria(v); if (errorCategoria) setErrorCategoria(""); }} max={limiteCategoria} onLimitReached={handleLimiteCategoria} error={errorCategoria} />
           {errorCategoria && <p style={{ fontSize:11, color:"#E53935", margin:"8px 0 0", fontWeight:700 }}>{errorCategoria}</p>}
           {!isEmpresaPlus && <p style={{ fontSize:11, color:"#9CA3AF", margin:"8px 0 0" }}>Multi Empresa permite até {MAX_CATEGORIAS_EMPRESA} categorias. <span style={{ color:B, fontWeight:800, cursor:"pointer" }} onClick={onUpgrade}>Vire Plus</span> pra categorias ilimitadas.</p>}
+        </div>
+
+        {/* cidade — usada pro radar de "Novo Pedido!" só mostrar pedidos da
+            mesma cidade da empresa (mesmo padrão categoria+cidade do
+            profissional autônomo). Sem isso preenchido, "Ficar Online" fica
+            bloqueado (ver EmpresaHomeScreen). */}
+        <div style={{ background:"white", borderRadius:16, padding:16, marginBottom:12, boxShadow:"0 2px 8px rgba(0,0,0,.06)", border: errorCidade ? "1.5px solid #FCA5A5" : undefined }}>
+          <h3 style={{ margin:"0 0 8px", fontSize:15, color:"#333" }}>Cidade</h3>
+          <input type="text" placeholder="Ex: Guarulhos" value={cidade}
+            onChange={e => { setCidade(e.target.value); if (errorCidade) setErrorCidade(""); }}
+            style={{ width:"100%", padding:"12px 14px", borderRadius:12, border:`1.5px solid ${errorCidade ? "#FCA5A5" : "#E5E7EB"}`, fontSize:13, outline:"none", boxSizing:"border-box" }} />
+          {errorCidade && <p style={{ fontSize:11, color:"#E53935", margin:"8px 0 0", fontWeight:700 }}>{errorCidade}</p>}
         </div>
 
         {/* plano/assinatura */}
@@ -3425,7 +3513,7 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry, o
   const handleCheguei = () => {
     if (solicitandoChegada || service.chegada_solicitada_em) return;
     setSolicitandoChegada(true);
-    onSolicitarChegada?.(service.id);
+    onSolicitarChegada?.(service.id, () => setSolicitandoChegada(false));
   };
 
   const handleDigitoInicio = (d) => {
@@ -3437,7 +3525,7 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry, o
       setTimeout(() => {
         if (next === generateCodigoInicio(service.id)) {
           setConfirmandoInicio(true);
-          onConfirmarInicio?.(service.id);
+          onConfirmarInicio?.(service.id, () => { setConfirmandoInicio(false); setCodigoInput(""); });
         } else {
           setCodigoErro(true);
           setCodigoInput("");
@@ -5606,7 +5694,7 @@ function ChatProgressBar({ pedido }) {
 // chaveadas por pedido_id (um pedido em_andamento só tem uma proposta aceita,
 // então pedido_id já desambigua a negociação sem precisar de proposta_id).
 // Sem realtime: polling simples, consistente com o resto do app.
-function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
+function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
   const [mensagens, setMensagens] = useState([]);
   const [pedido,    setPedido]    = useState(null);
   const [loading,   setLoading]   = useState(true);
@@ -5817,13 +5905,18 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
       ));
     }
     Promise.all(tasks)
-      .then(() => {
+      .then((results) => {
+        const failed = results.find(r => r?.error)?.error;
+        if (failed) throw failed;
         carregar();
         setShowConfirmModal(false);
         const meuNome = souCliente ? pedido.cliente_nome : pedido.profissional_nome;
         notificarOutroLado("Serviço confirmado ✅", `${meuNome || "O outro lado"} confirmou o serviço${chat.serviceTitle ? ` "${chat.serviceTitle}"` : ""}.`);
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.error("confirmarServico:", err);
+        showToast?.("Não foi possível confirmar o serviço: " + (err.message || "tente novamente."), "#DC2626");
+      })
       .finally(() => setConfirmandoServico(false));
   };
 
@@ -5833,7 +5926,15 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
   useEffect(() => {
     if (!pedido || pedido.status !== "em_andamento") return;
     if (liberado && termoLiberado) {
-      supabase.from("pedidos").update({ status: "confirmado" }).eq("id", chat.pedidoId).then(() => carregar());
+      supabase.from("pedidos").update({ status: "confirmado" }).eq("id", chat.pedidoId)
+        .then(({ error }) => {
+          if (error) {
+            console.error("promover status confirmado:", error);
+            showToast?.("Não foi possível confirmar o agendamento: " + (error.message || "tente novamente."), "#DC2626");
+            return;
+          }
+          carregar();
+        });
     }
   }, [liberado, termoLiberado, pedido?.status]);
 
@@ -7064,6 +7165,7 @@ function CadastroEmpresaScreen({ onBack, showToast }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [descricao, setDescricao] = useState("");
+  const [cidade, setCidade] = useState("");
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
   const [errors, setErrors] = useState({});
@@ -7082,6 +7184,7 @@ function CadastroEmpresaScreen({ onBack, showToast }) {
     if (!razaoSocial.trim()) e.razaoSocial = "Informe a razão social";
     if (!nomeFantasia.trim()) e.nomeFantasia = "Informe o nome fantasia";
     if (!categoria.length) e.categoria = "Selecione ao menos uma categoria de serviço";
+    if (!cidade.trim()) e.cidade = "Informe a cidade";
     if (phone.replace(/\D/g,"").length < 11) e.phone = "Telefone incompleto";
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) e.email = "E-mail inválido";
     if (password.length < 6) e.password = "Mínimo 6 caracteres";
@@ -7123,6 +7226,7 @@ function CadastroEmpresaScreen({ onBack, showToast }) {
         telefone_contato: phone.replace(/\D/g, ""),
         email: email.trim(),
         descricao: descricao.trim() || null,
+        cidade: cidade.trim(),
         logo_url: logoUrl,
         ativo: true,
         user_id: userId,
@@ -7237,6 +7341,15 @@ function CadastroEmpresaScreen({ onBack, showToast }) {
           />
           {errors.categoria && <p style={{ fontSize:11, color:"#E53935", margin:"5px 0 0", fontWeight:700 }}>{errors.categoria}</p>}
         </div>
+
+        {/* CIDADE — usada pro radar de "Novo Pedido!" só mostrar pedidos da
+            mesma cidade da empresa (mesmo padrão de categoria+cidade já
+            aplicado ao profissional autônomo). */}
+        <FormField IconComp={MapPin} label="Cidade" error={errors.cidade}>
+          <input type="text" placeholder="Ex: Guarulhos" value={cidade}
+            onChange={e => { setCidade(e.target.value); if (errors.cidade) setErrors(p => ({ ...p, cidade:undefined })); }}
+            style={{ ...REG_INPUT, borderColor: errors.cidade ? "#E53935" : undefined }} />
+        </FormField>
 
         {/* TELEFONE */}
         <FormField IconComp={WA_ICON} label="Telefone de Contato" error={errors.phone}>
@@ -7443,6 +7556,11 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   const [categoriaServico, setCategoriaServico] = useState([]);
   const [userCity, setUserCity] = useState("");
   const [newOrder, setNewOrder] = useState(null);
+  // Dedupe do popup "Novo Pedido!" — pedidos que esse profissional já viu
+  // (mostrados no popup) ou já é candidato (linha em "propostas") nesta
+  // sessão não devem reaparecer como se fossem novos.
+  const pedidosVistosRef = useRef(new Set());
+  const pedidosChannelRef = useRef(null);
   const [activeFilter, setActiveFilter] = useState("all");
   const [realPedidos, setRealPedidos] = useState(SEED_FEED);
   // Mesma reputação real (avaliacoes) já usada em ProfileScreen/ReputacaoBadge
@@ -7497,6 +7615,11 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
 
   const proTrialDays = 7; // free trial period
 
+  const pararEscutaPedidos = () => {
+    if (pedidosChannelRef.current) { supabase.removeChannel(pedidosChannelRef.current); pedidosChannelRef.current = null; }
+  };
+  useEffect(() => () => pararEscutaPedidos(), []);
+
   const handleFicarOnline=async()=>{
   const next=!online;
   userToggledRef.current=true;
@@ -7528,15 +7651,34 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   }
 
   if(next){
+  // Pedidos que esse profissional já é candidato (linha em "propostas") não
+  // devem reaparecer como "Novo Pedido!" — sem isso, qualquer UPDATE nesse
+  // pedido (cliente abrindo "Ver Propostas", entrando no chat, etc.) fazia
+  // o popup reaparecer pra quem já tinha demonstrado interesse ou aceitado.
+  supabase.from("propostas").select("pedido_id").eq("profissional_email", userEmail).then(({ data }) => {
+    (data || []).forEach(p => pedidosVistosRef.current.add(p.pedido_id));
+  }).catch(() => {});
+
   // Demanda de empresa (publico_alvo:"pro") nunca entra no popup de "aceitar
   // agora" — só via proposta (Candidatar-me no mural), por isso o filtro.
-  supabase.from("pedidos").select("*").eq("status","aberto").eq("publico_alvo","geral").order("created_at",{ascending:false}).limit(1).then(({data})=>{
-    if(data&&data[0]){const p=data[0];setNewOrder({id:p.id,cliente_id:p.cliente_id,category:p.categoria,location:p.cidade||"Guarulhos, SP",value:String(p.valor||"0"),description:p.descricao||"",photos:(()=>{try{const f=p.fotos;return Array.isArray(f)?f:(typeof f==="string"?JSON.parse(f):[]);}catch(e){return [];}})(),photo:(()=>{try{const f=p.fotos;const arr=Array.isArray(f)?f:(typeof f==="string"?JSON.parse(f):[]);return arr[0]||null;}catch(e){return null;}})()});}
+  supabase.from("pedidos").select("*").eq("status","aberto").eq("publico_alvo","geral").order("created_at",{ascending:false}).limit(20).then(({data})=>{
+    const proximo = (data || []).find(p => !pedidosVistosRef.current.has(p.id));
+    if(proximo){ pedidosVistosRef.current.add(proximo.id); setNewOrder(mapPedidoParaNewOrder(proximo)); }
   });
-  supabase.channel("pedidos_novos").on("postgres_changes",{event:"*",schema:"public",table:"pedidos"},(payload)=>{
-    const p=payload.new;if(!p||!p.fotos||p.fotos.length===0||p.publico_alvo==="pro")return;setNewOrder({id:p.id,cliente_id:p.cliente_id,category:p.categoria,location:p.cidade||"Guarulhos, SP",value:String(p.valor||"0"),description:p.descricao||"",photos:(()=>{try{const f=p.fotos;return Array.isArray(f)?f:(typeof f==="string"?JSON.parse(f):[]);}catch(e){return [];}})(),photo:(()=>{try{const f=p.fotos;const arr=Array.isArray(f)?f:(typeof f==="string"?JSON.parse(f):[]);return arr[0]||null;}catch(e){return null;}})()});
-  }).subscribe();
-}else{supabase.removeAllChannels();}};
+
+  // event:"INSERT" (em vez de "*") — o popup deve disparar só quando um
+  // pedido É CRIADO, não em qualquer UPDATE de qualquer pedido da tabela
+  // (era isso que fazia o mesmo pedido_id reaparecer repetidas vezes).
+  pararEscutaPedidos();
+  pedidosChannelRef.current = supabase.channel("pedidos_novos_" + userEmail)
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"pedidos",filter:"status=eq.aberto"},(payload)=>{
+      const p=payload.new;
+      if(!p||!p.fotos||p.fotos.length===0||p.publico_alvo==="pro")return;
+      if(pedidosVistosRef.current.has(p.id))return;
+      pedidosVistosRef.current.add(p.id);
+      setNewOrder(mapPedidoParaNewOrder(p));
+    }).subscribe();
+}else{pararEscutaPedidos();}};
   return (
     <div style={{ display:"flex", flexDirection:"column", background:"#F0F2F5", minHeight:"100vh", paddingBottom:100 }}>
       <style>{`
@@ -7621,7 +7763,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
       {/* Modal fixed inset:0 — precisa ficar fora do <button> "Ficar Online"
           (botão dentro de botão é HTML inválido e quebra o clique real do
           navegador em "Aceitar agora"/"Recusar"). */}
-      {newOrder && <NewOrderCard order={newOrder} onAccept={()=>{stopNewOrderSound();setNewOrder(null);setOnline(false);onAcceptOrder&&onAcceptOrder({id:newOrder.id,cliente_id:newOrder.cliente_id,title:newOrder.category,category:newOrder.category,clientName:safeGetUser().name||"Cliente",location:newOrder.location,value:newOrder.value,description:newOrder.description,photo:newOrder.photo,photos:newOrder.photos||[]});}} onReject={()=>{stopNewOrderSound();setNewOrder(null);}} />}
+      {newOrder && <NewOrderCard order={newOrder} onAccept={()=>{stopNewOrderSound();setNewOrder(null);setOnline(false);pararEscutaPedidos();onAcceptOrder&&onAcceptOrder({id:newOrder.id,cliente_id:newOrder.cliente_id,title:newOrder.category,category:newOrder.category,clientName:safeGetUser().name||"Cliente",location:newOrder.location,value:newOrder.value,description:newOrder.description,photo:newOrder.photo,photos:newOrder.photos||[]});}} onReject={()=>{stopNewOrderSound();setNewOrder(null);}} />}
 
       {/* ── PRO TRIAL BANNER (free users) ── */}
       {!isPro && (
@@ -8024,6 +8166,19 @@ function AdminLogin({ onSuccess }) {
 }
 
 /* ───────────────────────── ROOT APP ─────────────────────────────────────────── */
+
+// Formata a linha crua de "pedidos" pro shape que o popup de radar
+// (NewOrderCard) espera — usado tanto pelo profissional autônomo
+// (ProfessionalHome) quanto pela empresa parceira (EmpresaHomeScreen).
+function mapPedidoParaNewOrder(p) {
+  let fotos = [];
+  try { const f = p.fotos; fotos = Array.isArray(f) ? f : (typeof f === "string" ? JSON.parse(f) : []); } catch (e) { fotos = []; }
+  return {
+    id: p.id, cliente_id: p.cliente_id, category: p.categoria,
+    location: p.cidade || "Guarulhos, SP", value: String(p.valor || "0"),
+    description: p.descricao || "", photos: fotos, photo: fotos[0] || null,
+  };
+}
 
 function NewOrderCard({ order, onAccept, onReject }) {
   const R = 26;
@@ -8672,12 +8827,12 @@ export default function App() {
   // mural (App.jsx, upsert com onConflict:"pedido_id,profissional_id") — o
   // cliente escolhe entre todos os candidatos em PropostasScreen, e só nesse
   // momento (handleAceitarProposta) o pedido de fato trava.
-  const handleCandidatarPedidoDireto = (pedidoId, clienteId, valor) => {
+  const handleCandidatarPedidoDireto = (pedidoId, clienteId, valor, nomeOverride) => {
     if (!pedidoId || !userEmail) return;
     supabase.from("propostas").upsert({
       pedido_id: pedidoId,
       profissional_id: userEmail,
-      profissional_nome: userName || "Profissional",
+      profissional_nome: nomeOverride || userName || "Profissional",
       profissional_email: userEmail,
       valor: valor || 0,
       mensagem: "Tenho interesse neste serviço!",
@@ -8746,36 +8901,56 @@ export default function App() {
   // timestamp de chegada (o código em si é determinístico, calculado local
   // dos dois lados — ver generateCodigoInicio); o status só avança pra
   // "executando" depois que o profissional digita o código de volta.
-  const handleSolicitarChegada = (pedidoId) => {
+  const handleSolicitarChegada = (pedidoId, onError) => {
     supabase.from("pedidos").update({ chegada_solicitada_em: new Date().toISOString() }).eq("id", pedidoId).select().maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("handleSolicitarChegada:", error);
+          showToast?.("Não foi possível avisar a chegada: " + (error.message || "tente novamente."), "#DC2626");
+          onError?.();
+          return;
+        }
         refreshMeusPedidos();
         if (data) setSelected(sel => sel?.id === pedidoId ? mapPedidoRow(data) : sel);
         supabase.from("mensagens").insert({
           pedido_id: pedidoId,
           remetente_email: userEmail,
           texto: "📍 Cheguei ao local! Confira o código de início no seu app e informe pra mim confirmar.",
-        }).then(() => {}).catch(() => {});
+        }).then(({ error: msgError }) => { if (msgError) console.error("handleSolicitarChegada (mensagem):", msgError); });
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.error("handleSolicitarChegada:", err);
+        showToast?.("Erro de conexão ao avisar chegada.", "#DC2626");
+        onError?.();
+      });
   };
 
   // Chamado só depois que o componente já validou localmente que o código
   // digitado bate com generateCodigoInicio(pedidoId) — aqui só persiste.
-  const handleConfirmarInicio = (pedidoId) => {
+  const handleConfirmarInicio = (pedidoId, onError) => {
     supabase.from("pedidos").update({
       status: "executando", inicio_confirmado_em: new Date().toISOString(), updated_at: new Date().toISOString(),
     }).eq("id", pedidoId).select().maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("handleConfirmarInicio:", error);
+          showToast?.("Não foi possível confirmar o início: " + (error.message || "tente novamente."), "#DC2626");
+          onError?.();
+          return;
+        }
         refreshMeusPedidos();
         if (data) setSelected(sel => sel?.id === pedidoId ? mapPedidoRow(data) : sel);
         supabase.from("mensagens").insert({
           pedido_id: pedidoId,
           remetente_email: userEmail,
           texto: "✅ Início do serviço confirmado! Status: Em execução.",
-        }).then(() => {}).catch(() => {});
+        }).then(({ error: msgError }) => { if (msgError) console.error("handleConfirmarInicio (mensagem):", msgError); });
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.error("handleConfirmarInicio:", err);
+        showToast?.("Erro de conexão ao confirmar início.", "#DC2626");
+        onError?.();
+      });
   };
 
   // Conclusão bilateral (Fase 4): cada lado só grava sua própria coluna
@@ -8786,20 +8961,25 @@ export default function App() {
     const campoObs   = lado === "cliente" ? "conclusao_observacao_cliente" : "conclusao_observacao_profissional";
     const campoFotos = lado === "cliente" ? "conclusao_fotos_cliente" : "conclusao_fotos_profissional";
     supabase.from("pedidos").select("concluido_cliente_em,concluido_profissional_em").eq("id", pedidoId).maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) throw error;
         const outroJaConfirmou = lado === "cliente" ? data?.concluido_profissional_em : data?.concluido_cliente_em;
         const updates = { [campoTempo]: new Date().toISOString(), [campoObs]: observacao || null, [campoFotos]: (fotos && fotos.length) ? fotos : null };
         if (outroJaConfirmou) { updates.status = "concluido"; updates.concluido_em = new Date().toISOString(); }
         return supabase.from("pedidos").update(updates).eq("id", pedidoId).select().maybeSingle();
       })
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) throw error;
         refreshMeusPedidos();
         // Sem isso, a tela de detalhe aberta (selected) ficava com o
         // snapshot antigo — o pedido virava "concluido" no banco mas a UI
         // continuava presa em "Em Execução" até sair e voltar pra tela.
         if (data) setSelected(sel => sel?.id === pedidoId ? mapPedidoRow(data) : sel);
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.error("handleConfirmarConclusao:", err);
+        showToast?.("Não foi possível registrar a conclusão: " + (err.message || "tente novamente."), "#DC2626");
+      });
   };
 
   // Cancelamento pós-aceite (Fase 5): diferente do cancelamento de "aberto"
@@ -8814,16 +8994,24 @@ export default function App() {
       cancelado_por: lado,
       updated_at: new Date().toISOString(),
     }).eq("id", pedidoId).select().maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("handleCancelarPedidoPosAceite:", error);
+          showToast?.("Não foi possível cancelar o pedido: " + (error.message || "tente novamente."), "#DC2626");
+          return;
+        }
         refreshMeusPedidos();
         if (data) setSelected(sel => sel?.id === pedidoId ? mapPedidoRow(data) : sel);
         supabase.from("mensagens").insert({
           pedido_id: pedidoId,
           remetente_email: userEmail,
           texto: `❌ Pedido cancelado. Motivo: ${motivo}`,
-        }).then(()=>{}).catch(()=>{});
+        }).then(({ error: msgError }) => { if (msgError) console.error("handleCancelarPedidoPosAceite (mensagem):", msgError); });
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.error("handleCancelarPedidoPosAceite:", err);
+        showToast?.("Erro de conexão ao cancelar pedido.", "#DC2626");
+      });
   };
 
   const handleProFeedAction = (payload) => {
@@ -8931,6 +9119,7 @@ const renderContent = () => {
           chat={activeChat}
           meuEmail={userEmail}
           onBack={() => { setActiveChat(null); setScreen(role === "client" ? "chat" : "home"); }}
+          showToast={showToast}
         />
       );
     }
@@ -9025,7 +9214,7 @@ const renderContent = () => {
         if (!temEmpresaPlus) return paywallPlus("minhas-demandas");
         return <PropostasScreen pedido={selected} onBack={() => setScreen("minhas-demandas")} onAceitarProposta={handleAceitarPropostaEmpresa} />;
       }
-      return <EmpresaHomeScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} onGoToPedidos={() => setScreen("pedidos")} onGoToEditar={() => setScreen("editar")} onGoToBanco={() => setScreen("banco-profissionais")} onGoToRede={() => setScreen("minha-rede")} onGoToNovaDemanda={() => setScreen("nova-demanda")} onGoToMinhasDemandas={() => setScreen("minhas-demandas")} />;
+      return <EmpresaHomeScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} onGoToPedidos={() => setScreen("pedidos")} onGoToEditar={() => setScreen("editar")} onGoToBanco={() => setScreen("banco-profissionais")} onGoToRede={() => setScreen("minha-rede")} onGoToNovaDemanda={() => setScreen("nova-demanda")} onGoToMinhasDemandas={() => setScreen("minhas-demandas")} onAcceptOrder={(order) => { handleCandidatarPedidoDireto(order.id, order.cliente_id, order.value, order.profissionalNome); showToast?.("💼 Interesse enviado! Aguarde o cliente escolher.", B); }} />;
     }
 
     // Route guard: logged-in clients must never see the professional feed.
