@@ -5449,6 +5449,26 @@ function ChatInbox({ myServices, onOpenChat }) {
 const TERMO_VERSAO = "v1-placeholder";
 const TERMO_TEXTO_PLACEHOLDER = "Termo de isenção de responsabilidade (texto a definir).";
 
+// Mensagens rápidas (Fase 3) — um toque envia direto, sem digitar. Lista
+// separada por lado porque as situações típicas de cada um são diferentes
+// (quem presta o serviço avisa deslocamento/chegada, quem contrata confirma
+// local/horário/valor).
+const QUICK_MSGS_PROFISSIONAL = [
+  "Estou a caminho 🚗",
+  "Cheguei ao local 📍",
+  "Vou me atrasar 15 minutos ⏰",
+  "Serviço concluído ✅",
+  "Pode confirmar o endereço?",
+  "Qual o melhor horário pra você?",
+];
+const QUICK_MSGS_CLIENTE = [
+  "Estou no local 📍",
+  "Pode confirmar o horário?",
+  "Ok, combinado! 👍",
+  "Pode enviar uma foto do serviço?",
+  "Qual o valor total?",
+];
+
 // Chat de negociação real (Fase 1) — mensagens persistidas em "mensagens",
 // chaveadas por pedido_id (um pedido em_andamento só tem uma proposta aceita,
 // então pedido_id já desambigua a negociação sem precisar de proposta_id).
@@ -5461,6 +5481,7 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
   const [sending,   setSending]   = useState(false);
   const [anexo,     setAnexo]     = useState(null); // { file, previewUrl, tipo, nome }
   const [enviandoAnexo, setEnviandoAnexo] = useState(false);
+  const [showQuickMsgs, setShowQuickMsgs] = useState(false);
   const [aceitando, setAceitando] = useState(false);
   const [dataInput, setDataInput] = useState("");
   const [contraparteWhatsapp, setContraparteWhatsapp] = useState(null);
@@ -5570,6 +5591,17 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
     setAnexo(null);
   };
 
+  // Insert + notificação, compartilhado entre envio normal (texto/anexo) e
+  // mensagem rápida (Fase 3) — as duas só diferem em como chegam no texto.
+  const enviarMensagem = (texto, anexoFields = {}) => {
+    return supabase.from("mensagens").insert({ pedido_id: chat.pedidoId, remetente_email: meuEmail, texto, ...anexoFields })
+      .then(() => {
+        carregar();
+        const meuNome = pedido?.cliente_id === meuEmail ? pedido?.cliente_nome : pedido?.profissional_nome;
+        notificarOutroLado("Nova mensagem 💬", `${meuNome || "Alguém"} enviou uma mensagem${chat.serviceTitle ? ` sobre "${chat.serviceTitle}"` : ""}.`);
+      });
+  };
+
   const enviar = async () => {
     const texto = text.trim();
     if ((!texto && !anexo) || sending || enviandoAnexo) return;
@@ -5594,14 +5626,16 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
     setEnviandoAnexo(false);
     setText("");
     cancelarAnexo();
-    supabase.from("mensagens").insert({ pedido_id: chat.pedidoId, remetente_email: meuEmail, texto, ...anexoFields })
-      .then(() => {
-        carregar();
-        const meuNome = pedido?.cliente_id === meuEmail ? pedido?.cliente_nome : pedido?.profissional_nome;
-        notificarOutroLado("Nova mensagem 💬", `${meuNome || "Alguém"} enviou uma mensagem${chat.serviceTitle ? ` sobre "${chat.serviceTitle}"` : ""}.`);
-      })
-      .catch(() => {})
-      .finally(() => setSending(false));
+    enviarMensagem(texto, anexoFields).catch(() => {}).finally(() => setSending(false));
+  };
+
+  // Mensagem rápida (Fase 3): um toque envia direto, sem passar pelo campo
+  // de texto — por isso não interage com anexo/preview, é sempre só texto.
+  const enviarRapida = (texto) => {
+    if (sending || enviandoAnexo) return;
+    setSending(true);
+    setShowQuickMsgs(false);
+    enviarMensagem(texto).catch(() => {}).finally(() => setSending(false));
   };
 
   // Aceite formal (Fase 2): gate de liberação de telefone. Cada lado aceita no
@@ -5837,6 +5871,21 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
         )
       )}
 
+      {showQuickMsgs && pedido && (
+        <div style={{ flexShrink:0, margin:"0 14px 8px", display:"flex", gap:7, overflowX:"auto", paddingBottom:2 }}>
+          {(souCliente ? QUICK_MSGS_CLIENTE : QUICK_MSGS_PROFISSIONAL).map((msg, i) => (
+            <button
+              key={i}
+              onClick={() => enviarRapida(msg)}
+              disabled={sending}
+              style={{ flexShrink:0, padding:"8px 13px", borderRadius:99, border:`1.5px solid ${B}33`, background:"white", color:B, fontWeight:700, fontSize:12, cursor: sending ? "default" : "pointer", whiteSpace:"nowrap", opacity: sending ? .6 : 1 }}
+            >
+              {msg}
+            </button>
+          ))}
+        </div>
+      )}
+
       {anexo && (
         <div style={{ flexShrink:0, margin:"0 14px 8px", padding:"8px 10px", borderRadius:12, background:"#F8F9FA", border:"1px solid #E5E7EB", display:"flex", alignItems:"center", gap:10 }}>
           {anexo.tipo === "imagem" ? (
@@ -5868,6 +5917,14 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack }) {
           style={{ width:38, height:38, borderRadius:"50%", border:"none", background:"#F0F2F5", color:"#555", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}
         >
           <Paperclip size={17} />
+        </button>
+        <button
+          onClick={() => setShowQuickMsgs(v => !v)}
+          disabled={sending}
+          title="Mensagens rápidas"
+          style={{ width:38, height:38, borderRadius:"50%", border:"none", background: showQuickMsgs ? B+"22" : "#F0F2F5", color: showQuickMsgs ? B : "#555", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}
+        >
+          <Zap size={17} />
         </button>
         <input
           value={text}
