@@ -896,7 +896,7 @@ function formatTimeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString("pt-BR");
 }
 
-function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGoToEditar, onGoToBanco, onGoToRede, onGoToNovaDemanda, onGoToMinhasDemandas, onGoToNovaDemandaFuncionario, onAcceptOrder }) {
+function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGoToEditar, onGoToBanco, onGoToRede, onGoToMinhasDemandas, onGoToNovaDemandaFuncionario, onAcceptOrder }) {
   const [empresa, setEmpresa] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showFullPreview, setShowFullPreview] = useState(false);
@@ -1223,7 +1223,7 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
 
         {/* Demanda de mão de obra (Multi Pro) — mesmo padrão de gate Plus */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
-          <button onClick={onGoToNovaDemanda} style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, padding:"12px 0", borderRadius:16, border:"none", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", color:"white", fontWeight:800, fontSize:12, cursor:"pointer", boxShadow:"0 4px 14px rgba(124,58,237,.3)" }}>
+          <button onClick={onGoToNovaDemandaFuncionario} style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, padding:"12px 0", borderRadius:16, border:"none", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", color:"white", fontWeight:800, fontSize:12, cursor:"pointer", boxShadow:"0 4px 14px rgba(124,58,237,.3)" }}>
             <Send size={15} /> Nova Demanda
             <span style={{ fontSize:9, fontWeight:900, background:"rgba(255,255,255,.25)", borderRadius:99, padding:"2px 6px" }}>PLUS</span>
           </button>
@@ -1528,10 +1528,10 @@ function MinhaRedeScreen({ onBack, empresaEmail }) {
 /* ───────────────── EMPRESA PLUS — "PRECISO DE FUNCIONÁRIO" (demanda completa) ─ */
 // Segundo modo do EmpresaHomeScreen (toggle no header, ver "Modo: Prestadora").
 // Clone visual de PostServiceScreen (Novo Serviço do cliente) com os labels
-// adaptados pro contexto de contratação — mas publica na mesma tabela/mecanismo
-// de NovaDemandaScreen acima (pedidos, publico_alvo:"pro"), só que com os
-// campos completos (urgência, "quando precisa", material) que a versão
-// original da demanda nunca teve.
+// adaptados pro contexto de contratação — mas publica no mesmo mecanismo de
+// demanda de mão de obra já consolidado (pedidos, publico_alvo:"pro", ver
+// supabase_demandas_pro_migration.sql), com campos completos (urgência,
+// "quando precisa", material) que a versão original da demanda nunca teve.
 const URGENCIA_OPTIONS = [
   { id:"normal",         label:"Normal",        emoji:"🟢" },
   { id:"urgente",        label:"Urgente",       emoji:"🟡" },
@@ -1764,132 +1764,6 @@ const PRAZO_OPTIONS = [
   { id:"essa_semana", label:"Essa semana",  emoji:"🟡" },
   { id:"sem_pressa",  label:"Sem pressa",   emoji:"🟢" },
 ];
-
-function NovaDemandaScreen({ userEmail, userName, onBack, showToast }) {
-  const [form, setForm] = useState({ cat:"", desc:"", value:"", prazo:"sem_pressa", cidade:"" });
-  const [errors, setErrors] = useState({});
-  const [saving, setSaving] = useState(false);
-
-  const validate = () => {
-    const e = {};
-    if (!form.cat) e.cat = "Selecione a categoria do profissional";
-    if (!form.desc.trim()) e.desc = "Descreva a demanda";
-    if (!form.value || Number(form.value) <= 0) e.value = "Informe um valor";
-    if (!form.cidade.trim()) e.cidade = "Informe a cidade da demanda";
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
-
-  const handlePublicar = async () => {
-    if (!validate()) return;
-    setSaving(true);
-    try {
-      const cidade = form.cidade.trim();
-      const { error } = await supabase.from("pedidos").insert({
-        cliente_id: userEmail,
-        cliente_nome: userName,
-        categoria: form.cat,
-        descricao: form.desc.trim(),
-        valor: Number(form.value),
-        cidade,
-        status: "aberto",
-        publico_alvo: "pro",
-        prazo: form.prazo,
-      });
-      if (error) throw error;
-      // Best-effort — não bloqueia a publicação se o push falhar.
-      fetch("/api/notify-pedido", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ categoria: form.cat, descricao: form.desc.trim(), publicoAlvo: "pro", cidade }),
-      }).catch(() => {});
-      showToast?.("✅ Demanda publicada! Profissionais Multi Pro da categoria e cidade já podem ver.", G);
-      onBack?.();
-    } catch (e) {
-      showToast?.("❌ Erro ao publicar demanda: " + (e.message || ""), "#DC2626");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const F = { background:"white", border:"1.5px solid #EBEBEB", borderRadius:12, padding:"13px 14px", fontSize:13, color:"#1a1a2e", outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit" };
-  const L = { display:"block", fontSize:11, fontWeight:800, color:"#6B7280", textTransform:"uppercase", letterSpacing:1.1, marginBottom:7 };
-
-  return (
-    <div style={{ minHeight:"100vh", background:"#F8F9FA", display:"flex", flexDirection:"column" }}>
-      <div style={{ background:`linear-gradient(160deg,${B} 0%,#0055d4 100%)`, padding:"16px 20px 28px", borderRadius:"0 0 32px 32px" }}>
-        <button onClick={onBack} style={{ background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:36, height:36, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:18 }}>
-          <ArrowLeft size={18} color="white" />
-        </button>
-        <p style={{ fontSize:20, fontWeight:900, color:"white", margin:"0 0 6px" }}>Nova Demanda de Mão de Obra</p>
-        <p style={{ fontSize:12, color:"rgba(255,255,255,.7)", margin:0 }}>Visível só pra profissionais Multi Pro da categoria — sempre por proposta, sem aceite direto</p>
-      </div>
-
-      <div style={{ flex:1, padding:"20px 20px 40px", display:"flex", flexDirection:"column", gap:16 }}>
-        <div>
-          <label style={L}>Categoria do profissional</label>
-          <div style={{ position:"relative" }}>
-            <select style={{ ...F, paddingRight:36, appearance:"none", cursor:"pointer", borderColor: errors.cat ? "#E53935" : undefined }}
-              value={form.cat}
-              onChange={e => { setForm(f => ({ ...f, cat: e.target.value })); if (errors.cat) setErrors(p => ({ ...p, cat: undefined })); }}>
-              <option value="">Selecione...</option>
-              {CATS.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
-            </select>
-            <ChevronDown size={14} color="#aaa" style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", pointerEvents:"none" }} />
-          </div>
-          {errors.cat && <p style={{ fontSize:11, color:"#E53935", margin:"5px 0 0", fontWeight:700 }}>{errors.cat}</p>}
-        </div>
-
-        <div>
-          <label style={L}>Descrição da demanda</label>
-          <textarea rows={4} placeholder="Ex: Obra residencial de 3 meses, preciso de eletricista com disponibilidade full-time..."
-            style={{ ...F, resize:"none", lineHeight:1.6, borderColor: errors.desc ? "#E53935" : undefined }}
-            value={form.desc}
-            onChange={e => { setForm(f => ({ ...f, desc: e.target.value })); if (errors.desc) setErrors(p => ({ ...p, desc: undefined })); }} />
-          {errors.desc && <p style={{ fontSize:11, color:"#E53935", margin:"5px 0 0", fontWeight:700 }}>{errors.desc}</p>}
-        </div>
-
-        <div>
-          <label style={L}>Valor oferecido (R$)</label>
-          <input type="number" placeholder="0,00"
-            style={{ ...F, borderColor: errors.value ? "#E53935" : undefined }}
-            value={form.value}
-            onChange={e => { setForm(f => ({ ...f, value: e.target.value })); if (errors.value) setErrors(p => ({ ...p, value: undefined })); }} />
-          {errors.value && <p style={{ fontSize:11, color:"#E53935", margin:"5px 0 0", fontWeight:700 }}>{errors.value}</p>}
-        </div>
-
-        <div>
-          <label style={L}>Cidade da demanda</label>
-          <input type="text" placeholder="Ex: Guarulhos"
-            style={{ ...F, borderColor: errors.cidade ? "#E53935" : undefined }}
-            value={form.cidade}
-            onChange={e => { setForm(f => ({ ...f, cidade: e.target.value })); if (errors.cidade) setErrors(p => ({ ...p, cidade: undefined })); }} />
-          {errors.cidade && <p style={{ fontSize:11, color:"#E53935", margin:"5px 0 0", fontWeight:700 }}>{errors.cidade}</p>}
-          <p style={{ fontSize:11, color:"#aaa", margin:"5px 0 0" }}>Só profissionais dessa cidade recebem o alerta.</p>
-        </div>
-
-        <div>
-          <label style={L}>Prazo</label>
-          <div style={{ display:"flex", gap:8 }}>
-            {PRAZO_OPTIONS.map(p => (
-              <button key={p.id} onClick={() => setForm(f => ({ ...f, prazo: p.id }))}
-                style={{ flex:1, padding:"10px 0", borderRadius:10, border: form.prazo === p.id ? "2px solid "+B : "1.5px solid #E5E7EB", background: form.prazo === p.id ? "#EEF4FF" : "white", color: form.prazo === p.id ? B : "#555", fontWeight: form.prazo === p.id ? 800 : 500, fontSize:12, cursor:"pointer" }}>
-                {p.emoji} {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ flex:1 }} />
-      </div>
-
-      <div style={{ position:"sticky", bottom:0, background:"#F8F9FA", padding:"12px 20px 20px", boxShadow:"0 -4px 16px rgba(0,0,0,.06)" }}>
-        <button onClick={handlePublicar} disabled={saving} style={{ width:"100%", padding:"16px 0", borderRadius:16, border:"none", background:`linear-gradient(135deg,${B},#0055d4)`, color:"white", fontWeight:900, fontSize:15, cursor: saving ? "default" : "pointer" }}>
-          {saving ? "Publicando..." : "Publicar Demanda"}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 /* ───────────────────────── EMPRESA PLUS — MINHAS DEMANDAS ──────────────────── */
 // Demandas postadas pela própria empresa + propostas recebidas nelas. Papel
@@ -9468,10 +9342,6 @@ const renderContent = () => {
         if (!temEmpresaPlus) return paywallPlus("minha-rede");
         return <MinhaRedeScreen onBack={() => setScreen("home")} empresaEmail={userEmail} />;
       }
-      if (screen === "nova-demanda") {
-        if (!temEmpresaPlus) return paywallPlus("nova-demanda");
-        return <NovaDemandaScreen userEmail={userEmail} userName={userName} showToast={showToast} onBack={() => setScreen("minhas-demandas")} />;
-      }
       if (screen === "nova-demanda-funcionario") {
         if (!temEmpresaPlus) return paywallPlus("home");
         return <NovaDemandaFuncionarioScreen userEmail={userEmail} userName={userName} showToast={showToast} onBack={() => setScreen("home")} />;
@@ -9484,7 +9354,7 @@ const renderContent = () => {
         if (!temEmpresaPlus) return paywallPlus("minhas-demandas");
         return <PropostasScreen pedido={selected} onBack={() => setScreen("minhas-demandas")} onAceitarProposta={handleAceitarPropostaEmpresa} />;
       }
-      return <EmpresaHomeScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} onGoToPedidos={() => setScreen("pedidos")} onGoToEditar={() => setScreen("editar")} onGoToBanco={() => setScreen("banco-profissionais")} onGoToRede={() => setScreen("minha-rede")} onGoToNovaDemanda={() => setScreen("nova-demanda")} onGoToMinhasDemandas={() => setScreen("minhas-demandas")} onGoToNovaDemandaFuncionario={() => setScreen("nova-demanda-funcionario")} onAcceptOrder={(order) => { handleCandidatarPedidoDireto(order.id, order.cliente_id, order.value, order.profissionalNome); showToast?.("💼 Interesse enviado! Aguarde o cliente escolher.", B); }} />;
+      return <EmpresaHomeScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} onGoToPedidos={() => setScreen("pedidos")} onGoToEditar={() => setScreen("editar")} onGoToBanco={() => setScreen("banco-profissionais")} onGoToRede={() => setScreen("minha-rede")} onGoToMinhasDemandas={() => setScreen("minhas-demandas")} onGoToNovaDemandaFuncionario={() => setScreen("nova-demanda-funcionario")} onAcceptOrder={(order) => { handleCandidatarPedidoDireto(order.id, order.cliente_id, order.value, order.profissionalNome); showToast?.("💼 Interesse enviado! Aguarde o cliente escolher.", B); }} />;
     }
 
     // Route guard: logged-in clients must never see the professional feed.
