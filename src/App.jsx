@@ -8570,7 +8570,7 @@ export default function App() {
     ...propostasRecebidas.map(p => ({
       kind: "proposta", id: p.id, proName: p.profissional_nome, proposal: p.mensagem,
       serviceTitle: pedidoTitlesById[p.pedido_id] || "Serviço", value: p.valor,
-      status: p.status === "pendente" ? "pending" : "accepted",
+      status: p.status === "pendente" ? "pending" : "accepted", pedido_id: p.pedido_id,
     })),
     ...eventNotifications.map(n => ({
       kind: "evento", id: n.id, titulo: n.titulo, mensagem: n.mensagem, lida: n.lida, created_at: n.created_at, pedido_id: n.pedido_id,
@@ -8871,11 +8871,6 @@ export default function App() {
     }, { onConflict: "pedido_id,profissional_id" }).then(()=>{});
   };
 
-  const openChatFromNotif = (notif) => {
-    setActiveChat({ pedidoId:null, proId:null, proName: notif.proName, serviceTitle: notif.serviceTitle, proposalValue: notif.value, contactUnlocked:false, messages:[] });
-    setScreen("activechat");
-  };
-
   const openChatFromService = (svc) => {
     setActiveChat({
       pedidoId: svc.id,
@@ -9162,7 +9157,7 @@ const renderContent = () => {
     // role==="client", então o profissional clicava no sino e nada
     // acontecia (o setScreen("alerts") rodava, mas nenhuma rota tratava
     // essa tela fora do papel de cliente).
-    if (screen === "alerts") return <AlertsScreen notifications={notificationsFromPropostas} onAccept={handleAceitarPropostaPorId} onOpenChat={openChatFromNotif} onOpenPedido={handleOpenNotificacao} />;
+    if (screen === "alerts") return <AlertsScreen notifications={notificationsFromPropostas} onAccept={handleAceitarPropostaPorId} onOpenChat={handleOpenNotificacao} onOpenPedido={handleOpenNotificacao} />;
 
   if (!role && !authScreen) { setAuthScreen("role-select"); return null; }
     if (role === "client") {
