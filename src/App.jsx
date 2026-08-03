@@ -1842,7 +1842,7 @@ function EmpresaEditProfileScreen({ userEmail, onLogout, showToast, isPro, plano
       if (logoFile) {
         const ext = logoFile.type.includes("png") ? "png" : "jpg";
         const path = `empresas_logo_${Date.now()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, logoFile, { contentType: logoFile.type, upsert: true });
+        const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, logoFile, { contentType: logoFile.type, upsert: true, cacheControl: "31536000" });
         if (upErr) throw upErr;
         logoUrl = supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl;
       }
@@ -2751,7 +2751,7 @@ function PostServiceScreen({ onBack, onSuccess }) {
       </div>
 
         <button
-            onClick={() => { if (canPublish) { (async()=>{ const ts=Date.now(); const urls=await Promise.all((window._photos||[]).map(async(b64,i)=>{ const res=await fetch(b64); const blob=await res.blob(); const ext=blob.type.includes("png")?"png":"jpg"; const path="pedido_"+ts+"_"+i+"."+ext; const{error:ue}=await supabase.storage.from("pedidos-fotos").upload(path,blob,{contentType:blob.type,upsert:true}); if(ue){console.warn("upload:",ue);return null;} return supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl; })); const fotos=urls.filter(Boolean); const{data:novoPedido,error}=await supabase.from("pedidos").insert({cliente_id:safeGetUser().email||"anonimo",cliente_nome:safeGetUser().name||"Cliente",categoria:form.cat,descricao:form.desc,valor:Number(form.value),cep:form.cep,cidade:cepInfo.cidade||null,fotos,status:"aberto"}).select().single(); if(error){alert("Erro ao publicar serviço: "+(error.message||"")); return;} fetch("/api/notify-pedido",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({categoria:form.cat,descricao:form.desc})}).catch(()=>{}); (async()=>{ const clienteEmail=safeGetUser().email; if(!clienteEmail) return; const playerId=await getOneSignalPlayerId(); if(playerId){ supabase.from("usuarios").update({onesignal_player_id:playerId}).eq("email",clienteEmail).then(()=>{}); } })(); onSuccess({...mapPedidoRow(novoPedido), cepInfo, material:form.material}); })(); }}}
+            onClick={() => { if (canPublish) { (async()=>{ const ts=Date.now(); const urls=await Promise.all((window._photos||[]).map(async(b64,i)=>{ const res=await fetch(b64); const blob=await res.blob(); const ext=blob.type.includes("png")?"png":"jpg"; const path="pedido_"+ts+"_"+i+"."+ext; const{error:ue}=await supabase.storage.from("pedidos-fotos").upload(path,blob,{contentType:blob.type,upsert:true,cacheControl:"31536000"}); if(ue){console.warn("upload:",ue);return null;} return supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl; })); const fotos=urls.filter(Boolean); const{data:novoPedido,error}=await supabase.from("pedidos").insert({cliente_id:safeGetUser().email||"anonimo",cliente_nome:safeGetUser().name||"Cliente",categoria:form.cat,descricao:form.desc,valor:Number(form.value),cep:form.cep,cidade:cepInfo.cidade||null,fotos,status:"aberto"}).select().single(); if(error){alert("Erro ao publicar serviço: "+(error.message||"")); return;} fetch("/api/notify-pedido",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({categoria:form.cat,descricao:form.desc})}).catch(()=>{}); (async()=>{ const clienteEmail=safeGetUser().email; if(!clienteEmail) return; const playerId=await getOneSignalPlayerId(); if(playerId){ supabase.from("usuarios").update({onesignal_player_id:playerId}).eq("email",clienteEmail).then(()=>{}); } })(); onSuccess({...mapPedidoRow(novoPedido), cepInfo, material:form.material}); })(); }}}
             style={{ padding:"15px 0", borderRadius:14, border:"none", cursor: canPublish ? "pointer" : "not-allowed", background: canPublish ? `linear-gradient(135deg,${O},#E64A19)` : "#9CA3AF", color: canPublish ? "white" : "#4B5563", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow: canPublish ? "0 5px 18px rgba(255,87,34,.30)" : "none", transition:"all .2s" }}>
             <Send size={15} /> Publicar Serviço
           </button>
@@ -2916,7 +2916,7 @@ function ServiceDetailClient({ service, onBack, onConfirmarConclusao, onCancelar
       for (const f of files) {
         const ext = f.type.includes("png") ? "png" : "jpg";
         const path = `conclusao_${service.id}_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, f, { contentType: f.type, upsert: true });
+        const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, f, { contentType: f.type, upsert: true, cacheControl: "31536000" });
         if (upErr) throw upErr;
         novasUrls.push(supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl);
       }
@@ -3190,7 +3190,7 @@ function ServiceDetailPinEntry({ service, onBack, onStatusChange, onConfirmarCon
       for (const f of files) {
         const ext = f.type.includes("png") ? "png" : "jpg";
         const path = `conclusao_${service.id}_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, f, { contentType: f.type, upsert: true });
+        const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, f, { contentType: f.type, upsert: true, cacheControl: "31536000" });
         if (upErr) throw upErr;
         novasUrls.push(supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl);
       }
@@ -5004,7 +5004,7 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
     try {
       const ext = f.type.includes("png") ? "png" : "jpg";
       const path = `perfil_${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, f, { contentType: f.type, upsert: true });
+      const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, f, { contentType: f.type, upsert: true, cacheControl: "31536000" });
       if (upErr) throw upErr;
       const url = supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl;
       setAvatarUrl(url);
@@ -5032,7 +5032,7 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
       for (const f of files) {
         const ext = f.type.includes("png") ? "png" : "jpg";
         const path = `portfolio_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, f, { contentType: f.type, upsert: true });
+        const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, f, { contentType: f.type, upsert: true, cacheControl: "31536000" });
         if (upErr) throw upErr;
         newUrls.push(supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl);
       }
@@ -5689,12 +5689,34 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
   const [showTermoCompleto, setShowTermoCompleto] = useState(false);
   const [confirmandoServico, setConfirmandoServico] = useState(false);
   const endRef = useRef(null);
+  // Timestamp da última mensagem já recebida — permite que o poll de 5s
+  // busque só mensagens novas (criado_em > isso) em vez de retransferir a
+  // conversa inteira a cada ciclo, pra sempre, enquanto o chat fica aberto
+  // (egress crescia sem necessidade com conversas longas). Resetado sempre
+  // que troca de pedido, pra forçar carga completa do zero.
+  const ultimaMensagemEmRef = useRef(null);
 
-  const carregar = () => {
-    supabase.from("mensagens").select("*").eq("pedido_id", chat.pedidoId).order("criado_em")
-      .then(({ data }) => setMensagens(data || []))
+  const carregarMensagens = () => {
+    let q = supabase.from("mensagens")
+      .select("id,pedido_id,remetente_email,texto,criado_em,anexo_url,anexo_tipo,anexo_nome")
+      .eq("pedido_id", chat.pedidoId).order("criado_em");
+    if (ultimaMensagemEmRef.current) q = q.gt("criado_em", ultimaMensagemEmRef.current);
+    q.then(({ data }) => {
+        if (!data) return;
+        if (data.length) ultimaMensagemEmRef.current = data[data.length - 1].criado_em;
+        setMensagens(prev => {
+          if (!ultimaMensagemEmRef.current || !prev.length) return data;
+          const existentes = new Set(prev.map(m => m.id));
+          const novas = data.filter(m => !existentes.has(m.id));
+          return novas.length ? [...prev, ...novas] : prev;
+        });
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
+  };
+
+  const carregar = () => {
+    carregarMensagens();
     supabase.from("pedidos")
       .select("cliente_id,cliente_nome,profissional_aceito,profissional_nome,aceite_formal_cliente_em,aceite_formal_profissional_em,data_agendada,valor,status,categoria,chegada_solicitada_em,inicio_confirmado_em,concluido_em")
       .eq("id", chat.pedidoId).maybeSingle()
@@ -5704,12 +5726,14 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
     // Responsabilidade antes do WhatsApp aparecer, mesmo já tendo confirmado
     // a data (aceite_formal_*). Tabela separada porque isso rastreia versão
     // do termo aceito, e não é 1-pra-1 com uma coluna fixa como aceite_formal.
+    // No máximo 2 linhas (uma por lado), então select(*) aqui não pesa.
     supabase.from("aceites_termo").select("*").eq("pedido_id", chat.pedidoId)
       .then(({ data }) => setAceitesTermo(data || []))
       .catch(() => {});
   };
 
   useEffect(() => {
+    ultimaMensagemEmRef.current = null;
     carregar();
     const interval = setInterval(carregar, 5000);
     return () => clearInterval(interval);
@@ -5811,7 +5835,7 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
         setEnviandoAnexo(true);
         const ext = anexo.nome.includes(".") ? anexo.nome.split(".").pop() : "bin";
         const path = `chat_${chat.pedidoId}_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, anexo.file, { contentType: anexo.file.type, upsert: true });
+        const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, anexo.file, { contentType: anexo.file.type, upsert: true, cacheControl: "31536000" });
         if (upErr) throw upErr;
         const anexoUrl = supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl;
         anexoFields = { anexo_url: anexoUrl, anexo_tipo: anexo.tipo, anexo_nome: anexo.nome };
@@ -6754,7 +6778,7 @@ function CompletarPerfilScreen({ userEmail, onDone, showToast }) {
   const uploadToStorage = async (file, prefix) => {
     const ext = file.type.includes("png") ? "png" : "jpg";
     const path = `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error } = await supabase.storage.from("pedidos-fotos").upload(path, file, { contentType: file.type, upsert: true });
+    const { error } = await supabase.storage.from("pedidos-fotos").upload(path, file, { contentType: file.type, upsert: true, cacheControl: "31536000" });
     if (error) throw error;
     return supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl;
   };
@@ -7180,7 +7204,7 @@ function CadastroEmpresaScreen({ onBack, showToast }) {
       if (logoFile) {
         const ext = logoFile.type.includes("png") ? "png" : "jpg";
         const path = `empresas_logo_${Date.now()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, logoFile, { contentType: logoFile.type, upsert: true });
+        const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, logoFile, { contentType: logoFile.type, upsert: true, cacheControl: "31536000" });
         if (!upErr) logoUrl = supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl;
       }
 
