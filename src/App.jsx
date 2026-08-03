@@ -910,8 +910,20 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
   const [newOrder, setNewOrder] = useState(null);
   const pedidosVistosRef = useRef(new Set());
   const pedidosChannelRef = useRef(null);
-  const pararEscutaPedidos = () => {
-    if (pedidosChannelRef.current) { supabase.removeChannel(pedidosChannelRef.current); pedidosChannelRef.current = null; }
+  // supabase.channel(topic) reaproveita o canal existente se já houver um
+  // com o mesmo nome (não cria um novo) — e removeChannel é assíncrono
+  // (aguarda round-trip de rede pra desinscrever antes de tirar o canal do
+  // registro interno). Por isso essa função precisa ser async/aguardada
+  // antes de criar o próximo canal: sem isso, ligar/desligar rápido faz o
+  // .channel(mesmoNome) seguinte reaproveitar o canal antigo (já inscrito),
+  // e o .on(...) nele quebra com "cannot add callbacks after subscribe()" —
+  // o canal antigo fica "zumbi" e o popup dispara sozinho depois.
+  const pararEscutaPedidos = async () => {
+    if (pedidosChannelRef.current) {
+      const ch = pedidosChannelRef.current;
+      pedidosChannelRef.current = null;
+      await supabase.removeChannel(ch);
+    }
   };
   useEffect(() => () => pararEscutaPedidos(), []);
 
@@ -1022,7 +1034,7 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
           if (proximo) { pedidosVistosRef.current.add(proximo.id); setNewOrder(mapPedidoParaNewOrder(proximo)); }
         });
 
-      pararEscutaPedidos();
+      await pararEscutaPedidos();
       pedidosChannelRef.current = supabase.channel("pedidos_novos_empresa_" + userEmail)
         .on("postgres_changes",{event:"INSERT",schema:"public",table:"pedidos",filter:"status=eq.aberto"},(payload)=>{
           const p = payload.new;
@@ -7580,8 +7592,20 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
 
   const proTrialDays = 7; // free trial period
 
-  const pararEscutaPedidos = () => {
-    if (pedidosChannelRef.current) { supabase.removeChannel(pedidosChannelRef.current); pedidosChannelRef.current = null; }
+  // supabase.channel(topic) reaproveita o canal existente se já houver um
+  // com o mesmo nome (não cria um novo) — e removeChannel é assíncrono
+  // (aguarda round-trip de rede pra desinscrever antes de tirar o canal do
+  // registro interno). Por isso essa função precisa ser async/aguardada
+  // antes de criar o próximo canal: sem isso, ligar/desligar rápido faz o
+  // .channel(mesmoNome) seguinte reaproveitar o canal antigo (já inscrito),
+  // e o .on(...) nele quebra com "cannot add callbacks after subscribe()" —
+  // o canal antigo fica "zumbi" e o popup dispara sozinho depois.
+  const pararEscutaPedidos = async () => {
+    if (pedidosChannelRef.current) {
+      const ch = pedidosChannelRef.current;
+      pedidosChannelRef.current = null;
+      await supabase.removeChannel(ch);
+    }
   };
   useEffect(() => () => pararEscutaPedidos(), []);
 
@@ -7634,7 +7658,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   // event:"INSERT" (em vez de "*") — o popup deve disparar só quando um
   // pedido É CRIADO, não em qualquer UPDATE de qualquer pedido da tabela
   // (era isso que fazia o mesmo pedido_id reaparecer repetidas vezes).
-  pararEscutaPedidos();
+  await pararEscutaPedidos();
   pedidosChannelRef.current = supabase.channel("pedidos_novos_" + userEmail)
     .on("postgres_changes",{event:"INSERT",schema:"public",table:"pedidos",filter:"status=eq.aberto"},(payload)=>{
       const p=payload.new;
