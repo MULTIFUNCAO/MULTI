@@ -5690,6 +5690,18 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
   const [showTermoCompleto, setShowTermoCompleto] = useState(false);
   const [confirmandoServico, setConfirmandoServico] = useState(false);
   const endRef = useRef(null);
+  // Fade nas bordas da barra de mensagens rápidas — sinaliza que dá pra
+  // arrastar pra ver mais chips, sem precisar de scrollbar visível.
+  const quickMsgsRef = useRef(null);
+  const [qmFade, setQmFade] = useState({ left: false, right: false });
+  const checkQmFade = () => {
+    const el = quickMsgsRef.current;
+    if (!el) return;
+    setQmFade({
+      left: el.scrollLeft > 4,
+      right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
+    });
+  };
   // Timestamp da última mensagem já recebida — permite que o poll de 5s
   // busque só mensagens novas (criado_em > isso) em vez de retransferir a
   // conversa inteira a cada ciclo, pra sempre, enquanto o chat fica aberto
@@ -5858,13 +5870,13 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
   const enviarRapida = (texto) => {
     if (sending || enviandoAnexo) return;
     setSending(true);
-    setShowQuickMsgs(false);
     enviarMensagem(texto).catch(() => {}).finally(() => setSending(false));
   };
 
   // Aceite formal (Fase 2): gate de liberação de telefone. Cada lado aceita no
   // máximo uma vez — 1-pra-1 com a linha de "pedidos", sem tabela separada.
   const souCliente  = pedido?.cliente_id === meuEmail;
+  useEffect(() => { checkQmFade(); }, [pedido, souCliente]);
   const meuAceite   = pedido && (souCliente ? pedido.aceite_formal_cliente_em : pedido.aceite_formal_profissional_em);
   const liberado    = !!(pedido?.aceite_formal_cliente_em && pedido?.aceite_formal_profissional_em);
 
@@ -6084,17 +6096,29 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
       )}
 
       {pedido && (
-        <div style={{ flexShrink:0, margin:"0 14px 8px", display:"flex", gap:7, overflowX:"auto", paddingBottom:2 }}>
-          {(souCliente ? QUICK_MSGS_CLIENTE : QUICK_MSGS_PROFISSIONAL).map((msg, i) => (
-            <button
-              key={i}
-              onClick={() => enviarRapida(msg)}
-              disabled={sending}
-              style={{ flexShrink:0, padding:"8px 13px", borderRadius:99, border:`1.5px solid ${B}33`, background:"white", color:B, fontWeight:700, fontSize:12, cursor: sending ? "default" : "pointer", whiteSpace:"nowrap", opacity: sending ? .6 : 1 }}
-            >
-              {msg}
-            </button>
-          ))}
+        <div style={{ position:"relative", flexShrink:0, margin:"0 14px 8px" }}>
+          <div
+            ref={quickMsgsRef}
+            onScroll={checkQmFade}
+            style={{ display:"flex", gap:7, overflowX:"auto", paddingBottom:2, scrollSnapType:"x proximity" }}
+          >
+            {(souCliente ? QUICK_MSGS_CLIENTE : QUICK_MSGS_PROFISSIONAL).map((msg, i) => (
+              <button
+                key={i}
+                onClick={() => enviarRapida(msg)}
+                disabled={sending}
+                style={{ flexShrink:0, scrollSnapAlign:"start", padding:"8px 13px", borderRadius:99, border:`1.5px solid ${B}33`, background:"white", color:B, fontWeight:700, fontSize:12, cursor: sending ? "default" : "pointer", whiteSpace:"nowrap", opacity: sending ? .6 : 1 }}
+              >
+                {msg}
+              </button>
+            ))}
+          </div>
+          {qmFade.left && (
+            <div style={{ position:"absolute", top:0, left:0, bottom:2, width:24, background:"linear-gradient(to left, transparent, #F8F9FA)", pointerEvents:"none" }} />
+          )}
+          {qmFade.right && (
+            <div style={{ position:"absolute", top:0, right:0, bottom:2, width:24, background:"linear-gradient(to right, transparent, #F8F9FA)", pointerEvents:"none" }} />
+          )}
         </div>
       )}
 
