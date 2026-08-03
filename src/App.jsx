@@ -896,7 +896,7 @@ function formatTimeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString("pt-BR");
 }
 
-function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGoToEditar, onGoToBanco, onGoToRede, onGoToMinhasDemandas, onGoToNovaDemandaFuncionario, onAcceptOrder }) {
+function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGoToEditar, onGoToBanco, onGoToRede, onAcceptOrder, onVerPropostas, onOpenChat, temEmpresaPlus, modo, setModo, onUpgradeSuccess }) {
   const [empresa, setEmpresa] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showFullPreview, setShowFullPreview] = useState(false);
@@ -980,6 +980,38 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
 
   if (showFullPreview) {
     return <EmpresaProfileScreen empresa={empresa} onBack={() => setShowFullPreview(false)} />;
+  }
+
+  // 3 perfis de empresa (tipo_conta): "basica" só presta serviço (tela igual
+  // sempre foi, sem nada de contratar); "contratante" só contrata, grátis,
+  // sem toggle; "pro" faz os dois, alternando pelo toggle no topo da home
+  // (modo/setModo vêm de App(), não de state local — precisa sobreviver a
+  // navegações pra outras telas, tipo ver propostas ou abrir o chat, sem
+  // voltar sozinho pro modo Prestadora).
+  const tipoConta = empresa.tipo_conta || "basica";
+  const emModoContratante = tipoConta === "contratante" || (tipoConta === "pro" && modo === "contratante");
+
+  if (emModoContratante) {
+    if (tipoConta === "pro" && !temEmpresaPlus) {
+      return (
+        <EscolherPlanoScreen
+          titularTipo="empresa" titularEmail={userEmail} titularNome={empresa.nome} showToast={showToast}
+          onBack={() => setModo?.("prestadora")}
+          onDone={() => onUpgradeSuccess?.()}
+        />
+      );
+    }
+    return (
+      <EmpresaContratanteScreen
+        userEmail={userEmail}
+        userName={empresa.nome}
+        showToast={showToast}
+        onVerPropostas={onVerPropostas}
+        onOpenChat={onOpenChat}
+        onEditarPerfil={onGoToEditar}
+        onVoltarPrestadora={tipoConta === "pro" ? () => setModo?.("prestadora") : null}
+      />
+    );
   }
 
   const isOnline = empresa.status === true;
@@ -1123,17 +1155,19 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
               {togglingStatus ? "Atualizando…" : (isOnline ? "✓  Online — Clique para pausar" : "Ficar Online")}
             </button>
 
-            {/* Toggle Prestadora / Preciso de funcionário — mesmo padrão visual
-                do "Modo: Cliente (toque p/ alternar)" no header do cliente
-                (AppHeader). Aqui não alterna um state local: navega direto pra
-                NovaDemandaFuncionarioScreen, cujo botão Voltar já traz de volta
-                pro modo Prestadora (esta tela). */}
-            <div style={{ marginTop:12, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
-              <div style={{ width:7, height:7, borderRadius:"50%", background:"#4ade80" }} />
-              <span style={{ fontSize:11, color:"rgba(255,255,255,.7)", fontWeight:700, cursor:"pointer" }} onClick={onGoToNovaDemandaFuncionario}>
-                Modo: Prestadora (toque p/ alternar)
-              </span>
-            </div>
+            {/* Toggle Prestadora / Contratante — só empresa "pro" (faz os dois)
+                vê isso; mesmo padrão visual do "Modo: Cliente (toque p/
+                alternar)" no header do cliente (AppHeader). modo/setModo vêm
+                de App(), não resetam ao navegar pra outras telas (ver
+                propostas, abrir chat) e voltar. */}
+            {tipoConta === "pro" && (
+              <div style={{ marginTop:12, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                <div style={{ width:7, height:7, borderRadius:"50%", background:"#4ade80" }} />
+                <span style={{ fontSize:11, color:"rgba(255,255,255,.7)", fontWeight:700, cursor:"pointer" }} onClick={() => setModo?.("contratante")}>
+                  Modo: Prestadora (toque p/ alternar)
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1211,26 +1245,15 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
             ativo/trial) é decidido no router, aqui é só o ponto de entrada */}
         <button onClick={onGoToBanco} style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px 0", borderRadius:16, border:"none", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", color:"white", fontWeight:800, fontSize:13, cursor:"pointer", marginBottom:12, boxShadow:"0 4px 14px rgba(124,58,237,.3)" }}>
           <Users size={15} /> Banco de Profissionais
-          <span style={{ marginLeft:2, fontSize:9, fontWeight:900, background:"rgba(255,255,255,.25)", borderRadius:99, padding:"2px 6px" }}>PLUS</span>
+          <span style={{ marginLeft:2, fontSize:9, fontWeight:900, background:"rgba(255,255,255,.25)", borderRadius:99, padding:"2px 6px" }}>PRO</span>
         </button>
 
         {/* Minha Rede — favoritos/convites + histórico automático de quem já
             concluiu serviço; mesmo padrão de gate Plus do Banco */}
         <button onClick={onGoToRede} style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px 0", borderRadius:16, border:"none", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", color:"white", fontWeight:800, fontSize:13, cursor:"pointer", marginBottom:12, boxShadow:"0 4px 14px rgba(124,58,237,.3)" }}>
           <Star size={15} /> Minha Rede
-          <span style={{ marginLeft:2, fontSize:9, fontWeight:900, background:"rgba(255,255,255,.25)", borderRadius:99, padding:"2px 6px" }}>PLUS</span>
+          <span style={{ marginLeft:2, fontSize:9, fontWeight:900, background:"rgba(255,255,255,.25)", borderRadius:99, padding:"2px 6px" }}>PRO</span>
         </button>
-
-        {/* Demanda de mão de obra (Multi Pro) — mesmo padrão de gate Plus */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
-          <button onClick={onGoToNovaDemandaFuncionario} style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, padding:"12px 0", borderRadius:16, border:"none", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", color:"white", fontWeight:800, fontSize:12, cursor:"pointer", boxShadow:"0 4px 14px rgba(124,58,237,.3)" }}>
-            <Send size={15} /> Nova Demanda
-            <span style={{ fontSize:9, fontWeight:900, background:"rgba(255,255,255,.25)", borderRadius:99, padding:"2px 6px" }}>PLUS</span>
-          </button>
-          <button onClick={onGoToMinhasDemandas} style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, padding:"12px 0", borderRadius:16, border:"1.5px solid #DDD6FE", background:"#F5F3FF", color:"#6D28D9", fontWeight:800, fontSize:12, cursor:"pointer" }}>
-            <ClipboardList size={15} /> Minhas Demandas
-          </button>
-        </div>
 
         {/* atalho rápido pra edição, sem depender só da nav inferior */}
         <button onClick={onGoToEditar} style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px 0", borderRadius:16, border:"1.5px solid #E5E7EB", background:"white", color:"#374151", fontWeight:800, fontSize:13, cursor:"pointer", marginBottom:18, boxShadow:"0 3px 14px rgba(0,0,0,.05)" }}>
@@ -1769,7 +1792,7 @@ const PRAZO_OPTIONS = [
 // Demandas postadas pela própria empresa + propostas recebidas nelas. Papel
 // diferente do Mural de Serviços (EmpresaPedidosScreen), que mostra pedidos de
 // CLIENTES na categoria da empresa — aqui a empresa é quem está contratando.
-function MinhasDemandasScreen({ userEmail, onBack, onVerPropostas, onOpenChat }) {
+function MinhasDemandasScreen({ userEmail, onBack, onVerPropostas, onOpenChat, onNovaDemanda, onEditarPerfil }) {
   const [demandas, setDemandas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [candidatos, setCandidatos] = useState({});
@@ -1811,11 +1834,27 @@ function MinhasDemandasScreen({ userEmail, onBack, onVerPropostas, onOpenChat })
   return (
     <div style={{ minHeight:"100vh", background:"#F8F9FA", paddingBottom:40 }}>
       <div style={{ background:`linear-gradient(160deg,${B} 0%,#0055d4 100%)`, padding:"16px 18px 20px", borderRadius:"0 0 28px 28px" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-          <button onClick={onBack} style={{ background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:34, height:34, display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <ArrowLeft size={17} color="white" />
-          </button>
-          <h2 style={{ fontSize:18, fontWeight:900, color:"white", margin:0 }}>Minhas Demandas</h2>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            {onBack && (
+              <button onClick={onBack} style={{ background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:34, height:34, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <ArrowLeft size={17} color="white" />
+              </button>
+            )}
+            <h2 style={{ fontSize:18, fontWeight:900, color:"white", margin:0 }}>Minhas Demandas</h2>
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
+            {onNovaDemanda && (
+              <button onClick={onNovaDemanda} style={{ background:"rgba(255,255,255,.18)", border:"none", cursor:"pointer", borderRadius:12, padding:"8px 12px", display:"flex", alignItems:"center", gap:6, color:"white", fontWeight:800, fontSize:12 }}>
+                <Plus size={14} /> Nova
+              </button>
+            )}
+            {onEditarPerfil && (
+              <button onClick={onEditarPerfil} style={{ background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:34, height:34, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <Pencil size={15} color="white" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1878,6 +1917,30 @@ function MinhasDemandasScreen({ userEmail, onBack, onVerPropostas, onOpenChat })
         })}
       </div>
     </div>
+  );
+}
+
+/* ───────────────────────── EMPRESA CONTRATANTE — TELA COMPLETA ─────────────── */
+// Home de quem só contrata: tipo_conta "contratante" (grátis, sem toggle) ou
+// "pro" no modo "Contratante" (toggle no topo do EmpresaHomeScreen). Combina
+// o formulário de nova demanda (alternado localmente, sem navegação de tela)
+// com a lista de demandas já publicadas (reaproveita MinhasDemandasScreen).
+function EmpresaContratanteScreen({ userEmail, userName, showToast, onVerPropostas, onOpenChat, onEditarPerfil, onVoltarPrestadora }) {
+  const [showForm, setShowForm] = useState(false);
+
+  if (showForm) {
+    return <NovaDemandaFuncionarioScreen userEmail={userEmail} userName={userName} showToast={showToast} onBack={() => setShowForm(false)} />;
+  }
+
+  return (
+    <MinhasDemandasScreen
+      userEmail={userEmail}
+      onBack={onVoltarPrestadora}
+      onNovaDemanda={() => setShowForm(true)}
+      onEditarPerfil={onEditarPerfil}
+      onVerPropostas={onVerPropostas}
+      onOpenChat={onOpenChat}
+    />
   );
 }
 
@@ -2013,7 +2076,7 @@ function EmpresaEditProfileScreen({ userEmail, onLogout, showToast, isPro, plano
           <h3 style={{ margin:"0 0 8px", fontSize:15, color:"#333" }}>Categorias de Serviço</h3>
           <CategoriaMultiSelect value={categoria} onChange={v => { setCategoria(v); if (errorCategoria) setErrorCategoria(""); }} max={limiteCategoria} onLimitReached={handleLimiteCategoria} error={errorCategoria} />
           {errorCategoria && <p style={{ fontSize:11, color:"#E53935", margin:"8px 0 0", fontWeight:700 }}>{errorCategoria}</p>}
-          {!isEmpresaPlus && <p style={{ fontSize:11, color:"#9CA3AF", margin:"8px 0 0" }}>Multi Empresa permite até {MAX_CATEGORIAS_EMPRESA} categorias. <span style={{ color:B, fontWeight:800, cursor:"pointer" }} onClick={onUpgrade}>Vire Plus</span> pra categorias ilimitadas.</p>}
+          {!isEmpresaPlus && <p style={{ fontSize:11, color:"#9CA3AF", margin:"8px 0 0" }}>Multi Empresa permite até {MAX_CATEGORIAS_EMPRESA} categorias. <span style={{ color:B, fontWeight:800, cursor:"pointer" }} onClick={onUpgrade}>Vire Pro</span> pra categorias ilimitadas.</p>}
         </div>
 
         {/* cidade — usada pro radar de "Novo Pedido!" só mostrar pedidos da
@@ -2034,7 +2097,7 @@ function EmpresaEditProfileScreen({ userEmail, onLogout, showToast, isPro, plano
             <h3 style={{ margin:"0 0 4px", fontSize:15, color:"#333" }}>Plano</h3>
             <p style={{ margin:0, fontSize:12, color: isPro ? G : "#9CA3AF" }}>
               {isPro
-                ? `${plano === "empresa_plus" ? "Multi Empresa Plus" : "Multi Empresa"} — ${planoStatus === "trial" ? "em trial" : "ativo"}${planoExpiraEm ? " até " + new Date(planoExpiraEm).toLocaleDateString("pt-BR") : ""}`
+                ? `${plano === "empresa_plus" ? "Multi Empresa Pro" : "Multi Empresa"} — ${planoStatus === "trial" ? "em trial" : "ativo"}${planoExpiraEm ? " até " + new Date(planoExpiraEm).toLocaleDateString("pt-BR") : ""}`
                 : "Nenhum plano ativo"}
             </p>
           </div>
@@ -3790,7 +3853,7 @@ const PLANOS_USUARIO = [
 ];
 const PLANOS_EMPRESA = [
   { id:"empresa",      icon:Briefcase, label:"Multi Empresa",      price:"149,90", beneficios:["Captar clientes"] },
-  { id:"empresa_plus", icon:Crown,     label:"Multi Empresa Plus", price:"299,90", beneficios:["Captar clientes","Banco de profissionais (busca/filtro)","Criar demandas de mão de obra","Dashboard"] },
+  { id:"empresa_plus", icon:Crown,     label:"Multi Empresa Pro",  price:"299,90", beneficios:["Captar clientes","Banco de profissionais (busca/filtro)","Criar demandas de mão de obra","Dashboard"] },
 ];
 
 function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, onDone, showToast }) {
@@ -7301,8 +7364,10 @@ function CadastroEmpresaScreen({ onBack, showToast }) {
   const [cidade, setCidade] = useState("");
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
+  const [tipoConta, setTipoConta] = useState(""); // "basica" | "pro" | "contratante"
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [empresaId, setEmpresaId] = useState(null);
 
   const handleLogoChange = (e) => {
     const file = e.target.files?.[0];
@@ -7318,6 +7383,7 @@ function CadastroEmpresaScreen({ onBack, showToast }) {
     if (!nomeFantasia.trim()) e.nomeFantasia = "Informe o nome fantasia";
     if (!categoria.length) e.categoria = "Selecione ao menos uma categoria de serviço";
     if (!cidade.trim()) e.cidade = "Informe a cidade";
+    if (!tipoConta) e.tipoConta = "Selecione uma opção";
     if (phone.replace(/\D/g,"").length < 11) e.phone = "Telefone incompleto";
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) e.email = "E-mail inválido";
     if (password.length < 6) e.password = "Mínimo 6 caracteres";
@@ -7363,6 +7429,7 @@ function CadastroEmpresaScreen({ onBack, showToast }) {
         logo_url: logoUrl,
         ativo: true,
         user_id: userId,
+        tipo_conta: tipoConta,
       }).select().maybeSingle();
       if (empresaErr) throw empresaErr;
 
@@ -7373,7 +7440,10 @@ function CadastroEmpresaScreen({ onBack, showToast }) {
       }, { onConflict: "email" });
 
       setLoading(false);
-      setStep("plano");
+      setEmpresaId(empresaRow?.id || null);
+      // Contratante é grátis, sem assinatura — mesmo padrão do Cliente, que
+      // também não paga pra publicar pedido. Só básica/pro passam pelo plano.
+      setStep(tipoConta === "contratante" ? "success" : "plano");
     } catch (e) {
       setLoading(false);
       alert(e.message || "Erro ao cadastrar empresa");
@@ -7387,7 +7457,14 @@ function CadastroEmpresaScreen({ onBack, showToast }) {
         titularEmail={email.trim()}
         titularNome={nomeFantasia.trim()}
         showToast={showToast}
-        onDone={() => setStep("success")}
+        onDone={(planoId) => {
+          // tipo_conta final reflete o plano de verdade escolhido aqui, não
+          // só a intenção declarada na pergunta lá em cima — evita ficar
+          // fora de sincronia se a empresa mudar de ideia nessa etapa.
+          const tipoFinal = planoId === "empresa_plus" ? "pro" : "basica";
+          if (empresaId) supabase.from("empresas").update({ tipo_conta: tipoFinal }).eq("id", empresaId).then(()=>{});
+          setStep("success");
+        }}
       />
     );
   }
@@ -7460,6 +7537,35 @@ function CadastroEmpresaScreen({ onBack, showToast }) {
             style={{ ...REG_INPUT, borderColor: errors.nomeFantasia ? "#E53935" : undefined }} />
         </FormField>
 
+        {/* TIPO DE CONTA — define o perfil da empresa: só presta serviço, presta
+            e também contrata (Pro/paga), ou só contrata (Contratante/grátis,
+            sem assinatura — mesmo padrão do Cliente). */}
+        <div style={{ marginBottom: errors.tipoConta ? 6 : 18 }}>
+          <label style={{ display:"block", fontSize:11, fontWeight:800, color: errors.tipoConta ? "#E53935" : "#6B7280", textTransform:"uppercase", letterSpacing:1.1, marginBottom:7 }}>
+            Sua empresa presta serviço, contrata profissionais, ou os dois?
+          </label>
+          <div style={{ background:"white", border:"1.5px solid #EBEBEB", borderRadius:14, overflow:"hidden" }}>
+            {[
+              { val:"basica",      icon:"🛠️", label:"Presto serviço",             sub:"Recebo pedidos de clientes (Multi Empresa, R$ 149,90/mês)" },
+              { val:"pro",         icon:"💼", label:"Presto serviço e contrato",   sub:"Recebo pedidos e publico demandas pra contratar (Multi Empresa Pro, R$ 299,90/mês)" },
+              { val:"contratante", icon:"🏢", label:"Só contrato profissionais",   sub:"Não presto serviço, só publico demandas pra contratar (grátis, sem assinatura)" },
+            ].map((opt, i, arr) => (
+              <div key={opt.val} onClick={() => { setTipoConta(opt.val); if (errors.tipoConta) setErrors(p => ({ ...p, tipoConta:undefined })); }}
+                style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 14px", cursor:"pointer", borderBottom: i < arr.length - 1 ? "1px solid #F0F0F0" : "none", background: tipoConta === opt.val ? "#EBF4FF" : "white", transition:"background .15s" }}>
+                <span style={{ fontSize:22, flexShrink:0 }}>{opt.icon}</span>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e", margin:"0 0 2px" }}>{opt.label}</p>
+                  <p style={{ fontSize:11, color:"#9CA3AF", margin:0 }}>{opt.sub}</p>
+                </div>
+                <div style={{ width:20, height:20, borderRadius:"50%", border:(tipoConta===opt.val?"2px solid "+B:"2px solid #D1D5DB"), background: tipoConta === opt.val ? B : "white", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .15s" }}>
+                  {tipoConta === opt.val && <div style={{ width:8, height:8, borderRadius:"50%", background:"white" }} />}
+                </div>
+              </div>
+            ))}
+          </div>
+          {errors.tipoConta && <p style={{ fontSize:11, color:"#E53935", margin:"5px 0 0", fontWeight:700 }}>{errors.tipoConta}</p>}
+        </div>
+
         {/* CATEGORIAS — o plano ainda não foi escolhido nesse passo (só depois,
             em "plano"), então trava sempre em 3 aqui (padrão do Multi Empresa
             comum); quem virar Plus ajusta pra ilimitado depois em Editar Perfil. */}
@@ -7469,7 +7575,7 @@ function CadastroEmpresaScreen({ onBack, showToast }) {
             value={categoria}
             onChange={v => { setCategoria(v); if (errors.categoria) setErrors(p => ({ ...p, categoria:undefined })); }}
             max={3}
-            onLimitReached={() => showToast?.("⚠️ Até 3 categorias no cadastro — o plano Empresa Plus libera categorias ilimitadas (dá pra ajustar depois de escolher o plano)", O)}
+            onLimitReached={() => showToast?.("⚠️ Até 3 categorias no cadastro — o plano Empresa Pro libera categorias ilimitadas (dá pra ajustar depois de escolher o plano)", O)}
             error={errors.categoria}
           />
           {errors.categoria && <p style={{ fontSize:11, color:"#E53935", margin:"5px 0 0", fontWeight:700 }}>{errors.categoria}</p>}
@@ -8500,6 +8606,10 @@ export default function App() {
   const [plano,          setPlano]          = useState(null);
   const [planoStatus,    setPlanoStatus]    = useState(null);
   const [planoExpiraEm,  setPlanoExpiraEm]  = useState(null);
+  // Modo Prestadora/Contratante da empresa "pro" — vive aqui (não como state
+  // local de EmpresaHomeScreen) porque precisa sobreviver a navegações pra
+  // fora dela (ver propostas, abrir chat) e voltar sem resetar sozinho.
+  const [empresaModo, setEmpresaModo] = useState("prestadora");
   const carregarPlano = (titularTipo, titularEmail) => {
     if (!titularTipo || !titularEmail) { setPlano(null); setPlanoStatus(null); setPlanoExpiraEm(null); setIsPro(false); return; }
     supabase.from("assinaturas").select("plano,status,expira_em")
@@ -9325,7 +9435,7 @@ const renderContent = () => {
     // Empresa parceira — home própria + Pedidos + Editar Perfil.
     if (role === "empresa") {
       if (screen === "pedidos") return <EmpresaPedidosScreen userEmail={userEmail} />;
-      if (screen === "upgrade") return <EscolherPlanoScreen titularTipo="empresa" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("editar")} showToast={showToast} onDone={() => { carregarPlano("empresa", userEmail); setScreen("editar"); }} />;
+      if (screen === "upgrade") return <EscolherPlanoScreen titularTipo="empresa" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("editar")} showToast={showToast} onDone={(planoId) => { supabase.from("empresas").update({ tipo_conta: planoId === "empresa_plus" ? "pro" : "basica" }).eq("email", userEmail).then(()=>{}); carregarPlano("empresa", userEmail); setScreen("editar"); }} />;
       if (screen === "editar")  return <EmpresaEditProfileScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} isPro={isPro} plano={plano} planoStatus={planoStatus} planoExpiraEm={planoExpiraEm} onUpgrade={() => setScreen("upgrade")} />;
 
       // Gate real das features Plus: só empresa_plus ativo/trial. Quem não
@@ -9342,19 +9452,15 @@ const renderContent = () => {
         if (!temEmpresaPlus) return paywallPlus("minha-rede");
         return <MinhaRedeScreen onBack={() => setScreen("home")} empresaEmail={userEmail} />;
       }
-      if (screen === "nova-demanda-funcionario") {
-        if (!temEmpresaPlus) return paywallPlus("home");
-        return <NovaDemandaFuncionarioScreen userEmail={userEmail} userName={userName} showToast={showToast} onBack={() => setScreen("home")} />;
-      }
-      if (screen === "minhas-demandas") {
-        if (!temEmpresaPlus) return paywallPlus("minhas-demandas");
-        return <MinhasDemandasScreen userEmail={userEmail} onBack={() => setScreen("home")} onVerPropostas={(d) => { setSelected(d); setScreen("demanda-propostas"); }} onOpenChat={openChatFromService} />;
-      }
+      // "demanda-propostas" também precisa abrir pra empresa Contratante
+      // (grátis, sem assinatura) — o gate real de quem chega até aqui já
+      // aconteceu dentro de EmpresaHomeScreen (só entra em modo Contratante
+      // quem é tipo_conta "contratante" ou "pro" com plano ativo), então não
+      // repete o paywall de Plus aqui.
       if (screen === "demanda-propostas" && selected) {
-        if (!temEmpresaPlus) return paywallPlus("minhas-demandas");
-        return <PropostasScreen pedido={selected} onBack={() => setScreen("minhas-demandas")} onAceitarProposta={handleAceitarPropostaEmpresa} />;
+        return <PropostasScreen pedido={selected} onBack={() => setScreen("home")} onAceitarProposta={handleAceitarPropostaEmpresa} />;
       }
-      return <EmpresaHomeScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} onGoToPedidos={() => setScreen("pedidos")} onGoToEditar={() => setScreen("editar")} onGoToBanco={() => setScreen("banco-profissionais")} onGoToRede={() => setScreen("minha-rede")} onGoToMinhasDemandas={() => setScreen("minhas-demandas")} onGoToNovaDemandaFuncionario={() => setScreen("nova-demanda-funcionario")} onAcceptOrder={(order) => { handleCandidatarPedidoDireto(order.id, order.cliente_id, order.value, order.profissionalNome); showToast?.("💼 Interesse enviado! Aguarde o cliente escolher.", B); }} />;
+      return <EmpresaHomeScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} onGoToPedidos={() => setScreen("pedidos")} onGoToEditar={() => setScreen("editar")} onGoToBanco={() => setScreen("banco-profissionais")} onGoToRede={() => setScreen("minha-rede")} temEmpresaPlus={temEmpresaPlus} modo={empresaModo} setModo={setEmpresaModo} onUpgradeSuccess={() => carregarPlano("empresa", userEmail)} onVerPropostas={(d) => { setSelected(d); setScreen("demanda-propostas"); }} onOpenChat={openChatFromService} onAcceptOrder={(order) => { handleCandidatarPedidoDireto(order.id, order.cliente_id, order.value, order.profissionalNome); showToast?.("💼 Interesse enviado! Aguarde o cliente escolher.", B); }} />;
     }
 
     // Route guard: logged-in clients must never see the professional feed.
