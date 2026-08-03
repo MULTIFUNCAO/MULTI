@@ -5597,19 +5597,21 @@ const TERMO_TEXTO_PLACEHOLDER = "Termo de isenção de responsabilidade (texto a
 // (quem presta o serviço avisa deslocamento/chegada, quem contrata confirma
 // local/horário/valor).
 const QUICK_MSGS_PROFISSIONAL = [
-  "Estou a caminho 🚗",
-  "Cheguei ao local 📍",
-  "Vou me atrasar 15 minutos ⏰",
+  "Estou a caminho, chego em [X] min 🚗",
+  "Cheguei no local 📍",
+  "Vou atrasar uns 15 min, desculpa ⏰",
   "Serviço concluído ✅",
-  "Pode confirmar o endereço?",
+  "Preciso confirmar o endereço",
   "Qual o melhor horário pra você?",
+  "Vai precisar de material extra, posso te explicar",
 ];
 const QUICK_MSGS_CLIENTE = [
-  "Estou no local 📍",
+  "Estou no local esperando 📍",
   "Pode confirmar o horário?",
-  "Ok, combinado! 👍",
-  "Pode enviar uma foto do serviço?",
-  "Qual o valor total?",
+  "Combinado, te espero! 👍",
+  "Pode mandar uma foto do problema/serviço?",
+  "Qual o valor final?",
+  "Preciso remarcar, podemos conversar?",
 ];
 
 // Barra de acompanhamento visual (Fase 6) — 5 etapas do ciclo de vida a
@@ -5679,7 +5681,6 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
   const [sending,   setSending]   = useState(false);
   const [anexo,     setAnexo]     = useState(null); // { file, previewUrl, tipo, nome }
   const [enviandoAnexo, setEnviandoAnexo] = useState(false);
-  const [showQuickMsgs, setShowQuickMsgs] = useState(false);
   const [dataInput, setDataInput] = useState("");
   const [contraparteWhatsapp, setContraparteWhatsapp] = useState(null);
   const [profissionalRole, setProfissionalRole] = useState(null);
@@ -6082,7 +6083,7 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
         )
       )}
 
-      {showQuickMsgs && pedido && (
+      {pedido && (
         <div style={{ flexShrink:0, margin:"0 14px 8px", display:"flex", gap:7, overflowX:"auto", paddingBottom:2 }}>
           {(souCliente ? QUICK_MSGS_CLIENTE : QUICK_MSGS_PROFISSIONAL).map((msg, i) => (
             <button
@@ -6128,14 +6129,6 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
           style={{ width:38, height:38, borderRadius:"50%", border:"none", background:"#F0F2F5", color:"#555", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}
         >
           <Paperclip size={17} />
-        </button>
-        <button
-          onClick={() => setShowQuickMsgs(v => !v)}
-          disabled={sending}
-          title="Mensagens rápidas"
-          style={{ width:38, height:38, borderRadius:"50%", border:"none", background: showQuickMsgs ? B+"22" : "#F0F2F5", color: showQuickMsgs ? B : "#555", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}
-        >
-          <Zap size={17} />
         </button>
         <input
           value={text}
