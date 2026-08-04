@@ -5925,6 +5925,13 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showTermoCompleto, setShowTermoCompleto] = useState(false);
   const [confirmandoServico, setConfirmandoServico] = useState(false);
+  // Guarda se a promoção automática pedidos.status -> "confirmado" (useEffect
+  // abaixo) falhou — sem isso a UI mostrava "🟢 Serviço agendado" só com base
+  // em liberado/termoLiberado (client-side), mesmo quando o update no banco
+  // dava erro (silent-fail igual ao que já tivemos na Fase 5). "tentativa"
+  // é o gatilho manual de retry (o botão "Tentar novamente" incrementa).
+  const [erroPromoverConfirmado, setErroPromoverConfirmado] = useState(false);
+  const [tentativaPromoverConfirmado, setTentativaPromoverConfirmado] = useState(0);
   // Fluxo "propor valor": simétrico — cliente ou profissional podem propor
   // (ver supabase_chat_propostas_valor_migration.sql +
   // supabase_chat_propostas_valor_proposto_por_migration.sql — tabela
@@ -6249,20 +6256,26 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
   // Assim que os dois lados completam data + termo, promove o pedido pra
   // "confirmado" — guard em pedido.status evita repetir o update a cada
   // poll de 5s depois que já virou "confirmado" (ou já passou disso).
+  // Se der erro (ex.: constraint do banco desatualizada), NÃO faz sentido
+  // deixar a UI só de "liberado && termoLiberado" mostrando "🟢 Serviço
+  // agendado" como se tivesse dado certo — por isso erroPromoverConfirmado
+  // vira o gate real do banner de sucesso (ver JSX abaixo).
   useEffect(() => {
     if (!pedido || pedido.status !== "em_andamento") return;
     if (liberado && termoLiberado) {
+      setErroPromoverConfirmado(false);
       supabase.from("pedidos").update({ status: "confirmado" }).eq("id", chat.pedidoId)
         .then(({ error }) => {
           if (error) {
             console.error("promover status confirmado:", error);
+            setErroPromoverConfirmado(true);
             showToast?.("Não foi possível confirmar o agendamento: " + (error.message || "tente novamente."), "#DC2626");
             return;
           }
           carregar();
         });
     }
-  }, [liberado, termoLiberado, pedido?.status]);
+  }, [liberado, termoLiberado, pedido?.status, tentativaPromoverConfirmado]);
 
   const horaFmt = (iso) => {
     const d = new Date(iso);
@@ -6398,7 +6411,25 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
       </div>
 
       {pedido && mensagens.length > 0 && (
-        (liberado && termoLiberado) ? (
+        (liberado && termoLiberado && erroPromoverConfirmado) ? (
+          // Os dois lados já aceitaram, mas o update pedidos.status="confirmado"
+          // falhou (ex.: banco ainda sem o valor no check constraint — ver
+          // supabase_pedidos_confirmado_migration.sql). Mostra erro de verdade
+          // em vez de fingir sucesso, com retry manual.
+          <div style={{ flexShrink:0, margin:"0 14px 10px", padding:"10px 14px", borderRadius:12, background:"#FEF2F2", border:"1px solid #FCA5A5" }}>
+            <p style={{ fontSize:12.5, fontWeight:800, color:"#DC2626", margin:0 }}>⚠️ Não foi possível confirmar o agendamento</p>
+            <p style={{ fontSize:11.5, color:"#7F1D1D", margin:"4px 0 8px" }}>Os dois lados já aceitaram, mas o servidor recusou o registro. Tente novamente — se persistir, é um problema no nosso lado.</p>
+            <button
+              onClick={() => setTentativaPromoverConfirmado(t => t + 1)}
+              style={{ width:"100%", padding:"9px 0", borderRadius:10, border:"none", background:"#DC2626", color:"white", fontWeight:800, fontSize:12.5, cursor:"pointer" }}
+            >
+              Tentar novamente
+            </button>
+          </div>
+        ) : (liberado && termoLiberado && pedido.status !== "em_andamento") ? (
+          // pedido.status !== "em_andamento" (e não só "=== confirmado") porque
+          // esse mesmo banner também cobre "executando"/"concluido"/"em_disputa"
+          // — uma vez promovido, o pedido nunca mais volta a "em_andamento".
           <div style={{ flexShrink:0, margin:"0 14px 10px", padding:"10px 14px", borderRadius:12, background:"#F0FDF4", border:`1px solid ${G}44` }}>
             <p style={{ fontSize:12.5, fontWeight:800, color:G, margin:0 }}>🟢 Serviço agendado</p>
             {pedido.data_agendada && (
@@ -6422,6 +6453,13 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
             ) : (
               <p style={{ fontSize:11.5, color:"#B45309", margin:"6px 0 0" }}>⚠️ O outro lado ainda não cadastrou um WhatsApp — peça pra completar o perfil.</p>
             )}
+          </div>
+        ) : (liberado && termoLiberado) ? (
+          // Os dois já aceitaram e o update ainda está em voo (efeito acima
+          // acabou de disparar) — evita piscar "agendado" antes de confirmar
+          // que o banco realmente gravou.
+          <div style={{ flexShrink:0, margin:"0 14px 10px", padding:"10px 14px", borderRadius:12, background:"#F8F9FA", border:"1px solid #E5E7EB" }}>
+            <p style={{ fontSize:12.5, fontWeight:700, color:"#555", margin:0 }}>⏳ Confirmando agendamento...</p>
           </div>
         ) : (meuAceite && meuAceiteTermo) ? (
           <div style={{ flexShrink:0, margin:"0 14px 10px", padding:"10px 14px", borderRadius:12, background:"#F8F9FA", border:"1px solid #E5E7EB" }}>
