@@ -20,7 +20,7 @@ import {
   CreditCard, HeartHandshake, HelpCircle, KeyRound,
   BellRing, BadgeCheck, Users, ShieldCheck,
   Activity, BarChart2, Package, ChevronUp, Eye, EyeOff,
-  Paperclip, Download,
+  Paperclip, Download, ArrowLeftRight,
 } from "lucide-react";
 
 /* ───────────────────────── DESIGN TOKENS ──────────────────────────────────── */
@@ -404,26 +404,42 @@ function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua
         </div>
       </div>
 
-      {/* row 3: context indicator */}
+      {/* row 3: context indicator — o toggle client→professional já existia
+          (localStorage + reload, sem gate nenhum); só melhorei a affordance
+          (pill clicável + ícone de troca), a lógica de troca é a mesma de
+          sempre. O toggle professional→client ao lado é novo — antes não
+          existia nenhum jeito de voltar pra cá depois de virar profissional
+          por aqui, o que travava contas "cliente e profissional" (fluxo de
+          virar profissional, Fase X) num beco sem saída. */}
       {!isProfessional && (
-        <div style={{ margin:"0 16px 12px", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
-          <div style={{ width:7, height:7, borderRadius:"50%", background:"#4ade80" }} />
-          <span style={{ fontSize:11, color:"rgba(255,255,255,.7)", fontWeight:700,cursor:"pointer" }} onClick={function(){try{var s=JSON.parse(localStorage.getItem("multiSession")||"{}")||{};s.role="professional";localStorage.setItem("multiSession",JSON.stringify(s));}catch(x){}window.location.reload();}}>Modo: Cliente (toque p/ alternar)</span>
-          </div>
-        )}
+        <div style={{ margin:"0 16px 12px", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <button onClick={function(){try{var s=JSON.parse(localStorage.getItem("multiSession")||"{}")||{};s.role="professional";localStorage.setItem("multiSession",JSON.stringify(s));var u=JSON.parse(localStorage.getItem("multiUser")||"{}")||{};u.role="professional";localStorage.setItem("multiUser",JSON.stringify(u));}catch(x){}window.location.reload();}}
+            style={{ display:"flex", alignItems:"center", gap:7, background:"rgba(255,255,255,.15)", border:"1px solid rgba(255,255,255,.3)", borderRadius:99, padding:"5px 12px", cursor:"pointer" }}>
+            <span style={{ width:7, height:7, borderRadius:"50%", background:"#4ade80", flexShrink:0 }} />
+            <span style={{ fontSize:11, color:"white", fontWeight:700 }}>Modo: Cliente (toque p/ alternar)</span>
+            <ArrowLeftRight size={12} color="white" style={{ flexShrink:0 }} />
+          </button>
+        </div>
+      )}
       {isProfessional && (
         <div style={{ margin:"0 16px 12px", background:"rgba(255,87,34,.2)", border:"1px solid rgba(255,87,34,.3)", borderRadius:12, padding:"8px 14px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div style={{ display:"flex", alignItems:"center", gap:7 }}>
             <Briefcase size={13} color={O} />
             <span style={{ fontSize:11, color:"rgba(255,255,255,.9)", fontWeight:800 }}>Modo Profissional Ativo</span>
           </div>
-          <span style={{ fontSize:10, fontWeight:800, color:O, background:"rgba(255,87,34,.25)", borderRadius:99, padding:"2px 8px" }}>
-            {isPro ? "PRO ✓" : "Free"}
-          </span>
-       
-   </div>
+          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+            <span style={{ fontSize:10, fontWeight:800, color:O, background:"rgba(255,87,34,.25)", borderRadius:99, padding:"2px 8px" }}>
+              {isPro ? "PRO ✓" : "Free"}
+            </span>
+            <button onClick={function(){try{var s=JSON.parse(localStorage.getItem("multiSession")||"{}")||{};s.role="client";localStorage.setItem("multiSession",JSON.stringify(s));var u=JSON.parse(localStorage.getItem("multiUser")||"{}")||{};u.role="client";localStorage.setItem("multiUser",JSON.stringify(u));}catch(x){}window.location.reload();}}
+              title="Voltar pro modo Cliente" aria-label="Voltar pro modo Cliente"
+              style={{ background:"rgba(255,255,255,.15)", border:"none", borderRadius:"50%", width:22, height:22, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}>
+              <ArrowLeftRight size={11} color="white" />
+            </button>
+          </div>
+        </div>
       )}
-      
+
     </div>
   );
 }
@@ -2650,9 +2666,23 @@ const HOME_CATS = [
   { id:"estofados",    label:"Higien. Estofados",  emoji:"🛋️", star:"4.8", bg:"#F3E5F5", accent:"#6A1B9A", grad:"linear-gradient(135deg,#880E4F,#C2185B)", desc:"Sofás e colchões"    },
 ];
 
-function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName }) {
+function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName, userEmail }) {
   const greeting     = userName ? `Olá, ${userName}! 👋` : "Olá! Seja bem-vindo 👋";
   const subgreeting  = userName ? "O que vamos resolver hoje?" : "Vamos resolver algo hoje?";
+
+  // Banner "Vire Profissional" — só pra quem ainda não completou cadastro
+  // profissional nenhuma vez (usuarios.role já vira "professional" desde a
+  // primeira vez, mesmo se a sessão atual estiver no modo Cliente — ver
+  // RegisterScreen "ambos" e VirarProfissionalScreen). Sem esse check, quem
+  // já é profissional-e-cliente veria o convite pra virar profissional de
+  // novo toda vez que abrisse no modo Cliente.
+  const [jaEhProfissional, setJaEhProfissional] = useState(true); // default true evita flash do banner enquanto carrega
+  useEffect(() => {
+    if (!userEmail) { setJaEhProfissional(false); return; }
+    supabase.from("usuarios").select("role").eq("email", userEmail).maybeSingle()
+      .then(({ data }) => setJaEhProfissional(data?.role === "professional"))
+      .catch(() => setJaEhProfissional(false));
+  }, [userEmail]);
 
   return (
     <div style={{ display:"flex", flexDirection:"column", background:"#F8F9FA", minHeight:"100vh", paddingBottom:120 }}>
@@ -2688,6 +2718,28 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName }
           </button>
         </div>
       </div>
+
+      {/* ── VIRE PROFISSIONAL — descoberta de "prestar serviço" pra quem só
+          conhece o Multi como cliente; some pra quem já é profissional
+          (ver jaEhProfissional acima). Mesmo cartão do onSwitchPro, que
+          agora leva pro fluxo de virar profissional de verdade (plano +
+          categoria + termo), não só troca a sessão pra uma aba vazia. */}
+      {!jaEhProfissional && (
+        <div style={{ margin:"20px 20px 0", borderRadius:22, overflow:"hidden", position:"relative", boxShadow:"0 8px 26px rgba(255,87,34,.22)" }}>
+          <div style={{ position:"absolute", inset:0, background:`linear-gradient(135deg,${O},#E64A19)` }} />
+          <div style={{ position:"absolute", top:-20, right:-20, width:110, height:110, borderRadius:"50%", background:"rgba(255,255,255,.08)" }} />
+          <div style={{ position:"relative", zIndex:1, padding:"18px 20px", display:"flex", alignItems:"center", gap:14 }}>
+            <span style={{ fontSize:32, flexShrink:0 }}>🔧</span>
+            <div style={{ flex:1, minWidth:0 }}>
+              <p style={{ fontSize:14.5, fontWeight:900, color:"white", margin:"0 0 3px" }}>Quer também prestar serviços?</p>
+              <p style={{ fontSize:11.5, color:"rgba(255,255,255,.85)", margin:"0 0 10px", lineHeight:1.4 }}>Receba oportunidades perto de você — 7 dias de Multi PRO grátis.</p>
+              <button onClick={onSwitchPro} style={{ padding:"8px 16px", borderRadius:99, border:"none", background:"white", color:O, fontWeight:900, fontSize:12.5, cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
+                Vire Profissional <ChevronRight size={13} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── CATEGORIES SECTION ── */}
       <div style={{ padding:"30px 0 0" }}>
@@ -7262,6 +7314,29 @@ function CompletarPerfilScreen({ userEmail, onDone, showToast }) {
   );
 }
 
+/* ───────────────────────── VIRE PROFISSIONAL (conta já existente) ──────────── */
+// Acionado pelo banner "Vire Profissional" da Home do cliente — reusa as
+// mesmas duas etapas que RegisterScreen usa pra "profissional"/"ambos" no
+// cadastro (plano + categoria/termo), só que pra uma conta que já existe e já
+// está logada (sem formulário de nome/e-mail/senha de novo). onDone (no App())
+// é quem grava usuarios.role="professional" e liga o modo profissional.
+function VirarProfissionalScreen({ userEmail, userName, showToast, onBack, onDone }) {
+  const [step, setStep] = useState("plano");
+  if (step === "plano") {
+    return (
+      <EscolherPlanoScreen
+        titularTipo="usuario"
+        titularEmail={userEmail}
+        titularNome={userName}
+        onBack={onBack}
+        showToast={showToast}
+        onDone={() => setStep("completar-perfil")}
+      />
+    );
+  }
+  return <CompletarPerfilScreen userEmail={userEmail} showToast={showToast} onDone={onDone} />;
+}
+
 function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" }) {
   const [step,    setStep]    = useState("form");
   const [name,    setName]    = useState("");
@@ -7269,7 +7344,14 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
   const [phone,   setPhone]   = useState("");
   const [password, setPassword] = useState("");
   const [cep,     setCep]     = useState("");
-  const [role,    setRole]    = useState(initialRole);
+  // "tipoUso" — pergunta nova (mesmo padrão do "tipo de conta" no cadastro de
+  // empresa: presta serviço/contrata/os dois). "profissional" e "ambos" os
+  // dois passam pelas mesmas etapas extras de profissional (plano + termo +
+  // categoria) logo abaixo — "ambos" só difere no fim: a sessão inicial abre
+  // no modo Cliente (usuarios.role continua "professional" de verdade, pra
+  // aparecer no Banco de Profissionais; ver handleSubmit/onComplete abaixo).
+  const [tipoUso, setTipoUso] = useState(initialRole === "professional" ? "profissional" : "cliente");
+  const role = tipoUso === "cliente" ? "client" : "professional";
   const [errors,  setErrors]  = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -7326,13 +7408,21 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
     );
   }
 
-  /* ── COMPLETAR PERFIL (só profissional, depois do plano) ── */
+  /* ── COMPLETAR PERFIL (profissional e ambos, depois do plano) ── */
   if (step === "completar-perfil") {
     return (
       <CompletarPerfilScreen
         userEmail={email.trim()}
         showToast={showToast}
-        onDone={() => onComplete(name, email.trim(), true, cepFound ? "Sua cidade" : "sua região", role, phone)}
+        onDone={() => onComplete(
+          name, email.trim(), true, cepFound ? "Sua cidade" : "sua região",
+          // "ambos": sessão inicial abre no modo Cliente (mais alinhado ao que
+          // a pessoa provavelmente vai fazer primeiro), mas usuarios.role
+          // grava "professional" mesmo assim (7º argumento, dbRole) — sem
+          // isso a conta some do Banco de Profissionais mesmo tendo feito
+          // categoria/termo/plano de verdade.
+          tipoUso === "ambos" ? "client" : role, phone, role
+        )}
       />
     );
   }
@@ -7401,24 +7491,33 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
 
       <div style={{ flex:1, padding:"24px 24px 48px", overflowY:"auto" }}>
 
-        {/* ── ROLE SELECTOR ── */}
+        {/* ── TIPO DE USO — mesmo padrão do "tipo de conta" no cadastro de
+            empresa (lista vertical, ícone+label+sub+radio). "Os dois" passa
+            pelas mesmas etapas extras de profissional (plano, categoria,
+            termo) logo depois desse formulário — ver step "plano" acima —
+            e ainda assim abre a sessão no modo Cliente por padrão (o toggle
+            no topo do app leva pro lado profissional já configurado). */}
         <div style={{ marginBottom:22 }}>
-          <p style={{ fontSize:11, fontWeight:800, color:"#6B7280", textTransform:"uppercase", letterSpacing:1.2, margin:"0 0 10px" }}>Você é:</p>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+          <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#6B7280", textTransform:"uppercase", letterSpacing:1.1, marginBottom:7 }}>
+            Você quer usar o Multi como cliente, profissional, ou os dois?
+          </label>
+          <div style={{ background:"white", border:"1.5px solid #EBEBEB", borderRadius:14, overflow:"hidden" }}>
             {[
-              { id:"client",       label:"Cliente",       emoji:"🏠", sub:"Preciso de serviços" },
-              { id:"professional", label:"Profissional",  emoji:"🔧", sub:"7 dias PRO grátis!"  },
-            ].map(r => (
-              <button key={r.id} onClick={() => setRole(r.id)} style={{
-                padding:"14px 10px", borderRadius:16, cursor:"pointer", textAlign:"center",
-                border:`2px solid ${role === r.id ? (r.id === "professional" ? "#7C3AED" : B) : "#E5E7EB"}`,
-                background: role === r.id ? (r.id === "professional" ? "#F5F3FF" : "#EBF4FF") : "white",
-                transition:"all .15s",
-              }}>
-                <p style={{ fontSize:24, margin:"0 0 4px" }}>{r.emoji}</p>
-                <p style={{ fontSize:13, fontWeight:900, color: role === r.id ? (r.id === "professional" ? "#7C3AED" : B) : "#1a1a2e", margin:"0 0 2px" }}>{r.label}</p>
-                <p style={{ fontSize:10, color: role === r.id ? (r.id === "professional" ? "#7C3AED" : B) : "#9CA3AF", fontWeight:700, margin:0 }}>{r.sub}</p>
-              </button>
+              { val:"cliente",      icon:"🏠", label:"Só cliente",       sub:"Publico pedidos e contrato profissionais (grátis)" },
+              { val:"profissional", icon:"🔧", label:"Só profissional",  sub:"Recebo pedidos e ganho oportunidades (7 dias PRO grátis)" },
+              { val:"ambos",        icon:"🔁", label:"Os dois!",         sub:"Contrato quando precisar e também presto serviço (7 dias PRO grátis)" },
+            ].map((opt, i, arr) => (
+              <div key={opt.val} onClick={() => setTipoUso(opt.val)}
+                style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 14px", cursor:"pointer", borderBottom: i < arr.length - 1 ? "1px solid #F0F0F0" : "none", background: tipoUso === opt.val ? "#EBF4FF" : "white", transition:"background .15s" }}>
+                <span style={{ fontSize:22, flexShrink:0 }}>{opt.icon}</span>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e", margin:"0 0 2px" }}>{opt.label}</p>
+                  <p style={{ fontSize:11, color:"#9CA3AF", margin:0 }}>{opt.sub}</p>
+                </div>
+                <div style={{ width:20, height:20, borderRadius:"50%", border:(tipoUso===opt.val?"2px solid "+B:"2px solid #D1D5DB"), background: tipoUso === opt.val ? B : "white", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .15s" }}>
+                  {tipoUso === opt.val && <div style={{ width:8, height:8, borderRadius:"50%", background:"white" }} />}
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -9051,7 +9150,7 @@ export default function App() {
     setAuthScreen("welcome");
   };
 
-  const handleLoginComplete = (name = "", email = "", isNewAccount = false, location = "", registeredRole = "", whatsapp = "") => {
+  const handleLoginComplete = (name = "", email = "", isNewAccount = false, location = "", registeredRole = "", whatsapp = "", dbRole = null) => {
     const finishLogin = (resolvedRole, nomeSalvo) => {
       // Nome de exibição: no cadastro, usa o que a pessoa digitou em "Nome
       // Completo" (única fonte confiável). Em logins seguintes, prioriza o
@@ -9088,7 +9187,12 @@ export default function App() {
         // vínculo de um teste/conta anterior que usou o mesmo e-mail como empresa,
         // o que travava esse e-mail pra sempre como "empresa" no login (ver abaixo).
         // "name" segue o mesmo raciocínio: só grava na criação da conta.
-        if (isNewAccount) { upsertPayload.name = session.name; upsertPayload.role = session.role || "client"; upsertPayload.empresa_id = null; }
+        // "dbRole" existe pra conta "cliente e profissional" (RegisterScreen,
+        // pergunta "cliente/profissional/os dois"): a sessão abre no modo
+        // Cliente (session.role), mas usuarios.role grava "professional" de
+        // verdade — sem isso a conta não aparece no Banco de Profissionais
+        // mesmo tendo completado categoria/termo/plano no cadastro.
+        if (isNewAccount) { upsertPayload.name = session.name; upsertPayload.role = dbRole || session.role || "client"; upsertPayload.empresa_id = null; }
         // whatsapp/city só entram no payload quando vêm com valor de verdade
         // (cadastro novo, via fast-form). Login normal sempre chama isso com
         // whatsapp="" e location="" (LoginScreen não coleta nenhum dos dois),
@@ -9555,6 +9659,30 @@ const renderContent = () => {
 
   if (!role && !authScreen) { setAuthScreen("role-select"); return null; }
     if (role === "client") {
+      // "Vire Profissional" (banner da Home) — mesma etapa de plano+perfil
+      // profissional que o cadastro usa pra "profissional"/"ambos", só que
+      // pra conta já existente/logada (ver VirarProfissionalScreen acima).
+      if (screen === "virar-profissional") {
+        return (
+          <VirarProfissionalScreen
+            userEmail={userEmail}
+            userName={userName}
+            showToast={showToast}
+            onBack={() => setScreen("home")}
+            onDone={() => {
+              try {
+                const s = JSON.parse(localStorage.getItem("multiSession") || "{}"); s.role = "professional"; localStorage.setItem("multiSession", JSON.stringify(s));
+                const u = JSON.parse(localStorage.getItem("multiUser") || "{}"); u.role = "professional"; localStorage.setItem("multiUser", JSON.stringify(u));
+              } catch {}
+              if (userEmail) supabase.from("usuarios").update({ role: "professional" }).eq("email", userEmail).then(()=>{}).catch(()=>{});
+              setRole("professional"); setUserRole("professional"); setSelected(null);
+              carregarPlano("usuario", userEmail); // senão o trial recém-criado em EscolherPlanoScreen só aparece depois de um reload
+              showToast?.("🎉 Perfil profissional pronto! Bem-vindo ao mural de serviços.", G);
+              setScreen("home");
+            }}
+          />
+        );
+      }
       if (screen === "post")   return <PostServiceScreen onBack={() => setScreen("home")} onSuccess={handlePostServiceSuccess} />;
       if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onStatusChange={handlePedidoStatusChange} showToast={showToast} onAccepted={(pedidoRow) => { setSelected(mapPedidoRow(pedidoRow)); setScreen("service"); }} onAceitarProposta={handleAceitarProposta} onBack={() => setScreen("orders")} />;
       if (screen === "chat")   return <ChatInbox myServices={meusPedidosComCandidatos} onOpenChat={openChatFromService} />;
@@ -9580,9 +9708,10 @@ const renderContent = () => {
               ? requireAuth("service", () => { setSelected(s); setScreen("service"); })
               : requireAuth("orders", () => setScreen("orders"))
             }
-            onSwitchPro={() => { setRole("professional"); setUserRole("professional"); setScreen("home"); setSelected(null); }}
+            onSwitchPro={() => requireAuth("virar-profissional", () => setScreen("virar-profissional"))}
             myServices={isLoggedIn ? meusPedidosComCandidatos : []}
             userName={userName}
+            userEmail={userEmail}
           />
           {/* FAB */}
           <button
@@ -9643,6 +9772,7 @@ const renderContent = () => {
             onSwitchPro={() => {}}
             myServices={isLoggedIn ? meusPedidosComCandidatos : []}
             userName={userName}
+            userEmail={userEmail}
           />
           <button onClick={() => requireAuth("post", () => setScreen("post"))} style={{ position:"fixed", bottom:80, right:20, zIndex:100, display:"flex", alignItems:"center", gap:8, padding:"14px 20px", borderRadius:99, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${O},#E64A19)`, color:"white", fontWeight:900, fontSize:14, boxShadow:"0 6px 24px rgba(255,87,34,.5)" }}>
             <Plus size={18} /> Novo Pedido
