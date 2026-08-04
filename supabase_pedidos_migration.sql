@@ -62,3 +62,11 @@ create policy "Edicao publica de pedidos"
   to anon, authenticated
   using (true)
   with check (true);
+
+-- 4. Índices — "pedidos" era a tabela mais consultada do app sem nenhum índice
+-- além da PK, apesar de cliente_id e profissional_aceito serem filtrados
+-- constantemente (tela "meus pedidos", polling do chat, etc.), quase sempre
+-- sozinhos (um ou outro, não os dois juntos) — por isso dois índices simples
+-- em vez de um composto, que só cobriria buscas por cliente_id.
+create index if not exists idx_pedidos_cliente_id on pedidos (cliente_id);
+create index if not exists idx_pedidos_profissional_aceito on pedidos (profissional_aceito);
