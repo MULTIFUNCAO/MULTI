@@ -5925,6 +5925,16 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showTermoCompleto, setShowTermoCompleto] = useState(false);
   const [confirmandoServico, setConfirmandoServico] = useState(false);
+  // Fluxo "propor valor": só o profissional propõe, cliente aceita/recusa
+  // (ver supabase_chat_propostas_valor_migration.sql — tabela separada de
+  // "mensagens", que é imutável por design). Pode ter várias rodadas: se
+  // recusado, o profissional propõe de novo (nova linha, não reaproveita a
+  // recusada).
+  const [propostasValor, setPropostasValor] = useState([]);
+  const [showProporValor, setShowProporValor] = useState(false);
+  const [valorProposto, setValorProposto] = useState("");
+  const [enviandoProposta, setEnviandoProposta] = useState(false);
+  const [respondendoPropostaId, setRespondendoPropostaId] = useState(null);
   const endRef = useRef(null);
   // Fade nas bordas da barra de mensagens rápidas — sinaliza que dá pra
   // arrastar pra ver mais chips, sem precisar de scrollbar visível.
@@ -5964,8 +5974,20 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
       .finally(() => setLoading(false));
   };
 
+  // Diferente de carregarMensagens: sempre busca a lista inteira (não só o
+  // que é novo), porque uma proposta já vista pode mudar de status
+  // (pendente -> aceita/recusada) e os dois lados precisam ver essa mudança
+  // no próximo poll — não dá pra confiar só em "linhas novas desde X".
+  const carregarPropostasValor = () => {
+    supabase.from("chat_propostas_valor").select("id,pedido_id,profissional_email,valor,status,criado_em,respondido_em")
+      .eq("pedido_id", chat.pedidoId).order("criado_em")
+      .then(({ data }) => setPropostasValor(data || []))
+      .catch(() => {});
+  };
+
   const carregar = () => {
     carregarMensagens();
+    carregarPropostasValor();
     supabase.from("pedidos")
       .select("cliente_id,cliente_nome,profissional_aceito,profissional_nome,aceite_formal_cliente_em,aceite_formal_profissional_em,data_agendada,valor,status,categoria,chegada_solicitada_em,inicio_confirmado_em,concluido_em")
       .eq("id", chat.pedidoId).maybeSingle()
@@ -6128,6 +6150,50 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
   // só libera quando confirmado que o role é "empresa".
   const whatsappBloqueado = profissionalRole !== "empresa";
 
+  // "Propor valor": só quem NÃO é o cliente (ou seja, o profissional aceito)
+  // pode propor. Aceitar atualiza pedidos.valor direto com o valor proposto.
+  const proporValor = () => {
+    const valor = Number(valorProposto);
+    if (!valor || valor <= 0 || enviandoProposta || souCliente) return;
+    setEnviandoProposta(true);
+    supabase.from("chat_propostas_valor").insert({
+      pedido_id: chat.pedidoId, profissional_email: meuEmail, valor, status: "pendente",
+    }).then(({ error }) => {
+      if (error) throw error;
+      setShowProporValor(false);
+      setValorProposto("");
+      carregar();
+      notificarOutroLado("Nova proposta de valor 💰", `${pedido?.profissional_nome || "O profissional"} propôs R$ ${valor} pelo serviço.`);
+    }).catch((err) => {
+      console.error("proporValor:", err);
+      showToast?.("Não foi possível propor o valor: " + (err.message || ""), "#DC2626");
+    }).finally(() => setEnviandoProposta(false));
+  };
+
+  const responderProposta = (item, aceitar) => {
+    if (respondendoPropostaId) return;
+    setRespondendoPropostaId(item.id);
+    supabase.from("chat_propostas_valor")
+      .update({ status: aceitar ? "aceita" : "recusada", respondido_em: new Date().toISOString() })
+      .eq("id", item.id)
+      .then(async ({ error }) => {
+        if (error) throw error;
+        if (aceitar) {
+          const { error: errValor } = await supabase.from("pedidos").update({ valor: item.valor }).eq("id", chat.pedidoId);
+          if (errValor) throw errValor;
+        }
+        carregar();
+        notificarOutroLado(
+          aceitar ? "Valor aceito ✅" : "Valor recusado",
+          aceitar ? `O valor de R$ ${item.valor} foi aceito.` : `O valor de R$ ${item.valor} foi recusado — você pode propor outro.`
+        );
+      })
+      .catch((err) => {
+        console.error("responderProposta:", err);
+        showToast?.("Não foi possível responder a proposta: " + (err.message || ""), "#DC2626");
+      })
+      .finally(() => setRespondendoPropostaId(null));
+  };
 
   // Fase 4 — "Confirmar Serviço": uma única ação por usuário que substitui os
   // dois aceites separados de antes (data + termo) por um resumo com os dois
@@ -6204,6 +6270,14 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
     return d.toISOString().slice(0, 16);
   };
 
+  // Intercala mensagens normais com propostas de valor por criado_em, pra
+  // renderizar tudo numa timeline só (a proposta aparece como um card no
+  // lugar certo da conversa, não numa lista separada).
+  const feed = [
+    ...mensagens.map(m => ({ ...m, __tipo: "mensagem" })),
+    ...propostasValor.map(p => ({ ...p, __tipo: "proposta_valor" })),
+  ].sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em));
+
   return (
     <div style={{ minHeight:"100vh", background:"#F8F9FA", display:"flex", flexDirection:"column" }}>
       <div style={{ background:`linear-gradient(160deg,${B} 0%,#0055d4 100%)`, padding:"16px 18px 18px", borderRadius:"0 0 24px 24px", flexShrink:0 }}>
@@ -6235,14 +6309,43 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
 
       <div style={{ flex:1, overflowY:"auto", padding:"16px 14px", display:"flex", flexDirection:"column", gap:8 }}>
         {loading && <p style={{ textAlign:"center", color:"#aaa", fontSize:13 }}>Carregando...</p>}
-        {!loading && mensagens.length === 0 && (
+        {!loading && feed.length === 0 && (
           <div style={{ textAlign:"center", padding:"40px 24px", color:"#ccc" }}>
             <MessageCircle size={36} color="#E0E0E0" style={{ margin:"0 auto 12px", display:"block" }} />
             <p style={{ fontSize:13, fontWeight:700 }}>Nenhuma mensagem ainda</p>
             <p style={{ fontSize:12, marginTop:4 }}>Envie a primeira mensagem pra combinar os detalhes.</p>
           </div>
         )}
-        {mensagens.map(m => {
+        {feed.map(item => {
+          if (item.__tipo === "proposta_valor") {
+            const minha = item.profissional_email === meuEmail;
+            const podeResponder = item.status === "pendente" && souCliente;
+            const respondendo = respondendoPropostaId === item.id;
+            const corStatus = item.status === "aceita" ? G : item.status === "recusada" ? "#DC2626" : O;
+            const labelStatus = item.status === "aceita" ? "✅ Valor aceito" : item.status === "recusada" ? "❌ Valor recusado" : "💰 Proposta de valor";
+            return (
+              <div key={`pv-${item.id}`} style={{ display:"flex", justifyContent: minha ? "flex-end" : "flex-start" }}>
+                <div style={{ maxWidth:"78%", padding:"12px 14px", borderRadius:14, background:"white", border:`1.5px solid ${corStatus}`, boxShadow:"0 1px 4px rgba(0,0,0,.07)" }}>
+                  <p style={{ fontSize:11, fontWeight:800, color:corStatus, margin:"0 0 4px", textTransform:"uppercase", letterSpacing:.4 }}>{labelStatus}</p>
+                  <p style={{ fontSize:19, fontWeight:900, color:"#1a1a2e", margin:"0 0 8px" }}>R$ {item.valor}</p>
+                  {podeResponder ? (
+                    <div style={{ display:"flex", gap:8 }}>
+                      <button onClick={() => responderProposta(item, false)} disabled={respondendo} style={{ flex:1, padding:"8px 0", borderRadius:10, border:"1.5px solid #E5E7EB", background:"white", color:"#555", fontWeight:800, fontSize:12, cursor: respondendo ? "default" : "pointer" }}>
+                        Recusar
+                      </button>
+                      <button onClick={() => responderProposta(item, true)} disabled={respondendo} style={{ flex:1, padding:"8px 0", borderRadius:10, border:"none", background:G, color:"white", fontWeight:800, fontSize:12, cursor: respondendo ? "default" : "pointer" }}>
+                        Aceitar
+                      </button>
+                    </div>
+                  ) : item.status === "pendente" ? (
+                    <p style={{ fontSize:11.5, color:"#888", margin:0 }}>Aguardando resposta do cliente...</p>
+                  ) : null}
+                  <p style={{ fontSize:10, margin:"6px 0 0", textAlign:"right", color:"#bbb" }}>{horaFmt(item.criado_em)}</p>
+                </div>
+              </div>
+            );
+          }
+          const m = item;
           const minha = m.remetente_email === meuEmail;
           return (
             <div key={m.id} style={{ display:"flex", justifyContent: minha ? "flex-end" : "flex-start" }}>
@@ -6329,6 +6432,18 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
             </button>
           </div>
         )
+      )}
+
+      {pedido && !souCliente && (
+        <div style={{ flexShrink:0, margin:"0 14px 8px" }}>
+          <button
+            onClick={() => setShowProporValor(true)}
+            disabled={enviandoProposta}
+            style={{ width:"100%", padding:"9px 0", borderRadius:10, border:`1.5px solid ${O}55`, background:"#FFF7ED", color:O, fontWeight:800, fontSize:12.5, cursor: enviandoProposta ? "default" : "pointer" }}
+          >
+            💰 Propor valor
+          </button>
+        </div>
       )}
 
       {pedido && (
@@ -6483,6 +6598,43 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
               }}
             >
               {confirmandoServico ? "Confirmando..." : "✅ Confirmar"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showProporValor && (
+        <div
+          onClick={() => !enviandoProposta && setShowProporValor(false)}
+          style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.5)", display:"flex", alignItems:"flex-end", justifyContent:"center", zIndex:60 }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:420, background:"white", borderRadius:"20px 20px 0 0", padding:22 }}>
+            <p style={{ fontSize:16, fontWeight:900, color:"#1a1a2e", margin:"0 0 4px" }}>Propor valor</p>
+            <p style={{ fontSize:12.5, color:"#888", margin:"0 0 16px" }}>O cliente vai poder aceitar ou recusar. Se recusar, você pode propor outro valor.</p>
+            <div style={{ display:"flex", alignItems:"center", gap:6, padding:"12px 14px", borderRadius:12, border:"1.5px solid #EEE", marginBottom:16 }}>
+              <span style={{ fontSize:15, fontWeight:800, color:"#555" }}>R$</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                autoFocus
+                value={valorProposto}
+                onChange={e => setValorProposto(e.target.value)}
+                placeholder="0,00"
+                style={{ flex:1, border:"none", outline:"none", fontSize:18, fontWeight:800, color:"#1a1a2e" }}
+              />
+            </div>
+            <button
+              onClick={proporValor}
+              disabled={enviandoProposta || !Number(valorProposto) || Number(valorProposto) <= 0}
+              style={{
+                width:"100%", padding:"13px 0", borderRadius:12, border:"none",
+                background: O, color:"white", fontWeight:800, fontSize:14,
+                cursor: (enviandoProposta || !Number(valorProposto) || Number(valorProposto) <= 0) ? "default" : "pointer",
+                opacity: (enviandoProposta || !Number(valorProposto) || Number(valorProposto) <= 0) ? .5 : 1,
+              }}
+            >
+              {enviandoProposta ? "Enviando..." : "Enviar proposta"}
             </button>
           </div>
         </div>
