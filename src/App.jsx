@@ -9171,6 +9171,7 @@ export default function App() {
       setRole(resolvedRole);
 
       // Save session to localStorage — persists across page reloads
+      let upsertPromise = Promise.resolve();
       try {
         const session = { name: firstName, email, whatsapp, location, role: resolvedRole };
         localStorage.setItem("multiSession", JSON.stringify(session));
@@ -9202,21 +9203,29 @@ export default function App() {
         // logar de novo (ex: aba anônima, sessão expirada, outro navegador).
         if (session.whatsapp) upsertPayload.whatsapp = session.whatsapp;
         if (session.location) upsertPayload.city = session.location;
-        supabase.from("usuarios").upsert(upsertPayload, { onConflict: "email" }).then(()=>{}).catch(()=>{});
+        // Aguarda o upsert terminar antes de ir pra Home — sem isso, ia pra
+        // "home" na hora (setScreen síncrono) enquanto o upsert ainda estava
+        // em voo, e qualquer tela que lê usuarios.role assim que monta (ex:
+        // banner "Vire Profissional" do ClientHome) corria contra esse write
+        // e pegava o valor antigo, mesmo o registro certo ficando garantido
+        // no banco poucos instantes depois (achado testando "ambos" ao vivo).
+        upsertPromise = supabase.from("usuarios").upsert(upsertPayload, { onConflict: "email" }).then(()=>{}).catch(()=>{});
       } catch {}
 
-      setScreen("home");
-      // Plano real (assinaturas) é carregado pelo efeito de [userEmail, role]
-      // logo abaixo — dispara tanto aqui (login) quanto na restauração de
-      // sessão do localStorage num reload de página.
-      if (isNewAccount) {
-        setTimeout(() => sendWelcomeEmail({ name: nomeFinal, email, role: resolvedRole }), 400);
-      }
-      if (pendingIntent?.fn) {
-        const fn = pendingIntent.fn;
-        setPendingIntent(null);
-        setTimeout(fn, 80);
-      }
+      upsertPromise.then(() => {
+        setScreen("home");
+        // Plano real (assinaturas) é carregado pelo efeito de [userEmail, role]
+        // logo abaixo — dispara tanto aqui (login) quanto na restauração de
+        // sessão do localStorage num reload de página.
+        if (isNewAccount) {
+          setTimeout(() => sendWelcomeEmail({ name: nomeFinal, email, role: resolvedRole }), 400);
+        }
+        if (pendingIntent?.fn) {
+          const fn = pendingIntent.fn;
+          setPendingIntent(null);
+          setTimeout(fn, 80);
+        }
+      });
     };
 
     const fallbackRole = registeredRole || userRole;
