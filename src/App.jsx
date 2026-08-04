@@ -4824,139 +4824,6 @@ function AddressSection({ showToast }) {
   );
 }
 
-/* ───────────────────────── CARTÕES DO CLIENTE ───────────────────────────────── */
-function CardSection({ showToast }) {
-  const [cards,     setCards]     = useState([]);
-  const [selectedCard, setSelectedCard] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [saving,    setSaving]    = useState(false);
-  const handleCardPayment = async () => {
-    setSaving(true);
-    try {
-      const user = safeGetUser();
-      const res = await fetch(API + '/cobrar-cartao', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: user.email, name: user.name || form.label, phone: user.whatsapp || '', plan: chosen?.label || 'monthly', cardNumber: form.number.replace(/s/g,''), cardHolder: form.label, expiryMonth: form.expiry.split('/')[0], expiryYear: '20'+form.expiry.split('/')[1], cvv: form.cvv, installments: 1 }) });
-      const data = await res.json();
-      if (res.ok) { showToast('Pagamento aprovado! PRO ativado!'); onSubscribe && onSubscribe(); }
-      else { alert(data.error || 'Erro no pagamento'); }
-    } catch(e) { alert('Erro de conexão'); }
-    setSaving(false);
-  };
-  const [form,      setForm]      = useState({ label:"", number:"", expiry:"", cvv:"", brand:"Visa", type:"credit" });
-  const phone = safeGetUser().email || safeGetUser().whatsapp || "";
-
-  useEffect(() => {
-    
-    fetch(`${API_BASE}/api/cartoes/${encodeURIComponent(phone)}`)
-      .then(r => r.json()).then(d => setCards(Array.isArray(d) ? d : [])).catch(() => {});
-  }, [phone]);
-
-  const handleSave = async () => {
-    const digits = form.number.replace(/\D/g, "");
-    
-    setSaving(true);
-    try {
-      const r = await fetch(`${API_BASE}/api/cartoes`, {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ phone, label:form.label, last4:digits.slice(-4), brand:form.brand, type:form.type }),
-      });
-      const d = await r.json();
-      if (d.id) {
-        setCards(prev => [...prev, d]);
-        setShowModal(false);
-        setForm({ label:"", number:"", brand:"Visa", type:"credit" });
-        showToast?.("✅ Cartão salvo com sucesso!");
-      }
-    } catch { showToast?.("❌ Erro ao salvar cartão", "#EF4444"); }
-    finally { setSaving(false); }
-  };
-
-  const handleDelete = async (id) => {
-    try {
-      await fetch(`${API_BASE}/api/cartoes/${id}`, { method:"DELETE" });
-      setCards(prev => prev.filter(c => c.id !== id));
-      showToast?.("🗑️ Cartão removido");
-    } catch {}
-  };
-
-  const brandBg = { Visa:"#1A1F71", Mastercard:"#EB001B", Elo:"#FFD200", Amex:"#016FD0" };
-  const brandColor = { Visa:"white", Mastercard:"white", Elo:"#1a1a2e", Amex:"white" };
-
-  return (
-    <>
-      <SectionLabelStandalone label="Cartões de Pagamento" />
-      <div style={{ background:"white" }}>
-        {cards.length === 0 && (
-          <p style={{ fontSize:12, color:"#bbb", textAlign:"center", padding:"16px 0", fontWeight:700 }}>
-            Nenhum cartão cadastrado
-          </p>
-        )}
-        {cards.map((card, i) => (
-          <div key={card.id} style={{ display:"flex", alignItems:"center", gap:13, padding:"13px 16px", borderBottom:"1px solid #F8F8F8", cursor:"pointer" }} onClick={() => setSelectedCard(card)}>
-            <div style={{ width:36, height:36, borderRadius:11, background: brandBg[card.brand] || "#E5E7EB", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-              <span style={{ fontSize:9, fontWeight:900, color: brandColor[card.brand] || "#1a1a2e" }}>{card.brand}</span>
-            </div>
-            <div style={{ flex:1 }}>
-              <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e", marginBottom:1 }}>{card.label} •••• {card.last4 || "••••"}</p>
-              <p style={{ fontSize:11, color:"#bbb" }}>{card.type === "credit" ? "Crédito" : "Débito"}{card.is_main ? " — Principal" : ""}</p>
-            </div>
-            <button onClick={() => handleDelete(card.id)} style={{ background:"none", border:"none", cursor:"pointer", padding:4 }}>
-              <X size={14} color="#DDD" />
-            </button>
-          </div>
-        ))}
-        <button onClick={() => setShowModal(true)} style={{ width:"100%", padding:"12px 0", border:"none", background:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:7, color:B, fontWeight:800, fontSize:13, cursor:"pointer" }}>
-          <Plus size={14} /> Adicionar cartão
-        </button>
-      </div>
-
-      {/* Modal */}
-      {selectedCard && (
-        <div onClick={() => setSelectedCard(null)} style={{ position:"fixed", inset:0, zIndex:600, background:"rgba(0,0,0,.5)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
-          <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:440, background:"white", borderRadius:"24px 24px 0 0", padding:"24px 20px 40px" }}>
-            <div style={{ width:40, height:4, background:"#E5E7EB", borderRadius:99, margin:"0 auto 20px" }} />
-            <h3 style={{ fontSize:17, fontWeight:900, color:"#1a1a2e", margin:"0 0 20px" }}>Detalhes do Cartão</h3>
-            <div style={{ background:"linear-gradient(135deg,#1a1a2e,#2d2d44)", borderRadius:16, padding:"20px", marginBottom:20 }}>
-              <p style={{ fontSize:12, color:"rgba(255,255,255,.5)", margin:"0 0 16px" }}>{selectedCard.bandeira || selectedCard.brand || "Cartão"} · {(selectedCard.tipo || selectedCard.type) === "credit" ? "Crédito" : "Débito"}</p>
-              <p style={{ fontSize:22, fontWeight:900, color:"white", letterSpacing:3, margin:"0 0 16px", fontFamily:"monospace" }}>•••• •••• •••• {selectedCard.last4 || selectedCard.numero?.slice(-4) || "••••"}</p>
-              <p style={{ fontSize:13, color:"rgba(255,255,255,.7)", margin:0 }}>{selectedCard.label || selectedCard.nome || ""}</p>
-            </div>
-            <button onClick={() => { handleDelete(selectedCard.id); setSelectedCard(null); }} style={{ width:"100%", padding:"13px 0", borderRadius:12, border:"1.5px solid #FECACA", background:"#FFF5F5", color:"#DC2626", fontWeight:800, fontSize:13, cursor:"pointer" }}>Remover Cartão</button>
-            <button onClick={() => setSelectedCard(null)} style={{ width:"100%", marginTop:10, padding:"13px 0", borderRadius:12, border:"1.5px solid #E5E7EB", background:"white", color:"#888", fontWeight:800, fontSize:13, cursor:"pointer" }}>Fechar</button>
-          </div>
-        </div>
-      )}
-      {showModal && (
-        <div onClick={() => setShowModal(false)} style={{ position:"fixed", inset:0, zIndex:600, background:"rgba(0,0,0,.5)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
-          <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:440, background:"white", borderRadius:"24px 24px 0 0", padding:"24px 20px 40px" }}>
-            <div style={{ width:40, height:4, background:"#E5E7EB", borderRadius:99, margin:"0 auto 20px" }} />
-            <h3 style={{ fontSize:17, fontWeight:900, color:"#1a1a2e", margin:"0 0 18px" }}>Novo Cartão</h3>
-            <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-              <input placeholder="Nome do cartão (ex: Meu Nubank)" autoComplete="off" value={form.label} onChange={e => setForm(f => ({...f, label:e.target.value}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
-              <input placeholder="Número do cartão" type="tel" maxLength={19} autoComplete="off" value={form.number} onChange={e => setForm(f => ({...f, number:e.target.value.replace(/(\d{4})/g,"$1 ").trim()}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", fontFamily:"monospace" }} />
-              <div style={{ display:"flex", gap:10 }}>
-                <input placeholder="Validade (MM/AA)" type="tel" maxLength={5} value={form.expiry||""} onChange={e => { let v=e.target.value.replace(/\D/g,""); if(v.length>2) v=v.slice(0,2)+"/"+v.slice(2,4); setForm(f=>({...f,expiry:v})); }} style={{ flex:1, padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
-                <input placeholder="CVV" type="tel" maxLength={4} value={form.cvv||""} onChange={e => setForm(f=>({...f,cvv:e.target.value.replace(/\D/g,"")}))} style={{ width:80, padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none" }} />
-              </div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                <select value={form.brand} onChange={e => setForm(f => ({...f, brand:e.target.value}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", background:"white" }}>
-                  {["Visa","Mastercard","Elo","Amex"].map(b => <option key={b}>{b}</option>)}
-                </select>
-                <select value={form.type} onChange={e => setForm(f => ({...f, type:e.target.value}))} style={{ padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:13, outline:"none", background:"white" }}>
-                  <option value="credit">Crédito</option>
-                  <option value="debit">Débito</option>
-                </select>
-              </div>
-              <button onClick={() => handleSave()} disabled={saving} style={{ padding:"14px 0", borderRadius:14, border:"none", background:`linear-gradient(135deg,${B},#0055d4)`, color:"white", fontWeight:900, fontSize:14, cursor:"pointer" }}>
-                {saving ? "Salvando..." : "Salvar Cartão"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
 /* ─────────────────────────────────────────────────────────────────────────── */
 function SOSScreen({ onBack }) {
   return (
@@ -5196,6 +5063,18 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
   }, [userEmail]);
   const [reputacao, setReputacao] = useState(null);
   useEffect(() => { fetchReputacao(userEmail).then(setReputacao); }, [userEmail]);
+  // "Serviços contratados" (card de estatísticas do cliente) — antes era um "12"
+  // fixo no JSX, sempre igual pra qualquer conta, inclusive recém-criada. Conta
+  // pedidos que tiveram um profissional de fato aceito (contratado), não só
+  // publicados — bate com o rótulo "contratados", diferente de "concluídos".
+  const [servicosContratados, setServicosContratados] = useState(0);
+  useEffect(() => {
+    if (role !== "client" || !userEmail) return;
+    supabase.from("pedidos").select("id", { count: "exact", head: true })
+      .eq("cliente_id", userEmail).not("profissional_aceito", "is", null)
+      .then(({ count }) => setServicosContratados(count || 0))
+      .catch(() => {});
+  }, [role, userEmail]);
   const [portfolioImgs, setPortfolioImgs] = useState([]);
   const [uploadingPortfolio, setUploadingPortfolio] = useState(false);
   const [bio, setBio] = useState("");
@@ -5599,12 +5478,16 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
             <div style={{ background:"white", borderRadius:20, padding:"14px 18px", boxShadow:"0 4px 20px rgba(0,0,0,.10)", border:"1px solid #F0F0F0", display:"flex", alignItems:"center", gap:14 }}>
               <div style={{ flex:1 }}>
                 <p style={{ fontSize:11, color:"#aaa", fontWeight:700, marginBottom:3 }}>Serviços contratados</p>
-                <p style={{ fontSize:22, fontWeight:900, color:"#1a1a2e" }}>12 <span style={{ fontSize:13, color:"#aaa", fontWeight:600 }}>no total</span></p>
+                <p style={{ fontSize:22, fontWeight:900, color:"#1a1a2e" }}>{servicosContratados} <span style={{ fontSize:13, color:"#aaa", fontWeight:600 }}>no total</span></p>
               </div>
               <div style={{ width:1, height:38, background:"#F0F0F0" }} />
               <div style={{ flex:1, textAlign:"right" }}>
                 <p style={{ fontSize:11, color:"#aaa", fontWeight:700, marginBottom:3 }}>Profissionais favoritos</p>
-                <p style={{ fontSize:22, fontWeight:900, color:O }}>3</p>
+                {/* Sem tabela de favoritos pra cliente comum ainda (só existe
+                    empresa_rede_favoritos, exclusiva de Empresa Plus) — fixo em
+                    0 até esse recurso existir de verdade, em vez de inventar
+                    dado. Ver lista abaixo, mesmo motivo. */}
+                <p style={{ fontSize:22, fontWeight:900, color:O }}>0</p>
               </div>
             </div>
           </div>
@@ -5612,31 +5495,13 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
           {/* Addresses — functional */}
           <AddressSection showToast={showToast} />
 
-          {/* Payment cards — functional */}
-          <CardSection showToast={showToast} />
-
-          {/* Favorites */}
+          {/* Favorites — sem recurso de favoritar profissional pra cliente
+              ainda; lista sempre vazia até isso existir (ver comentário acima). */}
           <SectionLabel label="Profissionais Favoritos" />
           <div style={{ background:"white" }}>
-            {[
-              { emoji:"👨‍🔧", name:"Carlos Encanador", cat:"Encanador", rating:4.9 },
-              { emoji:"👷",   name:"Pedro Mestre",     cat:"Pedreiro",  rating:4.8 },
-              { emoji:"🎨",   name:"Ana Pintora",      cat:"Pintora",   rating:5.0 },
-            ].map((fav, i) => (
-              <div key={i} style={{ display:"flex", alignItems:"center", gap:13, padding:"13px 16px", borderBottom:"1px solid #F8F8F8", cursor:"pointer" }} onClick={() => {}}>
-                <div style={{ width:40, height:40, borderRadius:12, background:"#E8F4FF", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>{fav.emoji}</div>
-                <div style={{ flex:1 }}>
-                  <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e", marginBottom:2 }}>{fav.name}</p>
-                  <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-                    <span style={{ fontSize:11, color:"#aaa" }}>{fav.cat}</span>
-                    <span style={{ color:"#E0E0E0" }}>•</span>
-                    <Star size={10} fill="#F9A825" stroke="none" />
-                    <span style={{ fontSize:11, fontWeight:700, color:"#888" }}>{fav.rating}</span>
-                  </div>
-                </div>
-                <button style={{ padding:"6px 12px", borderRadius:99, border:`1.5px solid ${B}`, background:"white", color:B, fontSize:11, fontWeight:800, cursor:"pointer" }}>Chamar</button>
-              </div>
-            ))}
+            <p style={{ fontSize:12, color:"#bbb", textAlign:"center", padding:"16px 0", fontWeight:700 }}>
+              Nenhum profissional favoritado ainda
+            </p>
           </div>
         </>
       )}
