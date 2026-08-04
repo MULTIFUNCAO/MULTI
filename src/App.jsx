@@ -8858,7 +8858,11 @@ export default function App() {
   })();
   // Auth: starts as guest, modal layers appear on demand
   const [isLoggedIn,    setIsLoggedIn]    = useState(!!savedSession);
-  const [authScreen,    setAuthScreen]   = useState("role-select");
+  // Se já existe sessão salva (localStorage), pula a tela de role-select —
+  // sem isso, qualquer reload de página (F5, window.location.reload()) mostra
+  // a landing de boas-vindas por cima do app mesmo com sessão válida, porque
+  // authScreen nunca era reconciliado com isLoggedIn/savedSession no mount.
+  const [authScreen,    setAuthScreen]   = useState(savedSession ? null : "role-select");
   const [signupRole,    setSignupRole]   = useState("client");
   // Detect password reset link from email
   useEffect(() => {
