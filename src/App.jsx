@@ -2676,7 +2676,16 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName, 
   // RegisterScreen "ambos" e VirarProfissionalScreen). Sem esse check, quem
   // já é profissional-e-cliente veria o convite pra virar profissional de
   // novo toda vez que abrisse no modo Cliente.
-  const [jaEhProfissional, setJaEhProfissional] = useState(true); // default true evita flash do banner enquanto carrega
+  // Default false (banner aparece otimista desde o primeiro render) — não
+  // "true" como antes: a maioria das contas ainda não é profissional, então
+  // esse default acerta na maioria dos casos e a altura da página não muda
+  // depois do fetch resolver. Com "true" como default, o banner nascia
+  // escondido e aparecia de repente alguns ms depois (assim que o fetch
+  // confirmava "ainda não é profissional"), empurrando a altura do
+  // documento bem no meio da transição inicial — achado ao vivo: por um
+  // frame, isso bagunçava a posição da bottom nav (sticky), fazendo o botão
+  // "Vire Profissional" desenhar por cima de "Meus Pedidos"/"Mensagens".
+  const [jaEhProfissional, setJaEhProfissional] = useState(false);
   useEffect(() => {
     if (!userEmail) { setJaEhProfissional(false); return; }
     supabase.from("usuarios").select("role").eq("email", userEmail).maybeSingle()
