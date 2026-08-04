@@ -5811,11 +5811,22 @@ function ChatInbox({ myServices, onOpenChat }) {
 
 
 // Versão do Termo de Isenção de Responsabilidade exigido antes da liberação de
-// contato (Fase 3). Texto ainda em revisão jurídica — placeholder por ora.
-// Quando o texto definitivo entrar, muda TERMO_VERSAO junto (ex: "v2") pra
-// rastrear quem aceitou qual versão em "aceites_termo".
-const TERMO_VERSAO = "v1-placeholder";
-const TERMO_TEXTO_PLACEHOLDER = "Termo de isenção de responsabilidade (texto a definir).";
+// contato (Fase 3). Se o texto mudar no futuro, muda TERMO_VERSAO junto
+// (ex: "v2") pra rastrear quem aceitou qual versão em "aceites_termo".
+const TERMO_VERSAO = "v1";
+const TERMO_TEXTO = `Ao confirmar este serviço, você declara estar ciente de que:
+
+• O Multi atua apenas como uma plataforma de conexão entre clientes e profissionais/empresas prestadoras de serviço, não fazendo parte da relação contratual entre as partes.
+
+• O valor, prazo e condições do serviço foram negociados diretamente entre você e o(a) profissional/empresa através do chat, sendo de responsabilidade exclusiva das partes o cumprimento do que foi combinado.
+
+• O Multi não realiza intermediação financeira: pagamentos são feitos diretamente entre cliente e profissional/empresa, fora da plataforma.
+
+• O Multi não se responsabiliza pela qualidade, execução, prazo ou eventuais danos decorrentes do serviço prestado, cabendo às partes resolverem diretamente qualquer divergência.
+
+• Em caso de problemas com o serviço, recomendamos buscar acordo direto com a outra parte. A avaliação pós-serviço ajuda a manter a qualidade da comunidade Multi.
+
+Ao marcar a caixa abaixo, você confirma que leu e concorda com este termo.`;
 
 // Mensagens rápidas (Fase 3) — um toque envia direto, sem digitar. Lista
 // separada por lado porque as situações típicas de cada um são diferentes
@@ -6481,7 +6492,7 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
         <div onClick={() => setShowTermoCompleto(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:70, padding:20 }}>
           <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:420, maxHeight:"70vh", overflowY:"auto", background:"white", borderRadius:16, padding:20 }}>
             <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:"0 0 12px" }}>Termo de Isenção de Responsabilidade</p>
-            <p style={{ fontSize:13, color:"#555", lineHeight:1.6, margin:0 }}>{TERMO_TEXTO_PLACEHOLDER}</p>
+            <p style={{ fontSize:13, color:"#555", lineHeight:1.6, margin:0, whiteSpace:"pre-line" }}>{TERMO_TEXTO}</p>
             <button onClick={() => setShowTermoCompleto(false)} style={{ marginTop:16, width:"100%", padding:"10px 0", borderRadius:10, border:"none", background:"#F0F2F5", color:"#333", fontWeight:800, fontSize:13, cursor:"pointer" }}>
               Fechar
             </button>
