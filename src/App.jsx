@@ -7,6 +7,13 @@ import ChatWidget from './ChatWidget';
 import { useState, useRef, useEffect } from "react";
 import { createClient } from '@supabase/supabase-js';
 const supabase=createClient('https://nlpfjkxqypveontunrxj.supabase.co','sb_publishable_xPCSGVYs-yI7TGS1F2EhFg_x7lMm30Q');
+// URL absoluta pras funções serverless de notificação (Vercel, pasta /api).
+// Antes eram fetch("/api/notify-...") relativos — funcionam hoje porque o
+// site sempre roda a partir de multifuncao.com.br, mas quebram dentro de um
+// wrapper nativo (Capacitor), onde a origem do WebView não é esse domínio
+// (ex.: capacitor://localhost) e um caminho relativo bate num endereço que
+// não existe. Preparação pro empacotamento nativo (Fase 1 do plano).
+const NOTIFY_API = "https://multifuncao.com.br/api";
 
 import AdminDashboard from "./AdminDashboard";
 import {
@@ -1685,7 +1692,7 @@ function NovaDemandaFuncionarioScreen({ userEmail, userName, onBack, showToast }
         material_fornecido: form.material,
       });
       if (error) throw error;
-      fetch("/api/notify-pedido", {
+      fetch(`${NOTIFY_API}/notify-pedido`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ categoria: form.cat, descricao: form.desc.trim(), publicoAlvo: "pro", cidade: cepInfo.cidade }),
       }).catch(() => {});
@@ -3098,7 +3105,7 @@ function PostServiceScreen({ onBack, onSuccess }) {
       </div>
 
         <button
-            onClick={() => { if (canPublish) { (async()=>{ const ts=Date.now(); const urls=await Promise.all((window._photos||[]).map(async(b64,i)=>{ const res=await fetch(b64); const blob=await res.blob(); const ext=blob.type.includes("png")?"png":"jpg"; const path="pedido_"+ts+"_"+i+"."+ext; const{error:ue}=await supabase.storage.from("pedidos-fotos").upload(path,blob,{contentType:blob.type,upsert:true,cacheControl:"31536000"}); if(ue){console.warn("upload:",ue);return null;} return supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl; })); const fotos=urls.filter(Boolean); const{data:novoPedido,error}=await supabase.from("pedidos").insert({cliente_id:safeGetUser().email||"anonimo",cliente_nome:safeGetUser().name||"Cliente",categoria:form.cat,descricao:form.desc,valor:Number(form.value),cep:form.cep,cidade:cepInfo.cidade||null,fotos,status:"aberto"}).select().single(); if(error){alert("Erro ao publicar serviço: "+(error.message||"")); return;} fetch("/api/notify-pedido",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({categoria:form.cat,descricao:form.desc})}).catch(()=>{}); (async()=>{ const clienteEmail=safeGetUser().email; if(!clienteEmail) return; const playerId=await getOneSignalPlayerId(); if(playerId){ supabase.from("usuarios").update({onesignal_player_id:playerId}).eq("email",clienteEmail).then(()=>{}); } })(); onSuccess({...mapPedidoRow(novoPedido), cepInfo, material:form.material}); })(); }}}
+            onClick={() => { if (canPublish) { (async()=>{ const ts=Date.now(); const urls=await Promise.all((window._photos||[]).map(async(b64,i)=>{ const res=await fetch(b64); const blob=await res.blob(); const ext=blob.type.includes("png")?"png":"jpg"; const path="pedido_"+ts+"_"+i+"."+ext; const{error:ue}=await supabase.storage.from("pedidos-fotos").upload(path,blob,{contentType:blob.type,upsert:true,cacheControl:"31536000"}); if(ue){console.warn("upload:",ue);return null;} return supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl; })); const fotos=urls.filter(Boolean); const{data:novoPedido,error}=await supabase.from("pedidos").insert({cliente_id:safeGetUser().email||"anonimo",cliente_nome:safeGetUser().name||"Cliente",categoria:form.cat,descricao:form.desc,valor:Number(form.value),cep:form.cep,cidade:cepInfo.cidade||null,fotos,status:"aberto"}).select().single(); if(error){alert("Erro ao publicar serviço: "+(error.message||"")); return;} fetch(`${NOTIFY_API}/notify-pedido`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({categoria:form.cat,descricao:form.desc})}).catch(()=>{}); (async()=>{ const clienteEmail=safeGetUser().email; if(!clienteEmail) return; const playerId=await getOneSignalPlayerId(); if(playerId){ supabase.from("usuarios").update({onesignal_player_id:playerId}).eq("email",clienteEmail).then(()=>{}); } })(); onSuccess({...mapPedidoRow(novoPedido), cepInfo, material:form.material}); })(); }}}
             style={{ padding:"15px 0", borderRadius:14, border:"none", cursor: canPublish ? "pointer" : "not-allowed", background: canPublish ? `linear-gradient(135deg,${O},#E64A19)` : "#9CA3AF", color: canPublish ? "white" : "#4B5563", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow: canPublish ? "0 5px 18px rgba(255,87,34,.30)" : "none", transition:"all .2s" }}>
             <Send size={15} /> Publicar Serviço
           </button>
@@ -6049,7 +6056,7 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
     const agora = Date.now();
     if (agora - lastChatNotifRef.current < 30000) return;
     lastChatNotifRef.current = agora;
-    fetch("/api/notify-chat", {
+    fetch(`${NOTIFY_API}/notify-chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: destinatario, heading: titulo, content: mensagem }),
@@ -9348,7 +9355,7 @@ export default function App() {
         supabase.from("propostas").update({ status: "recusada" }).in("id", outras.map(p => p.id)).then(()=>{});
         const emails = outras.map(p => p.profissional_email || p.profissional_id).filter(Boolean);
         if (emails.length) {
-          fetch("/api/notify-recusado", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ emails }) }).catch(()=>{});
+          fetch(`${NOTIFY_API}/notify-recusado`, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ emails }) }).catch(()=>{});
         }
       })
       .catch(()=>{});
@@ -9367,7 +9374,7 @@ export default function App() {
     // Avisa o profissional vencedor que a proposta dele foi aceita — antes
     // só os recusados recebiam push (notificarCandidatosRecusados), o
     // vencedor não tinha nenhum sinal e só descobria abrindo o app.
-    fetch("/api/notify-aceito", {
+    fetch(`${NOTIFY_API}/notify-aceito`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: proposta.profissional_id, servico: pedidoTitlesById[proposta.pedido_id] }),
@@ -9407,7 +9414,7 @@ export default function App() {
     notificarCandidatosRecusados(proposta.pedido_id, proposta.id);
     // Avisa o profissional vencedor que a proposta dele foi aceita (mesmo
     // motivo do handleAceitarProposta acima).
-    fetch("/api/notify-aceito", {
+    fetch(`${NOTIFY_API}/notify-aceito`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: proposta.profissional_id, servico: pedidoTitlesById[proposta.pedido_id] }),
