@@ -51,6 +51,11 @@ const O  = "#FF5722";
 const BG = "#F5F6FA";
 const G  = "#22c55e";
 
+// Valor mínimo fixo pra publicar um pedido (PostServiceScreen, "Publicar
+// Serviço") — impede pedido de R$0 ou valores irrisórios. Só um mínimo geral
+// por enquanto, sem diferenciar por categoria.
+const VALOR_MINIMO_PEDIDO = 20;
+
 /* ─────────────────────────────────────────────────────────────────────────────
    EMAIL CONFIG — SendGrid
    ⚠️  NUNCA coloque a chave real aqui. Configure no backend:
@@ -2974,7 +2979,12 @@ function PostServiceScreen({ onBack, onSuccess }) {
   const F = { background:"white", border:"1.5px solid #EBEBEB", borderRadius:12, padding:"13px 14px", fontSize:13, color:"#1a1a2e", outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit" };
   const L = { display:"block", fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.2, marginBottom:6 };
 
-  const canPublish = form.cat && form.desc && form.value && cepInfo && cepInfo.cidade;
+  // Valor mínimo fixo (R$20) — antes só checava form.value truthy, então
+  // "0" (string não-vazia) passava como válido e publicava pedido de R$0.
+  const valorNum = Number(form.value);
+  const valorPreenchido = form.value !== "" && !Number.isNaN(valorNum);
+  const valorAbaixoMinimo = valorPreenchido && valorNum < VALOR_MINIMO_PEDIDO;
+  const canPublish = form.cat && form.desc && valorPreenchido && valorNum >= VALOR_MINIMO_PEDIDO && cepInfo && cepInfo.cidade;
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:18, padding:"18px 16px 40px" }}>
@@ -3146,8 +3156,13 @@ function PostServiceScreen({ onBack, onSuccess }) {
         <label style={{fontSize:12,color:"#666",display:"block"}}>Valor que posso pagar</label>
         <div style={{ position:"relative" }}>
           <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", fontWeight:800, color:"#999", fontSize:13 }}>R$</span>
-          <input type="number" placeholder="0,00" style={{ ...F, paddingLeft:38 }} value={form.value} onChange={e => setForm({ ...form, value:e.target.value })} />
+          <input type="number" placeholder="0,00" style={{ ...F, paddingLeft:38, ...(valorAbaixoMinimo ? { border:"1.5px solid #EF4444" } : {}) }} value={form.value} onChange={e => setForm({ ...form, value:e.target.value })} />
         </div>
+        {valorAbaixoMinimo && (
+          <p style={{ fontSize:11.5, color:"#EF4444", fontWeight:700, margin:"6px 0 0" }}>
+            ⚠️ Valor mínimo pra publicar um pedido é R$ {VALOR_MINIMO_PEDIDO},00
+          </p>
+        )}
       </div>
 
         <button
