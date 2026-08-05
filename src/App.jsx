@@ -2812,9 +2812,10 @@ function ClientHome({ onPost, onViewService, onSwitchPro, onGoEmpresa, myService
           Cliente/Profissional (que é só o toggle de 2 estados no header).
           Borda tracejada + ícone de maleta/prédio marca visualmente que é
           uma conta mais robusta (Multi Empresa), não mais uma aba do mesmo
-          perfil. Clicar leva pra role-select como etapa de contexto antes
-          do cadastro de empresa (mesmo fluxo de "Quero crescer minha
-          empresa" que já existia). */}
+          perfil. Clicar leva direto pra PlanosEmpresaInfoScreen — página só
+          de planos empresariais, sem misturar com role-select (cliente/
+          profissional) — item 11 do prompt Ajustes de Cadastro/Perfil/
+          Fluxos. */}
       {onGoEmpresa && (
         <button onClick={onGoEmpresa} style={{
           margin:"14px 20px 0", padding:"16px 18px", borderRadius:22,
@@ -2829,7 +2830,7 @@ function ClientHome({ onPost, onViewService, onSwitchPro, onGoEmpresa, myService
             <p style={{ fontSize:11.5, color:"#9CA3AF", margin:0 }}>Publique demandas e amplie sua operação</p>
           </div>
           <span style={{ fontSize:12.5, fontWeight:900, color:"#1a1a2e", flexShrink:0, display:"flex", alignItems:"center", gap:3 }}>
-            Ver plano <ChevronRight size={13} />
+            Ver planos <ChevronRight size={13} />
           </span>
         </button>
       )}
@@ -4092,6 +4093,97 @@ const PLANOS_EMPRESA = [
   { id:"empresa",      icon:Briefcase, label:"Multi Empresa",      price:"149,90", beneficios:["Captar clientes"] },
   { id:"empresa_plus", icon:Crown,     label:"Multi Empresa Pro",  price:"299,90", beneficios:["Captar clientes","Banco de profissionais (busca/filtro)","Criar demandas de mão de obra","Dashboard"] },
 ];
+
+/* ───────────────────────── PLANOS PARA EMPRESAS (info) ────────────────────────
+   Página dedicada, sem misturar com os fluxos de "Preciso de um serviço"/
+   "Quero trabalhar" — item 11 do prompt Ajustes de Cadastro/Perfil/Fluxos.
+   Fluxo: Home → "Tem uma empresa?" → aqui → "Quero Assinar" → cadastro de
+   empresa (que já tem a escolha de plano de verdade, EscolherPlanoScreen). */
+function PlanosEmpresaInfoScreen({ onBack, onAssinar }) {
+  const COMO_FUNCIONA = [
+    { icon: "📢", title: "Publique demandas", desc: "Descreva o que precisa e receba interesse de profissionais qualificados." },
+    { icon: "🔍", title: "Encontre profissionais", desc: "Busque e filtre no banco de profissionais por categoria e região." },
+    { icon: "📊", title: "Acompanhe tudo", desc: "Gerencie demandas, propostas e histórico em um painel só." },
+  ];
+  const RECURSOS_COMPARACAO = [
+    { label: "Captar clientes pela plataforma", basica: true,  pro: true },
+    { label: "Publicar demandas de mão de obra", basica: true,  pro: true },
+    { label: "Banco de profissionais (busca e filtro)", basica: false, pro: true },
+    { label: "Dashboard com indicadores", basica: false, pro: true },
+    { label: "Demandas simultâneas", basica: "Até 3", pro: "Ilimitadas" },
+  ];
+  return (
+    <div style={{ minHeight:"100vh", background:"#F8F9FA", paddingBottom:48 }}>
+      <div style={{ background:`linear-gradient(160deg,#1a1a2e 0%,#0A2A6B 100%)`, padding:"18px 20px 32px", borderRadius:"0 0 32px 32px" }}>
+        {onBack && (
+          <button onClick={onBack} style={{ background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:36, height:36, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:18 }}>
+            <ArrowLeft size={18} color="white" />
+          </button>
+        )}
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
+          <Briefcase size={26} color="white" />
+          <h2 style={{ fontSize:22, fontWeight:900, color:"white", margin:0 }}>Multi Empresas</h2>
+        </div>
+        <p style={{ fontSize:13.5, color:"rgba(255,255,255,.75)", margin:0, lineHeight:1.6, maxWidth:340 }}>
+          Capte clientes, encontre mão de obra qualificada e amplie a operação da sua empresa — tudo em um só lugar.
+        </p>
+      </div>
+
+      {/* COMO FUNCIONA */}
+      <div style={{ padding:"22px 20px 0" }}>
+        <h3 style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:"0 0 14px" }}>Como funciona</h3>
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+          {COMO_FUNCIONA.map((s, i) => (
+            <div key={i} style={{ background:"white", borderRadius:16, padding:14, display:"flex", gap:12, alignItems:"flex-start", boxShadow:"0 2px 10px rgba(0,0,0,.05)" }}>
+              <span style={{ fontSize:24, flexShrink:0 }}>{s.icon}</span>
+              <div>
+                <p style={{ margin:"0 0 2px", fontSize:13.5, fontWeight:800, color:"#1a1a2e" }}>{s.title}</p>
+                <p style={{ margin:0, fontSize:12, color:"#888", lineHeight:1.5 }}>{s.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* PLANOS E VALORES */}
+      <div style={{ padding:"26px 20px 0" }}>
+        <h3 style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:"0 0 14px" }}>Planos e valores</h3>
+        <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+          {PLANOS_EMPRESA.map(p => {
+            const isPro = p.id === "empresa_plus";
+            return (
+              <div key={p.id} style={{ background: isPro ? "linear-gradient(180deg,#FFF4EC,#FFE2CF)" : "white", borderRadius:20, padding:"20px 18px", border: isPro ? "none" : "1.5px solid #ECEDF5" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+                  <p style={{ margin:0, fontWeight:900, fontSize:16, color:"#14152A" }}>{p.label}</p>
+                  <p style={{ margin:0, fontWeight:900, fontSize:20, color:"#14152A" }}>R$ {p.price}<span style={{ fontSize:11, fontWeight:700, color:"#8A8DAE" }}>/mês</span></p>
+                </div>
+                <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:16 }}>
+                  {RECURSOS_COMPARACAO.map((r, i) => {
+                    const val = isPro ? r.pro : r.basica;
+                    return (
+                      <div key={i} style={{ display:"flex", alignItems:"center", gap:8 }}>
+                        {val === false
+                          ? <X size={14} color="#D1D5DB" style={{ flexShrink:0 }} />
+                          : <Check size={14} color={G} style={{ flexShrink:0 }} />}
+                        <span style={{ fontSize:12.5, color: val === false ? "#B0B4C0" : "#42436A" }}>
+                          {r.label}{typeof val === "string" ? ` — ${val}` : ""}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <button onClick={onAssinar} style={{ width:"100%", padding:"14px 0", borderRadius:14, border:"none", fontWeight:900, fontSize:13, textTransform:"uppercase", letterSpacing:.3, color:"white", cursor:"pointer", background: isPro ? `linear-gradient(135deg,${O},#E8280A)` : `linear-gradient(135deg,${B},#22348F)` }}>
+                  Quero Assinar
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        <p style={{ fontSize:11, color:"#9CA3AF", textAlign:"center", margin:"16px 0 0" }}>Cobrança recorrente mensal via cartão. Cancele quando quiser.</p>
+      </div>
+    </div>
+  );
+}
 
 function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, onDone, showToast }) {
   const isEmpresa = titularTipo === "empresa";
@@ -10213,7 +10305,7 @@ const renderContent = () => {
               if (!isLoggedIn) { setAuthScreen("role-select"); return; }
               requireAuth("virar-profissional", () => setScreen("virar-profissional"));
             }}
-            onGoEmpresa={() => setAuthScreen("role-select")}
+            onGoEmpresa={() => setAuthScreen("planos-empresa")}
             myServices={isLoggedIn ? meusPedidosComCandidatos : []}
             userName={userName}
             userEmail={userEmail}
@@ -10277,7 +10369,7 @@ const renderContent = () => {
             onPost={() => requireAuth("post", () => setScreen("post"))}
             onViewService={s => s ? requireAuth("service", () => abrirDetalheServico(s)) : requireAuth("orders", () => setScreen("orders"))}
             onSwitchPro={() => {}}
-            onGoEmpresa={() => setAuthScreen("role-select")}
+            onGoEmpresa={() => setAuthScreen("planos-empresa")}
             myServices={isLoggedIn ? meusPedidosComCandidatos : []}
             userName={userName}
             userEmail={userEmail}
@@ -10390,6 +10482,11 @@ const renderContent = () => {
   if (authScreen === "cadastro-empresa") {
     return wrapper(
       <CadastroEmpresaScreen onBack={() => setAuthScreen("role-select")} showToast={showToast} />
+    );
+  }
+  if (authScreen === "planos-empresa") {
+    return wrapper(
+      <PlanosEmpresaInfoScreen onBack={() => setAuthScreen(null)} onAssinar={() => setAuthScreen("cadastro-empresa")} />
     );
   }
   if (authScreen === "reset-password") {
