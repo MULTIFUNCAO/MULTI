@@ -5375,10 +5375,14 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
   // esse campo, então quem errou ou pulou o cadastro ficava sem contato
   // liberável pra sempre.
   const [autonomiaAceitaEm, setAutonomiaAceitaEm] = useState(null);
+  // Cidade — antes só existia como cache de localStorage (multiLocation),
+  // nunca editável no perfil (item 10 do prompt Ajustes de Cadastro/Perfil/
+  // Fluxos). Fonte de verdade agora é usuarios.city.
+  const [cidade, setCidade] = useState("");
   useEffect(() => {
     if (!userEmail) return;
-    supabase.from("usuarios").select("foto_perfil_url,whatsapp,autonomia_aceita_em").eq("email", userEmail).maybeSingle()
-      .then(({ data }) => { setAvatarUrl(data?.foto_perfil_url || null); setWhatsapp(data?.whatsapp || ""); setAutonomiaAceitaEm(data?.autonomia_aceita_em || null); })
+    supabase.from("usuarios").select("foto_perfil_url,whatsapp,autonomia_aceita_em,city").eq("email", userEmail).maybeSingle()
+      .then(({ data }) => { setAvatarUrl(data?.foto_perfil_url || null); setWhatsapp(data?.whatsapp || ""); setAutonomiaAceitaEm(data?.autonomia_aceita_em || null); setCidade(data?.city || ""); })
       .catch(() => {});
   }, [userEmail]);
   const [reputacao, setReputacao] = useState(null);
@@ -5573,7 +5577,7 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
               // salvar, relê do banco em vez de confiar no state local, pra
               // garantir que o que aparece na tela é o que está realmente
               // persistido (evita o mesmo bug voltar de outro jeito).
-              const updates = { whatsapp: whatsapp || null };
+              const updates = { whatsapp: whatsapp || null, city: cidade.trim() || null };
               if (name.trim()) updates.name = name.trim();
               const { error } = await supabase.from("usuarios").update(updates).eq("email", userEmail);
               if (error) {
@@ -5581,12 +5585,17 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
                 showToast("❌ Erro ao salvar perfil: " + (error.message || ""), "#DC2626");
                 return;
               }
-              const { data } = await supabase.from("usuarios").select("name,whatsapp,foto_perfil_url").eq("email", userEmail).maybeSingle();
+              const { data } = await supabase.from("usuarios").select("name,whatsapp,foto_perfil_url,city").eq("email", userEmail).maybeSingle();
               setSavingPerfil(false);
               if (data) {
                 setName(data.name || "");
                 setWhatsapp(data.whatsapp || "");
                 setAvatarUrl(data.foto_perfil_url || null);
+                setCidade(data.city || "");
+                // multiLocation é a fonte que o resto do app lê pra mostrar
+                // "sua região" (mural, header) — sem isso, editar a cidade
+                // aqui não refletia em lugar nenhum fora do próprio perfil.
+                if (data.city) localStorage.setItem("multiLocation", data.city);
               }
               showToast("✅ Perfil salvo!");
             }
@@ -5627,7 +5636,12 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
 
           <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:8 }}>
             <MapPin size={12} color="rgba(255,255,255,.65)" />
-                <span style={{ fontSize:12, color:"rgba(255,255,255,.65)", fontWeight:600 }}>{localStorage.getItem("multiLocation") || "Sua localização"}</span>
+            {editMode ? (
+              <input value={cidade} onChange={e => setCidade(e.target.value)} placeholder="Sua cidade"
+                style={{ fontSize:12, fontWeight:700, color:"white", background:"rgba(255,255,255,.15)", border:"1.5px solid rgba(255,255,255,.4)", borderRadius:8, padding:"3px 10px", outline:"none", fontFamily:"inherit" }} />
+            ) : (
+              <span style={{ fontSize:12, color:"rgba(255,255,255,.65)", fontWeight:600 }}>{cidade || localStorage.getItem("multiLocation") || "Sua localização"}</span>
+            )}
           </div>
 
           {/* WhatsApp — sem isso, a liberação de contato no chat (Fase 2)
