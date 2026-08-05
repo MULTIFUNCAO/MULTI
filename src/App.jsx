@@ -359,6 +359,11 @@ function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua
         : `linear-gradient(180deg,${B} 0%,#0057d4 100%)`,
       boxShadow:"0 4px 20px rgba(0,0,0,.28)",
       borderRadius:"0 0 20px 20px",
+      // notch/Dynamic Island: o fundo colorido cobre até a borda de verdade,
+      // e esse padding empurra o conteúdo (linha "Sua Localização") pra baixo
+      // dele. env() só existe com viewport-fit=cover no <meta viewport> — em
+      // navegador normal isso resolve pra 0px, sem efeito nenhum.
+      paddingTop:"env(safe-area-inset-top)",
     }}>
       {/* row 1: location + bells + avatar */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 18px 6px" }}>
@@ -453,7 +458,7 @@ function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua
 
 function GuestHeader({ onToggleRole, activeRole = "client" }) {
   return (
-    <div style={{ position:"sticky", top:0, zIndex:50, background:`linear-gradient(180deg,${B} 0%,#0057d4 100%)`, boxShadow:"0 4px 20px rgba(0,112,255,.28)", borderRadius:"0 0 20px 20px" }}>
+    <div style={{ position:"sticky", top:0, zIndex:50, background:`linear-gradient(180deg,${B} 0%,#0057d4 100%)`, boxShadow:"0 4px 20px rgba(0,112,255,.28)", borderRadius:"0 0 20px 20px", paddingTop:"env(safe-area-inset-top)" }}>
       {/* row 1 */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 18px 6px" }}>
         <div style={{ display:"flex", alignItems:"center", gap:6 }}>
@@ -9828,11 +9833,13 @@ const renderContent = () => {
             userName={userName}
             userEmail={userEmail}
           />
-          {/* FAB */}
+          {/* FAB — bottom soma env(safe-area-inset-bottom) pra continuar
+              flutuando acima do bottom nav depois que ele ficou mais alto
+              (ver padding do bottom nav) em vez de ficar por baixo dele. */}
           <button
             onClick={() => requireAuth("post", () => setScreen("post"))}
             style={{
-              position:"fixed", bottom:80, right:20, zIndex:100,
+              position:"fixed", bottom:"calc(80px + env(safe-area-inset-bottom))", right:20, zIndex:100,
               display:"flex", alignItems:"center", gap:8,
               padding:"14px 20px", borderRadius:99, border:"none", cursor:"pointer",
               background:`linear-gradient(135deg,${O},#E64A19)`,
@@ -9890,7 +9897,7 @@ const renderContent = () => {
             userName={userName}
             userEmail={userEmail}
           />
-          <button onClick={() => requireAuth("post", () => setScreen("post"))} style={{ position:"fixed", bottom:80, right:20, zIndex:100, display:"flex", alignItems:"center", gap:8, padding:"14px 20px", borderRadius:99, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${O},#E64A19)`, color:"white", fontWeight:900, fontSize:14, boxShadow:"0 6px 24px rgba(255,87,34,.5)" }}>
+          <button onClick={() => requireAuth("post", () => setScreen("post"))} style={{ position:"fixed", bottom:"calc(80px + env(safe-area-inset-bottom))", right:20, zIndex:100, display:"flex", alignItems:"center", gap:8, padding:"14px 20px", borderRadius:99, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${O},#E64A19)`, color:"white", fontWeight:900, fontSize:14, boxShadow:"0 6px 24px rgba(255,87,34,.5)" }}>
             <Plus size={18} /> Novo Pedido
           </button>
         </div>
@@ -10029,8 +10036,11 @@ const renderContent = () => {
         {renderContent()}
       </div>
 
-      {/* Bottom nav — tabs driven by authenticated role, not the browse toggle */}
-      <div style={{ position:"sticky", bottom:0, background:"white", borderTop:"1px solid #EBEBEB", boxShadow:"0 -3px 16px rgba(0,0,0,.06)", display:"flex", alignItems:"center", justifyContent:"space-around", padding:"8px 0 10px" }}>
+      {/* Bottom nav — tabs driven by authenticated role, not the browse toggle.
+          padding bottom soma env(safe-area-inset-bottom) pra não deixar os
+          botões colados/cobertos pela barra de gestos ou home indicator em
+          iPhones sem botão físico — mesma lógica do paddingTop dos headers. */}
+      <div style={{ position:"sticky", bottom:0, background:"white", borderTop:"1px solid #EBEBEB", boxShadow:"0 -3px 16px rgba(0,0,0,.06)", display:"flex", alignItems:"center", justifyContent:"space-around", padding:"8px 0 10px", paddingBottom:"calc(10px + env(safe-area-inset-bottom))" }}>
         {(isLoggedIn && userRole === "professional"
           // ── Professional tabs (no FAB, no + Novo Pedido) ──
           ? [
