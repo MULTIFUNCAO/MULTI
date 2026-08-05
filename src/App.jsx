@@ -8752,6 +8752,24 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
         </div>
       )}
 
+      {/* ── PENDÊNCIAS DE DOCUMENTAÇÃO — visível direto no mural, sem
+          precisar clicar em "Tenho Interesse" pra descobrir que falta algo
+          (item 13 do prompt: reforçar status/pendências em todas as telas
+          relevantes). Some sozinho quando tudo está verificado. */}
+      {!allDocsVerified && (() => {
+        const pendentes = ["rg","crim","address"].filter(id => docStatus?.[id] !== "verified").length;
+        return (
+          <div onClick={onGoToDocs} style={{ margin:"14px 16px 0", borderRadius:16, padding:"13px 16px", background:"#FFFBEB", border:"1.5px solid #FDE68A", display:"flex", alignItems:"center", gap:12, cursor:"pointer" }}>
+            <span style={{ fontSize:20, flexShrink:0 }}>⚠️</span>
+            <div style={{ flex:1 }}>
+              <p style={{ fontSize:13, fontWeight:900, color:"#92400E", margin:0 }}>{pendentes} documento{pendentes > 1 ? "s" : ""} pendente{pendentes > 1 ? "s" : ""}</p>
+              <p style={{ fontSize:11, color:"#B45309", margin:0 }}>Complete pra liberar contato dos clientes que aceitarem sua proposta.</p>
+            </div>
+            <ChevronRight size={18} color="#B45309" />
+          </div>
+        );
+      })()}
+
       {/* ── FILTERS ── */}
       <div style={{ padding:"20px 16px 0" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
