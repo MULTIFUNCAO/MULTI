@@ -2666,7 +2666,7 @@ const HOME_CATS = [
   { id:"estofados",    label:"Higien. Estofados",  emoji:"🛋️", star:"4.8", bg:"#F3E5F5", accent:"#6A1B9A", grad:"linear-gradient(135deg,#880E4F,#C2185B)", desc:"Sofás e colchões"    },
 ];
 
-function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName, userEmail }) {
+function ClientHome({ onPost, onViewService, onSwitchPro, onGoEmpresa, myServices, userName, userEmail }) {
   const greeting     = userName ? `Olá, ${userName}! 👋` : "Olá! Seja bem-vindo 👋";
   const subgreeting  = userName ? "O que vamos resolver hoje?" : "Vamos resolver algo hoje?";
 
@@ -2748,6 +2748,32 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName, 
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── TEM UMA EMPRESA? — caminho de conta separado, não um "modo" como
+          Cliente/Profissional (que é só o toggle de 2 estados no header).
+          Borda tracejada + ícone de maleta/prédio marca visualmente que é
+          uma conta mais robusta (Multi Empresa), não mais uma aba do mesmo
+          perfil. Clicar leva pra role-select como etapa de contexto antes
+          do cadastro de empresa (mesmo fluxo de "Quero crescer minha
+          empresa" que já existia). */}
+      {onGoEmpresa && (
+        <button onClick={onGoEmpresa} style={{
+          margin:"14px 20px 0", padding:"16px 18px", borderRadius:22,
+          border:"1.5px dashed #C7CCD6", background:"white", cursor:"pointer",
+          display:"flex", alignItems:"center", gap:14, width:"calc(100% - 40px)", textAlign:"left",
+        }}>
+          <span style={{ width:44, height:44, borderRadius:14, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:"#1a1a2e14", color:"#1a1a2e" }}>
+            <Briefcase size={20} />
+          </span>
+          <div style={{ flex:1, minWidth:0 }}>
+            <p style={{ fontSize:13.5, fontWeight:900, color:"#1a1a2e", margin:"0 0 2px" }}>Tem uma empresa?</p>
+            <p style={{ fontSize:11.5, color:"#9CA3AF", margin:0 }}>Publique demandas e amplie sua operação</p>
+          </div>
+          <span style={{ fontSize:12.5, fontWeight:900, color:"#1a1a2e", flexShrink:0, display:"flex", alignItems:"center", gap:3 }}>
+            Ver plano <ChevronRight size={13} />
+          </span>
+        </button>
       )}
 
       {/* ── CATEGORIES SECTION ── */}
@@ -6696,7 +6722,7 @@ const ROLE_OPTIONS = [
   },
 ];
 
-function RoleSelectScreen({ onSelect, onLogin }) {
+function RoleSelectScreen({ onSelect, onLogin, onBack }) {
   return (
     <div style={{ minHeight:"100vh", background:"#F8F9FA" }}>
       <div style={{
@@ -6705,6 +6731,13 @@ function RoleSelectScreen({ onSelect, onLogin }) {
       }}>
         <div style={{ position:"absolute", top:-50, right:-50, width:220, height:220, borderRadius:"50%", background:"rgba(255,255,255,.06)" }} />
         <div style={{ position:"absolute", top:"40%", left:-60, width:170, height:170, borderRadius:"50%", background:"rgba(255,255,255,.045)" }} />
+        {/* Agora é uma etapa de contexto disparada de dentro da Home (não mais
+            o gate de entrada do app), então precisa de como voltar sem cadastrar. */}
+        {onBack && (
+          <button onClick={onBack} style={{ position:"absolute", top:18, left:18, zIndex:2, background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:34, height:34, display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <ArrowLeft size={16} color="white" />
+          </button>
+        )}
 
         <div style={{ display:"flex", alignItems:"center", gap:9, margin:"6px 0 30px", position:"relative", zIndex:1 }}>
           <div style={{ width:32, height:32, borderRadius:10, background:"white", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900, fontSize:15, color:B, flexShrink:0 }}>M</div>
@@ -8921,11 +8954,15 @@ export default function App() {
   })();
   // Auth: starts as guest, modal layers appear on demand
   const [isLoggedIn,    setIsLoggedIn]    = useState(!!savedSession);
-  // Se já existe sessão salva (localStorage), pula a tela de role-select —
-  // sem isso, qualquer reload de página (F5, window.location.reload()) mostra
-  // a landing de boas-vindas por cima do app mesmo com sessão válida, porque
-  // authScreen nunca era reconciliado com isLoggedIn/savedSession no mount.
-  const [authScreen,    setAuthScreen]   = useState(savedSession ? null : "role-select");
+  // Home é a tela inicial pra todo mundo agora, logado ou não — a
+  // role-select ("Você está aqui para contratar, trabalhar ou fazer sua
+  // empresa crescer?") deixou de ser o gate de entrada do app e virou uma
+  // etapa de contexto disparada de dentro da Home (banner "Vire
+  // Profissional" e bloco "Empresa"), então authScreen começa sempre null.
+  // Mantém também o motivo original de nunca mostrar a landing por cima de
+  // uma sessão válida num reload: authScreen nunca era reconciliado com
+  // isLoggedIn/savedSession no mount, e agora nem precisa ser.
+  const [authScreen,    setAuthScreen]   = useState(null);
   const [signupRole,    setSignupRole]   = useState("client");
   // Detect password reset link from email
   useEffect(() => {
@@ -9770,7 +9807,16 @@ const renderContent = () => {
               ? requireAuth("service", () => abrirDetalheServico(s))
               : requireAuth("orders", () => setScreen("orders"))
             }
-            onSwitchPro={() => requireAuth("virar-profissional", () => setScreen("virar-profissional"))}
+            onSwitchPro={() => {
+              // Convidado sem conta: a role-select entra como etapa de
+              // contexto antes do cadastro (o próprio RegisterScreen com
+              // signupRole="professional" já É virar profissional pra quem
+              // nunca teve conta — não precisa passar pelo pendingIntent/fn
+              // do requireAuth pra "resumir" a tela virar-profissional).
+              if (!isLoggedIn) { setAuthScreen("role-select"); return; }
+              requireAuth("virar-profissional", () => setScreen("virar-profissional"));
+            }}
+            onGoEmpresa={() => setAuthScreen("role-select")}
             myServices={isLoggedIn ? meusPedidosComCandidatos : []}
             userName={userName}
             userEmail={userEmail}
@@ -9832,6 +9878,7 @@ const renderContent = () => {
             onPost={() => requireAuth("post", () => setScreen("post"))}
             onViewService={s => s ? requireAuth("service", () => abrirDetalheServico(s)) : requireAuth("orders", () => setScreen("orders"))}
             onSwitchPro={() => {}}
+            onGoEmpresa={() => setAuthScreen("role-select")}
             myServices={isLoggedIn ? meusPedidosComCandidatos : []}
             userName={userName}
             userEmail={userEmail}
@@ -9910,6 +9957,7 @@ const renderContent = () => {
   if (authScreen === "role-select") {
     return wrapper(
       <RoleSelectScreen
+        onBack={() => setAuthScreen(null)}
         onLogin={() => setAuthScreen("login")}
         onSelect={(roleId) => {
           if (roleId === "cliente") { setAuthScreen("welcome"); return; }
@@ -9924,7 +9972,11 @@ const renderContent = () => {
     return wrapper(
       <WelcomeScreen
         onEmail={() => setAuthScreen("login")}
-        onBack={() => { setAuthScreen("role-select"); setPendingIntent(null); }}
+        // Home é o passo anterior de verdade na maioria dos casos agora
+        // (requireAuth cai direto aqui pra qualquer ação de convidado — post,
+        // ver serviço, "Vire Profissional" pra quem já tem conta, etc.), não
+        // mais a role-select. Voltar fecha a etapa de auth e devolve a Home.
+        onBack={() => { setAuthScreen(null); setPendingIntent(null); }}
         onEmpresa={() => setAuthScreen("cadastro-empresa")}
       />
     );
