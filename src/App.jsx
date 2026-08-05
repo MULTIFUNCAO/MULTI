@@ -4564,9 +4564,22 @@ function WalletScreen({ onBack, pedidos }) {
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 /* ── Autonomy term card for professional profile ── */
-function AutonomyTermCard({ showToast }) {
-  const [accepted,   setAccepted]   = useState(true); // pre-accepted at registration
+function AutonomyTermCard({ showToast, userEmail, aceitaEm, onAceito }) {
   const [showTerms,  setShowTerms]  = useState(false);
+  const [saving,     setSaving]     = useState(false);
+  const accepted = !!aceitaEm;
+
+  const aceitar = async () => {
+    if (!userEmail) { showToast?.("❌ Faça login pra aceitar o termo.", "#DC2626"); return; }
+    setSaving(true);
+    const agora = new Date().toISOString();
+    const { error } = await supabase.from("usuarios").update({ autonomia_aceita_em: agora }).eq("email", userEmail);
+    setSaving(false);
+    if (error) { showToast?.("❌ Erro ao registrar aceite: " + (error.message || ""), "#DC2626"); return; }
+    onAceito?.(agora);
+    showToast?.("✅ Termo de autonomia aceito!");
+  };
+
   return (
     <>
       {showTerms && <TermsOfUseModal variant="autonomy" onClose={() => setShowTerms(false)} />}
@@ -4585,13 +4598,13 @@ function AutonomyTermCard({ showToast }) {
                 Ler Termo Completo
               </button>
               {!accepted ? (
-                <button onClick={() => { setAccepted(true); showToast("✅ Termo de autonomia aceito!"); }} style={{ flex:1, padding:"8px 0", borderRadius:10, border:"none", background:`linear-gradient(135deg,${O},#E64A19)`, color:"white", fontWeight:900, fontSize:11, cursor:"pointer" }}>
-                  Aceitar Termo
+                <button onClick={aceitar} disabled={saving} style={{ flex:1, padding:"8px 0", borderRadius:10, border:"none", background:`linear-gradient(135deg,${O},#E64A19)`, color:"white", fontWeight:900, fontSize:11, cursor: saving ? "default" : "pointer" }}>
+                  {saving ? "Salvando..." : "Aceitar Termo"}
                 </button>
               ) : (
                 <div style={{ flex:1, padding:"8px 0", borderRadius:10, background:"#F0FDF4", border:"1px solid #BBF7D0", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}>
                   <Check size={13} color={G} />
-                  <span style={{ fontSize:11, fontWeight:800, color:G }}>Aceito em {new Date().toLocaleDateString("pt-BR")}</span>
+                  <span style={{ fontSize:11, fontWeight:800, color:G }}>Aceito em {new Date(aceitaEm).toLocaleDateString("pt-BR")}</span>
                 </div>
               )}
             </div>
@@ -4618,8 +4631,8 @@ const STATUS_CONFIG = {
   rejected:  { label:"Reprovado",   color:"#DC2626", bg:"#FFF5F5",  icon:"x",             border:"#FECACA" },
 };
 
-function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocStatusChange }) {
-  // Internal file/preview/progress state (stays local — not needed globally)
+function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocStatusChange, userEmail }) {
+  // Internal file/preview/progress state (stays local — não precisa ir pro Supabase)
   const [localDocs, setLocalDocs] = useState({
     rg:      { file:null, preview:null, progress:0 },
     crim:    { file:null, preview:null, progress:0 },
@@ -4629,9 +4642,8 @@ function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocSta
   const [adminKey,    setAdminKey]    = useState("");
   const [keyError,    setKeyError]    = useState(false);
   const [expandedDoc, setExpandedDoc] = useState(null);
+  const [verifying,   setVerifying]   = useState(false);
   const fileRefs = { rg: useRef(), crim: useRef(), address: useRef() };
-
-  const ADMIN_PASSWORD = "multi2026";
 
   // Merge external status with local file state
   const docs = {
@@ -4640,45 +4652,64 @@ function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocSta
     address: { ...localDocs.address,  status: externalDocStatus?.address || "pending" },
   }; // same as admin dashboard
 
-  const handleFileSelect = (docId, e) => {
+  const DOC_STORAGE_PREFIX = { rg:"doc_rg", crim:"doc_crim", address:"doc_address" };
+
+  const handleFileSelect = async (docId, e) => {
     const file = e.target.files[0];
     if (!file) return;
     e.target.value = "";
 
-    const reader = new FileReader();
-    reader.onload = ev => {
-      // Set uploading state locally + notify parent
-      setLocalDocs(d => ({ ...d, [docId]: { ...d[docId], file, preview: ev.target.result, progress:0 } }));
-      onDocStatusChange?.(docId, "uploading");
+    const preview = URL.createObjectURL(file);
+    setLocalDocs(d => ({ ...d, [docId]: { ...d[docId], file, preview, progress:0 } }));
+    onDocStatusChange?.(docId, "uploading");
 
-      let prog = 0;
-      const interval = setInterval(() => {
-        prog += Math.random() * 18 + 8;
-        if (prog >= 100) {
-          prog = 100;
-          clearInterval(interval);
-          setTimeout(() => {
-            setLocalDocs(d => ({ ...d, [docId]: { ...d[docId], progress:100 } }));
-            onDocStatusChange?.(docId, "analysis");
-            showToast?.("📋 Documento enviado! Status: Em análise.", "#F59E0B");
-          }, 300);
-        }
-        setLocalDocs(d => ({ ...d, [docId]: { ...d[docId], progress: Math.min(prog, 100) } }));
-      }, 120);
-    };
-    reader.readAsDataURL(file);
+    try {
+      const ext = file.type.includes("png") ? "png" : file.type.includes("pdf") ? "pdf" : "jpg";
+      const path = `${DOC_STORAGE_PREFIX[docId]}_${(userEmail||"anon").replace(/[^a-z0-9]/gi,"_")}_${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, file, { contentType: file.type, upsert: true, cacheControl: "31536000" });
+      if (upErr) throw upErr;
+      const url = supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl;
+      setLocalDocs(d => ({ ...d, [docId]: { ...d[docId], progress:100 } }));
+      if (userEmail) {
+        const { error: dbErr } = await supabase.from("usuarios")
+          .update({ [`doc_${docId}_status`]: "analysis", [`doc_${docId}_url`]: url })
+          .eq("email", userEmail);
+        if (dbErr) throw dbErr;
+      }
+      onDocStatusChange?.(docId, "analysis");
+      showToast?.("📋 Documento enviado! Status: Em análise.", "#F59E0B");
+    } catch (err) {
+      onDocStatusChange?.(docId, "pending");
+      showToast?.("❌ Erro ao enviar documento: " + (err.message || ""), "#DC2626");
+    }
   };
 
-  const handleAdminApprove = (docId, approve) => {
-    if (adminKey !== ADMIN_PASSWORD) {
-      setKeyError(true);
-      setTimeout(() => setKeyError(false), 1400);
-      return;
+  // Aprovação/reprovação passa pelo backend (EMAIL_ADMIN_KEY, guardado só no
+  // Render) em vez de comparar senha no próprio bundle do cliente — mesmo com
+  // o DevTools aberto não dá mais pra se auto-aprovar. O trigger
+  // trg_lock_doc_status no Postgres é a segunda trava, caso essa rota nunca
+  // seja chamada.
+  const handleAdminApprove = async (docId, approve) => {
+    if (!adminKey.trim()) { setKeyError(true); setTimeout(() => setKeyError(false), 1400); return; }
+    setVerifying(true);
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/documentos/verificar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({ email: userEmail, docId, aprovado: approve }),
+      });
+      if (r.status === 401) { setKeyError(true); setTimeout(() => setKeyError(false), 1400); return; }
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Erro ao verificar documento");
+      onDocStatusChange?.(docId, approve ? "verified" : "rejected");
+      setShowAdmin(null);
+      setAdminKey("");
+      showToast?.(approve ? "✅ Documento verificado!" : "❌ Documento reprovado.", approve ? "#22c55e" : "#DC2626");
+    } catch (err) {
+      showToast?.("❌ " + (err.message || "Erro ao verificar documento"), "#DC2626");
+    } finally {
+      setVerifying(false);
     }
-    onDocStatusChange?.(docId, approve ? "verified" : "rejected");
-    setShowAdmin(null);
-    setAdminKey("");
-    showToast?.(approve ? "✅ Documento verificado!" : "❌ Documento reprovado.", approve ? "#22c55e" : "#DC2626");
   };
 
   return (
@@ -5210,10 +5241,11 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
   // existia jeito nenhum de ver/corrigir depois — Editar Perfil não tinha
   // esse campo, então quem errou ou pulou o cadastro ficava sem contato
   // liberável pra sempre.
+  const [autonomiaAceitaEm, setAutonomiaAceitaEm] = useState(null);
   useEffect(() => {
     if (!userEmail) return;
-    supabase.from("usuarios").select("foto_perfil_url,whatsapp").eq("email", userEmail).maybeSingle()
-      .then(({ data }) => { setAvatarUrl(data?.foto_perfil_url || null); setWhatsapp(data?.whatsapp || ""); })
+    supabase.from("usuarios").select("foto_perfil_url,whatsapp,autonomia_aceita_em").eq("email", userEmail).maybeSingle()
+      .then(({ data }) => { setAvatarUrl(data?.foto_perfil_url || null); setWhatsapp(data?.whatsapp || ""); setAutonomiaAceitaEm(data?.autonomia_aceita_em || null); })
       .catch(() => {});
   }, [userEmail]);
   const [reputacao, setReputacao] = useState(null);
@@ -5562,22 +5594,24 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
 
           {/* Autonomy term */}
           <SectionLabel label="Termo de Autonomia" />
-          <AutonomyTermCard showToast={showToast} />
+          <AutonomyTermCard showToast={showToast} userEmail={userEmail} aceitaEm={autonomiaAceitaEm} onAceito={setAutonomiaAceitaEm} />
           <div style={{ background:"white" }}>
             <div style={{ padding:"14px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:"1px solid #F8F8F8" }}>
               <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                 <span style={{ width:36, height:36, borderRadius:11, background:O+"18", display:"flex", alignItems:"center", justifyContent:"center" }}><Crown size={17} color={O} /></span>
                 <div>
                   <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e" }}>{isPro && plano === "pro" ? "Multi Pro" : "Multi Autônomo"}</p>
-                  <p style={{ fontSize:11, color: isPro ? G : "#bbb" }}>
-                    {isPro
-                      ? `✅ ${planoStatus === "trial" ? "Em trial" : "Ativo"}${planoExpiraEm ? " até " + new Date(planoExpiraEm).toLocaleDateString("pt-BR") : ""}`
-                      : "❌ Nenhum plano ativo"}
+                  <p style={{ fontSize:11, color: isPro ? G : "#bbb", lineHeight:1.5 }}>
+                    {planoStatus === "trial"
+                      ? <>🎁 <strong>TESTE GRATUITO</strong>{planoExpiraEm ? ` — termina em ${new Date(planoExpiraEm).toLocaleDateString("pt-BR")}` : ""}</>
+                      : isPro
+                        ? <>✅ <strong>{plano === "pro" ? "MULTIPRO ATIVO" : "MULTI AUTÔNOMO ATIVO"}</strong> — R$ {plano === "pro" ? "59,90" : "29,90"}/mês{planoExpiraEm ? ` · próx. cobrança ${new Date(planoExpiraEm).toLocaleDateString("pt-BR")}` : ""}</>
+                        : "❌ Nenhum plano ativo"}
                   </p>
                 </div>
               </div>
               {isPro
-                ? <button onClick={onUpgrade} style={{ background:G+"18", color:G, fontWeight:800, fontSize:11, padding:"4px 10px", borderRadius:99, border:"none", cursor:"pointer" }}>{plano === "pro" ? "PRO" : "Trocar"}</button>
+                ? (plano !== "pro" && <button onClick={onUpgrade} style={{ background:`linear-gradient(135deg,${O},#E64A19)`, color:"white", fontWeight:800, fontSize:11, padding:"6px 12px", borderRadius:99, border:"none", cursor:"pointer" }}>QUERO SER MULTIPRO</button>)
                 : <button onClick={onUpgrade} style={{ background:`linear-gradient(135deg,${O},#E64A19)`, color:"white", fontWeight:800, fontSize:11, padding:"6px 12px", borderRadius:99, border:"none", cursor:"pointer" }}>Escolher plano</button>}
             </div>
           </div>
@@ -5622,7 +5656,7 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
 
           {/* Verification */}
           <SectionLabel label="Documentação" />
-          <DocumentacaoSection showToast={showToast} docStatus={docStatus} onDocStatusChange={onDocStatusChange} />
+          <DocumentacaoSection showToast={showToast} docStatus={docStatus} onDocStatusChange={onDocStatusChange} userEmail={userEmail} />
         </>
       )}
 
@@ -9005,15 +9039,15 @@ export default function App() {
   }, []);
   const [showAdmin, setShowAdmin] = useState(false);
 
-  // Document verification state — shared between ProfileScreen and ProfessionalHome
+  // Document verification state — shared between ProfileScreen and ProfessionalHome.
+  // Carregado de verdade do Supabase logo abaixo (efeito [userEmail]) — ver
+  // allDocsVerified, calculado a partir desse estado.
   const [docStatus, setDocStatus] = useState({
     rg:      "pending",
     crim:    "pending",
     address: "pending",
   });
-  // TODO: docStatus não persiste no Supabase ainda (só estado local) — até isso
-  // existir, manter liberado geral em vez de bloquear todo profissional a cada reload.
-  const allDocsVerified = true;
+  const allDocsVerified = docStatus.rg === "verified" && docStatus.crim === "verified" && docStatus.address === "verified";
 
   // ── RESTORE SESSION FROM LOCALSTORAGE ────────────────────────────────────
   const savedSession = (() => {
@@ -9054,6 +9088,24 @@ export default function App() {
     const titularTipo = role === "professional" ? "usuario" : role === "empresa" ? "empresa" : null;
     carregarPlano(titularTipo, userEmail);
   }, [userEmail, role]);
+
+  // Status real de documentação + flag de conta híbrida (cliente+profissional)
+  // — antes docStatus nunca saía do estado local (ver histórico em
+  // supabase_pendencias_doc_pagamento_migration.sql).
+  const [isHybrid, setIsHybrid] = useState(false);
+  useEffect(() => {
+    if (!userEmail) { setDocStatus({ rg:"pending", crim:"pending", address:"pending" }); setIsHybrid(false); return; }
+    supabase.from("usuarios").select("doc_rg_status,doc_crim_status,doc_address_status,is_hybrid").eq("email", userEmail).maybeSingle()
+      .then(({ data }) => {
+        setDocStatus({
+          rg:      data?.doc_rg_status      || "pending",
+          crim:    data?.doc_crim_status    || "pending",
+          address: data?.doc_address_status || "pending",
+        });
+        setIsHybrid(!!data?.is_hybrid);
+      })
+      .catch(() => {});
+  }, [userEmail]);
 
   // MEUS PEDIDOS — fonte única real (Fase 1 de consolidação): cliente vê os
   // próprios pedidos (cliente_id), profissional vê os que aceitou
