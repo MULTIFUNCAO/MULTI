@@ -6,6 +6,17 @@ import ChatWidget from './ChatWidget';
 ﻿import { playNewOrderSound, stopNewOrderSound } from './newOrderSound';
 import { useState, useRef, useEffect } from "react";
 import { createClient } from '@supabase/supabase-js';
+// Capacitor.isNativePlatform() é o gate usado em todo o app pra decidir se
+// roda o caminho nativo (WebView empacotado) ou o web (navegador comum).
+// @capacitor/core sozinho (sem "cap add android/ios" nem projeto nativo
+// gerado ainda) já funciona em qualquer navegador — a implementação web do
+// pacote só devolve false pra isNativePlatform(), sem exigir bridge nativa
+// nenhuma. Import de onesignal-cordova-plugin também é seguro sem bridge:
+// o módulo só instancia classes JS puras ao carregar (nenhuma chamada
+// window.cordova.exec acontece até você chamar um método de verdade) —
+// confirmado lendo o dist/index.cjs do pacote instalado.
+import { Capacitor } from '@capacitor/core';
+import OneSignalNative from 'onesignal-cordova-plugin';
 const supabase=createClient('https://nlpfjkxqypveontunrxj.supabase.co','sb_publishable_xPCSGVYs-yI7TGS1F2EhFg_x7lMm30Q');
 // URL absoluta pras funções serverless de notificação (Vercel, pasta /api).
 // Antes eram fetch("/api/notify-...") relativos — funcionam hoje porque o
@@ -14,6 +25,10 @@ const supabase=createClient('https://nlpfjkxqypveontunrxj.supabase.co','sb_publi
 // (ex.: capacitor://localhost) e um caminho relativo bate num endereço que
 // não existe. Preparação pro empacotamento nativo (Fase 1 do plano).
 const NOTIFY_API = "https://multifuncao.com.br/api";
+// Mesmo app id já usado pelo SDK web em index.html — mantido aqui como
+// constante só pra não hardcodar o mesmo valor duas vezes (init nativo usa
+// essa constante; o script do index.html continua com o dele, intocado).
+const ONESIGNAL_APP_ID = "184f4647-8fbd-427d-8a8e-60f5aa38243c";
 
 import AdminDashboard from "./AdminDashboard";
 import {
@@ -47,13 +62,39 @@ const G  = "#22c55e";
 ───────────────────────────────────────────────────────────────────────────── */
 
 /* ───────────────────────── ONESIGNAL ─────────────────────────────────────── */
-// Pede permissão de push e devolve o subscription id (player_id) do navegador
-// atual, ou null se o SDK não carregar / o usuário recusar. Usado quando a
-// empresa ou o profissional ficam online, pra salvar o player_id em
-// empresas.onesignal_player_id / usuarios.onesignal_player_id.
+// Pede permissão de push e devolve o subscription id (player_id) do
+// dispositivo atual, ou null se o SDK não carregar / o usuário recusar.
+// Usado quando a empresa ou o profissional ficam online, pra salvar o
+// player_id em empresas.onesignal_player_id / usuarios.onesignal_player_id.
+// Ramifica nativo (Capacitor + onesignal-cordova-plugin) vs. web (SDK
+// carregado via <script> no index.html) — mesma função pros dois casos,
+// quem chama (handleFicarOnline etc.) não precisa saber a diferença.
 function getOneSignalPlayerId() {
+  if (typeof window === "undefined") return Promise.resolve(null);
+
+  if (Capacitor.isNativePlatform()) {
+    // Espelha a mesma ordem do caminho web logo abaixo: pede permissão
+    // primeiro (mostra o prompt nativo se ainda não foi decidido), só
+    // depois lê o subscription id. NÃO verificado contra um app nativo de
+    // verdade (sem device/simulador nesse ambiente) — a API usada aqui bate
+    // com onesignal-cordova-plugin@5.5.2 (dist/index.d.ts), mas vale
+    // reconferir na primeira build real antes de confiar cegamente.
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = (id) => { if (!done) { done = true; resolve(id || null); } };
+      OneSignalNative.Notifications.requestPermission(true)
+        .catch(() => {})
+        .then(() => OneSignalNative.User.pushSubscription.getIdAsync())
+        .then(finish)
+        .catch(() => finish(null));
+      setTimeout(() => finish(null), 8000);
+    });
+  }
+
+  // Caminho web original, intocado — SDK carregado via <script> no
+  // index.html, fila window.OneSignalDeferred documentada pelo próprio
+  // OneSignal pra código que roda antes do SDK terminar de carregar.
   return new Promise((resolve) => {
-    if (typeof window === "undefined") { resolve(null); return; }
     let done = false;
     const finish = (id) => { if (!done) { done = true; resolve(id); } };
     window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -9080,6 +9121,51 @@ export default function App() {
     }).catch(() => {});
     window.history.replaceState({}, "", window.location.pathname);
   }, [isLoggedIn, userEmail]);
+
+  // Refs só pra ler o valor mais recente de isLoggedIn/userEmail de dentro
+  // do listener nativo abaixo, que é registrado uma única vez (deps []) —
+  // sem isso o closure ficaria travado nos valores do primeiro render.
+  const isLoggedInRef = useRef(isLoggedIn);
+  useEffect(() => { isLoggedInRef.current = isLoggedIn; }, [isLoggedIn]);
+  const userEmailRef = useRef(userEmail);
+  useEffect(() => { userEmailRef.current = userEmail; }, [userEmail]);
+
+  // Init nativo do OneSignal + deep link por toque na notificação (Capacitor).
+  // Só roda de verdade dentro do app empacotado — em navegador comum
+  // (Capacitor.isNativePlatform()===false) essa branch nunca executa, o site
+  // segue 100% no caminho web de sempre (SDK via <script> no index.html).
+  //
+  // IMPORTANTE — depende de uma mudança no backend que este repo não cobre:
+  // hoje o cron de lembretes (MULTI-BACKEND, repo separado) manda o link de
+  // clique como URL (?tela=concluir&pedido=<id>), lido pelo useEffect logo
+  // acima via window.location.search — isso não existe num toque de push
+  // nativo. Pra esse deep link funcionar de verdade no app nativo, o envio
+  // da notificação (api/notify-*.js e o cron de lembretes) precisa incluir
+  // additionalData:{tela:"concluir", pedido:<id>} no payload da OneSignal,
+  // não só a URL. Sem isso, o listener abaixo nunca recebe nada útil — fica
+  // pronto no front-end, mas o encaminhamento de dado é meio a meio entre
+  // os dois repos. Não verificado contra app nativo real (sem device/
+  // simulador nesse ambiente).
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    OneSignalNative.initialize(ONESIGNAL_APP_ID);
+
+    const onNotificationClick = (event) => {
+      const data = event?.notification?.additionalData || {};
+      if (data.tela !== "concluir" || !data.pedido) return;
+      if (!isLoggedInRef.current || !userEmailRef.current) return;
+      supabase.from("pedidos").select("*").eq("id", data.pedido).maybeSingle().then(({ data: pedido }) => {
+        if (!pedido) return;
+        const email = userEmailRef.current;
+        if (pedido.cliente_id === email) setRole("client");
+        else if (pedido.profissional_aceito === email) setRole("professional");
+        setSelected(mapPedidoRow(pedido));
+        setScreen("service");
+      }).catch(() => {});
+    };
+    OneSignalNative.Notifications.addEventListener("click", onNotificationClick);
+    return () => OneSignalNative.Notifications.removeEventListener("click", onNotificationClick);
+  }, []);
 
   // Contagem real de propostas recebidas por pedido aberto (cliente) — antes
   // sempre aparecia 0/vazio, sem nenhuma leitura de "propostas".
