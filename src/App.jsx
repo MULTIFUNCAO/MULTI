@@ -9377,7 +9377,7 @@ export default function App() {
   }, []);
   const [showAdmin, setShowAdmin] = useState(false);
 
-  // Document verification state — shared between ProfileScreen and ProfessionalHome.
+  // Document verification state — shared between ProfileScreen e ProfessionalHome.
   // Carregado de verdade do Supabase logo abaixo (efeito [userEmail]) — ver
   // allDocsVerified, calculado a partir desse estado.
   const [docStatus, setDocStatus] = useState({
@@ -9385,7 +9385,14 @@ export default function App() {
     crim:    "pending",
     address: "pending",
   });
-  const allDocsVerified = docStatus.rg === "verified" && docStatus.crim === "verified" && docStatus.address === "verified";
+  // Se a query de status falhar (ex: colunas doc_*_status ainda não
+  // existirem no banco por causa do bug de DDL desse projeto — ver
+  // supabase_multifuncao_project na memória), não trata "não sei" como
+  // "bloqueado": falha aberto (libera geral, mesmo comportamento hardcoded
+  // de antes) em vez de bloquear todo profissional real por um problema de
+  // infra que não é dele.
+  const [docStatusIndisponivel, setDocStatusIndisponivel] = useState(false);
+  const allDocsVerified = docStatusIndisponivel || (docStatus.rg === "verified" && docStatus.crim === "verified" && docStatus.address === "verified");
 
   // ── RESTORE SESSION FROM LOCALSTORAGE ────────────────────────────────────
   const savedSession = (() => {
@@ -9432,9 +9439,11 @@ export default function App() {
   // supabase_pendencias_doc_pagamento_migration.sql).
   const [isHybrid, setIsHybrid] = useState(false);
   useEffect(() => {
-    if (!userEmail) { setDocStatus({ rg:"pending", crim:"pending", address:"pending" }); setIsHybrid(false); return; }
+    if (!userEmail) { setDocStatus({ rg:"pending", crim:"pending", address:"pending" }); setIsHybrid(false); setDocStatusIndisponivel(false); return; }
     supabase.from("usuarios").select("doc_rg_status,doc_crim_status,doc_address_status,is_hybrid").eq("email", userEmail).maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) { setDocStatusIndisponivel(true); console.warn("[docStatus] indisponível:", error.message); return; }
+        setDocStatusIndisponivel(false);
         setDocStatus({
           rg:      data?.doc_rg_status      || "pending",
           crim:    data?.doc_crim_status    || "pending",
@@ -9442,7 +9451,7 @@ export default function App() {
         });
         setIsHybrid(!!data?.is_hybrid);
       })
-      .catch(() => {});
+      .catch(() => setDocStatusIndisponivel(true));
   }, [userEmail]);
 
   // MEUS PEDIDOS — fonte única real (Fase 1 de consolidação): cliente vê os
