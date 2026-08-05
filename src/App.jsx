@@ -5702,24 +5702,49 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
             </div>
           </div>
 
-          {/* Categorias de serviço — obrigatória pra poder ficar online no Mural */}
+          {/* Categorias de serviço — obrigatória pra poder ficar online no Mural.
+              Fora do editMode mostra só a lista já escolhida ("Você trabalha
+              com: X, Y") em vez do grid de seleção inteiro — reaproveita o
+              mesmo editMode do resto do perfil (topo da tela) em vez de um
+              fluxo de edição próprio parecido com o cadastro (item 9 do
+              prompt Ajustes de Cadastro/Perfil/Fluxos). */}
           <div style={{ padding:"14px 16px 0" }}>
             <div style={{ background:"white", borderRadius:16, padding:16, boxShadow:"0 3px 14px rgba(0,0,0,.07)", border: categoriaServico.length ? "1px solid #F0F0F0" : "1.5px solid #FCA5A5" }}>
-              <p style={{ margin:"0 0 3px", fontSize:11, fontWeight:800, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1.1 }}>Categorias de Serviço</p>
-              <p style={{ margin:"0 0 10px", fontSize:11, color:"#9CA3AF" }}>
-                Necessárias pra ficar online e receber pedidos no Mural.
-                {!isPlanoPro && ` Multi Autônomo: até ${MAX_CATEGORIAS_AUTONOMO}.`}
-              </p>
-              <CategoriaMultiSelect
-                value={categoriaServico}
-                onChange={handleSaveCategoria}
-                max={limiteCategoria}
-                onLimitReached={handleLimiteCategoria}
-              />
-              {!isPlanoPro && (
-                <button onClick={onUpgrade} style={{ marginTop:12, display:"flex", alignItems:"center", gap:6, background:"none", border:"none", cursor:"pointer", padding:0, color:O, fontSize:11.5, fontWeight:800 }}>
-                  <Crown size={13} /> QUERO SER MULTIPRO
-                </button>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:3 }}>
+                <p style={{ margin:0, fontSize:11, fontWeight:800, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1.1 }}>Categorias de Serviço</p>
+                {!editMode && (
+                  <button onClick={() => setEditMode(true)} style={{ background:"none", border:"none", cursor:"pointer", padding:0, color:B, fontSize:11.5, fontWeight:800, display:"flex", alignItems:"center", gap:4 }}>
+                    <Pencil size={11} /> Editar
+                  </button>
+                )}
+              </div>
+
+              {!editMode ? (
+                categoriaServico.length ? (
+                  <p style={{ margin:0, fontSize:13.5, color:"#1a1a2e", lineHeight:1.6 }}>
+                    Você trabalha com: <strong>{categoriaServico.map(id => CATS.find(c => c.id === id)?.label || id).join(", ")}</strong>
+                  </p>
+                ) : (
+                  <p style={{ margin:0, fontSize:12.5, color:"#E53935", fontWeight:700 }}>Nenhuma categoria selecionada — toque em Editar pra escolher.</p>
+                )
+              ) : (
+                <>
+                  <p style={{ margin:"0 0 10px", fontSize:11, color:"#9CA3AF" }}>
+                    Necessárias pra ficar online e receber pedidos no Mural.
+                    {!isPlanoPro && ` Multi Autônomo: até ${MAX_CATEGORIAS_AUTONOMO}.`}
+                  </p>
+                  <CategoriaMultiSelect
+                    value={categoriaServico}
+                    onChange={handleSaveCategoria}
+                    max={limiteCategoria}
+                    onLimitReached={handleLimiteCategoria}
+                  />
+                  {!isPlanoPro && (
+                    <button onClick={onUpgrade} style={{ marginTop:12, display:"flex", alignItems:"center", gap:6, background:"none", border:"none", cursor:"pointer", padding:0, color:O, fontSize:11.5, fontWeight:800 }}>
+                      <Crown size={13} /> QUERO SER MULTIPRO
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
