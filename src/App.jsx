@@ -10032,15 +10032,34 @@ const renderContent = () => {
 
       <Header isPro={isPro} notifCount={notifCount} isLoggedIn={isLoggedIn} userRole={userRole} onAlerts={() => setScreen("alerts")} userLocation={localStorage.getItem("multiLocation") || userLocation} onToggleRole={setGuestRole} activeRole={guestRole} />
 
-      <div style={{ flex:1, overflowY:"auto" }}>
+      {/* paddingBottom cobre a altura do bottom nav (~55px de conteúdo/padding
+          + safe-area) — precisa disso agora que o nav é position:fixed (não
+          ocupa mais espaço no fluxo normal, então nenhuma tela sabe por conta
+          própria que precisa deixar esse respiro; algumas já tinham seu
+          próprio paddingBottom avulso pra isso, ex. ClientHome:120,
+          MyServicesScreen:32 — inconsistentes entre si e alguns bem menores
+          que o necessário, o que causava o nav sobrepondo conteúdo real).
+          Empilhar com o padding próprio de cada tela é seguro (só sobra um
+          respiro a mais em algumas), o problema era faltar, nunca sobrar. */}
+      <div style={{ flex:1, overflowY:"auto", paddingBottom:"calc(64px + env(safe-area-inset-bottom))" }}>
         {renderContent()}
       </div>
 
       {/* Bottom nav — tabs driven by authenticated role, not the browse toggle.
+          position:fixed (não mais sticky): o sticky ficava instável por um
+          frame logo após o load porque o <body> nunca é height-locked ao
+          viewport (cresce livre com o conteúdo — "duplo scroll" com o
+          overflowY:auto interno), fazendo o nav às vezes desenhar por cima
+          de conteúdo real nesse instante (bug documentado). fixed ancora no
+          viewport de verdade, imune a essa instabilidade. left:50% +
+          translateX(-50%) + maxWidth:400 repete a mesma centralização do
+          container-raiz (fixed escapa do layout do pai, então precisa
+          centralizar de novo sozinho) — em tela de celular de verdade
+          (viewport <= 400px) isso já é 100% de largura de qualquer jeito.
           padding bottom soma env(safe-area-inset-bottom) pra não deixar os
           botões colados/cobertos pela barra de gestos ou home indicator em
           iPhones sem botão físico — mesma lógica do paddingTop dos headers. */}
-      <div style={{ position:"sticky", bottom:0, background:"white", borderTop:"1px solid #EBEBEB", boxShadow:"0 -3px 16px rgba(0,0,0,.06)", display:"flex", alignItems:"center", justifyContent:"space-around", padding:"8px 0 10px", paddingBottom:"calc(10px + env(safe-area-inset-bottom))" }}>
+      <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:400, background:"white", borderTop:"1px solid #EBEBEB", boxShadow:"0 -3px 16px rgba(0,0,0,.06)", display:"flex", alignItems:"center", justifyContent:"space-around", padding:"8px 0 10px", paddingBottom:"calc(10px + env(safe-area-inset-bottom))", zIndex:90 }}>
         {(isLoggedIn && userRole === "professional"
           // ── Professional tabs (no FAB, no + Novo Pedido) ──
           ? [
