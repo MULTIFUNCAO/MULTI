@@ -8181,6 +8181,7 @@ function CadastroEmpresaScreen({ onBack, showToast }) {
         titularEmail={email.trim()}
         titularNome={nomeFantasia.trim()}
         showToast={showToast}
+        onBack={() => setStep("form")}
         onDone={(planoId) => {
           // tipo_conta final reflete o plano de verdade escolhido aqui, não
           // só a intenção declarada na pergunta lá em cima — evita ficar
