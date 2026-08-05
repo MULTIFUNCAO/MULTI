@@ -2799,7 +2799,7 @@ function ClientHome({ onPost, onViewService, onSwitchPro, onGoEmpresa, myService
             <span style={{ fontSize:32, flexShrink:0 }}>🔧</span>
             <div style={{ flex:1, minWidth:0 }}>
               <p style={{ fontSize:14.5, fontWeight:900, color:"white", margin:"0 0 3px" }}>Quer também prestar serviços?</p>
-              <p style={{ fontSize:11.5, color:"rgba(255,255,255,.85)", margin:"0 0 10px", lineHeight:1.4 }}>Receba oportunidades perto de você — 7 dias de Multi PRO grátis.</p>
+              <p style={{ fontSize:11.5, color:"rgba(255,255,255,.85)", margin:"0 0 10px", lineHeight:1.4 }}>Receba oportunidades perto de você — a partir de R$ 29,90/mês.</p>
               <button onClick={onSwitchPro} style={{ padding:"8px 16px", borderRadius:99, border:"none", background:"white", color:O, fontWeight:900, fontSize:12.5, cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
                 Vire Profissional <ChevronRight size={13} />
               </button>
@@ -4049,11 +4049,11 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry, o
 }
 
 /* ───────────────────────── PRO UPGRADE ──────────────────────────────────────── */
-// Multi passa a monetizar por assinatura (plano fixo por tier), não mais por
-// período de cobrança — substitui a antiga simulação de PIX/cartão (que
-// chamava de verdade um backend externo de pagamento) por uma escolha de
-// plano que ativa um trial de 7 dias direto no Supabase. Cobrança real via
-// Asaas fica pra uma fase futura (ver assinaturas.asaas_subscription_id).
+// Multi monetiza por assinatura (plano fixo por tier). Escolher um plano
+// pago cobra o cartão de verdade via Asaas (POST /api/assinatura/cobrar,
+// PagamentoPlanoScreen) antes de virar "ativa" — não existe mais trial de
+// 7 dias grátis pra planos novos (contas que já estavam em trial antes
+// dessa mudança continuam valendo até a data de expiração original).
 const PLANOS_USUARIO = [
   {
     id: "autonomo", icon: User, label: "Multi Autônomo", price: "29,90", perDay: "menos de R$1 por dia",
@@ -4096,26 +4096,27 @@ const PLANOS_EMPRESA = [
 function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, onDone, showToast }) {
   const isEmpresa = titularTipo === "empresa";
   const planos = isEmpresa ? PLANOS_EMPRESA : PLANOS_USUARIO;
-  const [savingId, setSavingId] = useState(null);
+  // Antes disso, escolher um plano pago criava um "trial" de 7 dias direto no
+  // Supabase (assinaturas.status="trial"), sem cobrar nada nem pedir cartão —
+  // dava pra usar o app inteiro de graça. Agora escolher o plano só abre a
+  // tela de pagamento (PagamentoPlanoScreen); o plano só vira "ativa" depois
+  // que o backend confirma a cobrança de verdade (POST /api/assinatura/cobrar
+  // — ver item 2 do prompt Ajustes de Cadastro/Perfil/Fluxos). Contas que já
+  // estavam em trial antes dessa mudança continuam valendo até expirar.
+  const [planoEscolhido, setPlanoEscolhido] = useState(null);
 
-  const confirmar = async (planoId) => {
-    if (!titularEmail) { showToast?.("❌ E-mail do titular não encontrado.", "#DC2626"); return; }
-    setSavingId(planoId);
-    const inicio = new Date();
-    const expira = new Date(inicio.getTime() + 7 * 24 * 60 * 60 * 1000);
-    const { error } = await supabase.from("assinaturas").upsert({
-      titular_tipo: titularTipo,
-      titular_email: titularEmail,
-      plano: planoId,
-      status: "trial",
-      inicio: inicio.toISOString(),
-      expira_em: expira.toISOString(),
-    }, { onConflict: "titular_tipo,titular_email" });
-    setSavingId(null);
-    if (error) { showToast?.("❌ Erro ao ativar plano: " + (error.message || ""), "#DC2626"); return; }
-    showToast?.("🎉 Plano ativado! 7 dias grátis pra testar.", G);
-    onDone?.(planoId);
-  };
+  if (planoEscolhido) {
+    const info = planos.find(p => p.id === planoEscolhido);
+    return (
+      <PagamentoPlanoScreen
+        titularTipo={titularTipo} titularEmail={titularEmail} titularNome={titularNome}
+        planoId={planoEscolhido} planoLabel={info?.label || ""} planoPreco={info?.price || "0,00"}
+        onBack={() => setPlanoEscolhido(null)}
+        showToast={showToast}
+        onSuccess={() => onDone?.(planoEscolhido)}
+      />
+    );
+  }
 
   return (
     <div style={{ minHeight:"100vh", background: isEmpresa ? BG : "linear-gradient(180deg,#F2F3FB,#E7E9F5)", padding:"20px 16px 48px", fontFamily:"'Nunito', -apple-system, sans-serif" }}>
@@ -4128,7 +4129,7 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
       </h2>
       <p style={{ textAlign:"center", color:"#666", fontSize:14, lineHeight:1.5, margin:"0 auto 26px", maxWidth:340 }}>
         {isEmpresa
-          ? <>7 dias grátis pra testar{titularNome ? `, ${titularNome}` : ""} — sem cartão agora.</>
+          ? <>Escolha seu plano{titularNome ? `, ${titularNome}` : ""} — cobrança no cartão, ativa na hora.</>
           : "No Multi, você encontra pessoas e empresas que já estão procurando profissionais para realizar serviços. Escolha como você quer crescer."}
       </p>
 
@@ -4137,7 +4138,6 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
           const isPro = !!p.badge;
           const HeaderIcon = p.icon || Briefcase;
           const beneficios = p.beneficios.map(b => typeof b === "string" ? { text:b, Icon:Check, lead:false } : { text:b.text, Icon:b.icon || Check, lead:!!b.lead });
-          const saving = savingId === p.id;
 
           const card = (
             <div style={{
@@ -4205,14 +4205,14 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
                 </p>
               )}
 
-              <button onClick={() => confirmar(p.id)} disabled={saving} style={{
+              <button onClick={() => setPlanoEscolhido(p.id)} style={{
                 marginTop:22, width:"100%", border:"none", borderRadius:16, padding:"16px 0",
                 fontWeight:800, fontSize:13, letterSpacing:.4, textTransform:"uppercase",
-                color:"white", cursor: saving ? "default" : "pointer",
+                color:"white", cursor:"pointer",
                 background: isPro ? `linear-gradient(135deg,${O},#E8280A)` : `linear-gradient(135deg,${B},#22348F)`,
                 boxShadow: isPro ? `0 16px 30px -10px ${O}66` : `0 14px 28px -10px ${B}88`,
               }}>
-                {saving ? "Ativando..." : (p.ctaLabel || "Escolher este plano")}
+                {p.ctaLabel || "Escolher este plano"}
               </button>
             </div>
           );
@@ -4236,6 +4236,139 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
             <div key={p.id}>{card}</div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function maskCpf(v) {
+  const d = v.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 3)  return d;
+  if (d.length <= 6)  return `${d.slice(0,3)}.${d.slice(3)}`;
+  if (d.length <= 9)  return `${d.slice(0,3)}.${d.slice(3,6)}.${d.slice(6)}`;
+  return `${d.slice(0,3)}.${d.slice(3,6)}.${d.slice(6,9)}-${d.slice(9)}`;
+}
+function maskCardNumber(v) { return v.replace(/\D/g, "").slice(0, 16).replace(/(\d{4})(?=\d)/g, "$1 "); }
+
+/* ───────────────────────── PAGAMENTO DO PLANO — item 2 do prompt Ajustes ──────
+   Substitui o antigo trial de 7 dias: cobra o cartão de verdade (backend,
+   Asaas) antes de deixar o plano virar "ativa". Nada aqui grava direto no
+   Supabase — só o backend faz isso, com service_role (ver migration
+   supabase_pendencias_doc_pagamento_migration.sql). ─────────────────────── */
+function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId, planoLabel, planoPreco, onBack, showToast, onSuccess }) {
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardHolder, setCardHolder] = useState("");
+  const [expiry,     setExpiry]     = useState(""); // MM/AA
+  const [cvv,        setCvv]        = useState("");
+  const [cpf,        setCpf]        = useState("");
+  const [errors,     setErrors]     = useState({});
+  const [loading,    setLoading]    = useState(false);
+
+  const hoje = new Date();
+  const proximaCobranca = new Date(hoje.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  const validate = () => {
+    const e = {};
+    if (cardNumber.replace(/\D/g,"").length < 16) e.cardNumber = "Número do cartão incompleto";
+    if (!cardHolder.trim()) e.cardHolder = "Informe o nome impresso no cartão";
+    if (!/^\d{2}\/\d{2}$/.test(expiry)) e.expiry = "Use o formato MM/AA";
+    if (cvv.replace(/\D/g,"").length < 3) e.cvv = "CVV inválido";
+    if (cpf.replace(/\D/g,"").length !== 11) e.cpf = "CPF inválido";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const pagar = async () => {
+    if (!validate()) return;
+    setLoading(true);
+    try {
+      const [expiryMonth, expiryYearShort] = expiry.split("/");
+      const r = await fetch(`${API_BASE}/api/assinatura/cobrar`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titularTipo, titularEmail, titularNome, plano: planoId,
+          cardNumber: cardNumber.replace(/\D/g,""), cardHolder: cardHolder.trim(),
+          expiryMonth, expiryYear: `20${expiryYearShort}`,
+          cvv: cvv.replace(/\D/g,""), cpf: cpf.replace(/\D/g,""),
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Pagamento não confirmado");
+      showToast?.(`🎉 ${planoLabel} ativado! Próxima cobrança em ${proximaCobranca.toLocaleDateString("pt-BR")}.`, G);
+      onSuccess?.();
+    } catch (err) {
+      showToast?.("❌ " + (err.message || "Não conseguimos processar o cartão"), "#DC2626");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#F8F9FA", padding:"20px 16px 48px", fontFamily:"'Nunito', -apple-system, sans-serif" }}>
+      {onBack && <button onClick={onBack} style={{ background:"none", border:"none", fontSize:24, cursor:"pointer", marginBottom:8 }}>←</button>}
+
+      <h2 style={{ textAlign:"center", fontWeight:900, fontSize:21, color:"#1a1a2e", margin:"0 0 6px" }}>Dados de pagamento</h2>
+      <p style={{ textAlign:"center", color:"#666", fontSize:13.5, margin:"0 auto 22px", maxWidth:320 }}>
+        Sem período de teste — a cobrança acontece agora, ao confirmar.
+      </p>
+
+      {/* Resumo do plano */}
+      <div style={{ maxWidth:420, margin:"0 auto 20px", background:"white", borderRadius:16, padding:"16px 18px", border:"1.5px solid #ECEDF5", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <div>
+          <p style={{ margin:"0 0 2px", fontWeight:800, fontSize:14, color:"#1a1a2e" }}>{planoLabel}</p>
+          <p style={{ margin:0, fontSize:11.5, color:"#9CA3AF" }}>Cobrado hoje · renova em {proximaCobranca.toLocaleDateString("pt-BR")}</p>
+        </div>
+        <p style={{ margin:0, fontWeight:900, fontSize:20, color:"#1a1a2e" }}>R$ {planoPreco}<span style={{ fontSize:11, fontWeight:700, color:"#9CA3AF" }}>/mês</span></p>
+      </div>
+
+      <div style={{ maxWidth:420, margin:"0 auto", display:"flex", flexDirection:"column", gap:14 }}>
+        <FormField IconComp={CreditCard} label="Número do cartão" error={errors.cardNumber}>
+          <input inputMode="numeric" placeholder="0000 0000 0000 0000" value={cardNumber}
+            onChange={e => { setCardNumber(maskCardNumber(e.target.value)); if (errors.cardNumber) setErrors(p => ({ ...p, cardNumber:undefined })); }}
+            style={{ ...REG_INPUT, borderColor: errors.cardNumber ? "#E53935" : undefined }} />
+        </FormField>
+        <FormField IconComp={User} label="Nome no cartão" error={errors.cardHolder}>
+          <input placeholder="Como está impresso no cartão" value={cardHolder}
+            onChange={e => { setCardHolder(e.target.value.toUpperCase()); if (errors.cardHolder) setErrors(p => ({ ...p, cardHolder:undefined })); }}
+            style={{ ...REG_INPUT, borderColor: errors.cardHolder ? "#E53935" : undefined }} />
+        </FormField>
+        <div style={{ display:"flex", gap:12 }}>
+          <div style={{ flex:1 }}>
+            <FormField IconComp={Clock} label="Validade" error={errors.expiry}>
+              <input inputMode="numeric" placeholder="MM/AA" maxLength={5} value={expiry}
+                onChange={e => {
+                  let v = e.target.value.replace(/\D/g,"").slice(0,4);
+                  if (v.length > 2) v = `${v.slice(0,2)}/${v.slice(2)}`;
+                  setExpiry(v); if (errors.expiry) setErrors(p => ({ ...p, expiry:undefined }));
+                }}
+                style={{ ...REG_INPUT, borderColor: errors.expiry ? "#E53935" : undefined }} />
+            </FormField>
+          </div>
+          <div style={{ flex:1 }}>
+            <FormField IconComp={KeyRound} label="CVV" error={errors.cvv}>
+              <input inputMode="numeric" placeholder="000" maxLength={4} value={cvv}
+                onChange={e => { setCvv(e.target.value.replace(/\D/g,"").slice(0,4)); if (errors.cvv) setErrors(p => ({ ...p, cvv:undefined })); }}
+                style={{ ...REG_INPUT, borderColor: errors.cvv ? "#E53935" : undefined }} />
+            </FormField>
+          </div>
+        </div>
+        <FormField IconComp={User} label="CPF do titular do cartão" error={errors.cpf}>
+          <input inputMode="numeric" placeholder="000.000.000-00" value={cpf}
+            onChange={e => { setCpf(maskCpf(e.target.value)); if (errors.cpf) setErrors(p => ({ ...p, cpf:undefined })); }}
+            style={{ ...REG_INPUT, borderColor: errors.cpf ? "#E53935" : undefined }} />
+        </FormField>
+
+        <button onClick={pagar} disabled={loading} style={{
+          marginTop:8, width:"100%", padding:"16px 0", borderRadius:16, border:"none",
+          background: loading ? "#93C5FD" : `linear-gradient(135deg,${B},#0055d4)`,
+          color:"white", fontWeight:900, fontSize:15, cursor: loading ? "default" : "pointer",
+          display:"flex", alignItems:"center", justifyContent:"center", gap:10,
+        }}>
+          {loading ? "Processando pagamento..." : <><Lock size={16} /> Pagar R$ {planoPreco} e ativar plano</>}
+        </button>
+        <p style={{ fontSize:11, color:"#9CA3AF", textAlign:"center", margin:0 }}>
+          Cobrança recorrente mensal de R$ {planoPreco}. Cancele quando quiser.
+        </p>
       </div>
     </div>
   );
@@ -6812,14 +6945,14 @@ const ROLE_OPTIONS = [
     title: "Quero trabalhar",
     hook: "Encontre quem precisa do que você faz.",
     desc: "Receba oportunidades de serviços e conquiste novos clientes.",
-    tag: "7 dias grátis", tagBg:`${O}22`, tagBorder:"transparent", tagColor:O,
+    tag: "A partir de R$ 29,90/mês", tagBg:`${O}22`, tagBorder:"transparent", tagColor:O,
   },
   {
     id: "empresa", icon: Briefcase, accent: "#1a1a2e", accentDeep: "#0A2A6B",
     title: "Quero crescer minha empresa",
     hook: "Encontre clientes e profissionais para fazer sua operação acontecer.",
     desc: "Publique demandas, encontre mão de obra e amplie suas oportunidades.",
-    tag: "7 dias grátis", tagBg:"#1a1a2e14", tagBorder:"transparent", tagColor:"#1a1a2e",
+    tag: "A partir de R$ 149,90/mês", tagBg:"#1a1a2e14", tagBorder:"transparent", tagColor:"#1a1a2e",
   },
 ];
 
@@ -7634,11 +7767,12 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
             : "Agora você tem os melhores profissionais na palma da mão."}
         </p>
 
-        {/* 7-day trial badge for professionals */}
+        {/* Próximo passo: escolher e pagar o plano — sem trial, cobrança
+            imediata (ver PagamentoPlanoScreen). */}
         {isProfessional && (
           <div style={{ background:"linear-gradient(135deg,#7C3AED,#4F46E5)", borderRadius:16, padding:"14px 20px", marginBottom:20, width:"100%" }}>
-            <p style={{ fontSize:14, fontWeight:900, color:"white", margin:"0 0 4px" }}>🎁 7 dias de Multi PRO grátis!</p>
-            <p style={{ fontSize:12, color:"rgba(255,255,255,.75)", margin:0 }}>Contatos desbloqueados · Chat ilimitado · Sem cartão agora</p>
+            <p style={{ fontSize:14, fontWeight:900, color:"white", margin:"0 0 4px" }}>🔧 Falta só escolher seu plano!</p>
+            <p style={{ fontSize:12, color:"rgba(255,255,255,.75)", margin:0 }}>A partir de R$ 29,90/mês · Contatos desbloqueados · Chat ilimitado</p>
           </div>
         )}
 
@@ -7691,8 +7825,8 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
           <div style={{ background:"white", border:"1.5px solid #EBEBEB", borderRadius:14, overflow:"hidden" }}>
             {[
               { val:"cliente",      icon:"🏠", label:"Só cliente",       sub:"Publico pedidos e contrato profissionais (grátis)" },
-              { val:"profissional", icon:"🔧", label:"Só profissional",  sub:"Recebo pedidos e ganho oportunidades (7 dias PRO grátis)" },
-              { val:"ambos",        icon:"🔁", label:"Os dois!",         sub:"Contrato quando precisar e também presto serviço (7 dias PRO grátis)" },
+              { val:"profissional", icon:"🔧", label:"Só profissional",  sub:"Recebo pedidos e ganho oportunidades (a partir de R$29,90/mês)" },
+              { val:"ambos",        icon:"🔁", label:"Os dois!",         sub:"Contrato quando precisar e também presto serviço (a partir de R$29,90/mês)" },
             ].map((opt, i, arr) => (
               <div key={opt.val} onClick={() => setTipoUso(opt.val)}
                 style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 14px", cursor:"pointer", borderBottom: i < arr.length - 1 ? "1px solid #F0F0F0" : "none", background: tipoUso === opt.val ? "#EBF4FF" : "white", transition:"background .15s" }}>
@@ -7709,11 +7843,11 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
           </div>
         </div>
 
-        {/* free / trial badge */}
+        {/* free / paid badge */}
         <div style={{ display:"flex", alignItems:"center", gap:8, background: isProfessional ? "#F5F3FF" : "#F0FDF4", border:`1px solid ${isProfessional ? "#DDD6FE" : "#BBF7D0"}`, borderRadius:14, padding:"10px 16px", marginBottom:22 }}>
-          <span style={{ fontSize:18 }}>{isProfessional ? "🎁" : "✨"}</span>
+          <span style={{ fontSize:18 }}>{isProfessional ? "💳" : "✨"}</span>
           <p style={{ fontSize:13, fontWeight:800, color: isProfessional ? "#5B21B6" : "#166534", margin:0 }}>
-            {isProfessional ? "7 dias de Multi PRO grátis — sem cartão!" : "Cadastro 100% gratuito para clientes"}
+            {isProfessional ? "A partir de R$ 29,90/mês — pagamento no próximo passo" : "Cadastro 100% gratuito para clientes"}
           </p>
         </div>
 
@@ -8238,7 +8372,7 @@ function GuestMural({ onSignup, allDocsVerified }) {
         <Crown size={28} color="#FDE68A" style={{ display:"block", margin:"0 auto 10px" }} />
         <p style={{ fontSize:15, fontWeight:900, color:"white", margin:"0 0 5px" }}>Seja um Profissional Multi</p>
         <p style={{ fontSize:12, color:"rgba(255,255,255,.7)", margin:"0 0 16px", lineHeight:1.6 }}>
-          7 dias de PRO grátis · Sem cartão · Acesso imediato ao mural completo
+          A partir de R$ 29,90/mês · Acesso imediato ao mural completo
         </p>
         <button onClick={onSignup} style={{ padding:"13px 32px", borderRadius:14, border:"none", background:"white", color:B, fontWeight:900, fontSize:14, cursor:"pointer" }}>
           Criar conta e acessar →
@@ -8310,8 +8444,6 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
     if (activeFilter === "topPay") return s.value >= 400;
     return true;
   });
-
-  const proTrialDays = 7; // free trial period
 
   // supabase.channel(topic) reaproveita o canal existente se já houver um
   // com o mesmo nome (não cria um novo) — e removeChannel é assíncrono
@@ -8475,13 +8607,14 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
           navegador em "Aceitar agora"/"Recusar"). */}
       {newOrder && <NewOrderCard order={newOrder} onAccept={()=>{stopNewOrderSound();setNewOrder(null);setOnline(false);pararEscutaPedidos();onAcceptOrder&&onAcceptOrder({id:newOrder.id,cliente_id:newOrder.cliente_id,title:newOrder.category,category:newOrder.category,clientName:safeGetUser().name||"Cliente",location:newOrder.location,value:newOrder.value,description:newOrder.description,photo:newOrder.photo,photos:newOrder.photos||[]});}} onReject={()=>{stopNewOrderSound();setNewOrder(null);}} />}
 
-      {/* ── PRO TRIAL BANNER (free users) ── */}
+      {/* ── UPGRADE BANNER (free users, sem plano ativo — some sozinho pra
+          quem já é PRO, ver !isPro acima) ── */}
       {!isPro && (
         <div onClick={onUpgrade} style={{ margin:"14px 16px 0", borderRadius:16, padding:"13px 16px", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", display:"flex", alignItems:"center", gap:12, cursor:"pointer", boxShadow:"0 4px 16px rgba(124,58,237,.35)" }}>
           <Crown size={20} color="#FDE68A" style={{ flexShrink:0 }} />
           <div style={{ flex:1 }}>
-            <p style={{ fontSize:13, fontWeight:900, color:"white", margin:0 }}>🎁 {proTrialDays} dias de Multi PRO grátis!</p>
-            <p style={{ fontSize:11, color:"rgba(255,255,255,.7)", margin:0 }}>Libere contatos, chat e acesso total. Sem cartão.</p>
+            <p style={{ fontSize:13, fontWeight:900, color:"white", margin:0 }}>👑 Vire Multi PRO — R$ 59,90/mês</p>
+            <p style={{ fontSize:11, color:"rgba(255,255,255,.7)", margin:0 }}>Libere contatos, chat e acesso total.</p>
           </div>
           <ChevronRight size={18} color="rgba(255,255,255,.7)" />
         </div>
@@ -9993,9 +10126,14 @@ const renderContent = () => {
                 const s = JSON.parse(localStorage.getItem("multiSession") || "{}"); s.role = "professional"; localStorage.setItem("multiSession", JSON.stringify(s));
                 const u = JSON.parse(localStorage.getItem("multiUser") || "{}"); u.role = "professional"; localStorage.setItem("multiUser", JSON.stringify(u));
               } catch {}
-              if (userEmail) supabase.from("usuarios").update({ role: "professional" }).eq("email", userEmail).then(()=>{}).catch(()=>{});
+              // is_hybrid=true: essa conta já era cliente antes de virar
+              // profissional agora — usuarios.role vira "professional" (pra
+              // aparecer no Banco de Profissionais), mas is_hybrid é o que
+              // diferencia de quem sempre foi só profissional (item 8 do
+              // prompt Ajustes de Cadastro/Perfil/Fluxos).
+              if (userEmail) supabase.from("usuarios").update({ role: "professional", is_hybrid: true }).eq("email", userEmail).then(()=>{}).catch(()=>{});
               setRole("professional"); setUserRole("professional"); setSelected(null);
-              carregarPlano("usuario", userEmail); // senão o trial recém-criado em EscolherPlanoScreen só aparece depois de um reload
+              carregarPlano("usuario", userEmail); // senão a assinatura recém-paga em EscolherPlanoScreen só aparece depois de um reload
               showToast?.("🎉 Perfil profissional pronto! Bem-vindo ao mural de serviços.", G);
               setScreen("home");
             }}
