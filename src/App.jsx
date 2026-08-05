@@ -5303,8 +5303,7 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
   };
 
   const handleLimiteCategoria = () => {
-    showToast?.(`⚠️ Multi Autônomo permite até ${MAX_CATEGORIAS_AUTONOMO} categorias — vire Pro pra categorias ilimitadas`, O);
-    onUpgrade?.();
+    showToast?.(`⚠️ Seu plano permite até ${MAX_CATEGORIAS_AUTONOMO} categorias de serviços. Para cadastrar todos os serviços que você oferece, faça upgrade para o MultiPro.`, O);
   };
   const [showNotif, setShowNotif] = useState(false);
   const [showSeguranca, setShowSeguranca] = useState(false);
@@ -5586,7 +5585,7 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
               />
               {!isPlanoPro && (
                 <button onClick={onUpgrade} style={{ marginTop:12, display:"flex", alignItems:"center", gap:6, background:"none", border:"none", cursor:"pointer", padding:0, color:O, fontSize:11.5, fontWeight:800 }}>
-                  <Crown size={13} /> Virar Pro pra categorias ilimitadas
+                  <Crown size={13} /> QUERO SER MULTIPRO
                 </button>
               )}
             </div>
@@ -7488,6 +7487,48 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
   const [phone,   setPhone]   = useState("");
   const [password, setPassword] = useState("");
   const [cep,     setCep]     = useState("");
+  // Cidade real — antes disso o cadastro gravava literalmente a string "Sua
+  // cidade"/"sua região" como localização do usuário, nunca a cidade de
+  // verdade (item 6 do prompt Ajustes de Cadastro/Perfil/Fluxos). Resolvida
+  // por CEP (ViaCEP, mesmo serviço já usado no resto do app) e, se o usuário
+  // permitir, refinada por geolocalização do navegador (BigDataCloud —
+  // reverse-geocode gratuito, sem chave — como primeira opção quando
+  // disponível, já que é mais precisa que o CEP digitado).
+  const [cepInfo,      setCepInfo]      = useState(null); // { bairro, cidade, uf }
+  const [geoCidade,    setGeoCidade]    = useState(null); // string, só se location permitida
+  const [geoStatus,    setGeoStatus]    = useState("idle"); // idle | asking | granted | denied | error
+  useEffect(() => {
+    const digits = cep.replace(/\D/g, "");
+    if (digits.length !== 8) { setCepInfo(null); return; }
+    let cancelado = false;
+    fetch(`https://viacep.com.br/ws/${digits}/json/`)
+      .then(r => r.json())
+      .then(d => { if (!cancelado && !d.erro) setCepInfo({ bairro: d.bairro, cidade: d.localidade, uf: d.uf }); })
+      .catch(() => {});
+    return () => { cancelado = true; };
+  }, [cep]);
+  const pedirLocalizacao = () => {
+    if (!navigator.geolocation) { setGeoStatus("error"); return; }
+    setGeoStatus("asking");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const r = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=pt`);
+          const d = await r.json();
+          const cidade = d.city || d.locality;
+          if (cidade) { setGeoCidade(`${cidade}${d.principalSubdivisionCode ? "/" + d.principalSubdivisionCode.replace("BR-","") : ""}`); setGeoStatus("granted"); }
+          else setGeoStatus("error");
+        } catch { setGeoStatus("error"); }
+      },
+      () => setGeoStatus("denied"),
+      { timeout: 8000 }
+    );
+  };
+  // Localização final: geolocalização (se permitida) > CEP resolvido > nunca
+  // um placeholder genérico — sem nenhum dos dois, cadastro fica bloqueado
+  // (ver validate()).
+  const cidadeResolvida = geoCidade || (cepInfo ? `${cepInfo.cidade}${cepInfo.uf ? "/" + cepInfo.uf : ""}` : null);
   // "tipoUso" — pergunta nova (mesmo padrão do "tipo de conta" no cadastro de
   // empresa: presta serviço/contrata/os dois). "profissional" e "ambos" os
   // dois passam pelas mesmas etapas extras de profissional (plano + termo +
@@ -7509,6 +7550,8 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
       e.phone = "WhatsApp incompleto";
     if (cep.replace(/\D/g,"").length < 8)
       e.cep = "CEP inválido";
+    else if (!cidadeResolvida)
+      e.cep = "Não encontramos esse CEP — confira e tente de novo";
     const wrapper = document.getElementById("terms-checkbox-wrapper");
     if (!wrapper || wrapper.dataset.checked !== "1")
       e.terms = "Aceite obrigatório";
@@ -7559,13 +7602,13 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
         userEmail={email.trim()}
         showToast={showToast}
         onDone={() => onComplete(
-          name, email.trim(), true, cepFound ? "Sua cidade" : "sua região",
+          name, email.trim(), true, cidadeResolvida || "sua região",
           // "ambos": sessão inicial abre no modo Cliente (mais alinhado ao que
           // a pessoa provavelmente vai fazer primeiro), mas usuarios.role
           // grava "professional" mesmo assim (7º argumento, dbRole) — sem
           // isso a conta some do Banco de Profissionais mesmo tendo feito
           // categoria/termo/plano de verdade.
-          tipoUso === "ambos" ? "client" : role, phone, role
+          tipoUso === "ambos" ? "client" : role, phone, role, tipoUso === "ambos"
         )}
       />
     );
@@ -7606,7 +7649,7 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
         </div>
 
         <button
-          onClick={() => isProfessional ? setStep("plano") : onComplete(name, email.trim(), true, cepFound ? "Sua cidade" : "sua região", role, phone)}
+          onClick={() => isProfessional ? setStep("plano") : onComplete(name, email.trim(), true, cidadeResolvida || "sua região", role, phone)}
           style={{ width:"100%", padding:"16px 0", borderRadius:18, border:"none", color:"white", fontWeight:900, fontSize:15, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:10, boxShadow:`0 6px 24px ${isProfessional ? O : B}44`, background: isProfessional ? `linear-gradient(135deg,${O},#E64A19)` : `linear-gradient(135deg,${B},#0055d4)` }}>
           {isProfessional ? <><Briefcase size={17} /> Escolher plano</> : <><Home size={17} /> Ir para a Tela Inicial</>}
         </button>
@@ -7706,11 +7749,19 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
             style={{ ...REG_INPUT, borderColor: errors.phone ? "#E53935" : undefined }} />
         </FormField>
         {/* CEP */}
-        <FormField IconComp={MapPin} label="CEP" error={errors.cep} hint={cepFound ? "CEP encontrado" : ""}>
+        <FormField IconComp={MapPin} label="CEP" error={errors.cep} hint={geoCidade ? `📍 ${geoCidade}` : cepInfo ? `${cepInfo.cidade}/${cepInfo.uf}` : ""}>
           <input autoComplete="postal-code" type="tel" placeholder="00000-000" value={cep}
             onChange={e => { setCep(maskCep(e.target.value)); if (errors.cep) setErrors(p => ({ ...p, cep:undefined })); }}
             style={{ ...REG_INPUT, borderColor: errors.cep ? "#E53935" : cepFound ? G : undefined }} />
         </FormField>
+
+        {/* LOCALIZAÇÃO — opcional, refina/confirma a cidade além do CEP digitado */}
+        {geoStatus !== "granted" && (
+          <button type="button" onClick={pedirLocalizacao} disabled={geoStatus === "asking"} style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:8, background:"#F0F7FF", border:"1px solid #BFDBFE", borderRadius:12, padding:"11px 14px", marginBottom:22, marginTop:-10, color:B, fontWeight:800, fontSize:12.5, cursor: geoStatus === "asking" ? "default" : "pointer" }}>
+            <MapPin size={14} />
+            {geoStatus === "asking" ? "Localizando..." : geoStatus === "denied" ? "Localização não permitida — usando CEP" : geoStatus === "error" ? "Não conseguimos localizar — usando CEP" : "Permitir que o Multi acesse sua localização?"}
+          </button>
+        )}
 
         {/* TERMS */}
         <TermsCheckbox errors={errors} setErrors={setErrors} />
@@ -8593,10 +8644,10 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
               })()}
 
               <h2 style={{ fontSize:20, fontWeight:900, color:"#0F172A", margin:"0 0 10px", lineHeight:1.3, letterSpacing:"-.3px" }}>
-                Falta um pouco para você<br/>começar a faturar!
+                Quase lá!
               </h2>
               <p style={{ fontSize:13, color:"#6B7280", lineHeight:1.7, margin:"0 0 24px", maxWidth:300, marginLeft:"auto", marginRight:"auto" }}>
-                Valide seus documentos para aceitar serviços e transmitir confiança aos clientes.
+                Pra liberar o contato e os dados necessários para realizar o serviço, você precisa concluir sua documentação.
               </p>
             </div>
 
@@ -8638,7 +8689,10 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
               </div>
             </div>
 
-            {/* ── PRO CARD — centre of attention ── */}
+            {/* ── PRO CARD — centre of attention (só faz sentido oferecer upgrade
+                pra quem ainda não é PRO; quem já é PRO só está bloqueado pela
+                documentação mesmo, não precisa ver oferta de upgrade) ── */}
+            {!isPro && (
             <div style={{ margin:"0 20px 20px", borderRadius:20, overflow:"hidden", position:"relative" }}>
               {/* layered bg */}
               <div style={{ position:"absolute", inset:0, background:"linear-gradient(135deg,#0F172A 0%,#1E3A5F 50%,#78350F 100%)" }} />
@@ -8701,13 +8755,14 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                 </p>
               </div>
             </div>
+            )}
 
             {/* ── SECONDARY ACTIONS ── */}
             <div style={{ padding:"0 20px 44px", display:"flex", flexDirection:"column", gap:12, alignItems:"center" }}>
               <button
                 onClick={() => { setShowDocBlock(false); onGoToDocs?.(); }}
                 style={{ width:"100%", padding:"14px 0", borderRadius:16, border:"1.5px solid #007BFF", background:"white", color:"#007BFF", fontWeight:900, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-                <FileText size={16} /> Completar perfil grátis
+                <FileText size={16} /> COMPLETAR DOCUMENTAÇÃO
               </button>
               <button
                 onClick={() => setShowDocBlock(false)}
@@ -9405,7 +9460,7 @@ export default function App() {
     setAuthScreen("welcome");
   };
 
-  const handleLoginComplete = (name = "", email = "", isNewAccount = false, location = "", registeredRole = "", whatsapp = "", dbRole = null) => {
+  const handleLoginComplete = (name = "", email = "", isNewAccount = false, location = "", registeredRole = "", whatsapp = "", dbRole = null, isHybrid = false) => {
     const finishLogin = (resolvedRole, nomeSalvo) => {
       // Nome de exibição: no cadastro, usa o que a pessoa digitou em "Nome
       // Completo" (única fonte confiável). Em logins seguintes, prioriza o
@@ -9448,7 +9503,7 @@ export default function App() {
         // Cliente (session.role), mas usuarios.role grava "professional" de
         // verdade — sem isso a conta não aparece no Banco de Profissionais
         // mesmo tendo completado categoria/termo/plano no cadastro.
-        if (isNewAccount) { upsertPayload.name = session.name; upsertPayload.role = dbRole || session.role || "client"; upsertPayload.empresa_id = null; }
+        if (isNewAccount) { upsertPayload.name = session.name; upsertPayload.role = dbRole || session.role || "client"; upsertPayload.empresa_id = null; if (isHybrid) upsertPayload.is_hybrid = true; }
         // whatsapp/city só entram no payload quando vêm com valor de verdade
         // (cadastro novo, via fast-form). Login normal sempre chama isso com
         // whatsapp="" e location="" (LoginScreen não coleta nenhum dos dois),
