@@ -8956,16 +8956,60 @@ export default function App() {
   // o cliente nunca via os próprios pedidos reais nesta lista.
   const [meusPedidos, setMeusPedidos] = useState([]);
   const [meusPedidosLoading, setMeusPedidosLoading] = useState(false);
+  // Colunas da listagem — de propósito SEM "fotos"/"conclusao_fotos_*".
+  // Achado ao vivo: pedidos antigos (de antes do upload ir pro Storage)
+  // guardam a foto inteira em base64 direto nessa coluna jsonb — um único
+  // registro chega a 7.8MB. Com select("*") em todos os pedidos de uma
+  // conta (104, nesse caso), a resposta passava de 22MB e 3-6s, e o
+  // gateway ocasionalmente derrubava a conexão com 500 — que o .catch()
+  // abaixo engolia silenciosamente, deixando a tela mostrar "0 pedidos"
+  // em todas as abas mesmo com os dados intactos no banco (o cliente_id
+  // filtrado nunca esteve errado). MyServicesScreen não renderiza foto
+  // nenhuma, então tirar daqui não perde nada na listagem — quem abre o
+  // detalhe de um pedido específico busca "fotos" à parte (ver
+  // abrirDetalheServico) só pra aquela linha, não pra lista inteira.
+  const PEDIDO_LIST_COLS = "id,cliente_id,cliente_nome,profissional_aceito,profissional_nome,categoria,descricao,valor,cep,cidade,status,created_at,chegada_solicitada_em,inicio_confirmado_em,concluido_em,contestado_em,contestacao_motivo,cancelado_motivo,cancelado_por,concluido_cliente_em,concluido_profissional_em";
   const refreshMeusPedidos = () => {
     if (!userEmail) { setMeusPedidos([]); return; }
     setMeusPedidosLoading(true);
     const query = role === "professional"
-      ? supabase.from("pedidos").select("*").eq("profissional_aceito", userEmail)
-      : supabase.from("pedidos").select("*").eq("cliente_id", userEmail);
-    query.order("created_at", { ascending: false }).then(({ data }) => {
+      ? supabase.from("pedidos").select(PEDIDO_LIST_COLS).eq("profissional_aceito", userEmail)
+      : supabase.from("pedidos").select(PEDIDO_LIST_COLS).eq("cliente_id", userEmail);
+    query.order("created_at", { ascending: false }).then(({ data, error }) => {
+      if (error) {
+        console.error("refreshMeusPedidos:", error);
+        showToast?.("Não foi possível carregar seus pedidos agora. Puxe pra atualizar ou tente de novo em instantes.", "#DC2626");
+        setMeusPedidosLoading(false);
+        return;
+      }
       setMeusPedidos((data || []).map(mapPedidoRow));
       setMeusPedidosLoading(false);
-    }).catch(() => setMeusPedidosLoading(false));
+    }).catch((err) => {
+      console.error("refreshMeusPedidos:", err);
+      showToast?.("Não foi possível carregar seus pedidos agora. Puxe pra atualizar ou tente de novo em instantes.", "#DC2626");
+      setMeusPedidosLoading(false);
+    });
+  };
+  // Busca a foto de UM pedido específico só quando a pessoa abre o
+  // detalhe — mantém a listagem leve (ver PEDIDO_LIST_COLS acima) sem
+  // esconder a foto de quem realmente quer ver. Falha silenciosa aqui é
+  // aceitável (mostra o detalhe sem foto em vez de travar a tela toda).
+  const abrirDetalheServico = (s, destino = "service") => {
+    setSelected(s);
+    setScreen(destino);
+    if (!s?.id) return;
+    supabase.from("pedidos").select("fotos,conclusao_fotos_cliente,conclusao_fotos_profissional").eq("id", s.id).maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        setSelected(sel => sel?.id === s.id ? {
+          ...sel,
+          photos: data.fotos || [],
+          photo: (data.fotos || [])[0] || null,
+          conclusao_fotos_cliente: data.conclusao_fotos_cliente,
+          conclusao_fotos_profissional: data.conclusao_fotos_profissional,
+        } : sel);
+      })
+      .catch(() => {});
   };
   useEffect(() => { refreshMeusPedidos(); }, [screen, userEmail, role]);
 
@@ -9704,7 +9748,7 @@ const renderContent = () => {
       if (screen === "post")   return <PostServiceScreen onBack={() => setScreen("home")} onSuccess={handlePostServiceSuccess} />;
       if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onStatusChange={handlePedidoStatusChange} showToast={showToast} onAccepted={(pedidoRow) => { setSelected(mapPedidoRow(pedidoRow)); setScreen("service"); }} onAceitarProposta={handleAceitarProposta} onBack={() => setScreen("orders")} />;
       if (screen === "chat")   return <ChatInbox myServices={meusPedidosComCandidatos} onOpenChat={openChatFromService} />;
-      if (screen === "orders") return <MyServicesScreen initialTab="aberto" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} onCancelarPedido={(s) => { if (window.confirm('Cancelar esse pedido? O profissional será avisado.')) { handlePedidoStatusChange(s.id, 'cancelado'); showToast?.('Pedido cancelado.', '#DC2626'); } }} isPro={isPro} />;
+      if (screen === "orders") return <MyServicesScreen initialTab="aberto" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => abrirDetalheServico(s)} onOpenChat={openChatFromService} onCancelarPedido={(s) => { if (window.confirm('Cancelar esse pedido? O profissional será avisado.')) { handlePedidoStatusChange(s.id, 'cancelado'); showToast?.('Pedido cancelado.', '#DC2626'); } }} isPro={isPro} />;
       if (screen === "profile") {
         if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
         return <ProfileScreen role="client" userName={userName} userEmail={userEmail} isPro={false} showRankingGlobal={showRankingGlobal} onClearRankingGlobal={() => setShowRankingGlobal(false)} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenAdmin={() => setShowAdmin(true)} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
@@ -9723,7 +9767,7 @@ const renderContent = () => {
           <ClientHome
             onPost={() => requireAuth("post", () => setScreen("post"))}
             onViewService={s => s
-              ? requireAuth("service", () => { setSelected(s); setScreen("service"); })
+              ? requireAuth("service", () => abrirDetalheServico(s))
               : requireAuth("orders", () => setScreen("orders"))
             }
             onSwitchPro={() => requireAuth("virar-profissional", () => setScreen("virar-profissional"))}
@@ -9786,7 +9830,7 @@ const renderContent = () => {
         <div style={{ display:"flex", flexDirection:"column", position:"relative" }}>
           <ClientHome
             onPost={() => requireAuth("post", () => setScreen("post"))}
-            onViewService={s => s ? requireAuth("service", () => { setSelected(s); setScreen("service"); }) : requireAuth("orders", () => setScreen("orders"))}
+            onViewService={s => s ? requireAuth("service", () => abrirDetalheServico(s)) : requireAuth("orders", () => setScreen("orders"))}
             onSwitchPro={() => {}}
             myServices={isLoggedIn ? meusPedidosComCandidatos : []}
             userName={userName}
@@ -9808,7 +9852,7 @@ const renderContent = () => {
     }
     if (screen === "service" && selected) return <ServiceDetailPro key={selected.id} service={selected} onBack={() => setScreen("home")} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onOpenPinEntry={() => setScreen("pinjob")} onCancelarPedido={handleCancelarPedidoPosAceite} onSolicitarChegada={handleSolicitarChegada} onConfirmarInicio={handleConfirmarInicio} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
     if (screen === "pinjob"  && selected) return <ServiceDetailPinEntry key={selected.id} service={selected} onBack={() => setScreen("service")} onStatusChange={handlePedidoStatusChange} onConfirmarConclusao={handleConfirmarConclusao} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
-    if (screen === "orders") return <MyServicesScreen initialTab="concluido" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => { setSelected(s); setScreen("service"); }} onOpenChat={openChatFromService} isPro={isPro} />;
+    if (screen === "orders") return <MyServicesScreen initialTab="concluido" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => abrirDetalheServico(s)} onOpenChat={openChatFromService} isPro={isPro} />;
     // Pro home — shows professional-specific banner + filters + feed
     return (
       <ProfessionalHome
