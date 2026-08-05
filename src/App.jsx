@@ -6569,9 +6569,9 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
       {showConfirmModal && pedido && (
         <div
           onClick={() => !confirmandoServico && setShowConfirmModal(false)}
-          style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.5)", display:"flex", alignItems:"flex-end", justifyContent:"center", zIndex:60 }}
+          style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.5)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:60, padding:20, boxSizing:"border-box" }}
         >
-          <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:480, maxHeight:"88vh", overflowY:"auto", background:"white", borderRadius:"20px 20px 0 0", padding:"20px 20px 26px", boxSizing:"border-box" }}>
+          <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:480, maxHeight:"85vh", overflowY:"auto", background:"white", borderRadius:20, padding:"20px 20px 26px", boxSizing:"border-box" }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
               <p style={{ fontSize:16, fontWeight:900, color:"#1a1a2e", margin:0 }}>Confirmar Serviço</p>
               <button onClick={() => setShowConfirmModal(false)} style={{ background:"#F0F2F5", border:"none", borderRadius:"50%", width:28, height:28, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
