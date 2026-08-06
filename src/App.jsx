@@ -42,7 +42,7 @@ import {
   CreditCard, HeartHandshake, HelpCircle, KeyRound,
   BellRing, BadgeCheck, Users, ShieldCheck,
   Activity, BarChart2, Package, ChevronUp, Eye, EyeOff,
-  Paperclip, Download, ArrowLeftRight,
+  Paperclip, Download, ArrowLeftRight, Gem,
 } from "lucide-react";
 
 /* ───────────────────────── DESIGN TOKENS ──────────────────────────────────── */
@@ -4088,7 +4088,33 @@ const PLANOS_USUARIO = [
     ideal: "Você não quer apenas trabalhar hoje. Você quer construir uma carreira, conquistar contratos e crescer. O Multi Pro coloca você em mais lugares onde novas oportunidades podem acontecer.",
     ctaLabel: "Quero crescer com o Multi Pro",
   },
+  {
+    id: "premium", icon: Gem, label: "Multi Premium", price: "129,90", perDay: "menos de R$5 por dia", badge: "Sem limites",
+    hook: "Sem teto de categoria, sem teto de valor, sem teto de serviço.",
+    intro: "Você já sabe o que faz e até onde quer chegar. Com o Multi Premium, nenhum limite de plano fica no seu caminho: cadastre quantas categorias precisar, aceite serviços de qualquer valor e feche quantos fechar por mês.",
+    beneficios: [
+      { icon: CheckCircle2, text: "Tudo do Multi Pro", lead: true },
+      { icon: ClipboardList, text: "Categorias ilimitadas cadastradas no seu perfil" },
+      { icon: DollarSign, text: "Sem teto de valor por serviço" },
+      { icon: TrendingUp, text: "Sem limite de serviços fechados por mês" },
+      { icon: Gem, text: "Prioridade nas oportunidades compatíveis com você" },
+    ],
+    idealLead: "Ideal para quem já vive disso.",
+    ideal: "Categoria, valor e quantidade nunca mais viram motivo pra deixar passar uma oportunidade. O Multi Premium existe pra quem já sabe que vai continuar crescendo.",
+    ctaLabel: "Quero o Multi Premium",
+  },
 ];
+// Limites de negócio (categoria/valor/quantidade) por plano do profissional.
+// Espelha PLANO_LIMITES_USUARIO em MULTI-BACKEND/server.js — repos separados,
+// sem pacote compartilhado, então qualquer mudança aqui precisa ser
+// replicada manualmente lá (e vice-versa). O backend é o gate real (endpoint
+// /api/pedidos/confirmar-servico); isto aqui só decide UX/copy (cards de
+// mural, tela de perfil). null = sem limite (Premium).
+const PLANO_LIMITES_USUARIO = {
+  autonomo: { maxCategorias: 1, maxServicosMes: 3,  valorMaxServico: 600  },
+  pro:      { maxCategorias: 3, maxServicosMes: 10, valorMaxServico: 3000 },
+  premium:  { maxCategorias: null, maxServicosMes: null, valorMaxServico: null },
+};
 const PLANOS_EMPRESA = [
   { id:"empresa",      icon:Briefcase, label:"Multi Empresa",      price:"149,90", beneficios:["Captar clientes"] },
   { id:"empresa_plus", icon:Crown,     label:"Multi Empresa Pro",  price:"299,90", beneficios:["Captar clientes","Banco de profissionais (busca/filtro)","Criar demandas de mão de obra","Dashboard"] },
@@ -5512,13 +5538,16 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
       .catch(() => {});
   }, [role, userEmail]);
 
-  // Multi Autônomo trava em MAX_CATEGORIAS_AUTONOMO categorias — Multi Pro é ilimitado.
-  // Importante: usa "plano" (id exato da assinatura: "autonomo"/"pro"), não "isPro" —
-  // isPro só indica "tem alguma assinatura ativa" (inclui Autônomo), então usá-lo aqui
-  // deixava o Autônomo sem limite nenhum assim que a trial/assinatura ficava ativa.
-  const MAX_CATEGORIAS_AUTONOMO = 3;
+  // Teto de categorias vem de PLANO_LIMITES_USUARIO (Autônomo:1 / Pro:3 /
+  // Premium:ilimitado — definido no topo do arquivo, espelhado no backend).
+  // Importante: usa "plano" (id exato da assinatura: "autonomo"/"pro"/"premium"),
+  // não "isPro" — isPro só indica "tem alguma assinatura ativa" (inclui
+  // Autônomo), então usá-lo aqui deixava o Autônomo sem limite nenhum assim
+  // que a trial/assinatura ficava ativa. Sem plano ativo trata como Autônomo
+  // (teto mais restritivo) pra fins de cadastro de categoria.
+  const limitePlanoAtual = PLANO_LIMITES_USUARIO[plano];
   const isPlanoPro = plano === "pro";
-  const limiteCategoria = isPlanoPro ? undefined : MAX_CATEGORIAS_AUTONOMO;
+  const limiteCategoria = limitePlanoAtual ? (limitePlanoAtual.maxCategorias ?? undefined) : 1;
 
   const handleSaveCategoria = async (novasCategorias) => {
     categoriaTocadaRef.current = true;
@@ -5532,7 +5561,9 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
   };
 
   const handleLimiteCategoria = () => {
-    showToast?.(`⚠️ Seu plano permite até ${MAX_CATEGORIAS_AUTONOMO} categorias de serviços. Para cadastrar todos os serviços que você oferece, faça upgrade para o MultiPro.`, O);
+    const cap = limiteCategoria ?? 1;
+    const proximoPlano = plano === "pro" ? "Multi Premium" : "Multi Pro";
+    showToast?.(`⚠️ Seu plano permite até ${cap} categoria${cap === 1 ? "" : "s"} de serviço${cap === 1 ? "" : "s"}. Para cadastrar todos os serviços que você oferece, faça upgrade para o ${proximoPlano}.`, O);
   };
   const [showNotif, setShowNotif] = useState(false);
   const [showSeguranca, setShowSeguranca] = useState(false);
@@ -5837,7 +5868,7 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
                 <>
                   <p style={{ margin:"0 0 10px", fontSize:11, color:"#9CA3AF" }}>
                     Necessárias pra ficar online e receber pedidos no Mural.
-                    {!isPlanoPro && ` Multi Autônomo: até ${MAX_CATEGORIAS_AUTONOMO}.`}
+                    {limiteCategoria != null && ` ${plano === "pro" ? "Multi Pro" : "Multi Autônomo"}: até ${limiteCategoria}.`}
                   </p>
                   <CategoriaMultiSelect
                     value={categoriaServico}
@@ -5845,9 +5876,9 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
                     max={limiteCategoria}
                     onLimitReached={handleLimiteCategoria}
                   />
-                  {!isPlanoPro && (
+                  {plano !== "premium" && (
                     <button onClick={onUpgrade} style={{ marginTop:12, display:"flex", alignItems:"center", gap:6, background:"none", border:"none", cursor:"pointer", padding:0, color:O, fontSize:11.5, fontWeight:800 }}>
-                      <Crown size={13} /> QUERO SER MULTIPRO
+                      <Crown size={13} /> {plano === "pro" ? "QUERO SER MULTIPREMIUM" : "QUERO SER MULTIPRO"}
                     </button>
                   )}
                 </>
