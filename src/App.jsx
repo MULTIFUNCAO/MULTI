@@ -5015,6 +5015,10 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
   // categoria antes desse fetch inicial responder, não deixa a resposta antiga
   // sobrescrever a escolha recém-feita.
   const categoriaTocadaRef = useRef(false);
+  // Guarda contra a corrida entre saves de categoria (ver handleSaveCategoria
+  // abaixo): timeout do debounce + número de sequência do save mais recente.
+  const categoriaSaveTimeoutRef = useRef(null);
+  const categoriaSaveSeqRef = useRef(0);
   useEffect(() => {
     if (role !== "professional" || !userEmail) return;
     supabase.from("usuarios").select("categoria_servico,bio,portfolio").eq("email", userEmail).maybeSingle()
@@ -5037,23 +5041,40 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
   const isPlanoPro = plano === "pro";
   const limiteCategoria = limitePlanoAtual ? (limitePlanoAtual.maxCategorias ?? undefined) : 1;
 
-  const handleSaveCategoria = async (novasCategorias) => {
+  // Grava de verdade no Supabase — chamado só depois do debounce em
+  // handleSaveCategoria (nunca direto pelo clique). .select() força o
+  // Postgrest a devolver as linhas afetadas: um UPDATE que bate 0 linhas
+  // (e-mail sem match, RLS bloqueando etc.) não gera "error" nenhum, então
+  // sem isso o toast de sucesso podia mentir mesmo sem gravar nada.
+  const persistCategoria = async (novasCategorias) => {
+    const seq = ++categoriaSaveSeqRef.current;
+    setSavingCategoria(true);
+    const { data, error } = await supabase.from("usuarios").update({ categoria_servico: novasCategorias }).eq("email", userEmail).select("email,categoria_servico");
+    // Se outro save mais novo já começou enquanto este estava em voo, a
+    // resposta deste (mais antigo) não deve mexer em toast/loading — evita
+    // que um save desatualizado "vença" um mais recente que já terminou.
+    if (seq !== categoriaSaveSeqRef.current) return;
+    setSavingCategoria(false);
+    if (error) showToast?.("❌ Erro ao salvar categoria: " + (error.message || ""), "#DC2626");
+    else if (!data || data.length === 0) showToast?.("❌ Não foi possível confirmar o salvamento da categoria.", "#DC2626");
+    else showToast?.("✅ Categorias de serviço salvas!", G);
+  };
+
+  // CategoriaMultiSelect dispara isso a cada toggle (sem botão "Salvar"),
+  // então selecionar 2+ categorias rápido disparava um UPDATE por clique,
+  // concorrentes entre si — sem ordem garantida de resposta, o save de um
+  // clique mais antigo (ex.: só "Pedreiro") podia responder depois do save
+  // mais novo (ex.: "Pedreiro"+"Encanador") e sobrescrever o resultado
+  // completo pelo incompleto, mesmo os dois tendo "dado certo" (bug
+  // reportado: toast de sucesso, mas categoria não persistia). Debounce
+  // espera a pessoa parar de clicar antes de gravar — só sai 1 UPDATE por
+  // sequência de toggles, sempre com a seleção final.
+  const handleSaveCategoria = (novasCategorias) => {
     categoriaTocadaRef.current = true;
     setCategoriaServico(novasCategorias);
     if (!userEmail) return;
-    setSavingCategoria(true);
-    // DIAGNÓSTICO TEMPORÁRIO (investigação do bug "salvo mas não persiste"):
-    // .select() força o Postgrest a devolver as linhas afetadas de verdade —
-    // sem isso, um UPDATE que bate 0 linhas (RLS bloqueando, e-mail não
-    // batendo, etc.) volta como sucesso silencioso (sem "error"), e o toast
-    // "salvo!" mentia. Loga o e-mail usado no momento exato do save, porque
-    // a suspeita é userEmail estar diferente do que a tela mostra.
-    const { data, error } = await supabase.from("usuarios").update({ categoria_servico: novasCategorias }).eq("email", userEmail).select("email,categoria_servico");
-    console.log("[DIAG categoria] userEmail usado:", JSON.stringify(userEmail), "| linhas afetadas:", data?.length ?? 0, "| retorno:", data, "| error:", error);
-    setSavingCategoria(false);
-    if (error) showToast?.("❌ Erro ao salvar categoria: " + (error.message || ""), "#DC2626");
-    else if (!data || data.length === 0) showToast?.(`⚠️ Salvo não confirmado — 0 linhas atualizadas pro e-mail "${userEmail}". Veja o console.`, "#DC2626");
-    else showToast?.("✅ Categorias de serviço salvas!", G);
+    if (categoriaSaveTimeoutRef.current) clearTimeout(categoriaSaveTimeoutRef.current);
+    categoriaSaveTimeoutRef.current = setTimeout(() => persistCategoria(novasCategorias), 600);
   };
 
   const handleLimiteCategoria = () => {
