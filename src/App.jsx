@@ -5042,9 +5042,17 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
     setCategoriaServico(novasCategorias);
     if (!userEmail) return;
     setSavingCategoria(true);
-    const { error } = await supabase.from("usuarios").update({ categoria_servico: novasCategorias }).eq("email", userEmail);
+    // DIAGNÓSTICO TEMPORÁRIO (investigação do bug "salvo mas não persiste"):
+    // .select() força o Postgrest a devolver as linhas afetadas de verdade —
+    // sem isso, um UPDATE que bate 0 linhas (RLS bloqueando, e-mail não
+    // batendo, etc.) volta como sucesso silencioso (sem "error"), e o toast
+    // "salvo!" mentia. Loga o e-mail usado no momento exato do save, porque
+    // a suspeita é userEmail estar diferente do que a tela mostra.
+    const { data, error } = await supabase.from("usuarios").update({ categoria_servico: novasCategorias }).eq("email", userEmail).select("email,categoria_servico");
+    console.log("[DIAG categoria] userEmail usado:", JSON.stringify(userEmail), "| linhas afetadas:", data?.length ?? 0, "| retorno:", data, "| error:", error);
     setSavingCategoria(false);
     if (error) showToast?.("❌ Erro ao salvar categoria: " + (error.message || ""), "#DC2626");
+    else if (!data || data.length === 0) showToast?.(`⚠️ Salvo não confirmado — 0 linhas atualizadas pro e-mail "${userEmail}". Veja o console.`, "#DC2626");
     else showToast?.("✅ Categorias de serviço salvas!", G);
   };
 
