@@ -8265,6 +8265,25 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   const next=!online;
   userToggledRef.current=true;
 
+  // Documentação obrigatória (RG/CNH, Antecedentes, Comprovante de
+  // Endereço) precisa estar toda "verified" antes de poder ficar online —
+  // sem isso o profissional apareceria pros clientes sem nunca ter passado
+  // por verificação nenhuma. Esse check aqui é só UX (mensagem clara antes
+  // de tentar); o bloqueio de verdade é o trigger
+  // trg_block_online_sem_docs no Postgres (ver
+  // supabase_bloqueio_doc_pendente_migration.sql) — sem ele, dava pra
+  // contornar essa tela inteira só chamando o UPDATE direto pelo console.
+  if(next && !allDocsVerified){
+    const faltando = [
+      docStatus?.rg !== "verified" && "RG/CNH",
+      docStatus?.crim !== "verified" && "Antecedentes Criminais",
+      docStatus?.address !== "verified" && "Comprovante de Endereço",
+    ].filter(Boolean).join(", ");
+    showToast?.(`⚠️ Documentação pendente (${faltando}) — complete no Perfil antes de ficar online.`, "#DC2626");
+    onGoToDocs?.();
+    return;
+  }
+
   // Categoria obrigatória antes de poder ficar online (senão o profissional nunca
   // aparece pra nenhum pedido, já que a busca do notify-pedido casa por categoria).
   if(next && !categoriaServico.length){
@@ -8377,27 +8396,37 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
             ))}
           </div>
 
-          {/* FICAR ONLINE button */}
+          {/* FICAR ONLINE button — cinza/cadeado quando doc obrigatória
+              pendente e ainda offline (só bloqueia LIGAR; se por algum
+              motivo já estava online antes dessa trava existir, continua
+              dando pra pausar normalmente). onClick continua chamando
+              handleFicarOnline mesmo bloqueado — é ele quem mostra a
+              mensagem específica de qual documento falta, mesmo padrão do
+              botão "Candidatar-me" travado no mural. */}
           <button
             onClick={handleFicarOnline}
             className={online ? "pulse-online" : "pulse-offline"}
             style={{
               width:"100%", padding:"14px 0", borderRadius:16, border:"none", cursor:"pointer",
-              background: online ? `linear-gradient(135deg,${G},#16a34a)` : "rgba(255,255,255,.12)",
-              color: online ? "white" : "#9CA3AF",
+              background: online ? `linear-gradient(135deg,${G},#16a34a)` : !allDocsVerified ? "#1F2937" : "rgba(255,255,255,.12)",
+              color: online ? "white" : !allDocsVerified ? "#6B7280" : "#9CA3AF",
               fontWeight:900, fontSize:15,
               display:"flex", alignItems:"center", justifyContent:"center", gap:10,
               transition:"background .3s, color .3s",
             }}>
-            {/* radar icon */}
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <circle cx="12" cy="12" r="2"/>
-              <path d="M16.24 7.76a6 6 0 0 1 0 8.49"/>
-              <path d="M7.76 7.76a6 6 0 0 0 0 8.49"/>
-              <path d="M20.49 3.51a12 12 0 0 1 0 16.97"/>
-              <path d="M3.51 3.51a12 12 0 0 0 0 16.97"/>
-            </svg>
-            {online ? "✓  Online — Clique para pausar" : "Ficar Online"}
+            {!online && !allDocsVerified ? (
+              <Lock size={17} />
+            ) : (
+              /* radar icon */
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <circle cx="12" cy="12" r="2"/>
+                <path d="M16.24 7.76a6 6 0 0 1 0 8.49"/>
+                <path d="M7.76 7.76a6 6 0 0 0 0 8.49"/>
+                <path d="M20.49 3.51a12 12 0 0 1 0 16.97"/>
+                <path d="M3.51 3.51a12 12 0 0 0 0 16.97"/>
+              </svg>
+            )}
+            {online ? "✓  Online — Clique para pausar" : !allDocsVerified ? "Documentação pendente" : "Ficar Online"}
           </button>
         </div>
       </div>
@@ -9657,6 +9686,16 @@ export default function App() {
   // momento (handleAceitarProposta) o pedido de fato trava.
   const handleCandidatarPedidoDireto = (pedidoId, clienteId, valor, nomeOverride) => {
     if (!pedidoId || !userEmail) return;
+    // Mesmo check de allDocsVerified do "Ficar Online" — chamado direto
+    // pelo "Aceitar agora" do popup de novo pedido, que não passa pelo
+    // botão "Candidatar-me" do mural (esse já bloqueava). Bloqueio de
+    // verdade é o trigger trg_block_proposta_sem_docs no Postgres (ver
+    // supabase_bloqueio_doc_pendente_migration.sql); isso aqui só evita a
+    // viagem de rede quando já dá pra saber que vai falhar.
+    if (!allDocsVerified) {
+      showToast?.("⚠️ Documentação pendente — complete no Perfil antes de se candidatar a pedidos.", "#DC2626");
+      return;
+    }
     supabase.from("propostas").upsert({
       pedido_id: pedidoId,
       profissional_id: userEmail,
@@ -9666,7 +9705,10 @@ export default function App() {
       mensagem: "Tenho interesse neste serviço!",
       status: "pendente",
       cliente_email: clienteId || "",
-    }, { onConflict: "pedido_id,profissional_id" }).then(()=>{});
+    }, { onConflict: "pedido_id,profissional_id" })
+      .then(({ error }) => {
+        if (error) showToast?.("❌ " + (error.message || "Não foi possível se candidatar a esse pedido."), "#DC2626");
+      });
   };
 
   const openChatFromService = (svc) => {
