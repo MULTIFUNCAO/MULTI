@@ -1005,7 +1005,7 @@ function formatTimeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString("pt-BR");
 }
 
-function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGoToEditar, onGoToBanco, onGoToRede, onAcceptOrder, onVerPropostas, onOpenChat, temEmpresaPlus, modo, setModo, onUpgradeSuccess }) {
+function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGoToEditar, onAcceptOrder, onVerPropostas, onOpenChat, modo, setModo }) {
   const [empresa, setEmpresa] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showFullPreview, setShowFullPreview] = useState(false);
@@ -1101,15 +1101,9 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
   const emModoContratante = tipoConta === "contratante" || (tipoConta === "pro" && modo === "contratante");
 
   if (emModoContratante) {
-    if (tipoConta === "pro" && !temEmpresaPlus) {
-      return (
-        <EscolherPlanoScreen
-          titularTipo="empresa" titularEmail={userEmail} titularNome={empresa.nome} showToast={showToast}
-          onBack={() => setModo?.("prestadora")}
-          onDone={() => onUpgradeSuccess?.()}
-        />
-      );
-    }
+    // Antes exigia empresa_plus ativo pra tipo_conta "pro" acessar o modo
+    // Contratante (paywall) — planos pagos de empresa deixaram de existir,
+    // então "pro" cai direto aqui, igual "contratante" sempre fez.
     return (
       <EmpresaContratanteScreen
         userEmail={userEmail}
@@ -1350,20 +1344,6 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
           </button>
         </div>
 
-        {/* Banco de Profissionais — feature Empresa Plus; o gate real (plano
-            ativo/trial) é decidido no router, aqui é só o ponto de entrada */}
-        <button onClick={onGoToBanco} style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px 0", borderRadius:16, border:"none", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", color:"white", fontWeight:800, fontSize:13, cursor:"pointer", marginBottom:12, boxShadow:"0 4px 14px rgba(124,58,237,.3)" }}>
-          <Users size={15} /> Banco de Profissionais
-          <span style={{ marginLeft:2, fontSize:9, fontWeight:900, background:"rgba(255,255,255,.25)", borderRadius:99, padding:"2px 6px" }}>PRO</span>
-        </button>
-
-        {/* Minha Rede — favoritos/convites + histórico automático de quem já
-            concluiu serviço; mesmo padrão de gate Plus do Banco */}
-        <button onClick={onGoToRede} style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px 0", borderRadius:16, border:"none", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", color:"white", fontWeight:800, fontSize:13, cursor:"pointer", marginBottom:12, boxShadow:"0 4px 14px rgba(124,58,237,.3)" }}>
-          <Star size={15} /> Minha Rede
-          <span style={{ marginLeft:2, fontSize:9, fontWeight:900, background:"rgba(255,255,255,.25)", borderRadius:99, padding:"2px 6px" }}>PRO</span>
-        </button>
-
         {/* atalho rápido pra edição, sem depender só da nav inferior */}
         <button onClick={onGoToEditar} style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px 0", borderRadius:16, border:"1.5px solid #E5E7EB", background:"white", color:"#374151", fontWeight:800, fontSize:13, cursor:"pointer", marginBottom:18, boxShadow:"0 3px 14px rgba(0,0,0,.05)" }}>
           <Pencil size={15} /> Editar Perfil
@@ -1381,699 +1361,6 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
   );
 }
 
-/* ───────────────────────── EMPRESA PLUS — BANCO DE PROFISSIONAIS ───────────── */
-// Busca real de profissionais (tabela "usuarios"), exclusiva do plano Empresa
-// Plus — o gate de acesso (plano ativo/trial) fica no router em App(), não
-// aqui; esta tela assume que quem a renderiza já tem direito a ela.
-function BancoProfissionaisScreen({ onBack, empresaEmail }) {
-  const [loading,           setLoading]           = useState(true);
-  const [profissionais,     setProfissionais]     = useState([]);
-  const [reputacoes,        setReputacoes]         = useState({}); // email -> { mediaEstrelas, totalAvaliacoes, concluidos, taxaConclusao }
-  const [busca,             setBusca]              = useState("");
-  const [catsSelecionadas,  setCatsSelecionadas]   = useState([]);
-  const [soDisponiveis,     setSoDisponiveis]      = useState(false);
-  const [rede,              setRede]              = useState({}); // email -> true (na Minha Rede)
-
-  const carregarRede = () => {
-    if (!empresaEmail) return;
-    supabase.from("empresa_rede_favoritos").select("profissional_email").eq("empresa_email", empresaEmail)
-      .then(({ data }) => {
-        const map = {};
-        (data || []).forEach(r => { map[r.profissional_email] = true; });
-        setRede(map);
-      }).catch(() => {});
-  };
-
-  useEffect(() => {
-    supabase.from("usuarios").select("email,name,whatsapp,foto_perfil_url,bio,categoria_servico,status")
-      .eq("role", "professional")
-      .then(({ data }) => {
-        const lista = data || [];
-        setProfissionais(lista);
-        setLoading(false);
-        const emails = lista.map(p => p.email).filter(Boolean);
-        if (!emails.length) return;
-        // Reputação real por profissional (nota + volume + taxa de conclusão),
-        // via avaliado_email — a coluna genérica, não a legada profissional_id
-        // (que só cobre metade dos casos e não seria simétrica).
-        Promise.all(emails.map(email => fetchReputacao(email).then(r => [email, r])))
-          .then(pares => setReputacoes(Object.fromEntries(pares)))
-          .catch(() => {});
-      })
-      .catch(() => setLoading(false));
-    carregarRede();
-  }, []);
-
-  // Minha Rede (Empresa Plus): favoritar guarda silencioso; convidar faz o
-  // mesmo insert + abre WhatsApp com uma mensagem pronta de convite.
-  const toggleFavorito = (email) => {
-    if (!empresaEmail) return;
-    if (rede[email]) {
-      supabase.from("empresa_rede_favoritos").delete().eq("empresa_email", empresaEmail).eq("profissional_email", email)
-        .then(() => carregarRede()).catch(() => {});
-    } else {
-      // upsert, não insert puro — se já existir uma linha pra esse par
-      // (ex: clique em "Convidar" seguido rápido de um clique na estrela,
-      // antes do estado local recarregar), força a origem certa em vez de
-      // falhar silenciosamente no unique constraint e deixar a origem antiga.
-      supabase.from("empresa_rede_favoritos").upsert(
-        { empresa_email: empresaEmail, profissional_email: email, origem: "favoritado" },
-        { onConflict: "empresa_email,profissional_email" }
-      ).then(() => carregarRede()).catch(() => {});
-    }
-  };
-
-  const convidar = (p) => {
-    if (!empresaEmail) return;
-    supabase.from("empresa_rede_favoritos").upsert(
-      { empresa_email: empresaEmail, profissional_email: p.email, origem: "convidado" },
-      { onConflict: "empresa_email,profissional_email" }
-    ).then(() => carregarRede()).catch(() => {});
-    if (p.whatsapp) {
-      const texto = encodeURIComponent(`Olá, ${p.name || ""}! Você foi convidado a fazer parte da rede de profissionais de confiança da nossa empresa no Multi. 🤝`);
-      window.open(`https://wa.me/55${p.whatsapp.replace(/\D/g, "")}?text=${texto}`, "_blank");
-    }
-  };
-
-  const toggleCat = (id) => setCatsSelecionadas(c => c.includes(id) ? c.filter(x => x !== id) : [...c, id]);
-
-  const filtrados = profissionais
-    .filter(p => {
-      if (busca.trim() && !(p.name || "").toLowerCase().includes(busca.trim().toLowerCase())) return false;
-      if (catsSelecionadas.length && !(p.categoria_servico || []).some(c => catsSelecionadas.includes(c))) return false;
-      if (soDisponiveis && p.status !== true) return false;
-      return true;
-    })
-    .sort((a, b) => (reputacoes[b.email]?.mediaEstrelas || 0) - (reputacoes[a.email]?.mediaEstrelas || 0));
-
-  return (
-    <div style={{ minHeight:"100vh", background:"#F8F9FA", paddingBottom:40 }}>
-      <div style={{ background:"linear-gradient(160deg,#0F3460 0%,#1a4a7a 100%)", padding:"16px 18px 20px", borderRadius:"0 0 28px 28px" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16 }}>
-          <button onClick={onBack} style={{ background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:34, height:34, display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <ArrowLeft size={17} color="white" />
-          </button>
-          <div>
-            <h2 style={{ fontSize:18, fontWeight:900, color:"white", margin:0 }}>Banco de Profissionais</h2>
-            <p style={{ fontSize:11, color:"rgba(255,255,255,.6)", margin:0 }}>Busque e filtre profissionais reais da plataforma</p>
-          </div>
-        </div>
-        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome..."
-          style={{ width:"100%", border:"none", borderRadius:12, padding:"12px 14px", fontSize:13, outline:"none", fontFamily:"inherit", boxSizing:"border-box" }} />
-      </div>
-
-      <div style={{ padding:"14px 16px 0" }}>
-        <div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:6 }}>
-          {CATS.map(c => {
-            const active = catsSelecionadas.includes(c.id);
-            return (
-              <button key={c.id} onClick={() => toggleCat(c.id)} style={{ flexShrink:0, display:"flex", alignItems:"center", gap:5, padding:"7px 12px", borderRadius:99, border:`1.5px solid ${active ? B : "#E5E7EB"}`, background: active ? B+"12" : "white", color: active ? B : "#666", fontWeight:800, fontSize:12, cursor:"pointer", whiteSpace:"nowrap" }}>
-                {c.emoji} {c.label}
-              </button>
-            );
-          })}
-        </div>
-        <button onClick={() => setSoDisponiveis(s => !s)} style={{ marginTop:8, display:"flex", alignItems:"center", gap:6, padding:"7px 12px", borderRadius:99, border:`1.5px solid ${soDisponiveis ? G : "#E5E7EB"}`, background: soDisponiveis ? G+"12" : "white", color: soDisponiveis ? G : "#666", fontWeight:800, fontSize:12, cursor:"pointer" }}>
-          <span style={{ width:8, height:8, borderRadius:"50%", background: soDisponiveis ? G : "#ccc" }} /> Só disponíveis agora
-        </button>
-      </div>
-
-      <div style={{ padding:"16px 16px 0", display:"flex", flexDirection:"column", gap:12 }}>
-        {loading && <p style={{ textAlign:"center", color:"#aaa", fontSize:13 }}>Carregando...</p>}
-        {!loading && filtrados.length === 0 && <p style={{ textAlign:"center", color:"#aaa", fontSize:13, padding:"20px 0" }}>Nenhum profissional encontrado com esses filtros.</p>}
-        {filtrados.map(p => {
-          const cats = resolveCats(p.categoria_servico);
-          const reputacao = reputacoes[p.email];
-          return (
-            <div key={p.email} style={{ background:"white", borderRadius:20, padding:16, boxShadow:"0 4px 20px rgba(0,0,0,.08)", border:"1px solid #F0F0F0" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:10 }}>
-                <div style={{ width:52, height:52, borderRadius:16, overflow:"hidden", background:"#F8F9FA", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                  {p.foto_perfil_url
-                    ? <img src={p.foto_perfil_url} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt="" />
-                    : <User size={24} color="#B0B4C0" />}
-                </div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                    <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:0 }}>{p.name || "Profissional"}</p>
-                    {p.status === true && <span style={{ width:7, height:7, borderRadius:"50%", background:G, flexShrink:0 }} title="Disponível agora" />}
-                  </div>
-                  {cats.length > 0 && <p style={{ fontSize:11, color:"#888", margin:"2px 0 0" }}>{cats.map(c => `${c.emoji} ${c.label}`).join(" · ")}</p>}
-                  {reputacao && <div style={{ marginTop:4 }}><ReputacaoBadge {...reputacao} /></div>}
-                </div>
-                <button onClick={() => toggleFavorito(p.email)} title={rede[p.email] ? "Remover da Minha Rede" : "Adicionar à Minha Rede"} style={{ background:"none", border:"none", cursor:"pointer", padding:4, flexShrink:0, display:"flex" }}>
-                  <Star size={20} color={rede[p.email] ? "#7C3AED" : "#D1D5DB"} fill={rede[p.email] ? "#7C3AED" : "none"} />
-                </button>
-              </div>
-              {p.bio && <p style={{ fontSize:12.5, color:"#555", lineHeight:1.5, margin:"0 0 12px" }}>{p.bio}</p>}
-              {p.whatsapp && (
-                <a href={`https://wa.me/55${p.whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{ textDecoration:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"11px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:12 }}>
-                  <MessageCircle size={14} /> Chamar no WhatsApp
-                </a>
-              )}
-              {!rede[p.email] && (
-                <button onClick={() => convidar(p)} style={{ marginTop:8, width:"100%", padding:"9px 0", borderRadius:12, border:`1.5px solid #DDD6FE`, background:"#F5F3FF", color:"#6D28D9", fontWeight:800, fontSize:12, cursor:"pointer" }}>
-                  ⭐ Convidar pra Rede
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/* ───────────────────────── MINHA REDE DE PROFISSIONAIS (EMPRESA PLUS) ──────── */
-// Une dois conjuntos: automático (quem já concluiu serviço pra essa empresa,
-// calculado ao vivo a partir de "pedidos" — sem linha própria) e manual
-// (favoritado/convidado, em "empresa_rede_favoritos"). Um profissional pode
-// estar nos dois; mostra uma vez só, com as duas tags se for o caso.
-function MinhaRedeScreen({ onBack, empresaEmail }) {
-  const [loading,       setLoading]       = useState(true);
-  const [profissionais, setProfissionais] = useState([]);
-  const [reputacoes,    setReputacoes]    = useState({}); // email -> { mediaEstrelas, totalAvaliacoes, concluidos, taxaConclusao }
-
-  const carregar = () => {
-    if (!empresaEmail) { setLoading(false); return; }
-    Promise.all([
-      supabase.from("pedidos").select("profissional_aceito").eq("cliente_id", empresaEmail).eq("status", "concluido"),
-      supabase.from("empresa_rede_favoritos").select("profissional_email,origem").eq("empresa_email", empresaEmail),
-    ]).then(([{ data: concluidos }, { data: favoritos }]) => {
-      const origemPorEmail = {};
-      (concluidos || []).forEach(p => {
-        if (!p.profissional_aceito) return;
-        origemPorEmail[p.profissional_aceito] = { ...(origemPorEmail[p.profissional_aceito] || {}), historico: true };
-      });
-      (favoritos || []).forEach(f => {
-        const key = f.origem === "convidado" ? "convidado" : "favoritado";
-        origemPorEmail[f.profissional_email] = { ...(origemPorEmail[f.profissional_email] || {}), [key]: true };
-      });
-      const emails = Object.keys(origemPorEmail);
-      if (!emails.length) { setProfissionais([]); setLoading(false); return; }
-      supabase.from("usuarios").select("email,name,whatsapp,foto_perfil_url,bio,categoria_servico,status")
-        .in("email", emails)
-        .then(({ data }) => {
-          setProfissionais((data || []).map(p => ({ ...p, ...origemPorEmail[p.email] })));
-          setLoading(false);
-          Promise.all(emails.map(email => fetchReputacao(email).then(r => [email, r])))
-            .then(pares => setReputacoes(Object.fromEntries(pares)))
-            .catch(() => {});
-        }).catch(() => setLoading(false));
-    }).catch(() => setLoading(false));
-  };
-
-  useEffect(() => { carregar(); }, [empresaEmail]);
-
-  const removerFavorito = (email) => {
-    supabase.from("empresa_rede_favoritos").delete().eq("empresa_email", empresaEmail).eq("profissional_email", email)
-      .then(() => carregar()).catch(() => {});
-  };
-
-  return (
-    <div style={{ minHeight:"100vh", background:"#F8F9FA", paddingBottom:40 }}>
-      <div style={{ background:"linear-gradient(160deg,#7C3AED 0%,#4F46E5 100%)", padding:"16px 18px 20px", borderRadius:"0 0 28px 28px" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-          <button onClick={onBack} style={{ background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:34, height:34, display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <ArrowLeft size={17} color="white" />
-          </button>
-          <div>
-            <h2 style={{ fontSize:18, fontWeight:900, color:"white", margin:0 }}>Minha Rede</h2>
-            <p style={{ fontSize:11, color:"rgba(255,255,255,.6)", margin:0 }}>Profissionais de confiança, prontos pra reutilizar</p>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ padding:"16px 16px 0", display:"flex", flexDirection:"column", gap:12 }}>
-        {loading && <p style={{ textAlign:"center", color:"#aaa", fontSize:13 }}>Carregando...</p>}
-        {!loading && profissionais.length === 0 && (
-          <div style={{ textAlign:"center", padding:"48px 24px", color:"#ccc" }}>
-            <Star size={36} color="#E0E0E0" style={{ margin:"0 auto 12px", display:"block" }} />
-            <p style={{ fontSize:14, fontWeight:700 }}>Sua rede está vazia</p>
-            <p style={{ fontSize:12, marginTop:4 }}>Favorite profissionais no Banco de Profissionais ou conclua um serviço com alguém pra ele entrar aqui.</p>
-          </div>
-        )}
-        {profissionais.map(p => {
-          const cats = resolveCats(p.categoria_servico);
-          const reputacao = reputacoes[p.email];
-          return (
-            <div key={p.email} style={{ background:"white", borderRadius:20, padding:16, boxShadow:"0 4px 20px rgba(0,0,0,.08)", border:"1px solid #F0F0F0" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:10 }}>
-                <div style={{ width:52, height:52, borderRadius:16, overflow:"hidden", background:"#F8F9FA", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                  {p.foto_perfil_url
-                    ? <img src={p.foto_perfil_url} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt="" />
-                    : <User size={24} color="#B0B4C0" />}
-                </div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                    <p style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:0 }}>{p.name || "Profissional"}</p>
-                    {p.status === true && <span style={{ width:7, height:7, borderRadius:"50%", background:G, flexShrink:0 }} title="Disponível agora" />}
-                  </div>
-                  {cats.length > 0 && <p style={{ fontSize:11, color:"#888", margin:"2px 0 0" }}>{cats.map(c => `${c.emoji} ${c.label}`).join(" · ")}</p>}
-                  {reputacao && <div style={{ marginTop:4 }}><ReputacaoBadge {...reputacao} /></div>}
-                  <div style={{ display:"flex", gap:6, marginTop:4 }}>
-                    {p.historico && <span style={{ fontSize:10, fontWeight:800, color:G, background:G+"18", borderRadius:99, padding:"2px 7px" }}>Já trabalhou com você</span>}
-                    {(p.favoritado || p.convidado) && <span style={{ fontSize:10, fontWeight:800, color:"#7C3AED", background:"#7C3AED18", borderRadius:99, padding:"2px 7px" }}>{p.convidado ? "Convidado" : "Favoritado"}</span>}
-                  </div>
-                </div>
-              </div>
-              {p.bio && <p style={{ fontSize:12.5, color:"#555", lineHeight:1.5, margin:"0 0 12px" }}>{p.bio}</p>}
-              <div style={{ display:"flex", gap:8 }}>
-                {p.whatsapp && (
-                  <a href={`https://wa.me/55${p.whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{ flex:1, textDecoration:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"11px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:12 }}>
-                    <MessageCircle size={14} /> Chamar no WhatsApp
-                  </a>
-                )}
-                {(p.favoritado || p.convidado) && (
-                  <button onClick={() => removerFavorito(p.email)} title="Remover da Minha Rede" style={{ padding:"11px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", background:"white", cursor:"pointer" }}>
-                    <Star size={16} color="#7C3AED" fill="#7C3AED" />
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/* ───────────────── EMPRESA PLUS — "PRECISO DE FUNCIONÁRIO" (demanda completa) ─ */
-// Segundo modo do EmpresaHomeScreen (toggle no header, ver "Modo: Prestadora").
-// Clone visual de PostServiceScreen (Novo Serviço do cliente) com os labels
-// adaptados pro contexto de contratação — mas publica no mesmo mecanismo de
-// demanda de mão de obra já consolidado (pedidos, publico_alvo:"pro", ver
-// supabase_demandas_pro_migration.sql), com campos completos (urgência,
-// "quando precisa", material) que a versão original da demanda nunca teve.
-const URGENCIA_OPTIONS = [
-  { id:"normal",         label:"Normal",        emoji:"🟢" },
-  { id:"urgente",        label:"Urgente",       emoji:"🟡" },
-  { id:"muito_urgente",  label:"Muito Urgente", emoji:"🔴" },
-];
-const QUANDO_PRECISA_OPTIONS = ["Hoje","Amanhã","Esta semana","Flexível"];
-
-function NovaDemandaFuncionarioScreen({ userEmail, userName, onBack, showToast }) {
-  const [form, setForm] = useState({ cat:"", desc:"", value:"", cep:"", material:false, urgencia:"normal", quandoPrecisa:"" });
-  const [photos,     setPhotos]     = useState([]); // { id, file, previewUrl }
-  const [cepInfo,    setCepInfo]    = useState(null); // { bairro, cidade, uf }
-  const [cepLoading, setCepLoading] = useState(false);
-  const [cepError,   setCepError]   = useState("");
-  const [saving,     setSaving]     = useState(false);
-
-  const handleAddPhotos = e => {
-    const files = Array.from(e.target.files || []).filter(f => f.type.startsWith("image/"));
-    e.target.value = "";
-    const remaining = 5 - photos.length;
-    const toAdd = files.slice(0, remaining).map(file => ({ id:`${Date.now()}-${Math.random()}`, file, previewUrl:URL.createObjectURL(file) }));
-    setPhotos(p => [...p, ...toAdd]);
-  };
-  const removePhoto = id => {
-    setPhotos(p => {
-      const found = p.find(x => x.id === id);
-      if (found) URL.revokeObjectURL(found.previewUrl);
-      return p.filter(x => x.id !== id);
-    });
-  };
-
-  const handleCepChange = async (raw) => {
-    const cep = raw.replace(/\D/g,"").slice(0,8);
-    const formatted = cep.length > 5 ? cep.slice(0,5) + "-" + cep.slice(5) : cep;
-    setForm(f => ({ ...f, cep: formatted }));
-    setCepError("");
-    setCepInfo(null);
-    if (cep.length === 8) {
-      setCepLoading(true);
-      try {
-        const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-        const d = await r.json();
-        if (d.erro || !d.localidade) { setCepError("CEP não encontrado"); }
-        else { setCepInfo({ bairro: d.bairro, cidade: d.localidade, uf: d.uf }); }
-      } catch { setCepError("Erro ao buscar CEP"); }
-      finally { setCepLoading(false); }
-    }
-  };
-
-  const F = { background:"white", border:"1.5px solid #EBEBEB", borderRadius:12, padding:"13px 14px", fontSize:13, color:"#1a1a2e", outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit" };
-  const canPublish = form.cat && form.desc && form.value && cepInfo && cepInfo.cidade;
-
-  const handlePublicar = async () => {
-    if (!canPublish || saving) return;
-    setSaving(true);
-    try {
-      const fotos = (await Promise.all(photos.map(async (p) => {
-        const ext = p.file.name.includes(".") ? p.file.name.split(".").pop() : "jpg";
-        const path = `demanda_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, p.file, { contentType: p.file.type, upsert: true, cacheControl: "31536000" });
-        if (upErr) return null;
-        return supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl;
-      }))).filter(Boolean);
-
-      const { error } = await supabase.from("pedidos").insert({
-        cliente_id: userEmail,
-        cliente_nome: userName,
-        categoria: form.cat,
-        descricao: form.desc.trim(),
-        valor: Number(form.value),
-        cep: form.cep,
-        cidade: cepInfo.cidade || null,
-        fotos,
-        status: "aberto",
-        publico_alvo: "pro",
-        urgencia: form.urgencia,
-        quando_precisa: form.quandoPrecisa || null,
-        material_fornecido: form.material,
-      });
-      if (error) throw error;
-      fetch(`${NOTIFY_API}/notify-pedido`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ categoria: form.cat, descricao: form.desc.trim(), publicoAlvo: "pro", cidade: cepInfo.cidade }),
-      }).catch(() => {});
-      showToast?.("✅ Demanda publicada! Profissionais Multi Pro da categoria e cidade já podem ver.", G);
-      onBack?.();
-    } catch (e) {
-      showToast?.("❌ Erro ao publicar demanda: " + (e.message || ""), "#DC2626");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div style={{ display:"flex", flexDirection:"column", gap:18, padding:"18px 16px 40px" }}>
-      <BackBtn onClick={onBack} />
-      <h2 style={{ fontSize:20, fontWeight:900, color:"#1a1a2e", margin:0 }}>Preciso de Funcionário</h2>
-
-      {/* Função */}
-      <div>
-        <label style={{fontSize:12,color:"#666",display:"block"}}>Função</label>
-        <div style={{ position:"relative" }}>
-          <select style={{ ...F, paddingRight:36, appearance:"none", cursor:"pointer" }} value={form.cat} onChange={e => setForm({ ...form, cat:e.target.value })}>
-            <option value="">Selecione...</option>
-            {CATS.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
-          </select>
-          <ChevronDown size={14} color="#aaa" style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", pointerEvents:"none" }} />
-        </div>
-      </div>
-
-      {/* Descrição */}
-      <div>
-        <label style={{fontSize:12,color:"#666",display:"block"}}>Descrição do serviço</label>
-        <textarea rows={4} placeholder="Seja detalhado sobre o que precisa…" style={{ ...F, resize:"none", lineHeight:1.6 }} value={form.desc} onChange={e => setForm({ ...form, desc:e.target.value })} />
-      </div>
-
-      {/* Fotos do local */}
-      <div>
-        <label style={{fontSize:12,color:"#666",display:"block"}}>Fotos do local <span style={{ textTransform:"none", fontWeight:400, letterSpacing:0, color:"#ccc" }}>(opcional, até 5)</span></label>
-        <label style={{ display:"flex", alignItems:"center", gap:8, marginTop:4, padding:"12px", borderRadius:12, border:"2px dashed #ddd", cursor: photos.length >= 5 ? "default" : "pointer", background:"#fafafa", justifyContent:"center" }}>
-          <input type="file" accept="image/*" multiple disabled={photos.length >= 5} style={{ display:"none" }} onChange={handleAddPhotos} />
-          📷 <span style={{ fontSize:13, color:"#888" }}>{photos.length > 0 ? `${photos.length} foto(s) adicionada(s)` : "Tirar foto ou escolher da galeria"}</span>
-        </label>
-        {photos.length > 0 && (
-          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:8 }}>
-            {photos.map(p => (
-              <div key={p.id} style={{ position:"relative", width:72, height:72, borderRadius:10, overflow:"hidden" }}>
-                <img src={p.previewUrl} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-                <button onClick={() => removePhoto(p.id)} style={{ position:"absolute", top:2, right:2, background:"rgba(0,0,0,.6)", color:"white", border:"none", borderRadius:"50%", width:18, height:18, fontSize:12, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}>×</button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* CEP */}
-      <div>
-        <label style={{fontSize:12,color:"#666",display:"block"}}>CEP do local do serviço</label>
-        <div style={{ position:"relative" }}>
-          <input type="tel" placeholder="00000-000" maxLength={9} value={form.cep} onChange={e => handleCepChange(e.target.value)} style={{ ...F, paddingRight: cepLoading ? 40 : 14 }} />
-          {cepLoading && (
-            <div style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", width:16, height:16, border:"2px solid #E5E7EB", borderTopColor:B, borderRadius:"50%", animation:"spin .7s linear infinite" }} />
-          )}
-        </div>
-        {cepInfo && (
-          <div style={{ marginTop:8, padding:"10px 14px", borderRadius:12, background:"#F0FDF4", border:"1px solid #BBF7D0", display:"flex", alignItems:"center", gap:10 }}>
-            <MapPin size={14} color={G} style={{ flexShrink:0 }} />
-            <div>
-              <p style={{ fontSize:13, fontWeight:800, color:"#166534", margin:"0 0 2px" }}>
-                {cepInfo.bairro ? `${cepInfo.bairro} — ` : ""}{cepInfo.cidade}/{cepInfo.uf}
-              </p>
-              <p style={{ fontSize:11, color:"#16a34a", margin:0 }}>🔒 Endereço completo só liberado após acordo com profissional</p>
-            </div>
-          </div>
-        )}
-        {cepError && <p style={{ fontSize:12, color:"#EF4444", fontWeight:700, margin:"6px 0 0" }}>{cepError}</p>}
-      </div>
-
-      {/* Urgência */}
-      <div>
-        <label style={{ display:"block", fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.2, marginBottom:6 }}>URGÊNCIA</label>
-        <div style={{ display:"flex", gap:8 }}>
-          {URGENCIA_OPTIONS.map(u => (
-            <button key={u.id} onClick={() => setForm({ ...form, urgencia:u.id })} style={{ flex:1, padding:"10px 0", borderRadius:10, border: form.urgencia===u.id ? "2px solid #FF5722" : "1.5px solid #E5E7EB", background: form.urgencia===u.id ? "#FFF3F0" : "white", color: form.urgencia===u.id ? "#FF5722" : "#555", fontWeight: form.urgencia===u.id ? 800 : 500, fontSize:12, cursor:"pointer" }}>
-              {u.emoji} {u.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Quando precisa */}
-      <div>
-        <label style={{ display:"block", fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.2, marginBottom:6 }}>QUANDO VOCÊ PRECISA?</label>
-        <div style={{ display:"flex", gap:8, marginBottom:8 }}>
-          {QUANDO_PRECISA_OPTIONS.map(op => (
-            <button key={op} onClick={() => setForm({ ...form, quandoPrecisa:op })} style={{ flex:1, padding:"9px 4px", borderRadius:10, border: form.quandoPrecisa===op ? "2px solid #007BFF" : "1.5px solid #E5E7EB", background: form.quandoPrecisa===op ? "#EEF4FF" : "white", color: form.quandoPrecisa===op ? "#007BFF" : "#555", fontWeight: form.quandoPrecisa===op ? 800 : 500, fontSize:11, cursor:"pointer" }}>
-              {op}
-            </button>
-          ))}
-        </div>
-        <input type="text" style={{ ...F }} value={QUANDO_PRECISA_OPTIONS.includes(form.quandoPrecisa) ? "" : form.quandoPrecisa} onChange={e => setForm({ ...form, quandoPrecisa:e.target.value })} placeholder="Ex: 20/05/2026 às 14h" />
-      </div>
-
-      {/* Material */}
-      <div>
-        <label style={{fontSize:12,color:"#666",display:"block"}}>Material necessário</label>
-        <div style={{ background:"white", border:"1.5px solid #EBEBEB", borderRadius:14, overflow:"hidden" }}>
-          {[
-            { val: false, icon:"🧰", label:"Não precisa de material", sub:"O profissional só precisa trazer ferramentas" },
-            { val: true,  icon:"🪣", label:"Empresa fornece material", sub:"Ex: tinta, cano, cimento, peças de reposição" },
-          ].map((opt, i) => (
-            <div key={i} onClick={() => setForm(f => ({ ...f, material: opt.val }))}
-              style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 14px", cursor:"pointer", borderBottom: i === 0 ? "1px solid #F0F0F0" : "none", background: form.material === opt.val ? "#EBF4FF" : "white", transition:"background .15s" }}>
-              <span style={{ fontSize:22, flexShrink:0 }}>{opt.icon}</span>
-              <div style={{ flex:1 }}>
-                <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e", margin:"0 0 2px" }}>{opt.label}</p>
-                <p style={{ fontSize:11, color:"#9CA3AF", margin:0 }}>{opt.sub}</p>
-              </div>
-              <div style={{ width:20, height:20, borderRadius:"50%", border:(form.material===opt.val?"2px solid "+B:"2px solid #D1D5DB"), background: form.material === opt.val ? B : "white", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .15s" }}>
-                {form.material === opt.val && <div style={{ width:8, height:8, borderRadius:"50%", background:"white" }} />}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Valor */}
-      <div>
-        <label style={{fontSize:12,color:"#666",display:"block"}}>Valor que a empresa paga</label>
-        <div style={{ position:"relative" }}>
-          <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", fontWeight:800, color:"#999", fontSize:13 }}>R$</span>
-          <input type="number" placeholder="0,00" style={{ ...F, paddingLeft:38 }} value={form.value} onChange={e => setForm({ ...form, value:e.target.value })} />
-        </div>
-      </div>
-
-      <button onClick={handlePublicar} disabled={!canPublish || saving}
-        style={{ padding:"15px 0", borderRadius:14, border:"none", cursor: (canPublish && !saving) ? "pointer" : "not-allowed", background: (canPublish && !saving) ? `linear-gradient(135deg,${O},#E64A19)` : "#9CA3AF", color: (canPublish && !saving) ? "white" : "#4B5563", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow: (canPublish && !saving) ? "0 5px 18px rgba(255,87,34,.30)" : "none", transition:"all .2s" }}>
-        <Send size={15} /> {saving ? "Publicando..." : "Publicar demanda"}
-      </button>
-    </div>
-  );
-}
-
-/* ───────────────────────── EMPRESA PLUS — NOVA DEMANDA DE MÃO DE OBRA ──────── */
-// Empresa Plus anuncia uma demanda (ex: "preciso de um eletricista pra uma
-// obra") — reaproveita a tabela "pedidos" já consolidada, só com
-// publico_alvo:"pro" pra aparecer só no mural de profissionais Multi Pro
-// (ver supabase_demandas_pro_migration.sql e o filtro em ProfessionalHome).
-const PRAZO_OPTIONS = [
-  { id:"urgente",     label:"Urgente",      emoji:"🔴" },
-  { id:"essa_semana", label:"Essa semana",  emoji:"🟡" },
-  { id:"sem_pressa",  label:"Sem pressa",   emoji:"🟢" },
-];
-
-/* ───────────────────────── EMPRESA PLUS — MINHAS DEMANDAS ──────────────────── */
-// Demandas postadas pela própria empresa + propostas recebidas nelas. Papel
-// diferente do Mural de Serviços (EmpresaPedidosScreen), que mostra pedidos de
-// CLIENTES na categoria da empresa — aqui a empresa é quem está contratando.
-function MinhasDemandasScreen({ userEmail, userName, onBack, onVerPropostas, onOpenChat, onNovaDemanda, onEditarPerfil }) {
-  const [demandas, setDemandas] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [candidatos, setCandidatos] = useState({});
-  const [contatos, setContatos] = useState({}); // email do profissional aceito -> whatsapp
-
-  useEffect(() => {
-    if (!userEmail) { setLoading(false); return; }
-    supabase.from("pedidos").select("*").eq("cliente_id", userEmail).eq("publico_alvo", "pro")
-      .order("created_at", { ascending:false })
-      .then(({ data }) => {
-        const lista = data || [];
-        setDemandas(lista);
-        setLoading(false);
-
-        const abertos = lista.filter(p => p.status === "aberto").map(p => p.id);
-        if (abertos.length) {
-          supabase.from("propostas").select("pedido_id").in("pedido_id", abertos).then(({ data: props }) => {
-            const counts = {};
-            (props || []).forEach(p => { counts[p.pedido_id] = (counts[p.pedido_id] || 0) + 1; });
-            setCandidatos(counts);
-          }).catch(() => {});
-        }
-
-        // Whatsapp do profissional aceito — só existe em "usuarios", não em "pedidos".
-        const emails = [...new Set(lista.filter(p => p.status !== "aberto" && p.profissional_aceito).map(p => p.profissional_aceito))];
-        if (emails.length) {
-          supabase.from("usuarios").select("email,whatsapp").in("email", emails).then(({ data: us }) => {
-            const map = {};
-            (us || []).forEach(u => { map[u.email] = u.whatsapp; });
-            setContatos(map);
-          }).catch(() => {});
-        }
-      })
-      .catch(() => setLoading(false));
-  }, [userEmail]);
-
-  const statusLabel = (s) => s === "aberto" ? "Aguardando propostas" : s === "em_andamento" ? "Em andamento" : s === "confirmado" ? "🟢 Serviço agendado" : s === "concluido" ? "Concluído" : s;
-
-  return (
-    <div style={{ minHeight:"100vh", background:"#F8F9FA", paddingBottom:40 }}>
-      <div style={{ background:`linear-gradient(160deg,${B} 0%,#0055d4 100%)`, padding:"14px 18px 16px", borderRadius:"0 0 28px 28px" }}>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-            <MapPin size={13} color="rgba(255,255,255,.7)" />
-            <div>
-              <p style={{ fontSize:9, color:"rgba(255,255,255,.5)", fontWeight:700, margin:0 }}>Sua Localização</p>
-              <p style={{ fontSize:12, color:"white", fontWeight:800, margin:0 }}>{localStorage.getItem("multiLocation") || "Localização"}</p>
-            </div>
-          </div>
-          {onEditarPerfil && (
-            <button onClick={onEditarPerfil} style={{ background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:32, height:32, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-              <Pencil size={14} color="white" />
-            </button>
-          )}
-        </div>
-
-        <div style={{ marginTop:10, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
-          <div style={{ width:7, height:7, borderRadius:"50%", background:"#4ade80" }} />
-          <span
-            style={{ fontSize:11, color:"rgba(255,255,255,.7)", fontWeight:700, cursor: onBack ? "pointer" : "default" }}
-            onClick={onBack}>
-            Modo: Contratante{onBack ? " (toque p/ alternar)" : ""}
-          </span>
-        </div>
-      </div>
-
-      {/* Toggle Prestadora/Contratante — só existe pra empresa "pro", que tem
-          os dois modos; "contratante" puro (grátis) não tem pra onde alternar
-          (onBack vem null nesse caso, ver EmpresaContratanteScreen). */}
-      {onBack && (
-        <div style={{ margin:"14px 16px 0", display:"flex", background:"#EEF0F4", borderRadius:14, padding:4, gap:4 }}>
-          <button onClick={onBack} style={{ flex:1, padding:"10px 0", borderRadius:11, border:"none", cursor:"pointer", background:"transparent", color:"#6B7280", fontWeight:800, fontSize:13 }}>
-            Prestadora
-          </button>
-          <button disabled style={{ flex:1, padding:"10px 0", borderRadius:11, border:"none", cursor:"default", background:O, color:"white", fontWeight:900, fontSize:13, boxShadow:`0 3px 10px ${O}55` }}>
-            Contratante
-          </button>
-        </div>
-      )}
-
-      <div style={{ padding:"22px 20px 0" }}>
-        <p style={{ fontSize:13, color:"#888", fontWeight:600, margin:"0 0 3px" }}>Olá, {userName || "Empresa"}</p>
-        <h2 style={{ fontSize:21, fontWeight:900, color:"#1a1a2e", lineHeight:1.3, margin:0 }}>Quem você precisa contratar hoje?</h2>
-      </div>
-
-      {/* Hero — mesmo padrão visual do banner "Multi · Serviços Premium" do
-          ClientHome, com paleta escura/corporativa pro contexto de mão de obra. */}
-      <div style={{ margin:"18px 20px 0", borderRadius:24, overflow:"hidden", position:"relative", background:"#242A31", boxShadow:"0 12px 32px rgba(0,0,0,.22)" }}>
-        <User size={110} color="rgba(255,255,255,.05)" strokeWidth={1.4} style={{ position:"absolute", right:-14, bottom:-18 }} />
-        <div style={{ position:"relative", zIndex:1, padding:"22px 22px 24px" }}>
-          <p style={{ fontSize:10, fontWeight:800, color:"rgba(255,255,255,.5)", textTransform:"uppercase", letterSpacing:2, margin:"0 0 8px" }}>Multi · Mão de Obra</p>
-          <h3 style={{ fontSize:18, fontWeight:900, color:"white", lineHeight:1.4, margin:"0 0 18px", maxWidth:"72%" }}>Publique a vaga, escolha o profissional.</h3>
-          {onNovaDemanda && (
-            <button onClick={onNovaDemanda} style={{ padding:"11px 20px", borderRadius:99, background:O, border:"none", cursor:"pointer", color:"white", fontWeight:900, fontSize:13, display:"flex", alignItems:"center", gap:7, boxShadow:`0 5px 16px ${O}55` }}>
-              <Plus size={15} /> Nova demanda
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div style={{ padding:"24px 16px 0", display:"flex", flexDirection:"column", gap:10 }}>
-        <p style={{ fontSize:12, fontWeight:800, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1.1, margin:"0 0 2px" }}>Demandas ativas</p>
-        {loading && <p style={{ textAlign:"center", color:"#aaa", fontSize:13 }}>Carregando...</p>}
-        {!loading && demandas.length === 0 && (
-          <p style={{ textAlign:"center", color:"#aaa", fontSize:13, padding:"20px 0" }}>Você ainda não publicou nenhuma demanda.</p>
-        )}
-        {demandas.map(d => {
-          const cat = CATS.find(c => c.id === d.categoria);
-          const prazo = PRAZO_OPTIONS.find(p => p.id === d.prazo);
-          const nCandidatos = candidatos[d.id] || 0;
-          const whatsapp = d.profissional_aceito ? contatos[d.profissional_aceito] : null;
-          const liberado = !!(d.aceite_formal_cliente_em && d.aceite_formal_profissional_em);
-
-          // Demanda em aberto — card compacto de uma linha (função · candidatos
-          // · tempo publicado), clicável direto pra tela de propostas.
-          if (d.status === "aberto") {
-            return (
-              <div key={d.id} onClick={() => onVerPropostas(d)} style={{ display:"flex", alignItems:"center", gap:12, background:"white", borderRadius:16, padding:"14px 16px", boxShadow:"0 2px 10px rgba(0,0,0,.06)", cursor:"pointer" }}>
-                <div style={{ width:38, height:38, borderRadius:11, background:cat?.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{cat?.emoji}</div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ fontSize:14, fontWeight:800, color:"#1a1a2e", margin:"0 0 2px" }}>{cat?.label || d.categoria}</p>
-                  <p style={{ fontSize:12, color: nCandidatos > 0 ? G : "#9CA3AF", fontWeight:700, margin:0 }}>
-                    {nCandidatos} candidato{nCandidatos === 1 ? "" : "s"} · publicada {formatTimeAgo(d.created_at)}
-                  </p>
-                </div>
-                <span style={{ fontSize:13, fontWeight:900, color:B, flexShrink:0 }}>R$ {d.valor}</span>
-                <ChevronRight size={15} color="#aaa" style={{ flexShrink:0 }} />
-              </div>
-            );
-          }
-
-          return (
-            <div key={d.id} style={{ background:"white", borderRadius:18, padding:16, boxShadow:"0 2px 10px rgba(0,0,0,.06)" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
-                <div style={{ width:38, height:38, borderRadius:11, background:cat?.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{cat?.emoji}</div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ fontSize:14, fontWeight:800, color:"#1a1a2e", margin:0 }}>{cat?.label || d.categoria}</p>
-                  <p style={{ fontSize:11, color:"#888", margin:0 }}>{statusLabel(d.status)}</p>
-                </div>
-                <span style={{ fontSize:14, fontWeight:900, color:B }}>R$ {d.valor}</span>
-              </div>
-              <p style={{ fontSize:12.5, color:"#555", margin:"0 0 8px", lineHeight:1.5 }}>{d.descricao}</p>
-              {prazo && <p style={{ fontSize:11, color:"#888", fontWeight:700, margin:"0 0 8px" }}>{prazo.emoji} {prazo.label}</p>}
-
-              {d.profissional_nome && (
-                <div style={{ paddingTop:8, borderTop:"1px solid #F0F0F0" }}>
-                  <p style={{ fontSize:12, color:G, fontWeight:800, margin:"0 0 8px" }}>✅ {d.profissional_nome} aceitou essa demanda</p>
-                  <div style={{ display:"flex", gap:8 }}>
-                    <button onClick={() => onOpenChat?.(d)} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 0", borderRadius:12, border:"none", background:`linear-gradient(135deg,${B},#0056c7)`, color:"white", fontWeight:800, fontSize:12, cursor:"pointer" }}>
-                      <MessageCircle size={14} /> Chat
-                    </button>
-                    {liberado ? (
-                      whatsapp && (
-                        <a href={`https://wa.me/55${whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{ flex:1, textDecoration:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:12 }}>
-                          <MessageCircle size={14} /> WhatsApp
-                        </a>
-                      )
-                    ) : (
-                      <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 0", borderRadius:12, background:"#F8F9FA", border:"1px solid #E5E7EB", color:"#aaa", fontWeight:700, fontSize:11 }}>
-                        🔒 Liberado após aceite no chat
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 /* ───────────────────────── EMPRESA CONTRATANTE — TELA COMPLETA ─────────────── */
 // Home de quem só contrata: tipo_conta "contratante" (grátis, sem toggle) ou
@@ -2114,16 +1401,12 @@ function EmpresaEditProfileScreen({ userEmail, onLogout, showToast, isPro, plano
   const [logoPreview, setLogoPreview] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  // Multi Empresa trava em MAX_CATEGORIAS_EMPRESA categorias — Empresa Plus é
-  // ilimitado. Mesmo padrão/motivo do MAX_CATEGORIAS_AUTONOMO em ProfileScreen
-  // (usa "plano", não "isPro", pra não liberar ilimitado só por ter alguma
-  // assinatura ativa).
+  // Teto fixo de categorias pra toda conta empresa — não existe mais plano
+  // pago de empresa que libere ilimitado (Empresa Plus foi descontinuado).
   const MAX_CATEGORIAS_EMPRESA = 3;
-  const isEmpresaPlus = plano === "empresa_plus";
-  const limiteCategoria = isEmpresaPlus ? undefined : MAX_CATEGORIAS_EMPRESA;
+  const limiteCategoria = MAX_CATEGORIAS_EMPRESA;
   const handleLimiteCategoria = () => {
-    showToast?.(`⚠️ Multi Empresa permite até ${MAX_CATEGORIAS_EMPRESA} categorias — vire Plus pra categorias ilimitadas`, O);
-    onUpgrade?.();
+    showToast?.(`⚠️ Conta empresa permite até ${MAX_CATEGORIAS_EMPRESA} categorias.`, O);
   };
 
   useEffect(() => {
@@ -2232,7 +1515,7 @@ function EmpresaEditProfileScreen({ userEmail, onLogout, showToast, isPro, plano
           <h3 style={{ margin:"0 0 8px", fontSize:15, color:"#333" }}>Categorias de Serviço</h3>
           <CategoriaMultiSelect value={categoria} onChange={v => { setCategoria(v); if (errorCategoria) setErrorCategoria(""); }} max={limiteCategoria} onLimitReached={handleLimiteCategoria} error={errorCategoria} />
           {errorCategoria && <p style={{ fontSize:11, color:"#E53935", margin:"8px 0 0", fontWeight:700 }}>{errorCategoria}</p>}
-          {!isEmpresaPlus && <p style={{ fontSize:11, color:"#9CA3AF", margin:"8px 0 0" }}>Multi Empresa permite até {MAX_CATEGORIAS_EMPRESA} categorias. <span style={{ color:B, fontWeight:800, cursor:"pointer" }} onClick={onUpgrade}>Vire Pro</span> pra categorias ilimitadas.</p>}
+          <p style={{ fontSize:11, color:"#9CA3AF", margin:"8px 0 0" }}>Conta empresa permite até {MAX_CATEGORIAS_EMPRESA} categorias.</p>
         </div>
 
         {/* cidade — usada pro radar de "Novo Pedido!" só mostrar pedidos da
@@ -2247,20 +1530,19 @@ function EmpresaEditProfileScreen({ userEmail, onLogout, showToast, isPro, plano
           {errorCidade && <p style={{ fontSize:11, color:"#E53935", margin:"8px 0 0", fontWeight:700 }}>{errorCidade}</p>}
         </div>
 
-        {/* plano/assinatura */}
-        <div style={{ background:"white", borderRadius:16, padding:"16px", marginBottom:12, boxShadow:"0 2px 8px rgba(0,0,0,.06)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-          <div>
+        {/* plano/assinatura — planos pagos de empresa deixaram de existir (não
+            dá mais pra escolher/trocar por aqui), mas quem já tinha Multi
+            Empresa/Empresa Plus ativo antes continua vendo o status,
+            somente leitura (assinaturas legadas não são canceladas por essa
+            mudança de código, só deixam de aceitar gente nova). */}
+        {isPro && (
+          <div style={{ background:"white", borderRadius:16, padding:"16px", marginBottom:12, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
             <h3 style={{ margin:"0 0 4px", fontSize:15, color:"#333" }}>Plano</h3>
-            <p style={{ margin:0, fontSize:12, color: isPro ? G : "#9CA3AF" }}>
-              {isPro
-                ? `${plano === "empresa_plus" ? "Multi Empresa Pro" : "Multi Empresa"} — ${planoStatus === "trial" ? "em trial" : "ativo"}${planoExpiraEm ? " até " + new Date(planoExpiraEm).toLocaleDateString("pt-BR") : ""}`
-                : "Nenhum plano ativo"}
+            <p style={{ margin:0, fontSize:12, color:G }}>
+              {`${plano === "empresa_plus" ? "Multi Empresa Pro" : "Multi Empresa"} — ${planoStatus === "trial" ? "em trial" : "ativo"}${planoExpiraEm ? " até " + new Date(planoExpiraEm).toLocaleDateString("pt-BR") : ""}`}
             </p>
           </div>
-          <button onClick={onUpgrade} style={{ background: isPro ? "#F0F0F0" : `linear-gradient(135deg,${O},#E64A19)`, color: isPro ? "#555" : "white", fontWeight:800, fontSize:11, padding:"8px 14px", borderRadius:99, border:"none", cursor:"pointer" }}>
-            {isPro ? "Trocar" : "Escolher plano"}
-          </button>
-        </div>
+        )}
 
         {/* campos editáveis */}
         <div style={{ background:"white", borderRadius:16, padding:"16px", marginBottom:12, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
@@ -2724,7 +2006,7 @@ const HOME_CATS = [
   { id:"estofados",    label:"Higien. Estofados",  emoji:"🛋️", star:"4.8", bg:"#F3E5F5", accent:"#6A1B9A", grad:"linear-gradient(135deg,#880E4F,#C2185B)", desc:"Sofás e colchões"    },
 ];
 
-function ClientHome({ onPost, onViewService, onSwitchPro, onGoEmpresa, myServices, userName, userEmail }) {
+function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName, userEmail }) {
   const greeting     = userName ? `Olá, ${userName}! 👋` : "Olá! Seja bem-vindo 👋";
   const subgreeting  = userName ? "O que vamos resolver hoje?" : "Vamos resolver algo hoje?";
 
@@ -2806,33 +2088,6 @@ function ClientHome({ onPost, onViewService, onSwitchPro, onGoEmpresa, myService
             </div>
           </div>
         </div>
-      )}
-
-      {/* ── TEM UMA EMPRESA? — caminho de conta separado, não um "modo" como
-          Cliente/Profissional (que é só o toggle de 2 estados no header).
-          Borda tracejada + ícone de maleta/prédio marca visualmente que é
-          uma conta mais robusta (Multi Empresa), não mais uma aba do mesmo
-          perfil. Clicar leva direto pra PlanosEmpresaInfoScreen — página só
-          de planos empresariais, sem misturar com role-select (cliente/
-          profissional) — item 11 do prompt Ajustes de Cadastro/Perfil/
-          Fluxos. */}
-      {onGoEmpresa && (
-        <button onClick={onGoEmpresa} style={{
-          margin:"14px 20px 0", padding:"16px 18px", borderRadius:22,
-          border:"1.5px dashed #C7CCD6", background:"white", cursor:"pointer",
-          display:"flex", alignItems:"center", gap:14, width:"calc(100% - 40px)", textAlign:"left",
-        }}>
-          <span style={{ width:44, height:44, borderRadius:14, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:"#1a1a2e14", color:"#1a1a2e" }}>
-            <Briefcase size={20} />
-          </span>
-          <div style={{ flex:1, minWidth:0 }}>
-            <p style={{ fontSize:13.5, fontWeight:900, color:"#1a1a2e", margin:"0 0 2px" }}>Tem uma empresa?</p>
-            <p style={{ fontSize:11.5, color:"#9CA3AF", margin:0 }}>Publique demandas e amplie sua operação</p>
-          </div>
-          <span style={{ fontSize:12.5, fontWeight:900, color:"#1a1a2e", flexShrink:0, display:"flex", alignItems:"center", gap:3 }}>
-            Ver planos <ChevronRight size={13} />
-          </span>
-        </button>
       )}
 
       {/* ── CATEGORIES SECTION ── */}
@@ -4115,105 +3370,13 @@ const PLANO_LIMITES_USUARIO = {
   pro:      { maxCategorias: 3, maxServicosMes: 10, valorMaxServico: 3000 },
   premium:  { maxCategorias: null, maxServicosMes: null, valorMaxServico: null },
 };
-const PLANOS_EMPRESA = [
-  { id:"empresa",      icon:Briefcase, label:"Multi Empresa",      price:"149,90", beneficios:["Captar clientes"] },
-  { id:"empresa_plus", icon:Crown,     label:"Multi Empresa Pro",  price:"299,90", beneficios:["Captar clientes","Banco de profissionais (busca/filtro)","Criar demandas de mão de obra","Dashboard"] },
-];
-
-/* ───────────────────────── PLANOS PARA EMPRESAS (info) ────────────────────────
-   Página dedicada, sem misturar com os fluxos de "Preciso de um serviço"/
-   "Quero trabalhar" — item 11 do prompt Ajustes de Cadastro/Perfil/Fluxos.
-   Fluxo: Home → "Tem uma empresa?" → aqui → "Quero Assinar" → cadastro de
-   empresa (que já tem a escolha de plano de verdade, EscolherPlanoScreen). */
-function PlanosEmpresaInfoScreen({ onBack, onAssinar }) {
-  const COMO_FUNCIONA = [
-    { icon: "📢", title: "Publique demandas", desc: "Descreva o que precisa e receba interesse de profissionais qualificados." },
-    { icon: "🔍", title: "Encontre profissionais", desc: "Busque e filtre no banco de profissionais por categoria e região." },
-    { icon: "📊", title: "Acompanhe tudo", desc: "Gerencie demandas, propostas e histórico em um painel só." },
-  ];
-  const RECURSOS_COMPARACAO = [
-    { label: "Captar clientes pela plataforma", basica: true,  pro: true },
-    { label: "Publicar demandas de mão de obra", basica: true,  pro: true },
-    { label: "Banco de profissionais (busca e filtro)", basica: false, pro: true },
-    { label: "Dashboard com indicadores", basica: false, pro: true },
-    { label: "Demandas simultâneas", basica: "Até 3", pro: "Ilimitadas" },
-  ];
-  return (
-    <div style={{ minHeight:"100vh", background:"#F8F9FA", paddingBottom:48 }}>
-      <div style={{ background:`linear-gradient(160deg,#1a1a2e 0%,#0A2A6B 100%)`, padding:"18px 20px 32px", borderRadius:"0 0 32px 32px" }}>
-        {onBack && (
-          <button onClick={onBack} style={{ background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:36, height:36, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:18 }}>
-            <ArrowLeft size={18} color="white" />
-          </button>
-        )}
-        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
-          <Briefcase size={26} color="white" />
-          <h2 style={{ fontSize:22, fontWeight:900, color:"white", margin:0 }}>Multi Empresas</h2>
-        </div>
-        <p style={{ fontSize:13.5, color:"rgba(255,255,255,.75)", margin:0, lineHeight:1.6, maxWidth:340 }}>
-          Capte clientes, encontre mão de obra qualificada e amplie a operação da sua empresa — tudo em um só lugar.
-        </p>
-      </div>
-
-      {/* COMO FUNCIONA */}
-      <div style={{ padding:"22px 20px 0" }}>
-        <h3 style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:"0 0 14px" }}>Como funciona</h3>
-        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-          {COMO_FUNCIONA.map((s, i) => (
-            <div key={i} style={{ background:"white", borderRadius:16, padding:14, display:"flex", gap:12, alignItems:"flex-start", boxShadow:"0 2px 10px rgba(0,0,0,.05)" }}>
-              <span style={{ fontSize:24, flexShrink:0 }}>{s.icon}</span>
-              <div>
-                <p style={{ margin:"0 0 2px", fontSize:13.5, fontWeight:800, color:"#1a1a2e" }}>{s.title}</p>
-                <p style={{ margin:0, fontSize:12, color:"#888", lineHeight:1.5 }}>{s.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* PLANOS E VALORES */}
-      <div style={{ padding:"26px 20px 0" }}>
-        <h3 style={{ fontSize:15, fontWeight:900, color:"#1a1a2e", margin:"0 0 14px" }}>Planos e valores</h3>
-        <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-          {PLANOS_EMPRESA.map(p => {
-            const isPro = p.id === "empresa_plus";
-            return (
-              <div key={p.id} style={{ background: isPro ? "linear-gradient(180deg,#FFF4EC,#FFE2CF)" : "white", borderRadius:20, padding:"20px 18px", border: isPro ? "none" : "1.5px solid #ECEDF5" }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
-                  <p style={{ margin:0, fontWeight:900, fontSize:16, color:"#14152A" }}>{p.label}</p>
-                  <p style={{ margin:0, fontWeight:900, fontSize:20, color:"#14152A" }}>R$ {p.price}<span style={{ fontSize:11, fontWeight:700, color:"#8A8DAE" }}>/mês</span></p>
-                </div>
-                <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:16 }}>
-                  {RECURSOS_COMPARACAO.map((r, i) => {
-                    const val = isPro ? r.pro : r.basica;
-                    return (
-                      <div key={i} style={{ display:"flex", alignItems:"center", gap:8 }}>
-                        {val === false
-                          ? <X size={14} color="#D1D5DB" style={{ flexShrink:0 }} />
-                          : <Check size={14} color={G} style={{ flexShrink:0 }} />}
-                        <span style={{ fontSize:12.5, color: val === false ? "#B0B4C0" : "#42436A" }}>
-                          {r.label}{typeof val === "string" ? ` — ${val}` : ""}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-                <button onClick={onAssinar} style={{ width:"100%", padding:"14px 0", borderRadius:14, border:"none", fontWeight:900, fontSize:13, textTransform:"uppercase", letterSpacing:.3, color:"white", cursor:"pointer", background: isPro ? `linear-gradient(135deg,${O},#E8280A)` : `linear-gradient(135deg,${B},#22348F)` }}>
-                  Quero Assinar
-                </button>
-              </div>
-            );
-          })}
-        </div>
-        <p style={{ fontSize:11, color:"#9CA3AF", textAlign:"center", margin:"16px 0 0" }}>Cobrança recorrente mensal via cartão. Cancele quando quiser.</p>
-      </div>
-    </div>
-  );
-}
-
 function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, onDone, showToast }) {
-  const isEmpresa = titularTipo === "empresa";
-  const planos = isEmpresa ? PLANOS_EMPRESA : PLANOS_USUARIO;
+  // Planos pagos de empresa deixaram de existir — titularTipo é sempre
+  // "usuario" a partir de agora (nenhum call site restante manda "empresa").
+  // isEmpresa fica hardcoded pra não precisar reescrever cada ternário de
+  // estilo/cópia abaixo que ainda referencia essa flag.
+  const isEmpresa = false;
+  const planos = PLANOS_USUARIO;
   // Antes disso, escolher um plano pago criava um "trial" de 7 dias direto no
   // Supabase (assinaturas.status="trial"), sem cobrar nada nem pedir cartão —
   // dava pra usar o app inteiro de graça. Agora escolher o plano só abre a
@@ -7179,7 +6342,7 @@ const ROLE_OPTIONS = [
     title: "Quero crescer minha empresa",
     hook: "Encontre clientes e profissionais para fazer sua operação acontecer.",
     desc: "Publique demandas, encontre mão de obra e amplie suas oportunidades.",
-    tag: "A partir de R$ 149,90/mês", tagBg:"#1a1a2e14", tagBorder:"transparent", tagColor:"#1a1a2e",
+    tag: "Grátis para cadastrar", tagBg:"#1a1a2e14", tagBorder:"transparent", tagColor:"#1a1a2e",
   },
 ];
 
@@ -8229,7 +7392,7 @@ function isValidCnpj(value) {
 
 /* ───────────────────────── AUTH: CADASTRO EMPRESA PARCEIRA ────────────────────── */
 function CadastroEmpresaScreen({ onBack, showToast }) {
-  const [step, setStep] = useState("form"); // form | plano | success
+  const [step, setStep] = useState("form"); // form | success
   const [cnpj, setCnpj] = useState("");
   const [razaoSocial, setRazaoSocial] = useState("");
   const [nomeFantasia, setNomeFantasia] = useState("");
@@ -8244,7 +7407,6 @@ function CadastroEmpresaScreen({ onBack, showToast }) {
   const [tipoConta, setTipoConta] = useState(""); // "basica" | "pro" | "contratante"
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [empresaId, setEmpresaId] = useState(null);
 
   const handleLogoChange = (e) => {
     const file = e.target.files?.[0];
@@ -8317,35 +7479,17 @@ function CadastroEmpresaScreen({ onBack, showToast }) {
       }, { onConflict: "email" });
 
       setLoading(false);
-      setEmpresaId(empresaRow?.id || null);
-      // Contratante é grátis, sem assinatura — mesmo padrão do Cliente, que
-      // também não paga pra publicar pedido. Só básica/pro passam pelo plano.
-      setStep(tipoConta === "contratante" ? "success" : "plano");
+      // Cadastro de empresa é sempre gratuito agora — os planos pagos de
+      // empresa (Multi Empresa/Empresa Plus) deixaram de existir, então não
+      // existe mais etapa de escolha/pagamento de plano aqui (ver tipo_conta
+      // já gravado no insert acima, direto a partir do que foi escolhido
+      // no formulário).
+      setStep("success");
     } catch (e) {
       setLoading(false);
       alert(e.message || "Erro ao cadastrar empresa");
     }
   };
-
-  if (step === "plano") {
-    return (
-      <EscolherPlanoScreen
-        titularTipo="empresa"
-        titularEmail={email.trim()}
-        titularNome={nomeFantasia.trim()}
-        showToast={showToast}
-        onBack={() => setStep("form")}
-        onDone={(planoId) => {
-          // tipo_conta final reflete o plano de verdade escolhido aqui, não
-          // só a intenção declarada na pergunta lá em cima — evita ficar
-          // fora de sincronia se a empresa mudar de ideia nessa etapa.
-          const tipoFinal = planoId === "empresa_plus" ? "pro" : "basica";
-          if (empresaId) supabase.from("empresas").update({ tipo_conta: tipoFinal }).eq("id", empresaId).then(()=>{});
-          setStep("success");
-        }}
-      />
-    );
-  }
 
   if (step === "success") {
     return (
@@ -8424,8 +7568,8 @@ function CadastroEmpresaScreen({ onBack, showToast }) {
           </label>
           <div style={{ background:"white", border:"1.5px solid #EBEBEB", borderRadius:14, overflow:"hidden" }}>
             {[
-              { val:"basica",      icon:"🛠️", label:"Presto serviço",             sub:"Recebo pedidos de clientes (Multi Empresa, R$ 149,90/mês)" },
-              { val:"pro",         icon:"💼", label:"Presto serviço e contrato",   sub:"Recebo pedidos e publico demandas pra contratar (Multi Empresa Pro, R$ 299,90/mês)" },
+              { val:"basica",      icon:"🛠️", label:"Presto serviço",             sub:"Recebo pedidos de clientes" },
+              { val:"pro",         icon:"💼", label:"Presto serviço e contrato",   sub:"Recebo pedidos e publico demandas pra contratar profissionais" },
               { val:"contratante", icon:"🏢", label:"Só contrato profissionais",   sub:"Não presto serviço, só publico demandas pra contratar (grátis, sem assinatura)" },
             ].map((opt, i, arr) => (
               <div key={opt.val} onClick={() => { setTipoConta(opt.val); if (errors.tipoConta) setErrors(p => ({ ...p, tipoConta:undefined })); }}
@@ -8444,16 +7588,15 @@ function CadastroEmpresaScreen({ onBack, showToast }) {
           {errors.tipoConta && <p style={{ fontSize:11, color:"#E53935", margin:"5px 0 0", fontWeight:700 }}>{errors.tipoConta}</p>}
         </div>
 
-        {/* CATEGORIAS — o plano ainda não foi escolhido nesse passo (só depois,
-            em "plano"), então trava sempre em 3 aqui (padrão do Multi Empresa
-            comum); quem virar Plus ajusta pra ilimitado depois em Editar Perfil. */}
+        {/* CATEGORIAS — teto fixo de 3 pra toda conta empresa (não existe mais
+            plano pago de empresa que libere ilimitado). */}
         <div style={{ marginBottom: errors.categoria ? 6 : 18 }}>
           <label style={{ display:"block", fontSize:11, fontWeight:800, color: errors.categoria ? "#E53935" : "#6B7280", textTransform:"uppercase", letterSpacing:1.1, marginBottom:7 }}>Categorias de Serviço</label>
           <CategoriaMultiSelect
             value={categoria}
             onChange={v => { setCategoria(v); if (errors.categoria) setErrors(p => ({ ...p, categoria:undefined })); }}
             max={3}
-            onLimitReached={() => showToast?.("⚠️ Até 3 categorias no cadastro — o plano Empresa Pro libera categorias ilimitadas (dá pra ajustar depois de escolher o plano)", O)}
+            onLimitReached={() => showToast?.("⚠️ Até 3 categorias por conta empresa.", O)}
             error={errors.categoria}
           />
           {errors.categoria && <p style={{ fontSize:11, color:"#E53935", margin:"5px 0 0", fontWeight:700 }}>{errors.categoria}</p>}
@@ -9467,8 +8610,7 @@ function AvaliacaoScreen({ service, onBack, setScreen, userEmail, showToast }) {
       avaliado_email: avaliadoEmail,
       avaliado_nome: avaliadoNome,
       // Colunas legadas — só fazem sentido quando o avaliado é o profissional
-      // (mantém a leitura já existente em BancoProfissionaisScreen, que
-      // filtra por profissional_id).
+      // (outras leituras de reputação no app filtram por profissional_id).
       cliente_id: souCliente ? userEmail : null,
       profissional_id: souCliente ? avaliadoEmail : null,
       profissional_nome: souCliente ? avaliadoNome : null,
@@ -10527,7 +9669,6 @@ const renderContent = () => {
               if (!isLoggedIn) { setAuthScreen("role-select"); return; }
               requireAuth("virar-profissional", () => setScreen("virar-profissional"));
             }}
-            onGoEmpresa={() => setAuthScreen("planos-empresa")}
             myServices={isLoggedIn ? meusPedidosComCandidatos : []}
             userName={userName}
             userEmail={userEmail}
@@ -10551,35 +9692,20 @@ const renderContent = () => {
       );
     }
 
-    // Empresa parceira — home própria + Pedidos + Editar Perfil.
+    // Empresa parceira — home própria + Pedidos + Editar Perfil. Planos pagos
+    // de empresa deixaram de existir: não tem mais tela de "upgrade" nem
+    // features exclusivas de plano (Banco de Profissionais/Minha Rede,
+    // ambos removidos — eram os únicos itens realmente exclusivos do extinto
+    // Empresa Plus, sem caminho gratuito equivalente). "Contratante"
+    // continua igual, já era grátis antes dessa mudança.
     if (role === "empresa") {
       if (screen === "pedidos") return <EmpresaPedidosScreen userEmail={userEmail} />;
-      if (screen === "upgrade") return <EscolherPlanoScreen titularTipo="empresa" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("editar")} showToast={showToast} onDone={(planoId) => { supabase.from("empresas").update({ tipo_conta: planoId === "empresa_plus" ? "pro" : "basica" }).eq("email", userEmail).then(()=>{}); carregarPlano("empresa", userEmail); setScreen("editar"); }} />;
-      if (screen === "editar")  return <EmpresaEditProfileScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} isPro={isPro} plano={plano} planoStatus={planoStatus} planoExpiraEm={planoExpiraEm} onUpgrade={() => setScreen("upgrade")} />;
+      if (screen === "editar")  return <EmpresaEditProfileScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} isPro={isPro} plano={plano} planoStatus={planoStatus} planoExpiraEm={planoExpiraEm} />;
 
-      // Gate real das features Plus: só empresa_plus ativo/trial. Quem não
-      // tem, cai direto na tela de escolher plano — os botões em
-      // EmpresaHomeScreen não precisam saber o plano pra decidir o que mostrar.
-      const temEmpresaPlus = plano === "empresa_plus" && (planoStatus === "trial" || planoStatus === "ativa");
-      const paywallPlus = (voltarPara) => <EscolherPlanoScreen titularTipo="empresa" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("home")} showToast={showToast} onDone={() => { carregarPlano("empresa", userEmail); setScreen(voltarPara); }} />;
-
-      if (screen === "banco-profissionais") {
-        if (!temEmpresaPlus) return paywallPlus("banco-profissionais");
-        return <BancoProfissionaisScreen onBack={() => setScreen("home")} empresaEmail={userEmail} />;
-      }
-      if (screen === "minha-rede") {
-        if (!temEmpresaPlus) return paywallPlus("minha-rede");
-        return <MinhaRedeScreen onBack={() => setScreen("home")} empresaEmail={userEmail} />;
-      }
-      // "demanda-propostas" também precisa abrir pra empresa Contratante
-      // (grátis, sem assinatura) — o gate real de quem chega até aqui já
-      // aconteceu dentro de EmpresaHomeScreen (só entra em modo Contratante
-      // quem é tipo_conta "contratante" ou "pro" com plano ativo), então não
-      // repete o paywall de Plus aqui.
       if (screen === "demanda-propostas" && selected) {
         return <PropostasScreen pedido={selected} onBack={() => setScreen("home")} onAceitarProposta={handleAceitarPropostaEmpresa} />;
       }
-      return <EmpresaHomeScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} onGoToPedidos={() => setScreen("pedidos")} onGoToEditar={() => setScreen("editar")} onGoToBanco={() => setScreen("banco-profissionais")} onGoToRede={() => setScreen("minha-rede")} temEmpresaPlus={temEmpresaPlus} modo={empresaModo} setModo={setEmpresaModo} onUpgradeSuccess={() => carregarPlano("empresa", userEmail)} onVerPropostas={(d) => { setSelected(d); setScreen("demanda-propostas"); }} onOpenChat={openChatFromService} onAcceptOrder={(order) => { handleCandidatarPedidoDireto(order.id, order.cliente_id, order.value, order.profissionalNome); showToast?.("💼 Interesse enviado! Aguarde o cliente escolher.", B); }} />;
+      return <EmpresaHomeScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} onGoToPedidos={() => setScreen("pedidos")} onGoToEditar={() => setScreen("editar")} modo={empresaModo} setModo={setEmpresaModo} onVerPropostas={(d) => { setSelected(d); setScreen("demanda-propostas"); }} onOpenChat={openChatFromService} onAcceptOrder={(order) => { handleCandidatarPedidoDireto(order.id, order.cliente_id, order.value, order.profissionalNome); showToast?.("💼 Interesse enviado! Aguarde o cliente escolher.", B); }} />;
     }
 
     // Route guard: logged-in clients must never see the professional feed.
@@ -10591,7 +9717,6 @@ const renderContent = () => {
             onPost={() => requireAuth("post", () => setScreen("post"))}
             onViewService={s => s ? requireAuth("service", () => abrirDetalheServico(s)) : requireAuth("orders", () => setScreen("orders"))}
             onSwitchPro={() => {}}
-            onGoEmpresa={() => setAuthScreen("planos-empresa")}
             myServices={isLoggedIn ? meusPedidosComCandidatos : []}
             userName={userName}
             userEmail={userEmail}
@@ -10705,11 +9830,6 @@ const renderContent = () => {
   if (authScreen === "cadastro-empresa") {
     return wrapper(
       <CadastroEmpresaScreen onBack={() => setAuthScreen("role-select")} showToast={showToast} />
-    );
-  }
-  if (authScreen === "planos-empresa") {
-    return wrapper(
-      <PlanosEmpresaInfoScreen onBack={() => setAuthScreen(null)} onAssinar={() => setAuthScreen("cadastro-empresa")} />
     );
   }
   if (authScreen === "reset-password") {
