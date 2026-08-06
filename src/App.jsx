@@ -2107,7 +2107,7 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName, 
       <div style={{ padding:"30px 0 0" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16, padding:"0 20px" }}>
           <h3 style={{ fontSize:17, fontWeight:900, color:"#1a1a2e", margin:0 }}>Categorias</h3>
-          <span style={{ fontSize:11, color:"#aaa", fontWeight:700 }}>{HOME_CATS.length} serviços</span>
+          <span style={{ fontSize:11, color:"#aaa", fontWeight:700 }}>{CATS.length} serviços</span>
         </div>
 
         {/* ── First 4 as featured 2x2 grid ── */}
