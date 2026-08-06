@@ -3623,13 +3623,11 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
     }
   };
 
-  // Reconfere o pagamento e ativa o plano (chamado tanto pelo polling
-  // automático quanto pelo botão manual "Já paguei"). O backend reconfere
-  // com a Asaas antes de gravar em "assinaturas" — nunca confia só no que o
-  // front detectou. "manual" distingue as duas origens só pra decidir se
-  // mostra feedback quando ainda está pendente: o polling automático fica
-  // silencioso (senão notificaria a cada 5s à toa), mas quem clicou "Já
-  // paguei" esperando uma resposta não pode ficar sem nenhum retorno.
+  // Reconfere o pagamento e ativa o plano — chamado pelo polling automático
+  // abaixo. O backend reconfere com a Asaas antes de gravar em "assinaturas"
+  // — nunca confia só no que o front detectou. "manual" ficou como parâmetro
+  // (default false) de quando existia um botão "Já paguei" que chamava isso
+  // sob demanda; hoje a confirmação é 100% automática via polling/webhook.
   const confirmarPix = async (paymentId, customerId, manual = false) => {
     setConfirmandoPix(true);
     try {
@@ -3657,9 +3655,10 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
   };
 
   // Polling: consulta /api/status-pagamento a cada 5s enquanto o Pix estiver
-  // pendente, e ativa sozinho assim que detectar o pagamento — não depende
-  // do botão "Já paguei" (esse é só um atalho manual). Some sozinho se sair
-  // da tela (troca de método, volta) ou se o código expirar.
+  // pendente, e ativa sozinho assim que detectar o pagamento — confirmação
+  // 100% automática via webhook da Asaas, sem depender de ação do usuário.
+  // Some sozinho se sair da tela (troca de método, volta) ou se o código
+  // expirar.
   const verificandoRef = useRef(false);
   useEffect(() => {
     if (!pix?.paymentId) return;
@@ -3846,12 +3845,6 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
                 </button>
               </div>
 
-              <button onClick={() => confirmarPix(pix.paymentId, pix.customerId, true)} disabled={confirmandoPix} style={{
-                width:"100%", padding:"14px 0", borderRadius:14, border:"none", cursor: confirmandoPix ? "default" : "pointer",
-                background: `linear-gradient(135deg,${G},#16a34a)`, color:"white", fontWeight:900, fontSize:14,
-              }}>
-                ✅ Já paguei
-              </button>
               <p style={{ fontSize:11, color:"#9CA3AF", textAlign:"center", margin:0 }}>
                 Assim que o pagamento cair, o plano ativa automaticamente — não precisa ficar recarregando a tela.
               </p>
@@ -6630,7 +6623,7 @@ function RoleSelectScreen({ onSelect, onLogin, onBack }) {
 }
 
 /* ───────────────────────── AUTH: WELCOME SCREEN ──────────────────────────────── */
-function WelcomeScreen({ onEmail, onBack, onEmpresa }) {
+function WelcomeScreen({ onEmail, onBack }) {
   return (
     <div style={{ minHeight:"100vh", background:"#F8F9FA", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"space-between", padding:"0 0 48px" }}>
 
@@ -6690,11 +6683,6 @@ function WelcomeScreen({ onEmail, onBack, onEmpresa }) {
         <p style={{ fontSize:12, color:"#9CA3AF", marginTop:20, textAlign:"center" }}>
           Já tem conta? <button onClick={onEmail} style={{ color:B, fontWeight:800, background:"none", border:"none", cursor:"pointer", fontSize:12 }}>Entrar</button>
         </p>
-        {onEmpresa && (
-          <p style={{ fontSize:12, color:"#9CA3AF", marginTop:8, textAlign:"center" }}>
-            É uma empresa parceira? <button onClick={onEmpresa} style={{ color:B, fontWeight:800, background:"none", border:"none", cursor:"pointer", fontSize:12 }}>Cadastre-se aqui</button>
-          </p>
-        )}
       </div>
     </div>
   );
@@ -10024,7 +10012,6 @@ const renderContent = () => {
         // ver serviço, "Vire Profissional" pra quem já tem conta, etc.), não
         // mais a role-select. Voltar fecha a etapa de auth e devolve a Home.
         onBack={() => { setAuthScreen(null); setPendingIntent(null); }}
-        onEmpresa={() => setAuthScreen("cadastro-empresa")}
       />
     );
   }
