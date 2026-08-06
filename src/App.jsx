@@ -3651,16 +3651,21 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
   };
 
   // Polling: consulta /api/status-pagamento a cada 5s enquanto o Pix estiver
-  // pendente. Some sozinho se sair da tela (troca de método, volta) ou se o
-  // código expirar.
+  // pendente, e ativa sozinho assim que detectar o pagamento — não depende
+  // do botão "Já paguei" (esse é só um atalho manual). Some sozinho se sair
+  // da tela (troca de método, volta) ou se o código expirar.
+  const verificandoRef = useRef(false);
   useEffect(() => {
     if (!pix?.paymentId) return;
-    const interval = setInterval(async () => {
+
+    const checar = async () => {
+      if (verificandoRef.current) return; // evita corrida entre o intervalo e o listener de visibilidade
       if (pix.expiresAt && new Date(pix.expiresAt) < new Date()) {
         clearInterval(interval);
         setPixExpirado(true);
         return;
       }
+      verificandoRef.current = true;
       try {
         const r = await fetch(`${API_BASE}/api/status-pagamento/${pix.paymentId}`);
         const d = await r.json();
@@ -3668,9 +3673,28 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
           clearInterval(interval);
           await confirmarPix(pix.paymentId, pix.customerId);
         }
-      } catch (e) {}
-    }, 5000);
-    return () => clearInterval(interval);
+      } catch (e) {
+      } finally {
+        verificandoRef.current = false;
+      }
+    };
+
+    const interval = setInterval(checar, 5000);
+
+    // setInterval fica pausado por navegadores/WebViews quando a aba/app vai
+    // pra segundo plano (ex.: usuário sai pra pagar o PIX no app do banco) —
+    // sem isso, a detecção só retomaria quando o timer voltasse a rodar,
+    // podendo demorar mais do que os 5s esperados. Checar na hora que a tela
+    // volta a ficar visível cobre esse caso.
+    const aoVoltarVisivel = () => { if (document.visibilityState === "visible") checar(); };
+    document.addEventListener("visibilitychange", aoVoltarVisivel);
+    window.addEventListener("focus", aoVoltarVisivel);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", aoVoltarVisivel);
+      window.removeEventListener("focus", aoVoltarVisivel);
+    };
   }, [pix?.paymentId]);
 
   const copiarPix = () => {
