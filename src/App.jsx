@@ -3452,6 +3452,20 @@ const PLANO_LIMITES_USUARIO = {
   pro:      { maxCategorias: 3, maxServicosMes: 10, valorMaxServico: 3000 },
   premium:  { maxCategorias: null, maxServicosMes: null, valorMaxServico: null },
 };
+// Lista curta de "Limites do plano" pros cards de EscolherPlanoScreen — deriva
+// de PLANO_LIMITES_USUARIO em vez de duplicar os números soltos num segundo
+// lugar (fonte única: mudou o limite ali, o card já reflete sozinho).
+function limitesTexto(planoId) {
+  const l = PLANO_LIMITES_USUARIO[planoId];
+  if (!l || l.maxCategorias == null) {
+    return ["Categorias ilimitadas", "Serviços ilimitados", "Sem limite de valor"];
+  }
+  return [
+    `${l.maxCategorias} categoria${l.maxCategorias > 1 ? "s" : ""} de serviço`,
+    `Até ${l.maxServicosMes} serviços aceitos/mês`,
+    `Valor máximo R$${l.valorMaxServico.toLocaleString("pt-BR")}/serviço`,
+  ];
+}
 function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, onDone, showToast }) {
   // Planos pagos de empresa deixaram de existir — titularTipo é sempre
   // "usuario" a partir de agora (nenhum call site restante manda "empresa").
@@ -3499,13 +3513,19 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
       <div style={{ display:"flex", flexDirection:"column", gap:24, maxWidth:420, margin:"0 auto" }}>
         {planos.map(p => {
           const isPro = !!p.badge;
+          // Multi Premium é sempre o plano mais alto (badge "Sem limites") —
+          // usa a mesma estrutura de card "em destaque" do isPro (glow, badge,
+          // borda gradiente), mas com paleta roxa própria em vez do laranja
+          // do Multi Pro, pra não ficarem visualmente parecidos (item 2 do
+          // pedido de ajuste dos cards de plano).
+          const isPremium = p.id === "premium";
           const HeaderIcon = p.icon || Briefcase;
           const beneficios = p.beneficios.map(b => typeof b === "string" ? { text:b, Icon:Check, lead:false } : { text:b.text, Icon:b.icon || Check, lead:!!b.lead });
 
           const card = (
             <div style={{
               position:"relative",
-              background: isPro ? "linear-gradient(180deg,#FFF4EC,#FFE2CF)" : "white",
+              background: isPremium ? "linear-gradient(180deg,#F6F1FE,#EADDFB)" : isPro ? "linear-gradient(180deg,#FFF4EC,#FFE2CF)" : "white",
               borderRadius: isPro ? 20 : 22,
               padding: isPro ? "26px 22px 22px" : "22px 20px",
               border: isPro ? "none" : "1.5px solid #ECEDF5",
@@ -3513,12 +3533,13 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
               {isPro && (
                 <span style={{
                   position:"absolute", top:-14, left:"50%", transform:"translateX(-50%)",
-                  background:`linear-gradient(135deg,#FFB100,${O})`, color:"#2A1200",
+                  background: isPremium ? "linear-gradient(135deg,#C4B5FD,#7C3AED)" : `linear-gradient(135deg,#FFB100,${O})`,
+                  color: isPremium ? "white" : "#2A1200",
                   fontSize:10.5, fontWeight:800, letterSpacing:.5, textTransform:"uppercase",
-                  padding:"7px 16px", borderRadius:99, boxShadow:`0 6px 16px ${O}55`,
+                  padding:"7px 16px", borderRadius:99, boxShadow: isPremium ? "0 6px 16px #7C3AED55" : `0 6px 16px ${O}55`,
                   display:"flex", alignItems:"center", gap:5, whiteSpace:"nowrap",
                 }}>
-                  <Star size={12} fill="#2A1200" color="#2A1200" /> {p.badge}
+                  <Star size={12} fill={isPremium ? "white" : "#2A1200"} color={isPremium ? "white" : "#2A1200"} /> {p.badge}
                 </span>
               )}
 
@@ -3527,8 +3548,8 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
                   <div style={{
                     width:38, height:38, borderRadius:12, flexShrink:0,
                     display:"flex", alignItems:"center", justifyContent:"center",
-                    background: isPro ? `linear-gradient(135deg,#FFB100,${O})` : "#EBEFFE",
-                    color: isPro ? "#2A1200" : B,
+                    background: isPremium ? "linear-gradient(135deg,#C4B5FD,#7C3AED)" : isPro ? `linear-gradient(135deg,#FFB100,${O})` : "#EBEFFE",
+                    color: isPremium ? "white" : isPro ? "#2A1200" : B,
                   }}>
                     <HeaderIcon size={19} />
                   </div>
@@ -3539,7 +3560,7 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
                     R$ {p.price.split(",")[0]}<span style={{ fontSize:13 }}>,{p.price.split(",")[1]}</span>
                   </p>
                   <p style={{ fontSize:11, color:"#8A8DAE", fontWeight:700, margin:"1px 0 0" }}>/mês</p>
-                  {p.perDay && <p style={{ fontSize:10.5, color: isPro ? O : "#8A8DAE", fontWeight: isPro ? 800 : 600, margin:"3px 0 0" }}>{p.perDay}</p>}
+                  {p.perDay && <p style={{ fontSize:10.5, color: isPremium ? "#7C3AED" : isPro ? O : "#8A8DAE", fontWeight: isPro ? 800 : 600, margin:"3px 0 0" }}>{p.perDay}</p>}
                 </div>
               </div>
 
@@ -3552,8 +3573,8 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
                     <div style={{
                       width:32, height:32, borderRadius:10, flexShrink:0,
                       display:"flex", alignItems:"center", justifyContent:"center",
-                      background: b.lead ? "#14152A" : isPro ? `${O}22` : "#EBEFFE",
-                      color: b.lead ? "#FFF4EC" : isPro ? O : B,
+                      background: b.lead ? "#14152A" : isPremium ? "#7C3AED22" : isPro ? `${O}22` : "#EBEFFE",
+                      color: b.lead ? "#FFF4EC" : isPremium ? "#7C3AED" : isPro ? O : B,
                     }}>
                       <b.Icon size={16} />
                     </div>
@@ -3562,8 +3583,29 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
                 ))}
               </div>
 
+              {/* Limites do plano — resumo objetivo (categoria/quantidade/valor)
+                  abaixo do texto de venda, antes do fechamento "Ideal para
+                  quem..." e do CTA. Vem de limitesTexto(p.id), que lê direto
+                  de PLANO_LIMITES_USUARIO (mesma fonte usada no resto do app). */}
+              <div style={{ marginTop:18, paddingTop:16, borderTop:`1px solid ${isPremium ? "#E4D6FA" : isPro ? O+"33" : "#EDEEF6"}`, display:"flex", flexDirection:"column", gap:9 }}>
+                <p style={{ fontSize:10, fontWeight:800, color:"#9A9DBE", textTransform:"uppercase", letterSpacing:1, margin:"0 0 2px" }}>Limites do plano</p>
+                {limitesTexto(p.id).map((texto, i) => (
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8 }}>
+                    <div style={{
+                      width:20, height:20, borderRadius:"50%", flexShrink:0,
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                      background: isPremium ? "#7C3AED22" : isPro ? `${O}22` : "#EBEFFE",
+                      color: isPremium ? "#7C3AED" : isPro ? O : B,
+                    }}>
+                      <Check size={12} strokeWidth={3} />
+                    </div>
+                    <span style={{ fontSize:13, color:"#42436A", fontWeight:600 }}>{texto}</span>
+                  </div>
+                ))}
+              </div>
+
               {p.ideal && (
-                <p style={{ marginTop:18, paddingTop:14, borderTop:`1px dashed ${isPro ? O+"4D" : "#E2E4F1"}`, fontSize:11.5, lineHeight:1.5, color:"#6C6F94" }}>
+                <p style={{ marginTop:18, paddingTop:14, borderTop:`1px dashed ${isPremium ? "#7C3AED4D" : isPro ? O+"4D" : "#E2E4F1"}`, fontSize:11.5, lineHeight:1.5, color:"#6C6F94" }}>
                   <b style={{ color:"#14152A", fontWeight:800 }}>{p.idealLead}</b> {p.ideal}
                 </p>
               )}
@@ -3572,8 +3614,8 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
                 marginTop:22, width:"100%", border:"none", borderRadius:16, padding:"16px 0",
                 fontWeight:800, fontSize:13, letterSpacing:.4, textTransform:"uppercase",
                 color:"white", cursor:"pointer",
-                background: isPro ? `linear-gradient(135deg,${O},#E8280A)` : `linear-gradient(135deg,${B},#22348F)`,
-                boxShadow: isPro ? `0 16px 30px -10px ${O}66` : `0 14px 28px -10px ${B}88`,
+                background: isPremium ? "linear-gradient(135deg,#8B5CF6,#5B21B6)" : isPro ? `linear-gradient(135deg,${O},#E8280A)` : `linear-gradient(135deg,${B},#22348F)`,
+                boxShadow: isPremium ? "0 16px 30px -10px #7C3AED66" : isPro ? `0 16px 30px -10px ${O}66` : `0 14px 28px -10px ${B}88`,
               }}>
                 {p.ctaLabel || "Escolher este plano"}
               </button>
@@ -3584,13 +3626,13 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
             <div key={p.id} style={{ position:"relative", paddingTop:14 }}>
               <div style={{
                 position:"absolute", inset:"12px -12px -12px", borderRadius:30,
-                background:`radial-gradient(120% 100% at 50% 0%, ${O}4D, transparent 70%)`,
+                background: isPremium ? "radial-gradient(120% 100% at 50% 0%, #7C3AED4D, transparent 70%)" : `radial-gradient(120% 100% at 50% 0%, ${O}4D, transparent 70%)`,
                 filter:"blur(20px)", animation:"planoGlow 4.5s ease-in-out infinite", zIndex:0,
               }} />
               <div style={{
                 position:"relative", zIndex:1, borderRadius:22, padding:2,
-                background:`linear-gradient(155deg,#FFB100,${O} 45%,#E8280A 100%)`,
-                boxShadow:`0 20px 40px -16px ${O}4D`,
+                background: isPremium ? "linear-gradient(155deg,#C4B5FD,#7C3AED 45%,#4C1D95 100%)" : `linear-gradient(155deg,#FFB100,${O} 45%,#E8280A 100%)`,
+                boxShadow: isPremium ? "0 20px 40px -16px #7C3AED4D" : `0 20px 40px -16px ${O}4D`,
               }}>
                 {card}
               </div>
