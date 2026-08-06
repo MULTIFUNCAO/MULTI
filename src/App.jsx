@@ -3626,8 +3626,11 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
   // Reconfere o pagamento e ativa o plano (chamado tanto pelo polling
   // automático quanto pelo botão manual "Já paguei"). O backend reconfere
   // com a Asaas antes de gravar em "assinaturas" — nunca confia só no que o
-  // front detectou.
-  const confirmarPix = async (paymentId, customerId) => {
+  // front detectou. "manual" distingue as duas origens só pra decidir se
+  // mostra feedback quando ainda está pendente: o polling automático fica
+  // silencioso (senão notificaria a cada 5s à toa), mas quem clicou "Já
+  // paguei" esperando uma resposta não pode ficar sem nenhum retorno.
+  const confirmarPix = async (paymentId, customerId, manual = false) => {
     setConfirmandoPix(true);
     try {
       const r = await fetch(`${API_BASE}/api/assinatura/confirmar-pix`, {
@@ -3636,7 +3639,10 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
       });
       const d = await r.json();
       if (!r.ok) {
-        if (d.error === "pagamento_nao_confirmado") return false; // ainda pendente, segue no polling
+        if (d.error === "pagamento_nao_confirmado") {
+          if (manual) showToast?.("⏳ Ainda não identificamos o pagamento. Aguarde alguns instantes e tente de novo.", O);
+          return false; // ainda pendente, segue no polling
+        }
         throw new Error(d.error || "Não foi possível confirmar o pagamento");
       }
       showToast?.(`🎉 ${planoLabel} ativado! Próxima cobrança em ${proximaCobranca.toLocaleDateString("pt-BR")}.`, G);
@@ -3840,7 +3846,7 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
                 </button>
               </div>
 
-              <button onClick={() => confirmarPix(pix.paymentId, pix.customerId)} disabled={confirmandoPix} style={{
+              <button onClick={() => confirmarPix(pix.paymentId, pix.customerId, true)} disabled={confirmandoPix} style={{
                 width:"100%", padding:"14px 0", borderRadius:14, border:"none", cursor: confirmandoPix ? "default" : "pointer",
                 background: `linear-gradient(135deg,${G},#16a34a)`, color:"white", fontWeight:900, fontSize:14,
               }}>
