@@ -5056,12 +5056,10 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
     if (seq !== categoriaSaveSeqRef.current) return;
     setSavingCategoria(false);
     if (error) showToast?.("❌ Erro ao salvar categoria: " + (error.message || ""), "#DC2626");
-    // DIAGNÓSTICO TEMPORÁRIO — mostra o e-mail exato usado no WHERE direto
-    // no toast (JSON.stringify pra expor espaço/caractere escondido), já
-    // que já provamos por teste isolado que 0 linhas não é "mesmo valor de
-    // novo" (UPDATE sempre conta a linha que bateu, mudando o valor ou
-    // não) — só sobra o e-mail do WHERE não estar batendo nessa hora.
-    else if (!data || data.length === 0) showToast?.(`❌ 0 linhas p/ email=${JSON.stringify(userEmail)}`, "#DC2626");
+    // 0 linhas afetadas = o e-mail da sessão não bate com nenhuma conta real
+    // (sessão de teste/mock, conta apagada, etc.) — não é "erro de rede",
+    // então o toast não tenta sugerir tentar de novo.
+    else if (!data || data.length === 0) showToast?.("❌ Não foi possível salvar — sessão sem conta correspondente no banco.", "#DC2626");
     else showToast?.("✅ Categorias de serviço salvas!", G);
   };
 
