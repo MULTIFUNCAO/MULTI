@@ -6292,7 +6292,7 @@ function ChatProgressBar({ pedido }) {
 // chaveadas por pedido_id (um pedido em_andamento só tem uma proposta aceita,
 // então pedido_id já desambigua a negociação sem precisar de proposta_id).
 // Sem realtime: polling simples, consistente com o resto do app.
-function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
+function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast, plano, planoStatus, planoInicio, onUpgrade }) {
   const [mensagens, setMensagens] = useState([]);
   const [pedido,    setPedido]    = useState(null);
   const [loading,   setLoading]   = useState(true);
@@ -6306,6 +6306,10 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
   const [aceitesTermo, setAceitesTermo] = useState([]);
   const [termoChecked, setTermoChecked] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  // Motivo de bloqueio retornado pelo endpoint /api/pedidos/confirmar-servico
+  // (sem_plano_ativo | valor_excede_plano | quota_excedida) — quando setado,
+  // o modal de confirmação mostra a cópia de upgrade em vez do formulário.
+  const [blockInfo, setBlockInfo] = useState(null);
   const [showTermoCompleto, setShowTermoCompleto] = useState(false);
   const [confirmandoServico, setConfirmandoServico] = useState(false);
   // Guarda se a promoção automática pedidos.status -> "confirmado" (useEffect
@@ -6607,29 +6611,70 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
     if (!pedido.data_agendada && !dataInput) return;
     if (!meuAceiteTermo && !termoChecked) return;
     setConfirmandoServico(true);
+    setBlockInfo(null);
+
     const tasks = [];
-    if (!meuAceite) {
-      const campo = souCliente ? "aceite_formal_cliente_em" : "aceite_formal_profissional_em";
-      const updates = { [campo]: new Date().toISOString() };
-      if (!pedido.data_agendada) updates.data_agendada = new Date(dataInput).toISOString();
-      tasks.push(supabase.from("pedidos").update(updates).eq("id", chat.pedidoId));
-    }
     if (!meuAceiteTermo) {
       tasks.push(supabase.from("aceites_termo").upsert(
         { pedido_id: chat.pedidoId, usuario_id: meuEmail, versao_termo: TERMO_VERSAO },
         { onConflict: "pedido_id,usuario_id" }
       ));
     }
-    Promise.all(tasks)
+
+    // Lado cliente: sem cota/limite de plano nenhum — continua escrita direta.
+    if (souCliente) {
+      if (!meuAceite) {
+        const updates = { aceite_formal_cliente_em: new Date().toISOString() };
+        if (!pedido.data_agendada) updates.data_agendada = new Date(dataInput).toISOString();
+        tasks.push(supabase.from("pedidos").update(updates).eq("id", chat.pedidoId));
+      }
+      Promise.all(tasks)
+        .then((results) => {
+          const failed = results.find(r => r?.error)?.error;
+          if (failed) throw failed;
+          carregar();
+          setShowConfirmModal(false);
+          notificarOutroLado("Serviço confirmado ✅", `${pedido.cliente_nome || "O outro lado"} confirmou o serviço${chat.serviceTitle ? ` "${chat.serviceTitle}"` : ""}.`);
+        })
+        .catch((err) => {
+          console.error("confirmarServico:", err);
+          showToast?.("Não foi possível confirmar o serviço: " + (err.message || "tente novamente."), "#DC2626");
+        })
+        .finally(() => setConfirmandoServico(false));
+      return;
+    }
+
+    // Lado profissional: aceite_formal_profissional_em só pode ser gravado
+    // pelo backend (o trigger trg_lock_aceite_formal_profissional trava
+    // escrita direta via chave anon) — é ali que mora a checagem real de
+    // plano ativo, valor máximo e cota mensal (PLANO_LIMITES_USUARIO). É essa
+    // confirmação que consome 1 do limite de serviços do ciclo.
+    const aceitePromise = meuAceite
+      ? Promise.resolve({ ok: true })
+      : fetch(`${API_BASE}/api/pedidos/confirmar-servico`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pedidoId: chat.pedidoId,
+            profissionalEmail: meuEmail,
+            dataAgendada: pedido.data_agendada ? undefined : new Date(dataInput).toISOString(),
+          }),
+        }).then(async (r) => {
+          const body = await r.json().catch(() => ({}));
+          if (!r.ok) { const e = new Error(body.error || "bloqueado"); e.blockInfo = body; throw e; }
+          return { ok: true };
+        });
+
+    Promise.all([aceitePromise, ...tasks])
       .then((results) => {
         const failed = results.find(r => r?.error)?.error;
         if (failed) throw failed;
         carregar();
         setShowConfirmModal(false);
-        const meuNome = souCliente ? pedido.cliente_nome : pedido.profissional_nome;
-        notificarOutroLado("Serviço confirmado ✅", `${meuNome || "O outro lado"} confirmou o serviço${chat.serviceTitle ? ` "${chat.serviceTitle}"` : ""}.`);
+        notificarOutroLado("Serviço confirmado ✅", `${pedido.profissional_nome || "O outro lado"} confirmou o serviço${chat.serviceTitle ? ` "${chat.serviceTitle}"` : ""}.`);
       })
       .catch((err) => {
+        if (err?.blockInfo?.error) { setBlockInfo(err.blockInfo); return; }
         console.error("confirmarServico:", err);
         showToast?.("Não foi possível confirmar o serviço: " + (err.message || "tente novamente."), "#DC2626");
       })
@@ -6859,7 +6904,7 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
                 : "Já combinaram os detalhes? Confirme o serviço pra travar data, horário e valor."}
             </p>
             <button
-              onClick={() => setShowConfirmModal(true)}
+              onClick={() => { setBlockInfo(null); setShowConfirmModal(true); }}
               style={{ width:"100%", padding:"10px 0", borderRadius:10, border:"none", background:B, color:"white", fontWeight:800, fontSize:12.5, cursor:"pointer" }}
             >
               ✅ Confirmar Serviço
@@ -6992,51 +7037,71 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast }) {
               </div>
             </div>
 
-            {!pedido.data_agendada && (
-              <div style={{ marginBottom:16 }}>
-                <p style={{ fontSize:12, fontWeight:700, color:"#555", margin:"0 0 6px" }}>Data e horário do serviço</p>
-                <input
-                  type="datetime-local"
-                  value={dataInput}
-                  min={agoraLocalStr()}
-                  onChange={e => setDataInput(e.target.value)}
-                  style={{ width:"100%", padding:"10px 12px", borderRadius:10, border:"1.5px solid #DBEAFE", fontSize:13, boxSizing:"border-box" }}
-                />
-              </div>
-            )}
-
-            {meuAceiteTermo ? (
-              <p style={{ fontSize:12, color:"#555", margin:"0 0 16px" }}>✅ Você já aceitou o Termo de Isenção de Responsabilidade.</p>
-            ) : (
-              <div style={{ marginBottom:16 }}>
-                <div
-                  onClick={() => setTermoChecked(v => !v)}
-                  style={{ display:"flex", alignItems:"flex-start", gap:10, cursor:"pointer", padding:"10px 12px", borderRadius:10, background: termoChecked ? "#F0FDF4" : "#F8F9FA", border:`1.5px solid ${termoChecked ? G : "#E5E7EB"}`, marginBottom:6 }}
-                >
-                  <div style={{ width:20, height:20, borderRadius:6, border:`2px solid ${termoChecked ? G : "#D1D5DB"}`, background: termoChecked ? G : "white", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:1 }}>
-                    {termoChecked && <Check size={12} color="white" strokeWidth={3} />}
-                  </div>
-                  <p style={{ fontSize:11.5, color:"#555", lineHeight:1.5, margin:0 }}>
-                    Li e aceito o <strong>Termo de Isenção de Responsabilidade</strong>.
-                  </p>
+            {blockInfo ? (
+              blockInfo.error === "sem_plano_ativo" ? (
+                <div style={{ background:"#FFF7ED", border:"1.5px solid #FDBA74", borderRadius:14, padding:"14px 16px", display:"flex", flexDirection:"column", gap:8 }}>
+                  <p style={{ margin:0, fontSize:13, fontWeight:900, color:"#9A3412" }}>🔒 Você precisa de um plano ativo pra confirmar este serviço.</p>
+                  <button onClick={onUpgrade} type="button" style={{ alignSelf:"flex-start", padding:"9px 14px", borderRadius:10, border:"none", background:"#EA580C", color:"white", fontWeight:900, fontSize:12, cursor:"pointer" }}>
+                    ASSINAR UM PLANO
+                  </button>
+                  <p style={{ margin:0, fontSize:11.5, color:"#9A3412" }}>Assine o Multi Autônomo, Pro ou Premium pra poder confirmar e fechar serviços.</p>
                 </div>
-                <button onClick={() => setShowTermoCompleto(true)} style={{ background:"none", border:"none", padding:0, color:B, fontWeight:700, fontSize:11.5, cursor:"pointer", textDecoration:"underline" }}>
-                  Ler termo completo
-                </button>
-              </div>
-            )}
+              ) : (
+                <PlanoUpgradeCTA
+                  tipo={blockInfo.error === "quota_excedida" ? "quantidade" : "valor"}
+                  plano={plano}
+                  onUpgrade={onUpgrade}
+                />
+              )
+            ) : (
+              <>
+                {!pedido.data_agendada && (
+                  <div style={{ marginBottom:16 }}>
+                    <p style={{ fontSize:12, fontWeight:700, color:"#555", margin:"0 0 6px" }}>Data e horário do serviço</p>
+                    <input
+                      type="datetime-local"
+                      value={dataInput}
+                      min={agoraLocalStr()}
+                      onChange={e => setDataInput(e.target.value)}
+                      style={{ width:"100%", padding:"10px 12px", borderRadius:10, border:"1.5px solid #DBEAFE", fontSize:13, boxSizing:"border-box" }}
+                    />
+                  </div>
+                )}
 
-            <button
-              onClick={confirmarServico}
-              disabled={confirmandoServico || (!pedido.data_agendada && !dataInput) || (!meuAceiteTermo && !termoChecked)}
-              style={{
-                width:"100%", padding:"12px 0", borderRadius:10, border:"none", background:G, color:"white", fontWeight:800, fontSize:13.5,
-                cursor: (confirmandoServico || (!pedido.data_agendada && !dataInput) || (!meuAceiteTermo && !termoChecked)) ? "default" : "pointer",
-                opacity: (confirmandoServico || (!pedido.data_agendada && !dataInput) || (!meuAceiteTermo && !termoChecked)) ? .5 : 1,
-              }}
-            >
-              {confirmandoServico ? "Confirmando..." : "✅ Confirmar"}
-            </button>
+                {meuAceiteTermo ? (
+                  <p style={{ fontSize:12, color:"#555", margin:"0 0 16px" }}>✅ Você já aceitou o Termo de Isenção de Responsabilidade.</p>
+                ) : (
+                  <div style={{ marginBottom:16 }}>
+                    <div
+                      onClick={() => setTermoChecked(v => !v)}
+                      style={{ display:"flex", alignItems:"flex-start", gap:10, cursor:"pointer", padding:"10px 12px", borderRadius:10, background: termoChecked ? "#F0FDF4" : "#F8F9FA", border:`1.5px solid ${termoChecked ? G : "#E5E7EB"}`, marginBottom:6 }}
+                    >
+                      <div style={{ width:20, height:20, borderRadius:6, border:`2px solid ${termoChecked ? G : "#D1D5DB"}`, background: termoChecked ? G : "white", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:1 }}>
+                        {termoChecked && <Check size={12} color="white" strokeWidth={3} />}
+                      </div>
+                      <p style={{ fontSize:11.5, color:"#555", lineHeight:1.5, margin:0 }}>
+                        Li e aceito o <strong>Termo de Isenção de Responsabilidade</strong>.
+                      </p>
+                    </div>
+                    <button onClick={() => setShowTermoCompleto(true)} style={{ background:"none", border:"none", padding:0, color:B, fontWeight:700, fontSize:11.5, cursor:"pointer", textDecoration:"underline" }}>
+                      Ler termo completo
+                    </button>
+                  </div>
+                )}
+
+                <button
+                  onClick={confirmarServico}
+                  disabled={confirmandoServico || (!pedido.data_agendada && !dataInput) || (!meuAceiteTermo && !termoChecked)}
+                  style={{
+                    width:"100%", padding:"12px 0", borderRadius:10, border:"none", background:G, color:"white", fontWeight:800, fontSize:13.5,
+                    cursor: (confirmandoServico || (!pedido.data_agendada && !dataInput) || (!meuAceiteTermo && !termoChecked)) ? "default" : "pointer",
+                    opacity: (confirmandoServico || (!pedido.data_agendada && !dataInput) || (!meuAceiteTermo && !termoChecked)) ? .5 : 1,
+                  }}
+                >
+                  {confirmandoServico ? "Confirmando..." : "✅ Confirmar"}
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -7431,6 +7496,63 @@ function CategoriaMultiSelect({ value, onChange, max, onLimitReached, error }) {
           </button>
         );
       })}
+    </div>
+  );
+}
+
+// Ciclo de cobrança rolante de 30 dias a partir de assinaturas.inicio —
+// espelha cicloAtualInicio em MULTI-BACKEND/server.js. Não existe renovação
+// automática/coluna de "última cobrança" ainda, então o ciclo é sempre
+// recalculado a partir da data de início da assinatura. Uso aqui é só de
+// exibição (cota usada); o gate de verdade roda no backend.
+function cicloAtualInicio(inicioISO) {
+  if (!inicioISO) return new Date(0);
+  const inicio = new Date(inicioISO).getTime();
+  const now = Date.now();
+  const CICLO_MS = 30 * 24 * 60 * 60 * 1000;
+  if (now <= inicio) return new Date(inicio);
+  const ciclosPassados = Math.floor((now - inicio) / CICLO_MS);
+  return new Date(inicio + ciclosPassados * CICLO_MS);
+}
+
+// Cópia padrão de bloqueio por limite de plano (valor do serviço acima do
+// teto, ou cota mensal de serviços esgotada) — usada tanto no card bloqueado
+// do mural (ProfessionalHome) quanto no bloqueio pós-tentativa de confirmação
+// (NegociacaoChatScreen). Princípio: sempre dizer o que foi encontrado, por
+// que está bloqueado, o benefício concreto do próximo plano e um CTA claro —
+// nunca só "você não pode". Sem plano ativo trata como Autônomo (teto mais
+// restritivo) pra fins de cópia.
+function PlanoUpgradeCTA({ tipo, plano, onUpgrade }) {
+  const planoAtual = PLANO_LIMITES_USUARIO[plano] ? plano : "autonomo";
+  const limite = PLANO_LIMITES_USUARIO[planoAtual];
+  const ehPro = planoAtual === "pro";
+  let titulo, corpo, ctaLabel, detalhe;
+  if (tipo === "valor") {
+    if (ehPro) {
+      titulo = "Essa oportunidade está acima do limite do Multi Pro.";
+      ctaLabel = "CONHECER MULTI PREMIUM";
+      detalhe = "Com o Multi Premium você tem acesso a serviços de qualquer valor, categorias ilimitadas e serviços ilimitados.";
+    } else {
+      titulo = "Oportunidade exclusiva para planos superiores";
+      corpo = `Este serviço está acima do limite de R$${limite.valorMaxServico} do seu plano.`;
+      ctaLabel = "FAZER UPGRADE PARA MULTI PRO";
+      detalhe = `Acesse serviços de até R$${PLANO_LIMITES_USUARIO.pro.valorMaxServico} por apenas R$${PLANOS_USUARIO.find(p => p.id === "pro")?.price}/mês.`;
+    }
+  } else {
+    titulo = `Você atingiu o limite de ${limite.maxServicosMes} serviços deste mês.`;
+    ctaLabel = "FAZER UPGRADE";
+    detalhe = ehPro
+      ? "Com o Multi Premium você aceita serviços ilimitados por mês e cadastra categorias ilimitadas."
+      : `Com o Multi Pro você pode aceitar até ${PLANO_LIMITES_USUARIO.pro.maxServicosMes} serviços por mês e cadastrar até ${PLANO_LIMITES_USUARIO.pro.maxCategorias} categorias.`;
+  }
+  return (
+    <div style={{ background:"#FFF7ED", border:"1.5px solid #FDBA74", borderRadius:14, padding:"14px 16px", display:"flex", flexDirection:"column", gap:8 }}>
+      <p style={{ margin:0, fontSize:13, fontWeight:900, color:"#9A3412" }}>🔒 {titulo}</p>
+      {corpo && <p style={{ margin:0, fontSize:12.5, color:"#9A3412" }}>{corpo}</p>}
+      <button onClick={onUpgrade} type="button" style={{ alignSelf:"flex-start", padding:"9px 14px", borderRadius:10, border:"none", background:"#EA580C", color:"white", fontWeight:900, fontSize:12, cursor:"pointer" }}>
+        {ctaLabel}
+      </button>
+      <p style={{ margin:0, fontSize:11.5, color:"#9A3412" }}>{detalhe}</p>
     </div>
   );
 }
@@ -8546,7 +8668,7 @@ function GuestMural({ onSignup, allDocsVerified }) {
 }
 
 /* ───────────────────────── PROFESSIONAL HOME ────────────────────────────────── */
-function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro, plano, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet, onAcceptOrder, meusGanhos }) {
+function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro, plano, planoInicio, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet, onAcceptOrder, meusGanhos }) {
   const [online,       setOnline]       = useState(false);
   const [categoriaServico, setCategoriaServico] = useState([]);
   const [userCity, setUserCity] = useState("");
@@ -8563,6 +8685,18 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   // igual pra todo mundo.
   const [reputacao, setReputacao] = useState(null);
   useEffect(() => { if (userEmail) fetchReputacao(userEmail).then(setReputacao); }, [userEmail]);
+  // Cota de serviços do ciclo atual — leitura pública só pra exibição (o
+  // bloqueio de verdade acontece no backend, no endpoint de confirmação).
+  const [usadosCiclo, setUsadosCiclo] = useState(0);
+  useEffect(() => {
+    if (!userEmail || !planoInicio) { setUsadosCiclo(0); return; }
+    supabase.from("pedidos").select("id", { count: "exact", head: true })
+      .eq("profissional_aceito", userEmail)
+      .not("aceite_formal_profissional_em", "is", null)
+      .gte("aceite_formal_profissional_em", cicloAtualInicio(planoInicio).toISOString())
+      .then(({ count }) => setUsadosCiclo(count || 0))
+      .catch(() => {});
+  }, [userEmail, planoInicio]);
   // Demandas de empresa (publico_alvo:"pro") só entram no feed de quem é
   // Multi Pro — Autônomo continua vendo só pedido normal de cliente.
   const isPlanoPro = plano === "pro";
@@ -8594,14 +8728,21 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
     { id:"topPay", label:"Melhor Pagamento", emoji:"💰" },
   ];
 
+  const limitePlano = PLANO_LIMITES_USUARIO[plano] || PLANO_LIMITES_USUARIO.autonomo;
+
   const filtered = realPedidos.filter(s => {
-    // Demanda de empresa (publico_alvo:"pro") só aparece pra quem bate
-    // categoria E cidade — sem isso, toda demanda aparecia pra qualquer
-    // Multi Pro, de qualquer categoria/cidade, diluindo o mural.
+    // Categoria incompatível = filtro, não bloqueio: o profissional simplesmente
+    // não recebe a oportunidade (nunca aparece no mural). Antes só as demandas
+    // de empresa (publico_alvo:"pro") eram filtradas por categoria — pedido
+    // normal de cliente aparecia pra qualquer profissional online, de
+    // qualquer categoria.
+    if (!categoriaServico.includes(s.cat)) return false;
+    // Demanda de empresa (publico_alvo:"pro") também exige bater a cidade —
+    // sem isso, toda demanda aparecia pra qualquer Multi Pro da categoria
+    // certa mas de qualquer cidade, diluindo o mural.
     if (s.publicoAlvo === "pro") {
-      const catOk = categoriaServico.includes(s.cat);
       const cityOk = !!userCity && !!s.loc && s.loc.toLowerCase() === userCity.toLowerCase();
-      if (!catOk || !cityOk) return false;
+      if (!cityOk) return false;
     }
     if (activeFilter === "urgent") return s.urgent;
     if (activeFilter === "topPay") return s.value >= 400;
@@ -8732,6 +8873,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
               { label:"Total recebido",  val:`R$ ${(meusGanhos || []).reduce((a, p) => a + (p.value || 0), 0).toLocaleString("pt-BR", { minimumFractionDigits:2 })}`, color:"#4ade80" },
               { label:"Servicos feitos", val:String((meusGanhos || []).length), color:"white" },
               { label:"Avaliacao",       val: reputacao?.mediaEstrelas != null ? `${reputacao.mediaEstrelas.toFixed(1)} estrelas` : "—", color:"#F9A825" },
+              { label:"Cota do ciclo",   val: limitePlano.maxServicosMes != null ? `${usadosCiclo}/${limitePlano.maxServicosMes}` : "Ilimitado", color: limitePlano.maxServicosMes != null && usadosCiclo >= limitePlano.maxServicosMes ? "#F87171" : "#93C5FD" },
             ].map((s, i) => (
               <div key={i} onClick={i===0 ? onGoToWallet : i===1 ? onGoToOrders : undefined} style={{ flex:1, background:"rgba(255,255,255,.08)", borderRadius:12, padding:"9px 10px", cursor:(i===0||i===1)?"pointer":"default" }}>
                 <p style={{ fontSize:11, color:"rgba(255,255,255,.45)", fontWeight:700, margin:0, lineHeight:1.3 }}>{s.label}</p>
@@ -8834,6 +8976,11 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
           const cat       = CATS.find(c => c.id === s.cat);
           const isLocked  = false;          // lock removido - todos podem se candidatar
           const isBlurred = false; // first card always fully visible as preview
+          // Bloqueio por valor: categoria já bateu (senão nem chegava no
+          // "filtered"), mas o valor do serviço passa do teto do plano atual
+          // — a oportunidade continua visível (gatilho de upgrade), só não dá
+          // pra demonstrar interesse nela.
+          const valorExcede = limitePlano.valorMaxServico != null && s.value > limitePlano.valorMaxServico;
 
           return (
             <div key={s.id} style={{ position:"relative", borderRadius:20, overflow:"hidden", boxShadow:"0 3px 14px rgba(0,0,0,.09)" }}>
@@ -8858,35 +9005,42 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                   <span style={{ display:"flex", alignItems:"center", gap:4 }}><MapPin size={11} />{s.loc}</span>
                   <span style={{ display:"flex", alignItems:"center", gap:4 }}><Clock size={11} />{s.time}</span>
                 </div>
-                <div style={{ borderTop:"1px solid #F4F4F6", paddingTop:10, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                  <span style={{ fontSize:22, fontWeight:900, color:B }}>R$ {s.value}</span>
-                  {/* client name — hidden for non-PRO */}
-                  <span style={{ fontSize:12, color:"#aaa", filter: isLocked ? "blur(4px)" : "none" }}>
-                    👤 {isLocked ? "Cliente PRO" : (s.client || "Cliente")}
-                  </span>
-                </div>
 
-                {/* Action button — triggers doc-block popup if docs not verified */}
-                <button
-                  onClick={e => {
-                    e.stopPropagation();
-                    if (!allDocsVerified) { setShowDocBlock(true); return; }
-                    if (isLocked) { onUpgrade(); return; }
-                  const proUser=safeGetUser();
-                  supabase.from("propostas").upsert({pedido_id:s.id,profissional_id:proUser.email||proUser.whatsapp,profissional_nome:proUser.name||"Profissional",profissional_email:proUser.email||proUser.whatsapp,valor:s.value||0,mensagem:"Tenho interesse neste serviço!",status:"pendente",cliente_email:s.cliente_id||""},{onConflict:"pedido_id,profissional_id"}).then(()=>{}).catch(()=>{});
-                  onViewService({ _notify:{ serviceId:s.id, serviceTitle:s.title, value:s.value, proName:proUser.name||"Profissional" } });
-                  }}
-                  style={{ padding:"11px 0", borderRadius:12, border:"none", cursor:"pointer", fontWeight:900, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:7,
-                    background: !allDocsVerified ? "#F5F6FA" : isLocked ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : `linear-gradient(135deg,${O},#E64A19)`,
-                    color:      !allDocsVerified ? "#9CA3AF" : "white",
-                    boxShadow:  !allDocsVerified ? "none" : isLocked ? "0 3px 10px rgba(124,58,237,.28)" : "0 3px 10px rgba(255,87,34,.28)",
-                  }}>
-                  {!allDocsVerified
-                    ? <><Lock size={13} /> Candidatar-me</>
-                    : isLocked
-                      ? <><Crown size={13} /> Assinar PRO</>
-                      : "Tenho Interesse"}
-                </button>
+                {valorExcede ? (
+                  <PlanoUpgradeCTA tipo="valor" plano={plano} onUpgrade={onUpgrade} />
+                ) : (
+                  <>
+                    <div style={{ borderTop:"1px solid #F4F4F6", paddingTop:10, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                      <span style={{ fontSize:22, fontWeight:900, color:B }}>R$ {s.value}</span>
+                      {/* client name — hidden for non-PRO */}
+                      <span style={{ fontSize:12, color:"#aaa", filter: isLocked ? "blur(4px)" : "none" }}>
+                        👤 {isLocked ? "Cliente PRO" : (s.client || "Cliente")}
+                      </span>
+                    </div>
+
+                    {/* Action button — triggers doc-block popup if docs not verified */}
+                    <button
+                      onClick={e => {
+                        e.stopPropagation();
+                        if (!allDocsVerified) { setShowDocBlock(true); return; }
+                        if (isLocked) { onUpgrade(); return; }
+                      const proUser=safeGetUser();
+                      supabase.from("propostas").upsert({pedido_id:s.id,profissional_id:proUser.email||proUser.whatsapp,profissional_nome:proUser.name||"Profissional",profissional_email:proUser.email||proUser.whatsapp,valor:s.value||0,mensagem:"Tenho interesse neste serviço!",status:"pendente",cliente_email:s.cliente_id||""},{onConflict:"pedido_id,profissional_id"}).then(()=>{}).catch(()=>{});
+                      onViewService({ _notify:{ serviceId:s.id, serviceTitle:s.title, value:s.value, proName:proUser.name||"Profissional" } });
+                      }}
+                      style={{ padding:"11px 0", borderRadius:12, border:"none", cursor:"pointer", fontWeight:900, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:7,
+                        background: !allDocsVerified ? "#F5F6FA" : isLocked ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : `linear-gradient(135deg,${O},#E64A19)`,
+                        color:      !allDocsVerified ? "#9CA3AF" : "white",
+                        boxShadow:  !allDocsVerified ? "none" : isLocked ? "0 3px 10px rgba(124,58,237,.28)" : "0 3px 10px rgba(255,87,34,.28)",
+                      }}>
+                      {!allDocsVerified
+                        ? <><Lock size={13} /> Candidatar-me</>
+                        : isLocked
+                          ? <><Crown size={13} /> Assinar PRO</>
+                          : "Tenho Interesse"}
+                    </button>
+                  </>
+                )}
               </div>
 
               {/* PRO tag on first card for non-PRO users */}
@@ -9383,18 +9537,23 @@ export default function App() {
   const [plano,          setPlano]          = useState(null);
   const [planoStatus,    setPlanoStatus]    = useState(null);
   const [planoExpiraEm,  setPlanoExpiraEm]  = useState(null);
+  // Início da assinatura atual — usado só pra calcular o ciclo de cobrança
+  // (cicloAtualInicio) na exibição da cota de serviços/mês do profissional.
+  // O gate de verdade (bloqueio) é sempre recalculado no backend.
+  const [planoInicio,    setPlanoInicio]    = useState(null);
   // Modo Prestadora/Contratante da empresa "pro" — vive aqui (não como state
   // local de EmpresaHomeScreen) porque precisa sobreviver a navegações pra
   // fora dela (ver propostas, abrir chat) e voltar sem resetar sozinho.
   const [empresaModo, setEmpresaModo] = useState("prestadora");
   const carregarPlano = (titularTipo, titularEmail) => {
-    if (!titularTipo || !titularEmail) { setPlano(null); setPlanoStatus(null); setPlanoExpiraEm(null); setIsPro(false); return; }
-    supabase.from("assinaturas").select("plano,status,expira_em")
+    if (!titularTipo || !titularEmail) { setPlano(null); setPlanoStatus(null); setPlanoExpiraEm(null); setPlanoInicio(null); setIsPro(false); return; }
+    supabase.from("assinaturas").select("plano,status,expira_em,inicio")
       .eq("titular_tipo", titularTipo).eq("titular_email", titularEmail).maybeSingle()
       .then(({ data }) => {
         setPlano(data?.plano || null);
         setPlanoStatus(data?.status || null);
         setPlanoExpiraEm(data?.expira_em || null);
+        setPlanoInicio(data?.inicio || null);
         setIsPro(!!data?.plano && (data.status === "trial" || data.status === "ativa"));
       })
       .catch(() => {});
@@ -10285,6 +10444,10 @@ const renderContent = () => {
           meuEmail={userEmail}
           onBack={() => { setActiveChat(null); setScreen(role === "client" ? "chat" : "home"); }}
           showToast={showToast}
+          plano={plano}
+          planoStatus={planoStatus}
+          planoInicio={planoInicio}
+          onUpgrade={() => { setActiveChat(null); setScreen("upgrade"); }}
         />
       );
     }
@@ -10459,6 +10622,7 @@ const renderContent = () => {
         onGoToProfile={() => setScreen("profile")}
         isPro={isPro}
         plano={plano}
+        planoInicio={planoInicio}
         meusGanhos={meusGanhos}
         onViewService={handleProFeedAction}
         onUpgrade={() => setScreen("upgrade")}
