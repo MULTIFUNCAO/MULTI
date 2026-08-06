@@ -2178,7 +2178,6 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName, 
                   </div>
                   <div style={{ textAlign:"right", flexShrink:0 }}>
                     <p style={{ fontSize:15, fontWeight:900, color:B, margin:0 }}>R$ {s.value}</p>
-                    <p style={{ fontSize:10, color:"#bbb", margin:"2px 0 0" }}>{s.time}</p>
                   </div>
                 </div>
               );
