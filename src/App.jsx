@@ -117,54 +117,66 @@ function getOneSignalPlayerId() {
 
 /* ───────────────────────── STATIC DATA ───────────────────────────────────── */
 const CATS = [
-  { id:"pedreiro",    label:"Pedreiro",          emoji:"👷", star:4.8, bg:"#FFF0EE", dot:"#E53935" },
-  { id:"encanador",   label:"Encanador",          emoji:"🔧", star:4.6, bg:"#E8F4FF", dot:"#0070F3" },
-  { id:"jardineiro",  label:"Jardineiro",         emoji:"🌿", star:4.9, bg:"#E8F8EE", dot:"#2E7D32" },
-  { id:"eletricista", label:"Eletricista",        emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825" },
-  { id:"pintor",      label:"Pintor",             emoji:"🖌️", star:4.5, bg:"#F3E5F5", dot:"#7B1FA2" },
-  { id:"vidraceiro",  label:"Vidraceiro",         emoji:"🪟", star:4.4, bg:"#E0F7FA", dot:"#00838F" },
-  { id:"chaveiro",    label:"Chaveiro 24h",       emoji:"🔑", star:4.7, bg:"#FFF8E1", dot:"#F57F17" },
-  { id:"desentupidor",label:"Desentupimento",     emoji:"💧", star:4.5, bg:"#E3F2FD", dot:"#1565C0" },
-  { id:"redes",       label:"Redes de Proteção",  emoji:"🕸️", star:4.6, bg:"#E8F5E9", dot:"#2E7D32" },
-  { id:"lavanderia",  label:"Téc. Máq. de Lavar", emoji:"🫧", star:4.4, bg:"#EDE7F6", dot:"#6A1B9A" },
-  { id:"tv",          label:"Instal. TV/Suporte", emoji:"📺", star:4.6, bg:"#E1F5FE", dot:"#0277BD" },
-  { id:"montador",    label:"Montador de Móveis", emoji:"🪛", star:4.7, bg:"#FBE9E7", dot:"#BF360C" },
-  { id:"estofados",   label:"Higien. Estofados",  emoji:"🛋️", star:4.8, bg:"#F3E5F5", dot:"#6A1B9A" },
+  { id:"pedreiro",    label:"Pedreiro",          emoji:"👷", star:4.8, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
+  { id:"encanador",   label:"Encanador",          emoji:"🔧", star:4.6, bg:"#E8F4FF", dot:"#0070F3", grupo:"Reformas e Construção" },
+  { id:"jardineiro",  label:"Jardineiro",         emoji:"🌿", star:4.9, bg:"#E8F8EE", dot:"#2E7D32", grupo:"Serviços Domésticos" },
+  { id:"eletricista", label:"Eletricista",        emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Reformas e Construção" },
+  { id:"pintor",      label:"Pintor",             emoji:"🖌️", star:4.5, bg:"#F3E5F5", dot:"#7B1FA2", grupo:"Reformas e Construção" },
+  { id:"vidraceiro",  label:"Vidraceiro",         emoji:"🪟", star:4.4, bg:"#E0F7FA", dot:"#00838F", grupo:"Reformas e Construção" },
+  { id:"chaveiro",    label:"Chaveiro 24h",       emoji:"🔑", star:4.7, bg:"#FFF8E1", dot:"#F57F17", grupo:"Assistência Técnica e Eletro" },
+  { id:"desentupidor",label:"Desentupimento",     emoji:"💧", star:4.5, bg:"#E3F2FD", dot:"#1565C0", grupo:"Assistência Técnica e Eletro" },
+  { id:"redes",       label:"Redes de Proteção",  emoji:"🕸️", star:4.6, bg:"#E8F5E9", dot:"#2E7D32", grupo:"Cuidados Pessoais e Pet" },
+  { id:"lavanderia",  label:"Téc. Máq. de Lavar", emoji:"🫧", star:4.4, bg:"#EDE7F6", dot:"#6A1B9A", grupo:"Assistência Técnica e Eletro" },
+  { id:"tv",          label:"Instal. TV/Suporte", emoji:"📺", star:4.6, bg:"#E1F5FE", dot:"#0277BD", grupo:"Assistência Técnica e Eletro" },
+  { id:"montador",    label:"Montador de Móveis", emoji:"🪛", star:4.7, bg:"#FBE9E7", dot:"#BF360C", grupo:"Cuidados Pessoais e Pet" },
+  { id:"estofados",   label:"Higien. Estofados",  emoji:"🛋️", star:4.8, bg:"#F3E5F5", dot:"#6A1B9A", grupo:"Cuidados Pessoais e Pet" },
   // Leva adicionada a pedido — nenhuma categoria de beleza, mantidas em ordem
   // alfabética entre si (lista original acima preservada como estava).
-  { id:"eletrodomesticos", label:"Assistência Técnica de Eletrodomésticos",       emoji:"🔌",  star:4.6, bg:"#E8F4FF", dot:"#0059B3" },
-  { id:"baba",             label:"Babá",                                          emoji:"👶",  star:4.8, bg:"#FFF0F5", dot:"#C2185B" },
-  { id:"costureira",       label:"Costureira",                                    emoji:"🧵",  star:4.6, bg:"#FCE4EC", dot:"#AD1457" },
-  { id:"cozinheira",       label:"Cozinheira",                                    emoji:"👩‍🍳", star:4.7, bg:"#FFF3E0", dot:"#EF6C00" },
-  { id:"cuidador_idosos",  label:"Cuidador(a) de Idosos",                         emoji:"🫶",  star:4.8, bg:"#E8F5E9", dot:"#388E3C" },
-  { id:"decoracao_festas", label:"Decoração de Festas",                           emoji:"🎉",  star:4.7, bg:"#F3E5F5", dot:"#8E24AA" },
-  { id:"dedetizacao",      label:"Dedetização / Controle de Pragas",              emoji:"🐜",  star:4.5, bg:"#EFEBE9", dot:"#5D4037" },
-  { id:"drywall",          label:"Drywall / Gesseiro",                            emoji:"🧱",  star:4.6, bg:"#FBE9E7", dot:"#D84315" },
-  { id:"estrutura_metalica",label:"Estrutura Metálica",                           emoji:"🏗️", star:4.5, bg:"#ECEFF1", dot:"#37474F" },
-  { id:"faxineira",        label:"Faxineira / Diarista",                          emoji:"🧹",  star:4.7, bg:"#E0F2F1", dot:"#00796B" },
-  { id:"mudanca",          label:"Frete e Mudança",                               emoji:"📦",  star:4.5, bg:"#FFF3E0", dot:"#F57C00" },
-  { id:"gesso",            label:"Gesso / Sanca",                                 emoji:"🖼️", star:4.6, bg:"#F3E5F5", dot:"#7B1FA2" },
-  { id:"guincho",          label:"Guincho / Reboque",                             emoji:"🛞",  star:4.4, bg:"#FFEBEE", dot:"#C62828" },
-  { id:"impermeabilizacao",label:"Impermeabilização",                             emoji:"☔",  star:4.6, bg:"#E1F5FE", dot:"#0288D1" },
-  { id:"informatica",      label:"Informática / Suporte Técnico",                 emoji:"💻",  star:4.6, bg:"#E8EAF6", dot:"#303F9F" },
-  { id:"ar_condicionado",  label:"Instalador de Ar-Condicionado",                 emoji:"❄️",  star:4.7, bg:"#E1F5FE", dot:"#0277BD" },
-  { id:"cameras_alarmes",  label:"Instalador de Câmeras / Alarmes / Cerca Elétrica", emoji:"📹", star:4.6, bg:"#ECEFF1", dot:"#263238" },
-  { id:"papel_parede",     label:"Instalador de Papel de Parede / Insulfilm",     emoji:"🎞️", star:4.5, bg:"#F3E5F5", dot:"#6A1B9A" },
-  { id:"paisagismo",       label:"Jardinagem / Paisagismo",                       emoji:"🌳",  star:4.8, bg:"#E8F5E9", dot:"#1B5E20" },
-  { id:"lavagem_fachada",  label:"Lavagem de Fachada / Telhado",                  emoji:"🧽",  star:4.5, bg:"#E3F2FD", dot:"#1565C0" },
-  { id:"caixa_dagua",      label:"Limpeza de Caixa d'Água / Calhas",              emoji:"🚰",  star:4.6, bg:"#E0F7FA", dot:"#00838F" },
-  { id:"pos_obra",         label:"Limpeza Pós-Obra",                              emoji:"🪣",  star:4.6, bg:"#E0F2F1", dot:"#00695C" },
-  { id:"marcenaria",       label:"Marcenaria",                                    emoji:"🪵",  star:4.7, bg:"#FBE9E7", dot:"#6D4C41" },
-  { id:"motorista",        label:"Motorista / Frete",                             emoji:"🚚",  star:4.5, bg:"#E3F2FD", dot:"#1976D2" },
-  { id:"passadeira",       label:"Passadeira",                                    emoji:"🧺",  star:4.6, bg:"#FFF8E1", dot:"#F9A825" },
-  { id:"personal_organizer",label:"Personal Organizer",                          emoji:"🗂️", star:4.7, bg:"#EDE7F6", dot:"#512DA8" },
-  { id:"pet_sitter",       label:"Pet Sitter / Dog Walker",                       emoji:"🐕",  star:4.8, bg:"#FFF3E0", dot:"#E65100" },
-  { id:"piscineiro",       label:"Piscineiro",                                    emoji:"🏊",  star:4.6, bg:"#E0F7FA", dot:"#006064" },
-  { id:"faztudo",          label:"Reparos Gerais / Faz-tudo",                     emoji:"🛠️", star:4.5, bg:"#FFF3E0", dot:"#E64A19" },
-  { id:"sapateiro",        label:"Sapateiro",                                     emoji:"👞",  star:4.5, bg:"#EFEBE9", dot:"#4E342E" },
-  { id:"seguranca",        label:"Segurança / Vigia",                             emoji:"🛡️", star:4.7, bg:"#E8EAF6", dot:"#283593" },
-  { id:"teladista",        label:"Teladista / Calheiro",                          emoji:"🌧️", star:4.5, bg:"#E1F5FE", dot:"#01579B" },
-  { id:"toldos",           label:"Toldos e Coberturas",                           emoji:"⛱️", star:4.6, bg:"#FFFDE7", dot:"#F9A825" },
+  { id:"eletrodomesticos", label:"Assistência Técnica de Eletrodomésticos",       emoji:"🔌",  star:4.6, bg:"#E8F4FF", dot:"#0059B3", grupo:"Assistência Técnica e Eletro" },
+  { id:"baba",             label:"Babá",                                          emoji:"👶",  star:4.8, bg:"#FFF0F5", dot:"#C2185B", grupo:"Serviços Domésticos" },
+  { id:"costureira",       label:"Costureira",                                    emoji:"🧵",  star:4.6, bg:"#FCE4EC", dot:"#AD1457", grupo:"Serviços Domésticos" },
+  { id:"cozinheira",       label:"Cozinheira",                                    emoji:"👩‍🍳", star:4.7, bg:"#FFF3E0", dot:"#EF6C00", grupo:"Serviços Domésticos" },
+  { id:"cuidador_idosos",  label:"Cuidador(a) de Idosos",                         emoji:"🫶",  star:4.8, bg:"#E8F5E9", dot:"#388E3C", grupo:"Serviços Domésticos" },
+  { id:"decoracao_festas", label:"Decoração de Festas",                           emoji:"🎉",  star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
+  { id:"dedetizacao",      label:"Dedetização / Controle de Pragas",              emoji:"🐜",  star:4.5, bg:"#EFEBE9", dot:"#5D4037", grupo:"Serviços Domésticos" },
+  { id:"drywall",          label:"Drywall / Gesseiro",                            emoji:"🧱",  star:4.6, bg:"#FBE9E7", dot:"#D84315", grupo:"Reformas e Construção" },
+  { id:"estrutura_metalica",label:"Estrutura Metálica",                           emoji:"🏗️", star:4.5, bg:"#ECEFF1", dot:"#37474F", grupo:"Reformas e Construção" },
+  { id:"faxineira",        label:"Faxineira / Diarista",                          emoji:"🧹",  star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Serviços Domésticos" },
+  { id:"mudanca",          label:"Frete e Mudança",                               emoji:"📦",  star:4.5, bg:"#FFF3E0", dot:"#F57C00", grupo:"Automotivo e Transporte" },
+  { id:"gesso",            label:"Gesso / Sanca",                                 emoji:"🖼️", star:4.6, bg:"#F3E5F5", dot:"#7B1FA2", grupo:"Reformas e Construção" },
+  { id:"guincho",          label:"Guincho / Reboque",                             emoji:"🛞",  star:4.4, bg:"#FFEBEE", dot:"#C62828", grupo:"Automotivo e Transporte" },
+  { id:"impermeabilizacao",label:"Impermeabilização",                             emoji:"☔",  star:4.6, bg:"#E1F5FE", dot:"#0288D1", grupo:"Reformas e Construção" },
+  { id:"informatica",      label:"Informática / Suporte Técnico",                 emoji:"💻",  star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Assistência Técnica e Eletro" },
+  { id:"ar_condicionado",  label:"Instalador de Ar-Condicionado",                 emoji:"❄️",  star:4.7, bg:"#E1F5FE", dot:"#0277BD", grupo:"Assistência Técnica e Eletro" },
+  { id:"cameras_alarmes",  label:"Instalador de Câmeras / Alarmes / Cerca Elétrica", emoji:"📹", star:4.6, bg:"#ECEFF1", dot:"#263238", grupo:"Reformas e Construção" },
+  { id:"papel_parede",     label:"Instalador de Papel de Parede / Insulfilm",     emoji:"🎞️", star:4.5, bg:"#F3E5F5", dot:"#6A1B9A", grupo:"Reformas e Construção" },
+  { id:"paisagismo",       label:"Jardinagem / Paisagismo",                       emoji:"🌳",  star:4.8, bg:"#E8F5E9", dot:"#1B5E20", grupo:"Serviços Domésticos" },
+  { id:"lavagem_fachada",  label:"Lavagem de Fachada / Telhado",                  emoji:"🧽",  star:4.5, bg:"#E3F2FD", dot:"#1565C0", grupo:"Serviços Domésticos" },
+  { id:"caixa_dagua",      label:"Limpeza de Caixa d'Água / Calhas",              emoji:"🚰",  star:4.6, bg:"#E0F7FA", dot:"#00838F", grupo:"Serviços Domésticos" },
+  { id:"pos_obra",         label:"Limpeza Pós-Obra",                              emoji:"🪣",  star:4.6, bg:"#E0F2F1", dot:"#00695C", grupo:"Serviços Domésticos" },
+  { id:"marcenaria",       label:"Marcenaria",                                    emoji:"🪵",  star:4.7, bg:"#FBE9E7", dot:"#6D4C41", grupo:"Reformas e Construção" },
+  { id:"motorista",        label:"Motorista / Frete",                             emoji:"🚚",  star:4.5, bg:"#E3F2FD", dot:"#1976D2", grupo:"Automotivo e Transporte" },
+  { id:"passadeira",       label:"Passadeira",                                    emoji:"🧺",  star:4.6, bg:"#FFF8E1", dot:"#F9A825", grupo:"Serviços Domésticos" },
+  { id:"personal_organizer",label:"Personal Organizer",                          emoji:"🗂️", star:4.7, bg:"#EDE7F6", dot:"#512DA8", grupo:"Serviços Domésticos" },
+  { id:"pet_sitter",       label:"Pet Sitter / Dog Walker",                       emoji:"🐕",  star:4.8, bg:"#FFF3E0", dot:"#E65100", grupo:"Cuidados Pessoais e Pet" },
+  { id:"piscineiro",       label:"Piscineiro",                                    emoji:"🏊",  star:4.6, bg:"#E0F7FA", dot:"#006064", grupo:"Serviços Domésticos" },
+  { id:"faztudo",          label:"Reparos Gerais / Faz-tudo",                     emoji:"🛠️", star:4.5, bg:"#FFF3E0", dot:"#E64A19", grupo:"Reformas e Construção" },
+  { id:"sapateiro",        label:"Sapateiro",                                     emoji:"👞",  star:4.5, bg:"#EFEBE9", dot:"#4E342E", grupo:"Serviços Domésticos" },
+  { id:"seguranca",        label:"Segurança / Vigia",                             emoji:"🛡️", star:4.7, bg:"#E8EAF6", dot:"#283593", grupo:"Cuidados Pessoais e Pet" },
+  { id:"teladista",        label:"Teladista / Calheiro",                          emoji:"🌧️", star:4.5, bg:"#E1F5FE", dot:"#01579B", grupo:"Cuidados Pessoais e Pet" },
+  { id:"toldos",           label:"Toldos e Coberturas",                           emoji:"⛱️", star:4.6, bg:"#FFFDE7", dot:"#F9A825", grupo:"Reformas e Construção" },
+];
+
+// Ordem de exibição dos grupos no modal "Ver todas as categorias" (Home do
+// cliente) — cada grupo vira uma seção com título + chips das categorias
+// daquele grupo, na mesma ordem em que aparecem aqui.
+const CAT_GRUPOS = [
+  "Reformas e Construção",
+  "Serviços Domésticos",
+  "Assistência Técnica e Eletro",
+  "Automotivo e Transporte",
+  "Festas e Eventos",
+  "Cuidados Pessoais e Pet",
 ];
 
 /* usuarios.categoria_servico / empresas.categoria_servico agora são text[]
@@ -2009,6 +2021,7 @@ const HOME_CATS = [
 function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName, userEmail }) {
   const greeting     = userName ? `Olá, ${userName}! 👋` : "Olá! Seja bem-vindo 👋";
   const subgreeting  = userName ? "O que vamos resolver hoje?" : "Vamos resolver algo hoje?";
+  const [showAllCats, setShowAllCats] = useState(false);
 
   // Banner "Vire Profissional" — só pra quem ainda não completou cadastro
   // profissional nenhuma vez (usuarios.role já vira "professional" desde a
@@ -2056,7 +2069,7 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName, 
         <div style={{ position:"relative", zIndex:1, padding:"26px 24px", height:"100%", display:"flex", flexDirection:"column", justifyContent:"center" }}>
           <p style={{ fontSize:10, fontWeight:800, color:"rgba(255,255,255,.65)", textTransform:"uppercase", letterSpacing:2, margin:"0 0 8px" }}>Multi · Serviços Premium</p>
           <h3 style={{ fontSize:21, fontWeight:900, color:"white", lineHeight:1.35, margin:"0 0 16px" }}>Sua casa em boas<br/>mãos, num toque.</h3>
-          <button onClick={onPost} style={{
+          <button onClick={() => onPost()} style={{
             alignSelf:"flex-start", padding:"10px 20px", borderRadius:99,
             background:"rgba(255,255,255,.95)", border:"none", cursor:"pointer",
             color:"#1565C0", fontWeight:900, fontSize:13,
@@ -2100,7 +2113,7 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName, 
         {/* ── First 4 as featured 2x2 grid ── */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, padding:"0 20px", marginBottom:16 }}>
           {HOME_CATS.slice(0, 4).map(cat => (
-            <button key={cat.id} onClick={onPost} style={{
+            <button key={cat.id} onClick={() => onPost(cat.id)} style={{
               background:"white", borderRadius:22, overflow:"hidden",
               border:"1px solid #F0F2F5", cursor:"pointer", textAlign:"left",
               boxShadow:"0 3px 14px rgba(0,0,0,.07)", padding:0,
@@ -2125,7 +2138,7 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName, 
           <p style={{ fontSize:12, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.2, margin:"0 0 12px", padding:"0 20px" }}>Mais serviços</p>
           <div style={{ display:"flex", gap:10, overflowX:"auto", padding:"4px 20px 12px", scrollbarWidth:"none" }}>
             {HOME_CATS.slice(4).map(cat => (
-              <button key={cat.id} onClick={onPost} style={{
+              <button key={cat.id} onClick={() => onPost(cat.id)} style={{
                 flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center", gap:6,
                 background:"white", borderRadius:18, padding:"14px 14px 12px",
                 border:"1px solid #F0F2F5", cursor:"pointer",
@@ -2142,6 +2155,19 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName, 
               </button>
             ))}
           </div>
+        </div>
+
+        {/* ── Ver todas as categorias — abre TodasCategoriasModal com as
+            46 categorias agrupadas, a grade acima (HOME_CATS, 13 fixas)
+            continua exatamente como estava. ── */}
+        <div style={{ padding:"4px 20px 0" }}>
+          <button onClick={() => setShowAllCats(true)} style={{
+            width:"100%", padding:"13px 0", borderRadius:14, border:"1.5px solid #E8E8E8",
+            background:"white", color:B, fontWeight:800, fontSize:13, cursor:"pointer",
+            display:"flex", alignItems:"center", justifyContent:"center", gap:6,
+          }}>
+            Ver todas as categorias <ChevronRight size={15} />
+          </button>
         </div>
       </div>
 
@@ -2185,13 +2211,70 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName, 
           </div>
         </div>
       )}
+
+      {showAllCats && (
+        <TodasCategoriasModal
+          onClose={() => setShowAllCats(false)}
+          onSelect={catId => { setShowAllCats(false); onPost(catId); }}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ── TODAS AS CATEGORIAS (modal) ──────────────────────────────────────────────
+   Aberto pelo botão "Ver todas as categorias" no fim da grade da Home do
+   cliente. Mostra as CATS completas (46 hoje) agrupadas por `grupo`, na
+   ordem de CAT_GRUPOS. Clicar numa categoria fecha o modal e chama onSelect
+   com o id — mesmo destino de clicar num card da grade (Novo Pedido com a
+   categoria já pré-selecionada). */
+function TodasCategoriasModal({ onClose, onSelect }) {
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:400, background:"rgba(0,0,0,.55)", display:"flex", alignItems:"flex-end", justifyContent:"center" }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:440, background:"white", borderRadius:"24px 24px 0 0", maxHeight:"88vh", display:"flex", flexDirection:"column" }}>
+        {/* header */}
+        <div style={{ flexShrink:0, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"18px 20px 14px", borderBottom:"1px solid #F0F0F0" }}>
+          <div>
+            <p style={{ fontWeight:900, fontSize:16, color:"#1a1a2e", margin:0 }}>Todas as categorias</p>
+            <p style={{ fontSize:12, color:"#aaa", margin:"2px 0 0" }}>{CATS.length} serviços disponíveis</p>
+          </div>
+          <button onClick={onClose} style={{ background:"#F5F5F5", border:"none", borderRadius:"50%", width:32, height:32, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}>
+            <X size={18} color="#666" />
+          </button>
+        </div>
+
+        {/* scrollable content — uma seção por grupo */}
+        <div style={{ flex:1, overflowY:"auto", padding:"16px 20px 28px" }}>
+          {CAT_GRUPOS.map(grupo => {
+            const cats = CATS.filter(c => c.grupo === grupo);
+            if (!cats.length) return null;
+            return (
+              <div key={grupo} style={{ marginBottom:22 }}>
+                <p style={{ fontSize:11, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1, margin:"0 0 10px" }}>{grupo}</p>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+                  {cats.map(cat => (
+                    <button key={cat.id} onClick={() => onSelect(cat.id)} style={{
+                      display:"flex", alignItems:"center", gap:7,
+                      padding:"9px 14px", borderRadius:99,
+                      border:"1px solid #F0F2F5", background:cat.bg,
+                      cursor:"pointer", fontSize:12.5, fontWeight:700, color:"#1a1a2e",
+                    }}>
+                      <span style={{ fontSize:15 }}>{cat.emoji}</span> {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
 
 /* ───────────────────────── POST SERVICE SCREEN ──────────────────────────────── */
-function PostServiceScreen({ onBack, onSuccess }) {
-  const [form,       setForm]       = useState({ cat:"", desc:"", value:"", cep:"", material: false, urgent:"normal", scheduledDate:"" });
+function PostServiceScreen({ onBack, onSuccess, initialCat = "" }) {
+  const [form,       setForm]       = useState({ cat:initialCat, desc:"", value:"", cep:"", material: false, urgent:"normal", scheduledDate:"" });
   const [photos,     setPhotos]     = useState([]);
   const [cepInfo,    setCepInfo]    = useState(null);  // { bairro, cidade, uf }
   const [cepLoading, setCepLoading] = useState(false);
@@ -8950,6 +9033,11 @@ export default function App() {
     }
   }, []);
   const [pendingIntent, setPendingIntent] = useState(null);
+  // Categoria pré-selecionada ao abrir "Novo Pedido" a partir de um card da
+  // grade da Home ou de um chip do modal "Ver todas as categorias" — "" quando
+  // a entrada foi genérica (FAB, banner "Novo Pedido"), pra não vazar a
+  // seleção de uma visita anterior.
+  const [pendingCat,    setPendingCat]    = useState("");
   const [userRole,      setUserRole]      = useState(savedSession?.role      || "client");
   const [userName,      setUserName]      = useState(savedSession?.name      || "");
 
@@ -9830,7 +9918,7 @@ const renderContent = () => {
           />
         );
       }
-      if (screen === "post")   return <PostServiceScreen onBack={() => setScreen("home")} onSuccess={handlePostServiceSuccess} />;
+      if (screen === "post")   return <PostServiceScreen onBack={() => setScreen("home")} onSuccess={handlePostServiceSuccess} initialCat={pendingCat} />;
       if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onStatusChange={handlePedidoStatusChange} showToast={showToast} onAccepted={(pedidoRow) => { setSelected(mapPedidoRow(pedidoRow)); setScreen("service"); }} onAceitarProposta={handleAceitarProposta} onBack={() => setScreen("orders")} />;
       if (screen === "chat")   return <ChatInbox myServices={meusPedidosComCandidatos} onOpenChat={openChatFromService} />;
       if (screen === "orders") return <MyServicesScreen initialTab="aberto" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => abrirDetalheServico(s)} onOpenChat={openChatFromService} onCancelarPedido={(s) => { if (window.confirm('Cancelar esse pedido? O profissional será avisado.')) { handlePedidoStatusChange(s.id, 'cancelado'); showToast?.('Pedido cancelado.', '#DC2626'); } }} isPro={isPro} />;
@@ -9850,7 +9938,7 @@ const renderContent = () => {
       return (
         <div style={{ position:"relative" }}>
           <ClientHome
-            onPost={() => requireAuth("post", () => setScreen("post"))}
+            onPost={catId => { setPendingCat(catId || ""); requireAuth("post", () => setScreen("post")); }}
             onViewService={s => s
               ? requireAuth("service", () => abrirDetalheServico(s))
               : requireAuth("orders", () => setScreen("orders"))
@@ -9872,7 +9960,7 @@ const renderContent = () => {
               flutuando acima do bottom nav depois que ele ficou mais alto
               (ver padding do bottom nav) em vez de ficar por baixo dele. */}
           <button
-            onClick={() => requireAuth("post", () => setScreen("post"))}
+            onClick={() => { setPendingCat(""); requireAuth("post", () => setScreen("post")); }}
             style={{
               position:"fixed", bottom:"calc(80px + env(safe-area-inset-bottom))", right:20, zIndex:100,
               display:"flex", alignItems:"center", gap:8,
@@ -9909,14 +9997,14 @@ const renderContent = () => {
       return (
         <div style={{ display:"flex", flexDirection:"column", position:"relative" }}>
           <ClientHome
-            onPost={() => requireAuth("post", () => setScreen("post"))}
+            onPost={catId => { setPendingCat(catId || ""); requireAuth("post", () => setScreen("post")); }}
             onViewService={s => s ? requireAuth("service", () => abrirDetalheServico(s)) : requireAuth("orders", () => setScreen("orders"))}
             onSwitchPro={() => {}}
             myServices={isLoggedIn ? meusPedidosComCandidatos : []}
             userName={userName}
             userEmail={userEmail}
           />
-          <button onClick={() => requireAuth("post", () => setScreen("post"))} style={{ position:"fixed", bottom:"calc(80px + env(safe-area-inset-bottom))", right:20, zIndex:100, display:"flex", alignItems:"center", gap:8, padding:"14px 20px", borderRadius:99, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${O},#E64A19)`, color:"white", fontWeight:900, fontSize:14, boxShadow:"0 6px 24px rgba(255,87,34,.5)" }}>
+          <button onClick={() => { setPendingCat(""); requireAuth("post", () => setScreen("post")); }} style={{ position:"fixed", bottom:"calc(80px + env(safe-area-inset-bottom))", right:20, zIndex:100, display:"flex", alignItems:"center", gap:8, padding:"14px 20px", borderRadius:99, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${O},#E64A19)`, color:"white", fontWeight:900, fontSize:14, boxShadow:"0 6px 24px rgba(255,87,34,.5)" }}>
             <Plus size={18} /> Novo Pedido
           </button>
         </div>
