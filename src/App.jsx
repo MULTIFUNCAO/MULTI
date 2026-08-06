@@ -3537,6 +3537,9 @@ function maskCardNumber(v) { return v.replace(/\D/g, "").slice(0, 16).replace(/(
    Supabase — só o backend faz isso, com service_role (ver migration
    supabase_pendencias_doc_pagamento_migration.sql). ─────────────────────── */
 function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId, planoLabel, planoPreco, onBack, showToast, onSuccess }) {
+  const [metodo, setMetodo] = useState("cartao"); // "cartao" | "pix"
+
+  // ── Cartão ──
   const [cardNumber, setCardNumber] = useState("");
   const [cardHolder, setCardHolder] = useState("");
   const [expiry,     setExpiry]     = useState(""); // MM/AA
@@ -3544,6 +3547,16 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
   const [cpf,        setCpf]        = useState("");
   const [errors,     setErrors]     = useState({});
   const [loading,    setLoading]    = useState(false);
+
+  // ── Pix ── pixCpf é separado do cpf do cartão (a pessoa pode alternar entre
+  // os dois métodos sem perder o que já digitou em cada um).
+  const [pixCpf,        setPixCpf]        = useState("");
+  const [errorPixCpf,   setErrorPixCpf]   = useState("");
+  const [gerandoPix,    setGerandoPix]    = useState(false);
+  const [pix,           setPix]           = useState(null); // {paymentId, customerId, pixCode, qrCodeBase64, expiresAt}
+  const [confirmandoPix, setConfirmandoPix] = useState(false);
+  const [pixExpirado,   setPixExpirado]   = useState(false);
+  const [copiedPix,     setCopiedPix]     = useState(false);
 
   const hoje = new Date();
   const proximaCobranca = new Date(hoje.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -3584,6 +3597,89 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
     }
   };
 
+  // Gera a cobrança Pix (QR code + copia-e-cola) — não ativa o plano ainda,
+  // só depois que o pagamento for detectado (polling abaixo) e reconfirmado
+  // pelo backend em /api/assinatura/confirmar-pix.
+  const gerarPix = async () => {
+    if (pixCpf.replace(/\D/g,"").length !== 11) { setErrorPixCpf("CPF inválido"); return; }
+    setErrorPixCpf("");
+    setGerandoPix(true);
+    setPixExpirado(false);
+    try {
+      const r = await fetch(`${API_BASE}/api/assinatura/gerar-pix`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titularTipo, titularEmail, titularNome, plano: planoId,
+          cpf: pixCpf.replace(/\D/g,""),
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Não foi possível gerar o Pix");
+      setPix(d);
+    } catch (err) {
+      showToast?.("❌ " + (err.message || "Não foi possível gerar o Pix"), "#DC2626");
+    } finally {
+      setGerandoPix(false);
+    }
+  };
+
+  // Reconfere o pagamento e ativa o plano (chamado tanto pelo polling
+  // automático quanto pelo botão manual "Já paguei"). O backend reconfere
+  // com a Asaas antes de gravar em "assinaturas" — nunca confia só no que o
+  // front detectou.
+  const confirmarPix = async (paymentId, customerId) => {
+    setConfirmandoPix(true);
+    try {
+      const r = await fetch(`${API_BASE}/api/assinatura/confirmar-pix`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentId, titularTipo, titularEmail, plano: planoId, customerId }),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        if (d.error === "pagamento_nao_confirmado") return false; // ainda pendente, segue no polling
+        throw new Error(d.error || "Não foi possível confirmar o pagamento");
+      }
+      showToast?.(`🎉 ${planoLabel} ativado! Próxima cobrança em ${proximaCobranca.toLocaleDateString("pt-BR")}.`, G);
+      onSuccess?.();
+      return true;
+    } catch (err) {
+      showToast?.("❌ " + (err.message || "Não foi possível confirmar o pagamento"), "#DC2626");
+      return false;
+    } finally {
+      setConfirmandoPix(false);
+    }
+  };
+
+  // Polling: consulta /api/status-pagamento a cada 5s enquanto o Pix estiver
+  // pendente. Some sozinho se sair da tela (troca de método, volta) ou se o
+  // código expirar.
+  useEffect(() => {
+    if (!pix?.paymentId) return;
+    const interval = setInterval(async () => {
+      if (pix.expiresAt && new Date(pix.expiresAt) < new Date()) {
+        clearInterval(interval);
+        setPixExpirado(true);
+        return;
+      }
+      try {
+        const r = await fetch(`${API_BASE}/api/status-pagamento/${pix.paymentId}`);
+        const d = await r.json();
+        if (d.isPaid) {
+          clearInterval(interval);
+          await confirmarPix(pix.paymentId, pix.customerId);
+        }
+      } catch (e) {}
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [pix?.paymentId]);
+
+  const copiarPix = () => {
+    if (!pix?.pixCode) return;
+    navigator.clipboard?.writeText(pix.pixCode);
+    setCopiedPix(true);
+    setTimeout(() => setCopiedPix(false), 2000);
+  };
+
   return (
     <div style={{ minHeight:"100vh", background:"#F8F9FA", padding:"20px 16px 48px", fontFamily:"'Nunito', -apple-system, sans-serif" }}>
       {onBack && <button onClick={onBack} style={{ background:"none", border:"none", fontSize:24, cursor:"pointer", marginBottom:8 }}>←</button>}
@@ -3602,55 +3698,137 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
         <p style={{ margin:0, fontWeight:900, fontSize:20, color:"#1a1a2e" }}>R$ {planoPreco}<span style={{ fontSize:11, fontWeight:700, color:"#9CA3AF" }}>/mês</span></p>
       </div>
 
-      <div style={{ maxWidth:420, margin:"0 auto", display:"flex", flexDirection:"column", gap:14 }}>
-        <FormField IconComp={CreditCard} label="Número do cartão" error={errors.cardNumber}>
-          <input inputMode="numeric" placeholder="0000 0000 0000 0000" value={cardNumber}
-            onChange={e => { setCardNumber(maskCardNumber(e.target.value)); if (errors.cardNumber) setErrors(p => ({ ...p, cardNumber:undefined })); }}
-            style={{ ...REG_INPUT, borderColor: errors.cardNumber ? "#E53935" : undefined }} />
-        </FormField>
-        <FormField IconComp={User} label="Nome no cartão" error={errors.cardHolder}>
-          <input placeholder="Como está impresso no cartão" value={cardHolder}
-            onChange={e => { setCardHolder(e.target.value.toUpperCase()); if (errors.cardHolder) setErrors(p => ({ ...p, cardHolder:undefined })); }}
-            style={{ ...REG_INPUT, borderColor: errors.cardHolder ? "#E53935" : undefined }} />
-        </FormField>
-        <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}>
-            <FormField IconComp={Clock} label="Validade" error={errors.expiry}>
-              <input inputMode="numeric" placeholder="MM/AA" maxLength={5} value={expiry}
-                onChange={e => {
-                  let v = e.target.value.replace(/\D/g,"").slice(0,4);
-                  if (v.length > 2) v = `${v.slice(0,2)}/${v.slice(2)}`;
-                  setExpiry(v); if (errors.expiry) setErrors(p => ({ ...p, expiry:undefined }));
-                }}
-                style={{ ...REG_INPUT, borderColor: errors.expiry ? "#E53935" : undefined }} />
-            </FormField>
-          </div>
-          <div style={{ flex:1 }}>
-            <FormField IconComp={KeyRound} label="CVV" error={errors.cvv}>
-              <input inputMode="numeric" placeholder="000" maxLength={4} value={cvv}
-                onChange={e => { setCvv(e.target.value.replace(/\D/g,"").slice(0,4)); if (errors.cvv) setErrors(p => ({ ...p, cvv:undefined })); }}
-                style={{ ...REG_INPUT, borderColor: errors.cvv ? "#E53935" : undefined }} />
-            </FormField>
-          </div>
-        </div>
-        <FormField IconComp={User} label="CPF do titular do cartão" error={errors.cpf}>
-          <input inputMode="numeric" placeholder="000.000.000-00" value={cpf}
-            onChange={e => { setCpf(maskCpf(e.target.value)); if (errors.cpf) setErrors(p => ({ ...p, cpf:undefined })); }}
-            style={{ ...REG_INPUT, borderColor: errors.cpf ? "#E53935" : undefined }} />
-        </FormField>
-
-        <button onClick={pagar} disabled={loading} style={{
-          marginTop:8, width:"100%", padding:"16px 0", borderRadius:16, border:"none",
-          background: loading ? "#93C5FD" : `linear-gradient(135deg,${B},#0055d4)`,
-          color:"white", fontWeight:900, fontSize:15, cursor: loading ? "default" : "pointer",
-          display:"flex", alignItems:"center", justifyContent:"center", gap:10,
-        }}>
-          {loading ? "Processando pagamento..." : <><Lock size={16} /> Pagar R$ {planoPreco} e ativar plano</>}
-        </button>
-        <p style={{ fontSize:11, color:"#9CA3AF", textAlign:"center", margin:0 }}>
-          Cobrança recorrente mensal de R$ {planoPreco}. Cancele quando quiser.
-        </p>
+      {/* Toggle Cartão / Pix */}
+      <div style={{ maxWidth:420, margin:"0 auto 18px", display:"flex", gap:8, padding:6, background:"#EFF1F6", borderRadius:14 }}>
+        {[{ id:"cartao", label:"💳 Cartão de crédito" }, { id:"pix", label:"⚡ Pix" }].map(m => (
+          <button key={m.id} onClick={() => setMetodo(m.id)} style={{
+            flex:1, padding:"10px 0", borderRadius:10, border:"none", cursor:"pointer",
+            fontWeight:800, fontSize:12.5, transition:"all .15s",
+            background: metodo === m.id ? "white" : "transparent",
+            color: metodo === m.id ? "#1a1a2e" : "#8A8DAE",
+            boxShadow: metodo === m.id ? "0 2px 8px rgba(0,0,0,.08)" : "none",
+          }}>
+            {m.label}
+          </button>
+        ))}
       </div>
+
+      {metodo === "cartao" ? (
+        <div style={{ maxWidth:420, margin:"0 auto", display:"flex", flexDirection:"column", gap:14 }}>
+          <FormField IconComp={CreditCard} label="Número do cartão" error={errors.cardNumber}>
+            <input inputMode="numeric" placeholder="0000 0000 0000 0000" value={cardNumber}
+              onChange={e => { setCardNumber(maskCardNumber(e.target.value)); if (errors.cardNumber) setErrors(p => ({ ...p, cardNumber:undefined })); }}
+              style={{ ...REG_INPUT, borderColor: errors.cardNumber ? "#E53935" : undefined }} />
+          </FormField>
+          <FormField IconComp={User} label="Nome no cartão" error={errors.cardHolder}>
+            <input placeholder="Como está impresso no cartão" value={cardHolder}
+              onChange={e => { setCardHolder(e.target.value.toUpperCase()); if (errors.cardHolder) setErrors(p => ({ ...p, cardHolder:undefined })); }}
+              style={{ ...REG_INPUT, borderColor: errors.cardHolder ? "#E53935" : undefined }} />
+          </FormField>
+          <div style={{ display:"flex", gap:12 }}>
+            <div style={{ flex:1 }}>
+              <FormField IconComp={Clock} label="Validade" error={errors.expiry}>
+                <input inputMode="numeric" placeholder="MM/AA" maxLength={5} value={expiry}
+                  onChange={e => {
+                    let v = e.target.value.replace(/\D/g,"").slice(0,4);
+                    if (v.length > 2) v = `${v.slice(0,2)}/${v.slice(2)}`;
+                    setExpiry(v); if (errors.expiry) setErrors(p => ({ ...p, expiry:undefined }));
+                  }}
+                  style={{ ...REG_INPUT, borderColor: errors.expiry ? "#E53935" : undefined }} />
+              </FormField>
+            </div>
+            <div style={{ flex:1 }}>
+              <FormField IconComp={KeyRound} label="CVV" error={errors.cvv}>
+                <input inputMode="numeric" placeholder="000" maxLength={4} value={cvv}
+                  onChange={e => { setCvv(e.target.value.replace(/\D/g,"").slice(0,4)); if (errors.cvv) setErrors(p => ({ ...p, cvv:undefined })); }}
+                  style={{ ...REG_INPUT, borderColor: errors.cvv ? "#E53935" : undefined }} />
+              </FormField>
+            </div>
+          </div>
+          <FormField IconComp={User} label="CPF do titular do cartão" error={errors.cpf}>
+            <input inputMode="numeric" placeholder="000.000.000-00" value={cpf}
+              onChange={e => { setCpf(maskCpf(e.target.value)); if (errors.cpf) setErrors(p => ({ ...p, cpf:undefined })); }}
+              style={{ ...REG_INPUT, borderColor: errors.cpf ? "#E53935" : undefined }} />
+          </FormField>
+
+          <button onClick={pagar} disabled={loading} style={{
+            marginTop:8, width:"100%", padding:"16px 0", borderRadius:16, border:"none",
+            background: loading ? "#93C5FD" : `linear-gradient(135deg,${B},#0055d4)`,
+            color:"white", fontWeight:900, fontSize:15, cursor: loading ? "default" : "pointer",
+            display:"flex", alignItems:"center", justifyContent:"center", gap:10,
+          }}>
+            {loading ? "Processando pagamento..." : <><Lock size={16} /> Pagar R$ {planoPreco} e ativar plano</>}
+          </button>
+          <p style={{ fontSize:11, color:"#9CA3AF", textAlign:"center", margin:0 }}>
+            Cobrança recorrente mensal de R$ {planoPreco}. Cancele quando quiser.
+          </p>
+        </div>
+      ) : (
+        <div style={{ maxWidth:420, margin:"0 auto", display:"flex", flexDirection:"column", gap:14 }}>
+          {!pix ? (
+            <>
+              <FormField IconComp={User} label="CPF do titular" error={errorPixCpf}>
+                <input inputMode="numeric" placeholder="000.000.000-00" value={pixCpf}
+                  onChange={e => { setPixCpf(maskCpf(e.target.value)); if (errorPixCpf) setErrorPixCpf(""); }}
+                  style={{ ...REG_INPUT, borderColor: errorPixCpf ? "#E53935" : undefined }} />
+              </FormField>
+              <button onClick={gerarPix} disabled={gerandoPix} style={{
+                width:"100%", padding:"16px 0", borderRadius:16, border:"none",
+                background: gerandoPix ? "#93C5FD" : `linear-gradient(135deg,${B},#0055d4)`,
+                color:"white", fontWeight:900, fontSize:15, cursor: gerandoPix ? "default" : "pointer",
+                display:"flex", alignItems:"center", justifyContent:"center", gap:10,
+              }}>
+                {gerandoPix ? "Gerando código Pix..." : <>⚡ Gerar código Pix — R$ {planoPreco}</>}
+              </button>
+              <p style={{ fontSize:11, color:"#9CA3AF", textAlign:"center", margin:0 }}>
+                Cobrança recorrente mensal de R$ {planoPreco}. Cancele quando quiser.
+              </p>
+            </>
+          ) : pixExpirado ? (
+            <div style={{ textAlign:"center", padding:"24px 0" }}>
+              <p style={{ fontSize:13.5, color:"#E53935", fontWeight:700, margin:"0 0 14px" }}>Esse código Pix expirou.</p>
+              <button onClick={() => { setPix(null); setPixExpirado(false); }} style={{ padding:"12px 24px", borderRadius:12, border:"none", background:B, color:"white", fontWeight:800, fontSize:13, cursor:"pointer" }}>
+                Gerar novo código
+              </button>
+            </div>
+          ) : (
+            <>
+              <div style={{ textAlign:"center" }}>
+                {pix.qrCodeBase64 && (
+                  <img src={`data:image/png;base64,${pix.qrCodeBase64}`} alt="QR Code Pix"
+                    style={{ width:200, height:200, borderRadius:12, border:"3px solid #1a1a2e", display:"block", margin:"0 auto" }} />
+                )}
+                <div style={{ display:"inline-flex", alignItems:"center", gap:6, background: confirmandoPix ? "#F0FDF4" : "#FFF9E6", border:`1px solid ${confirmandoPix ? "#BBF7D0" : "#FDE68A"}`, borderRadius:99, padding:"5px 14px", marginTop:12 }}>
+                  <div style={{ width:8, height:8, borderRadius:"50%", background: confirmandoPix ? G : "#F59E0B" }} />
+                  <span style={{ fontSize:11, fontWeight:800, color: confirmandoPix ? "#166534" : "#92400E" }}>
+                    {confirmandoPix ? "Confirmando pagamento..." : "Aguardando pagamento"}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ background:"#F8FAFF", border:"1px solid #DBEAFE", borderRadius:12, padding:"12px 14px", display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <p style={{ fontSize:10, fontWeight:800, color:"#3B82F6", textTransform:"uppercase", letterSpacing:.8, margin:"0 0 2px" }}>Ou copie o código Pix</p>
+                  <p style={{ fontSize:11, fontWeight:800, color:"#1E3A8A", margin:0, fontFamily:"monospace", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{pix.pixCode}</p>
+                </div>
+                <button onClick={copiarPix} style={{ background:B, color:"white", border:"none", borderRadius:9, padding:"7px 14px", fontWeight:800, fontSize:12, cursor:"pointer", flexShrink:0 }}>
+                  {copiedPix ? "✓ Copiado" : "Copiar"}
+                </button>
+              </div>
+
+              <button onClick={() => confirmarPix(pix.paymentId, pix.customerId)} disabled={confirmandoPix} style={{
+                width:"100%", padding:"14px 0", borderRadius:14, border:"none", cursor: confirmandoPix ? "default" : "pointer",
+                background: `linear-gradient(135deg,${G},#16a34a)`, color:"white", fontWeight:900, fontSize:14,
+              }}>
+                ✅ Já paguei
+              </button>
+              <p style={{ fontSize:11, color:"#9CA3AF", textAlign:"center", margin:0 }}>
+                Assim que o pagamento cair, o plano ativa automaticamente — não precisa ficar recarregando a tela.
+              </p>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
