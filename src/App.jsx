@@ -4878,7 +4878,7 @@ function SegurancaScreen({ onBack }) {
             <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>CODIGO</label>
             <input type="text" value={code} onChange={e => setCode(e.target.value)} placeholder="000000" maxLength={6} style={{ ...inp, fontSize:22, letterSpacing:6, textAlign:"center" }} />
             <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>NOVA SENHA</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Minimo 6 caracteres" style={inp} />
+            <PasswordField value={password} onChange={e => setPassword(e.target.value)} placeholder="Minimo 6 caracteres" style={inp} />
             <button style={btn} onClick={confirm} disabled={loading}>{loading ? "Verificando..." : "Confirmar"}</button>
           </>}
         </div>
@@ -6985,6 +6985,39 @@ function FormField({ IconComp, label, error, hint, children }) {
   );
 }
 
+/* Campo de senha com botão de mostrar/esconder (ícone de olho, estilo
+   TikTok) — usado em toda tela com senha de conta de usuário (login,
+   cadastro, recuperar/redefinir/trocar senha). Aceita as mesmas props de
+   um <input> normal (value/onChange/style/onKeyDown/autoComplete/etc via
+   spread); só decide o `type` internamente e desenha o ícone por cima.
+   Renderiza seu próprio wrapper position:relative — funciona tanto solto
+   quanto aninhado dentro do wrapper relative do FormField (o ícone da
+   esquerda dele não conflita com o botão à direita daqui). */
+function PasswordField({ style, ...rest }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div style={{ position:"relative" }}>
+      <input
+        {...rest}
+        type={visible ? "text" : "password"}
+        style={{ ...style, paddingRight:40 }}
+      />
+      <button
+        type="button"
+        tabIndex={-1}
+        onClick={() => setVisible(v => !v)}
+        aria-label={visible ? "Esconder senha" : "Mostrar senha"}
+        style={{
+          position:"absolute", right:12, top:"50%", transform:"translateY(-50%)",
+          background:"none", border:"none", cursor:"pointer", padding:4,
+          display:"flex", alignItems:"center", color:"#9CA3AF",
+        }}>
+        {visible ? <EyeOff size={17} /> : <Eye size={17} />}
+      </button>
+    </div>
+  );
+}
+
 /* Seletor de categorias em chips (multi-escolha). Usado no cadastro de
    empresa e no editor de categoria do profissional (ProfileScreen).
    max=null/undefined = sem limite; onLimitReached dispara ao tentar
@@ -7120,7 +7153,7 @@ function ForgotPasswordScreen({ onBack, onComplete }) {
     <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>CODIGO</label>
     <input type="text" value={code} onChange={e => setCode(e.target.value)} placeholder="000000" maxLength={6} style={{ ...inp, fontSize:24, letterSpacing:8, textAlign:"center" }} />
     <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>NOVA SENHA</label>
-    <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Minimo 6 caracteres" style={inp} />
+    <PasswordField value={password} onChange={e => setPassword(e.target.value)} placeholder="Minimo 6 caracteres" style={inp} />
     <button disabled={loading} style={btn} onClick={async () => { if (!code||code.length<6) return alert("Codigo incompleto"); if (!password||password.length<6) return alert("Senha muito curta"); setLoading(true); const r = await fetch(API+"/api/auth/verificar-codigo", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email,code,newPassword:password}) }); const d = await r.json(); if (r.ok) { onComplete(); } else { alert(d.error); setLoading(false); } }}>{loading ? "Verificando..." : "Confirmar"}</button>
   </div></div>;
 }
@@ -7156,12 +7189,12 @@ function ResetPasswordScreen({ onComplete }) {
         <p style={{ color:"#6B7280", fontSize:14, marginBottom:24 }}>Digite sua nova senha abaixo.</p>
         <div style={{ marginBottom:16 }}>
           <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>NOVA SENHA</label>
-          <input type="password" placeholder="Mínimo 6 caracteres" value={password} onChange={e => setPassword(e.target.value)}
+          <PasswordField placeholder="Mínimo 6 caracteres" value={password} onChange={e => setPassword(e.target.value)}
             style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:15, marginTop:6, boxSizing:"border-box", outline:"none" }} />
         </div>
         <div style={{ marginBottom:24 }}>
           <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>CONFIRMAR SENHA</label>
-          <input type="password" placeholder="Repita a senha" value={confirm} onChange={e => setConfirm(e.target.value)}
+          <PasswordField placeholder="Repita a senha" value={confirm} onChange={e => setConfirm(e.target.value)}
             onKeyDown={e => e.key === "Enter" && handleReset()}
             style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:15, marginTop:6, boxSizing:"border-box", outline:"none" }} />
         </div>
@@ -7212,7 +7245,7 @@ function LoginScreen({ onBack, onComplete, onRegister, onForgot }) {
         </div>
         <div style={{ marginBottom:24 }}>
           <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.05em" }}>SENHA</label>
-          <input type="password" placeholder="Sua senha" value={password} onChange={e => setPassword(e.target.value)}
+          <PasswordField placeholder="Sua senha" value={password} onChange={e => setPassword(e.target.value)}
             onKeyDown={e => e.key === "Enter" && handleLogin()}
             style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:15, marginTop:6, boxSizing:"border-box", outline:"none" }} />
         </div>
@@ -7671,7 +7704,7 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
 
         {/* SENHA */}
         <FormField IconComp={KeyRound} label="Senha" error={errors.password}>
-          <input autoComplete="new-password" type="password" placeholder="Mínimo 6 caracteres" value={password}
+          <PasswordField autoComplete="new-password" placeholder="Mínimo 6 caracteres" value={password}
             onChange={e => { setPassword(e.target.value); if (errors.password) setErrors(p => ({ ...p, password:undefined })); }}
             style={{ ...REG_INPUT, borderColor: errors.password ? "#E53935" : undefined }} />
         </FormField>
@@ -7984,7 +8017,7 @@ function CadastroEmpresaScreen({ onBack, showToast }) {
 
         {/* SENHA */}
         <FormField IconComp={KeyRound} label="Senha" error={errors.password}>
-          <input autoComplete="new-password" type="password" placeholder="Mínimo 6 caracteres" value={password}
+          <PasswordField autoComplete="new-password" placeholder="Mínimo 6 caracteres" value={password}
             onChange={e => { setPassword(e.target.value); if (errors.password) setErrors(p => ({ ...p, password:undefined })); }}
             style={{ ...REG_INPUT, borderColor: errors.password ? "#E53935" : undefined }} />
         </FormField>
