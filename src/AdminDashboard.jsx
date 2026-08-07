@@ -153,8 +153,8 @@ function SearchBar({ value, onChange, placeholder }) {
 function SectionMetrics({ data }) {
   const metrics = [
     { icon: Users, label: "Total Usuários", value: data.totalUsers || 0, sub: "clientes + profissionais", color: COLORS.blue },
-    { icon: HeartHandshake, label: "Clientes", value: data.totalClients || 0, sub: data.clientsNoClose + " sem fechar", color: COLORS.purple },
-    { icon: ShieldCheck, label: "Profissionais", value: data.totalPros || 0, sub: data.prosNoClose + " sem fechar", color: COLORS.green },
+    { icon: HeartHandshake, label: "Clientes", value: data.totalClients || 0, sub: "clientes cadastrados", color: COLORS.purple },
+    { icon: ShieldCheck, label: "Profissionais", value: data.totalPros || 0, sub: "profissionais cadastrados", color: COLORS.green },
     { icon: Activity, label: "Serviços", value: data.totalServices || 0, sub: data.activeServices + " em andamento", color: COLORS.orange },
     { icon: DollarSign, label: "Receita Total", value: "R$ " + (data.totalRevenue || "0,00"), sub: "pagamentos liberados", color: COLORS.green },
     { icon: Crown, label: "PRO Ativos", value: data.totalPro || 0, sub: "assinantes", color: COLORS.orange },
@@ -183,6 +183,10 @@ function SectionProfissionais({ filter, adminKey }) {
     setTimeout(() => setToast(null), 3000);
   };
 
+  // TODO: /admin/professionals não existe no backend (MULTI-BACKEND/server.js) —
+  // não há rota de listagem de profissionais com status de aprovação hoje.
+  // Precisa ser criada (GET /api/admin/professionals, header x-admin-key) antes
+  // desta seção (e os botões Aprovar/Reprovar abaixo) funcionar.
   useEffect(() => {
     fetch(API + "/admin/professionals?key=" + adminKey)
       .then(r => r.json())
@@ -190,6 +194,8 @@ function SectionProfissionais({ filter, adminKey }) {
       .catch(() => { setPros([]); setLoading(false); });
   }, []);
 
+  // TODO: /admin/approve-professional e /admin/reject-professional não existem
+  // no backend — estes botões não têm efeito real hoje.
   const handleApprove = async (id) => {
     try {
       const r = await fetch(API + "/admin/approve-professional", {
@@ -354,9 +360,9 @@ function SectionClientes({ adminKey }) {
   const [expanded, setExpanded] = useState(null);
 
   useEffect(() => {
-    fetch(API + "/admin/clients?key=" + adminKey)
+    fetch(API + "/api/admin/clientes", { headers: { "x-admin-key": adminKey } })
       .then(r => r.json())
-      .then(d => { setClients(d.clients || []); setLoading(false); })
+      .then(d => { setClients(Array.isArray(d) ? d : []); setLoading(false); })
       .catch(() => { setClients([]); setLoading(false); });
   }, []);
 
@@ -462,6 +468,9 @@ function SectionServicos({ adminKey }) {
   const [search, setSearch] = useState("");
   const [subTab, setSubTab] = useState("todos");
 
+  // TODO: /admin/services não existe no backend — o mais próximo é
+  // GET /api/admin/pedidos-hoje (só hoje) e GET /api/admin/receita (só concluídos).
+  // Falta uma rota geral de listagem de serviços/pedidos para esta seção.
   useEffect(() => {
     fetch(API + "/admin/services?key=" + adminKey)
       .then(r => r.json())
@@ -548,6 +557,10 @@ function SectionFinanceiro({ adminKey }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // TODO: /admin/financial não existe no backend. GET /api/admin/receita retorna
+  // os pedidos concluídos (array cru), não o formato agregado {totalRevenue,
+  // totalWallets, ...} que esta seção espera — precisa de uma rota nova ou de
+  // agregação aqui no front antes de funcionar.
   useEffect(() => {
     fetch(API + "/admin/financial?key=" + adminKey)
       .then(r => r.json())
@@ -605,6 +618,10 @@ function SectionEmail({ adminKey }) {
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
 
+  // TODO: /admin/send-campaign não existe — a rota real é POST /api/email/campanha
+  // com um contrato diferente (adminKey/titulo/mensagem/destinatarios: "todos" |
+  // array), sem suporte aos segmentos "clients"/"professionals"/"pro"/etc. usados
+  // no <select> abaixo. Precisa adaptar o payload ou criar a rota no backend.
   const handleSend = async () => {
     if (!subject || !body) return;
     setSending(true);
@@ -711,9 +728,18 @@ function AdminDashboard({ onExit }) {
 
   useEffect(() => {
     if (authed) {
-      fetch(API + "/admin/metrics?key=" + ADMIN_KEY)
+      // Mapeia /api/admin/stats (única rota de métricas que existe no backend hoje)
+      // para as chaves que SectionMetrics espera. totalServices, activeServices,
+      // pendingApproval e conclusionRate não têm fonte no backend ainda — ficam 0.
+      fetch(API + "/api/admin/stats", { headers: { "x-admin-key": ADMIN_KEY } })
         .then(r => r.json())
-        .then(d => setMetrics(d))
+        .then(d => setMetrics({
+          totalUsers: d.totalUsers,
+          totalClients: d.totalClients,
+          totalPros: d.totalPros,
+          totalPro: d.proAtivos,
+          totalRevenue: d.receitaEstimada,
+        }))
         .catch(() => {});
     }
   }, [authed]);
