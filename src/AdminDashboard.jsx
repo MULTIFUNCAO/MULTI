@@ -23,7 +23,12 @@ const COLORS = {
   textMuted: "#64748B",
 };
 
-const API = "https://api.multifuncao.com.br";
+// "api.multifuncao.com.br" nunca foi configurado no DNS (NXDOMAIN, confirmado
+// 2026-08-07) — era um domínio planejado que nunca saiu do papel. O resto do
+// app (App.jsx) já usa o backend real no Render; este arquivo tinha ficado
+// pra trás apontando pro domínio morto, então nenhum fetch daqui chegava nem
+// a sair da máquina do usuário.
+const API = "https://multi-backend-lfwp.onrender.com";
 
 // ─── Componentes base ───────────────────────────────────────────
 function Card({ children, style }) {
