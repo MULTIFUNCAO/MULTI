@@ -8630,8 +8630,16 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
 
   // Demanda de empresa (publico_alvo:"pro") nunca entra no popup de "aceitar
   // agora" — só via proposta (Candidatar-me no mural), por isso o filtro.
+  // categoriaServico.includes(p.categoria) — bug achado 2026-08-07: esse
+  // popup nunca filtrou por categoria (só a lista do mural, `filtered`,
+  // filtrava), então qualquer pedido "geral" aberto disparava "Novo
+  // Pedido!" pra qualquer profissional online, de qualquer categoria (ex.:
+  // Pedreiro recebendo popup de pedido de Encanador). Mesmo filtro que
+  // EmpresaHomeScreen já aplicava corretamente no seu próprio radar
+  // (.in("categoria", categorias) + check no listener realtime) — só
+  // faltava espelhar aqui.
   supabase.from("pedidos").select("*").eq("status","aberto").eq("publico_alvo","geral").order("created_at",{ascending:false}).limit(20).then(({data})=>{
-    const proximo = (data || []).find(p => !pedidosVistosRef.current.has(p.id));
+    const proximo = (data || []).find(p => !pedidosVistosRef.current.has(p.id) && categoriaServico.includes(p.categoria));
     if(proximo){ pedidosVistosRef.current.add(proximo.id); setNewOrder(mapPedidoParaNewOrder(proximo)); }
   });
 
@@ -8643,6 +8651,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
     .on("postgres_changes",{event:"INSERT",schema:"public",table:"pedidos",filter:"status=eq.aberto"},(payload)=>{
       const p=payload.new;
       if(!p||!p.fotos||p.fotos.length===0||p.publico_alvo==="pro")return;
+      if(!categoriaServico.includes(p.categoria))return;
       if(pedidosVistosRef.current.has(p.id))return;
       pedidosVistosRef.current.add(p.id);
       setNewOrder(mapPedidoParaNewOrder(p));
