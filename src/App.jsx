@@ -32,10 +32,10 @@ const ONESIGNAL_APP_ID = "184f4647-8fbd-427d-8a8e-60f5aa38243c";
 
 import AdminDashboard from "./AdminDashboard";
 import {
-  Search, MapPin, Bell, Star, Plus, ChevronRight,
+  Search, MapPin, Bell, Star, Plus, ChevronRight, ChevronLeft,
   Hammer, Wrench, Paintbrush, Scissors, Zap, Square,
   Home, ClipboardList, MessageCircle, User, Settings,
-  ArrowLeft, Check, Camera, Send, ChevronDown,
+  ArrowLeft, Check, Camera, Send,
   Briefcase, Crown, Shield, TrendingUp, X, Clock,
   Lock, Navigation, Image, Flag, DollarSign, CheckCircle2,
   AlertCircle, FileText, Pencil, Wallet, LogOut,
@@ -2557,6 +2557,16 @@ function PostServiceScreen({ onBack, onSuccess, initialCat = "" }) {
   const [cepError,   setCepError]   = useState("");
   const inputRef = useRef(null);
 
+  // Categoria em 2 passos (2026-08-07): escolhe o grupo, depois o item
+  // específico dentro dele (lista curta) em vez de rolar os ~265 itens
+  // soltos — com botão de voltar pra trocar de grupo. form.cat continua
+  // guardando só o item específico (ex.: "pedreiro"), igual sempre foi.
+  // Se já veio com categoria pré-selecionada (card da Home), o picker nasce
+  // fechado (mostra o item escolhido direto) — "Trocar" reabre já no grupo
+  // certo, sem obrigar a pessoa a repetir a escolha do grupo.
+  const [catPickerOpen, setCatPickerOpen] = useState(!initialCat);
+  const [catGrupoAberto, setCatGrupoAberto] = useState(() => CATS.find(c => c.id === initialCat)?.grupo || null);
+
   const handleFiles = e => {
     Array.from(e.target.files).forEach(f => {
       if (!f.type.startsWith("image/")) return;
@@ -2606,16 +2616,65 @@ function PostServiceScreen({ onBack, onSuccess, initialCat = "" }) {
       <BackBtn onClick={onBack} />
       <h2 style={{ fontSize:20, fontWeight:900, color:"#1a1a2e", margin:0 }}>Novo Serviço</h2>
 
-      {/* Categoria */}
+      {/* Categoria — 2 passos: grupo, depois item específico dentro dele */}
       <div>
-        <label style={{fontSize:12,color:"#666",display:"block"}}>Categoria</label>
-        <div style={{ position:"relative" }}>
-          <select style={{ ...F, paddingRight:36, appearance:"none", cursor:"pointer" }} value={form.cat} onChange={e => setForm({ ...form, cat:e.target.value })}>
-            <option value="">Selecione...</option>
-            {CATS.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
-          </select>
-          <ChevronDown size={14} color="#aaa" style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", pointerEvents:"none" }} />
-        </div>
+        <label style={{fontSize:12,color:"#666",display:"block", marginBottom:6}}>Categoria</label>
+        {!catPickerOpen ? (
+          // Item já escolhido — mostra colapsado com opção de trocar.
+          (() => {
+            const catAtual = CATS.find(c => c.id === form.cat);
+            return (
+              <div style={{ ...F, display:"flex", alignItems:"center", justifyContent:"space-between", gap:10 }}>
+                <span style={{ display:"flex", alignItems:"center", gap:8, fontWeight:700 }}>
+                  <span style={{ fontSize:16 }}>{catAtual?.emoji}</span> {catAtual?.label}
+                </span>
+                <button type="button" onClick={() => { setCatGrupoAberto(catAtual?.grupo || null); setCatPickerOpen(true); }} style={{ background:"none", border:"none", cursor:"pointer", padding:0, color:B, fontWeight:800, fontSize:12.5, flexShrink:0 }}>
+                  Trocar
+                </button>
+              </div>
+            );
+          })()
+        ) : catGrupoAberto ? (
+          // Passo 2 — itens específicos do grupo escolhido.
+          <div style={{ ...F, padding:14 }}>
+            <button type="button" onClick={() => setCatGrupoAberto(null)} style={{ display:"flex", alignItems:"center", gap:4, background:"none", border:"none", cursor:"pointer", padding:0, marginBottom:12, color:B, fontWeight:800, fontSize:12.5 }}>
+              <ChevronLeft size={15} /> {catGrupoAberto}
+            </button>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+              {CATS.filter(c => c.grupo === catGrupoAberto).map(c => (
+                <button key={c.id} type="button" onClick={() => { setForm(f => ({ ...f, cat:c.id })); setCatPickerOpen(false); }} style={{
+                  display:"flex", alignItems:"center", gap:6,
+                  padding:"8px 14px", borderRadius:99, cursor:"pointer",
+                  border: form.cat === c.id ? `1.5px solid ${B}` : "1.5px solid #E5E7EB",
+                  background: form.cat === c.id ? "#EBF4FF" : "white",
+                  color: form.cat === c.id ? B : "#555", fontWeight:700, fontSize:12.5,
+                }}>
+                  <span>{c.emoji}</span> {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          // Passo 1 — grade de grupos.
+          <div style={{ ...F, padding:14 }}>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+              {CAT_GRUPOS.map(grupo => {
+                const itensGrupo = CATS.filter(c => c.grupo === grupo);
+                return (
+                  <button key={grupo} type="button" onClick={() => setCatGrupoAberto(grupo)} style={{
+                    display:"flex", alignItems:"center", gap:6,
+                    padding:"8px 12px 8px 14px", borderRadius:99, cursor:"pointer",
+                    border:"1.5px solid #E5E7EB", background:"white",
+                    color:"#555", fontWeight:700, fontSize:12.5,
+                  }}>
+                    <span>{itensGrupo[0]?.emoji}</span> {grupo}
+                    <ChevronRight size={13} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Descrição */}
@@ -7298,28 +7357,80 @@ function PasswordField({ style, ...rest }) {
    empresa e no editor de categoria do profissional (ProfileScreen).
    max=null/undefined = sem limite; onLimitReached dispara ao tentar
    marcar uma categoria além do limite (usado pro upsell Autônomo→Pro). */
+// Navegação em 2 passos (2026-08-07): em vez de rolar uma lista solta dos
+// ~265 itens de uma vez, primeiro escolhe o grupo (ex.: "Reformas e
+// Construção"), depois vê só os itens daquele grupo — com botão de voltar
+// pra trocar de grupo. Puramente navegação: `value`/onChange continuam
+// guardando só os itens específicos escolhidos (ex.: "pedreiro"), exatamente
+// como antes — não muda categoria_servico nem o limite do plano. Um resumo
+// dos itens já selecionados (com "x" pra remover) fica sempre visível acima,
+// já que a seleção pode vir de vários grupos diferentes.
 function CategoriaMultiSelect({ value, onChange, max, onLimitReached, error }) {
+  const [openGrupo, setOpenGrupo] = useState(null); // null = grade de grupos
   const toggle = (id) => {
     const has = value.includes(id);
     if (!has && max && value.length >= max) { onLimitReached?.(); return; }
     onChange(has ? value.filter(v => v !== id) : [...value, id]);
   };
+  const selecionados = CATS.filter(c => value.includes(c.id));
+
   return (
-    <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-      {CATS.map(c => {
-        const active = value.includes(c.id);
-        return (
-          <button key={c.id} type="button" onClick={() => toggle(c.id)} style={{
-            display:"flex", alignItems:"center", gap:6,
-            padding:"8px 14px", borderRadius:99, cursor:"pointer",
-            border: active ? `1.5px solid ${B}` : `1.5px solid ${error ? "#FCA5A5" : "#E5E7EB"}`,
-            background: active ? "#EBF4FF" : "white",
-            color: active ? B : "#555", fontWeight:700, fontSize:12.5,
-          }}>
-            <span>{c.emoji}</span> {c.label}
+    <div>
+      {selecionados.length > 0 && (
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:12, paddingBottom:12, borderBottom:"1px solid #F0F0F0" }}>
+          {selecionados.map(c => (
+            <span key={c.id} style={{ display:"flex", alignItems:"center", gap:5, padding:"5px 6px 5px 10px", borderRadius:99, background:"#EBF4FF", color:B, fontWeight:700, fontSize:11.5 }}>
+              {c.emoji} {c.label}
+              <button type="button" onClick={() => toggle(c.id)} style={{ background:"none", border:"none", cursor:"pointer", padding:2, display:"flex", color:B }}>
+                <X size={11} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {openGrupo ? (
+        <div>
+          <button type="button" onClick={() => setOpenGrupo(null)} style={{ display:"flex", alignItems:"center", gap:4, background:"none", border:"none", cursor:"pointer", padding:0, marginBottom:12, color:B, fontWeight:800, fontSize:12.5 }}>
+            <ChevronLeft size={15} /> {openGrupo}
           </button>
-        );
-      })}
+          <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+            {CATS.filter(c => c.grupo === openGrupo).map(c => {
+              const active = value.includes(c.id);
+              return (
+                <button key={c.id} type="button" onClick={() => toggle(c.id)} style={{
+                  display:"flex", alignItems:"center", gap:6,
+                  padding:"8px 14px", borderRadius:99, cursor:"pointer",
+                  border: active ? `1.5px solid ${B}` : `1.5px solid ${error ? "#FCA5A5" : "#E5E7EB"}`,
+                  background: active ? "#EBF4FF" : "white",
+                  color: active ? B : "#555", fontWeight:700, fontSize:12.5,
+                }}>
+                  <span>{c.emoji}</span> {c.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+          {CAT_GRUPOS.map(grupo => {
+            const itensGrupo = CATS.filter(c => c.grupo === grupo);
+            const count = itensGrupo.filter(c => value.includes(c.id)).length;
+            return (
+              <button key={grupo} type="button" onClick={() => setOpenGrupo(grupo)} style={{
+                display:"flex", alignItems:"center", gap:6,
+                padding:"8px 12px 8px 14px", borderRadius:99, cursor:"pointer",
+                border: count ? `1.5px solid ${B}` : `1.5px solid ${error ? "#FCA5A5" : "#E5E7EB"}`,
+                background: count ? "#EBF4FF" : "white",
+                color: count ? B : "#555", fontWeight:700, fontSize:12.5,
+              }}>
+                <span>{itensGrupo[0]?.emoji}</span> {grupo}{count ? ` (${count})` : ""}
+                <ChevronRight size={13} />
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
