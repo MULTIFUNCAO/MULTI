@@ -183,43 +183,41 @@ function SectionProfissionais({ filter, adminKey }) {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // TODO: /admin/professionals não existe no backend (MULTI-BACKEND/server.js) —
-  // não há rota de listagem de profissionais com status de aprovação hoje.
-  // Precisa ser criada (GET /api/admin/professionals, header x-admin-key) antes
-  // desta seção (e os botões Aprovar/Reprovar abaixo) funcionar.
   useEffect(() => {
-    fetch(API + "/admin/professionals?key=" + adminKey)
+    fetch(API + "/api/admin/professionals", { headers: { "x-admin-key": adminKey } })
       .then(r => r.json())
       .then(d => { setPros(d.professionals || []); setLoading(false); })
       .catch(() => { setPros([]); setLoading(false); });
   }, []);
 
-  // TODO: /admin/approve-professional e /admin/reject-professional não existem
-  // no backend — estes botões não têm efeito real hoje.
   const handleApprove = async (id) => {
     try {
-      const r = await fetch(API + "/admin/approve-professional", {
+      const r = await fetch(API + "/api/admin/approve-professional", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, key: adminKey }),
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({ id }),
       });
       if (r.ok) {
         setPros(p => p.map(x => x.id === id ? { ...x, approved: true } : x));
         showToast("Profissional aprovado!", "green");
+      } else {
+        showToast("Erro ao aprovar", "red");
       }
     } catch { showToast("Erro ao aprovar", "red"); }
   };
 
   const handleReject = async (id) => {
     try {
-      const r = await fetch(API + "/admin/reject-professional", {
+      const r = await fetch(API + "/api/admin/reject-professional", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, key: adminKey }),
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({ id }),
       });
       if (r.ok) {
-        setPros(p => p.filter(x => x.id !== id));
+        setPros(p => p.map(x => x.id === id ? { ...x, approved: false } : x));
         showToast("Profissional reprovado.", "orange");
+      } else {
+        showToast("Erro ao reprovar", "red");
       }
     } catch { showToast("Erro ao reprovar", "red"); }
   };
@@ -468,23 +466,20 @@ function SectionServicos({ adminKey }) {
   const [search, setSearch] = useState("");
   const [subTab, setSubTab] = useState("todos");
 
-  // TODO: /admin/services não existe no backend — o mais próximo é
-  // GET /api/admin/pedidos-hoje (só hoje) e GET /api/admin/receita (só concluídos).
-  // Falta uma rota geral de listagem de serviços/pedidos para esta seção.
   useEffect(() => {
-    fetch(API + "/admin/services?key=" + adminKey)
+    fetch(API + "/api/admin/services", { headers: { "x-admin-key": adminKey } })
       .then(r => r.json())
       .then(d => { setServices(d.services || []); setLoading(false); })
       .catch(() => { setServices([]); setLoading(false); });
   }, []);
 
   const statusLabel = (s) => {
-    const map = { searching: "Buscando", agreement: "Acordo", executing: "Executando", completed: "Concluído", cancelled: "Cancelado" };
+    const map = { aberto: "Aguardando", em_andamento: "Em andamento", executando: "Executando", concluido: "Concluído", cancelado: "Cancelado" };
     return map[s] || s;
   };
 
   const statusColor = (s) => {
-    const map = { searching: "blue", agreement: "orange", executing: "purple", completed: "green", cancelled: "red" };
+    const map = { aberto: "blue", em_andamento: "orange", executando: "purple", concluido: "green", cancelado: "red" };
     return map[s] || "blue";
   };
 
@@ -492,16 +487,17 @@ function SectionServicos({ adminKey }) {
     const q = search.toLowerCase();
     const matchSearch = !q || (s.title || "").toLowerCase().includes(q) || (s.client_name || "").toLowerCase().includes(q) || (s.protocol || "").includes(q);
     if (!matchSearch) return false;
+    if (subTab === "executando") return s.status === "executando" || s.status === "em_andamento";
     if (subTab !== "todos") return s.status === subTab;
     return true;
   });
 
   const subTabs = [
     { id: "todos", label: "Todos", count: services.length },
-    { id: "searching", label: "Buscando", count: services.filter(s => s.status === "searching").length },
-    { id: "executing", label: "Em andamento", count: services.filter(s => s.status === "executing").length },
-    { id: "completed", label: "Concluídos", count: services.filter(s => s.status === "completed").length },
-    { id: "cancelled", label: "Cancelados", count: services.filter(s => s.status === "cancelled").length },
+    { id: "aberto", label: "Aguardando", count: services.filter(s => s.status === "aberto").length },
+    { id: "executando", label: "Em andamento", count: services.filter(s => s.status === "executando" || s.status === "em_andamento").length },
+    { id: "concluido", label: "Concluídos", count: services.filter(s => s.status === "concluido").length },
+    { id: "cancelado", label: "Cancelados", count: services.filter(s => s.status === "cancelado").length },
   ];
 
   return (
@@ -557,12 +553,8 @@ function SectionFinanceiro({ adminKey }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // TODO: /admin/financial não existe no backend. GET /api/admin/receita retorna
-  // os pedidos concluídos (array cru), não o formato agregado {totalRevenue,
-  // totalWallets, ...} que esta seção espera — precisa de uma rota nova ou de
-  // agregação aqui no front antes de funcionar.
   useEffect(() => {
-    fetch(API + "/admin/financial?key=" + adminKey)
+    fetch(API + "/api/admin/financial", { headers: { "x-admin-key": adminKey } })
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false); })
       .catch(() => { setData(null); setLoading(false); });
@@ -618,18 +610,14 @@ function SectionEmail({ adminKey }) {
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
 
-  // TODO: /admin/send-campaign não existe — a rota real é POST /api/email/campanha
-  // com um contrato diferente (adminKey/titulo/mensagem/destinatarios: "todos" |
-  // array), sem suporte aos segmentos "clients"/"professionals"/"pro"/etc. usados
-  // no <select> abaixo. Precisa adaptar o payload ou criar a rota no backend.
   const handleSend = async () => {
     if (!subject || !body) return;
     setSending(true);
     try {
-      const r = await fetch(API + "/admin/send-campaign", {
+      const r = await fetch(API + "/api/admin/send-campaign", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject, body, target, key: adminKey }),
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({ subject, body, target }),
       });
       const d = await r.json();
       setResult({ ok: r.ok, msg: r.ok ? "Campanha enviada para " + (d.sent || 0) + " destinatários!" : "Erro: " + (d.error || "falha") });
@@ -728,19 +716,28 @@ function AdminDashboard({ onExit }) {
 
   useEffect(() => {
     if (authed) {
-      // Mapeia /api/admin/stats (única rota de métricas que existe no backend hoje)
-      // para as chaves que SectionMetrics espera. totalServices, activeServices,
-      // pendingApproval e conclusionRate não têm fonte no backend ainda — ficam 0.
-      fetch(API + "/api/admin/stats", { headers: { "x-admin-key": ADMIN_KEY } })
-        .then(r => r.json())
-        .then(d => setMetrics({
-          totalUsers: d.totalUsers,
-          totalClients: d.totalClients,
-          totalPros: d.totalPros,
-          totalPro: d.proAtivos,
-          totalRevenue: d.receitaEstimada,
-        }))
-        .catch(() => {});
+      const headers = { "x-admin-key": ADMIN_KEY };
+      // /api/admin/stats não tem pendingApproval/totalServices/activeServices —
+      // completa com /professionals e /services. conclusionRate fica 0: não
+      // existe status "concluído" nos pedidos reais ainda para calcular a taxa.
+      Promise.all([
+        fetch(API + "/api/admin/stats", { headers }).then(r => r.json()).catch(() => ({})),
+        fetch(API + "/api/admin/professionals", { headers }).then(r => r.json()).catch(() => ({ professionals: [] })),
+        fetch(API + "/api/admin/services", { headers }).then(r => r.json()).catch(() => ({ services: [] })),
+      ]).then(([stats, prosData, servicesData]) => {
+        const pros = prosData.professionals || [];
+        const services = servicesData.services || [];
+        setMetrics({
+          totalUsers: stats.totalUsers,
+          totalClients: stats.totalClients,
+          totalPros: stats.totalPros,
+          totalPro: stats.proAtivos,
+          totalRevenue: stats.receitaEstimada,
+          pendingApproval: pros.filter(p => !p.approved).length,
+          totalServices: services.length,
+          activeServices: services.filter(s => s.status === "executando" || s.status === "em_andamento").length,
+        });
+      });
     }
   }, [authed]);
 
