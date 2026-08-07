@@ -7114,7 +7114,7 @@ function RoleSelectScreen({ onSelect, onLogin, onBack }) {
 }
 
 /* ───────────────────────── AUTH: WELCOME SCREEN ──────────────────────────────── */
-function WelcomeScreen({ onEmail, onBack }) {
+function WelcomeScreen({ onEmail, onLogin, onBack }) {
   return (
     <div style={{ minHeight:"100vh", background:"#F8F9FA", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"space-between", padding:"0 0 48px" }}>
 
@@ -7172,7 +7172,7 @@ function WelcomeScreen({ onEmail, onBack }) {
         </div>
 
         <p style={{ fontSize:12, color:"#9CA3AF", marginTop:20, textAlign:"center" }}>
-          Já tem conta? <button onClick={onEmail} style={{ color:B, fontWeight:800, background:"none", border:"none", cursor:"pointer", fontSize:12 }}>Entrar</button>
+          Já tem conta? <button onClick={onLogin} style={{ color:B, fontWeight:800, background:"none", border:"none", cursor:"pointer", fontSize:12 }}>Entrar</button>
         </p>
       </div>
     </div>
@@ -10638,7 +10638,8 @@ const renderContent = () => {
   if (authScreen === "welcome") {
     return wrapper(
       <WelcomeScreen
-        onEmail={() => setAuthScreen("login")}
+        onEmail={() => setAuthScreen("register")}
+        onLogin={() => setAuthScreen("login")}
         // Home é o passo anterior de verdade na maioria dos casos agora
         // (requireAuth cai direto aqui pra qualquer ação de convidado — post,
         // ver serviço, "Vire Profissional" pra quem já tem conta, etc.), não
