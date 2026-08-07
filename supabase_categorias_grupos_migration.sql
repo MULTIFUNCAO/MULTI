@@ -1,3 +1,12 @@
+-- ⛔ OBSOLETO (2026-08-07) — NÃO RODAR.
+-- O modelo "19 grupos contam pro plano + item é tag de busca em
+-- usuarios.especialidades" descrito abaixo foi revertido no dia seguinte:
+-- CATS voltou a ser a lista plana e específica de sempre (ver App.jsx),
+-- sem coluna `especialidades` nova nenhuma. Este script nunca terminou de
+-- rodar de qualquer forma — ficou bloqueado pelo bug de plataforma "coluna
+-- some sozinha da API REST" (mesmo bug do ticket de suporte aberto pra
+-- doc_rg_status etc.). Mantido só como registro histórico da tentativa.
+--
 -- Rode este script no SQL Editor do painel do Supabase (Project > SQL Editor > New query).
 --
 -- Reformulação de categorias (2026-08-06/07): as antigas 46 categorias
