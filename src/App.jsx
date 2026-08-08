@@ -7072,7 +7072,7 @@ function RoleSelectScreen({ onSelect, onLogin, onBack }) {
         marginTop:-56, padding:"26px 20px 32px", boxShadow:"0 -18px 30px -24px rgba(20,21,42,.14)",
       }}>
         <p style={{ textAlign:"center", fontSize:15.5, fontWeight:800, color:"#1a1a2e", lineHeight:1.4, margin:"0 0 22px", letterSpacing:-.1, padding:"0 4px" }}>
-          Você está aqui para contratar, trabalhar ou fazer sua empresa crescer?
+          Você está aqui para contratar ou trabalhar?
         </p>
 
         <div style={{ display:"flex", flexDirection:"column", gap:13 }}>
@@ -9543,8 +9543,8 @@ export default function App() {
   // Auth: starts as guest, modal layers appear on demand
   const [isLoggedIn,    setIsLoggedIn]    = useState(!!savedSession);
   // Home é a tela inicial pra todo mundo agora, logado ou não — a
-  // role-select ("Você está aqui para contratar, trabalhar ou fazer sua
-  // empresa crescer?") deixou de ser o gate de entrada do app e virou uma
+  // role-select ("Você está aqui para contratar ou trabalhar?") deixou de
+  // ser o gate de entrada do app e virou uma
   // etapa de contexto disparada de dentro da Home (banner "Vire
   // Profissional" e bloco "Empresa"), então authScreen começa sempre null.
   // Mantém também o motivo original de nunca mostrar a landing por cima de
