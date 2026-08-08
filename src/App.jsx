@@ -10651,7 +10651,7 @@ const renderContent = () => {
 
   if (authScreen === "register") {
     return wrapper(
-      <RegisterScreen onBack={() => setAuthScreen("role-select")} onComplete={handleLoginComplete} showToast={showToast} initialRole={signupRole} />
+      <RegisterScreen onBack={() => setAuthScreen("welcome")} onComplete={handleLoginComplete} showToast={showToast} initialRole={signupRole} />
     );
   }
 
