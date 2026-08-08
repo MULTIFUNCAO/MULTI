@@ -8856,8 +8856,8 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
             className={online ? "pulse-online" : "pulse-offline"}
             style={{
               width:"100%", padding:"14px 0", borderRadius:16, border:"none", cursor:"pointer",
-              background: online ? `linear-gradient(135deg,${G},#16a34a)` : !allDocsVerified ? "#1F2937" : "rgba(255,255,255,.12)",
-              color: online ? "white" : !allDocsVerified ? "#6B7280" : "#9CA3AF",
+              background: online ? `linear-gradient(135deg,${G},#16a34a)` : !allDocsVerified ? "#1F2937" : "linear-gradient(135deg,#4B5563,#DC2626)",
+              color: online ? "white" : !allDocsVerified ? "#6B7280" : "white",
               fontWeight:900, fontSize:15,
               display:"flex", alignItems:"center", justifyContent:"center", gap:10,
               transition:"background .3s, color .3s",
@@ -8874,7 +8874,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                 <path d="M3.51 3.51a12 12 0 0 0 0 16.97"/>
               </svg>
             )}
-            {online ? "✓  Online — Clique para pausar" : !allDocsVerified ? "Documentação pendente" : "Ficar Online"}
+            {online ? "✓  Online — Clique para ficar Offline" : !allDocsVerified ? "Documentação pendente" : "Offline — Clique para ficar Online"}
           </button>
         </div>
       </div>
