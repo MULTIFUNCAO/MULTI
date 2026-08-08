@@ -5318,7 +5318,7 @@ function RankingScreen({ onBack, contratacoes }) {
   );
 }
 
-function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userName: initialUserName, userEmail, showRankingGlobal, onClearRankingGlobal, onUpgrade, onLogout, showToast, onOpenWallet, meusGanhos, onOpenAdmin, docStatus, onDocStatusChange, onSwitchRole }) {
+function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoInicio, userName: initialUserName, userEmail, showRankingGlobal, onClearRankingGlobal, onUpgrade, onLogout, showToast, onOpenWallet, meusGanhos, onOpenAdmin, docStatus, onDocStatusChange, onSwitchRole }) {
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [editMode,  setEditMode]  = useState(false);
@@ -5362,25 +5362,46 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
   const [bio, setBio] = useState("");
   const [savingBio, setSavingBio] = useState(false);
   const [categoriaServico, setCategoriaServico] = useState([]);
-  const [savingCategoria, setSavingCategoria] = useState(false);
   // Mesma proteção contra corrida do ProfessionalHome: se o usuário já mudou a
   // categoria antes desse fetch inicial responder, não deixa a resposta antiga
   // sobrescrever a escolha recém-feita.
   const categoriaTocadaRef = useRef(false);
-  // Guarda contra a corrida entre saves de categoria (ver handleSaveCategoria
-  // abaixo): timeout do debounce + número de sequência do save mais recente.
-  const categoriaSaveTimeoutRef = useRef(null);
-  const categoriaSaveSeqRef = useRef(0);
+  // Limite de troca de categoria (2 na vida da conta, só na renovação/troca
+  // de plano) — contador e marcador de ciclo vêm do banco (trocas_categoria_usadas/
+  // trocas_categoria_ultimo_ciclo_em em "usuarios"), o gate de verdade é o
+  // trigger trg_limita_troca_categoria no Postgres; isso aqui só decide UX
+  // (habilitar "Editar" ou mostrar a mensagem de bloqueio).
+  const [trocasCategoriaUsadas, setTrocasCategoriaUsadas] = useState(0);
+  const [trocasCategoriaUltimoCiclo, setTrocasCategoriaUltimoCiclo] = useState(null);
+  // Snapshot de categoriaServico no momento em que o editMode abre — usado só
+  // pra saber, no Salvar, se a categoria realmente mudou (categoriaServico
+  // vira o valor "em edição" enquanto editMode está true, sem persistir a
+  // cada toggle como antes).
+  const categoriaSnapshotRef = useRef([]);
+  const prevEditModeRef = useRef(false);
+  useEffect(() => {
+    if (editMode && !prevEditModeRef.current) categoriaSnapshotRef.current = categoriaServico;
+    prevEditModeRef.current = editMode;
+  }, [editMode, categoriaServico]);
   useEffect(() => {
     if (role !== "professional" || !userEmail) return;
-    supabase.from("usuarios").select("categoria_servico,bio,portfolio").eq("email", userEmail).maybeSingle()
+    supabase.from("usuarios").select("categoria_servico,bio,portfolio,trocas_categoria_usadas,trocas_categoria_ultimo_ciclo_em").eq("email", userEmail).maybeSingle()
       .then(({ data }) => {
         if (!categoriaTocadaRef.current) setCategoriaServico(data?.categoria_servico || []);
         setBio(data?.bio || "");
         setPortfolioImgs((data?.portfolio || []).map(url => ({ id: url, url })));
+        setTrocasCategoriaUsadas(data?.trocas_categoria_usadas || 0);
+        setTrocasCategoriaUltimoCiclo(data?.trocas_categoria_ultimo_ciclo_em || null);
       })
       .catch(() => {});
   }, [role, userEmail]);
+  // Elegibilidade pra trocar categoria: primeira escolha (nunca teve nenhuma
+  // categoria salva) é sempre livre; depois disso, só com trocas sobrando E
+  // um ciclo novo (assinaturas.inicio mais recente que a última troca).
+  const categoriaEhPrimeiraEscolha = categoriaServico.length === 0;
+  const categoriaTrocasEsgotadas = trocasCategoriaUsadas >= 2;
+  const categoriaCicloNovo = !!planoInicio && (!trocasCategoriaUltimoCiclo || new Date(planoInicio) > new Date(trocasCategoriaUltimoCiclo));
+  const categoriaElegivel = categoriaEhPrimeiraEscolha || (!categoriaTrocasEsgotadas && categoriaCicloNovo);
 
   // Teto de categorias vem de PLANO_LIMITES_USUARIO (Autônomo:1 / Pro:3 /
   // Premium:ilimitado — definido no topo do arquivo, espelhado no backend).
@@ -5393,43 +5414,14 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
   const isPlanoPro = plano === "pro";
   const limiteCategoria = limitePlanoAtual ? (limitePlanoAtual.maxCategorias ?? undefined) : 1;
 
-  // Grava de verdade no Supabase — chamado só depois do debounce em
-  // handleSaveCategoria (nunca direto pelo clique). .select() força o
-  // Postgrest a devolver as linhas afetadas: um UPDATE que bate 0 linhas
-  // (e-mail sem match, RLS bloqueando etc.) não gera "error" nenhum, então
-  // sem isso o toast de sucesso podia mentir mesmo sem gravar nada.
-  const persistCategoria = async (novasCategorias) => {
-    const seq = ++categoriaSaveSeqRef.current;
-    setSavingCategoria(true);
-    const { data, error } = await supabase.from("usuarios").update({ categoria_servico: novasCategorias }).eq("email", userEmail).select("email,categoria_servico");
-    // Se outro save mais novo já começou enquanto este estava em voo, a
-    // resposta deste (mais antigo) não deve mexer em toast/loading — evita
-    // que um save desatualizado "vença" um mais recente que já terminou.
-    if (seq !== categoriaSaveSeqRef.current) return;
-    setSavingCategoria(false);
-    if (error) showToast?.("❌ Erro ao salvar categoria: " + (error.message || ""), "#DC2626");
-    // 0 linhas afetadas = o e-mail da sessão não bate com nenhuma conta real
-    // (sessão de teste/mock, conta apagada, etc.) — não é "erro de rede",
-    // então o toast não tenta sugerir tentar de novo.
-    else if (!data || data.length === 0) showToast?.("❌ Não foi possível salvar — sessão sem conta correspondente no banco.", "#DC2626");
-    else showToast?.("✅ Categorias de serviço salvas!", G);
-  };
-
-  // CategoriaMultiSelect dispara isso a cada toggle (sem botão "Salvar"),
-  // então selecionar 2+ categorias rápido disparava um UPDATE por clique,
-  // concorrentes entre si — sem ordem garantida de resposta, o save de um
-  // clique mais antigo (ex.: só "Pedreiro") podia responder depois do save
-  // mais novo (ex.: "Pedreiro"+"Encanador") e sobrescrever o resultado
-  // completo pelo incompleto, mesmo os dois tendo "dado certo" (bug
-  // reportado: toast de sucesso, mas categoria não persistia). Debounce
-  // espera a pessoa parar de clicar antes de gravar — só sai 1 UPDATE por
-  // sequência de toggles, sempre com a seleção final.
+  // Categoria não grava mais sozinha a cada toggle (autosave) — com o limite
+  // de 2 trocas na vida da conta, "1 sessão de edição = 1 troca", então cada
+  // toggle só mexe no state local; a gravação de verdade acontece junto do
+  // "Salvar" geral do perfil (topo da tela), que também é onde o contador de
+  // trocas é conferido/incrementado (trigger trg_limita_troca_categoria).
   const handleSaveCategoria = (novasCategorias) => {
     categoriaTocadaRef.current = true;
     setCategoriaServico(novasCategorias);
-    if (!userEmail) return;
-    if (categoriaSaveTimeoutRef.current) clearTimeout(categoriaSaveTimeoutRef.current);
-    categoriaSaveTimeoutRef.current = setTimeout(() => persistCategoria(novasCategorias), 600);
   };
 
   const handleLimiteCategoria = () => {
@@ -5574,25 +5566,40 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
               // persistido (evita o mesmo bug voltar de outro jeito).
               const updates = { whatsapp: whatsapp || null, city: cidade.trim() || null };
               if (name.trim()) updates.name = name.trim();
+              // Categoria só entra no UPDATE se realmente mudou nessa sessão de
+              // edição (1 sessão = 1 troca) — e só quando elegível, embora o
+              // gate de verdade seja o trigger trg_limita_troca_categoria no
+              // Postgres (ver App.jsx categoriaElegivel acima). Sem plano
+              // ativo/trocas esgotadas, o multi-select nem aparece editável, então
+              // categoriaServico não muda — isso aqui é defesa extra, não o
+              // bloqueio principal.
+              const categoriaMudou = role === "professional" && JSON.stringify(categoriaServico) !== JSON.stringify(categoriaSnapshotRef.current);
+              if (categoriaMudou && categoriaElegivel) updates.categoria_servico = categoriaServico;
               const { error } = await supabase.from("usuarios").update(updates).eq("email", userEmail);
               if (error) {
                 setSavingPerfil(false);
-                showToast("❌ Erro ao salvar perfil: " + (error.message || ""), "#DC2626");
+                // Mensagem do trigger (limite de trocas / fora do ciclo) chega
+                // aqui como error.message — mesmo texto que o RAISE EXCEPTION.
+                showToast("❌ " + (error.message || "Erro ao salvar perfil."), "#DC2626");
                 return;
               }
-              const { data } = await supabase.from("usuarios").select("name,whatsapp,foto_perfil_url,city").eq("email", userEmail).maybeSingle();
+              const { data } = await supabase.from("usuarios").select("name,whatsapp,foto_perfil_url,city,categoria_servico,trocas_categoria_usadas,trocas_categoria_ultimo_ciclo_em").eq("email", userEmail).maybeSingle();
               setSavingPerfil(false);
               if (data) {
                 setName(data.name || "");
                 setWhatsapp(data.whatsapp || "");
                 setAvatarUrl(data.foto_perfil_url || null);
                 setCidade(data.city || "");
+                setCategoriaServico(data.categoria_servico || []);
+                categoriaSnapshotRef.current = data.categoria_servico || [];
+                setTrocasCategoriaUsadas(data.trocas_categoria_usadas || 0);
+                setTrocasCategoriaUltimoCiclo(data.trocas_categoria_ultimo_ciclo_em || null);
                 // multiLocation é a fonte que o resto do app lê pra mostrar
                 // "sua região" (mural, header) — sem isso, editar a cidade
                 // aqui não refletia em lugar nenhum fora do próprio perfil.
                 if (data.city) localStorage.setItem("multiLocation", data.city);
               }
-              showToast("✅ Perfil salvo!");
+              showToast(categoriaMudou && updates.categoria_servico ? "✅ Perfil salvo! Categoria atualizada." : "✅ Perfil salvo!");
             }
             setEditMode(e => !e);
           }}
@@ -5716,31 +5723,53 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, userNam
               com: X, Y") em vez do grid de seleção inteiro — reaproveita o
               mesmo editMode do resto do perfil (topo da tela) em vez de um
               fluxo de edição próprio parecido com o cadastro (item 9 do
-              prompt Ajustes de Cadastro/Perfil/Fluxos). */}
+              prompt Ajustes de Cadastro/Perfil/Fluxos).
+              Troca de categoria: 2x na vida da conta, só quando a assinatura
+              renova ou o plano muda (categoriaElegivel) — o botão "Editar"
+              local fica travado fora dessa janela mesmo que o editMode geral
+              do perfil esteja aberto por causa de outro campo (nome/telefone).
+              Gate de verdade é o trigger trg_limita_troca_categoria no
+              Postgres; isso aqui só decide o que mostrar. */}
           <div style={{ padding:"14px 16px 0" }}>
             <div style={{ background:"white", borderRadius:16, padding:16, boxShadow:"0 3px 14px rgba(0,0,0,.07)", border: categoriaServico.length ? "1px solid #F0F0F0" : "1.5px solid #FCA5A5" }}>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:3 }}>
                 <p style={{ margin:0, fontSize:11, fontWeight:800, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1.1 }}>Categorias de Serviço</p>
                 {!editMode && (
-                  <button onClick={() => setEditMode(true)} style={{ background:"none", border:"none", cursor:"pointer", padding:0, color:B, fontSize:11.5, fontWeight:800, display:"flex", alignItems:"center", gap:4 }}>
-                    <Pencil size={11} /> Editar
-                  </button>
+                  categoriaElegivel ? (
+                    <button onClick={() => setEditMode(true)} style={{ background:"none", border:"none", cursor:"pointer", padding:0, color:B, fontSize:11.5, fontWeight:800, display:"flex", alignItems:"center", gap:4 }}>
+                      <Pencil size={11} /> Editar
+                    </button>
+                  ) : (
+                    <span style={{ display:"flex", alignItems:"center", gap:4, color:"#B0B4C0", fontSize:11.5, fontWeight:800 }}>
+                      <Lock size={11} /> Editar
+                    </span>
+                  )
                 )}
               </div>
 
-              {!editMode ? (
-                categoriaServico.length ? (
-                  <p style={{ margin:0, fontSize:13.5, color:"#1a1a2e", lineHeight:1.6 }}>
-                    Você trabalha com: <strong>{categoriaServico.map(id => CATS.find(c => c.id === id)?.label || id).join(", ")}</strong>
-                  </p>
-                ) : (
-                  <p style={{ margin:0, fontSize:12.5, color:"#E53935", fontWeight:700 }}>Nenhuma categoria selecionada — toque em Editar pra escolher.</p>
-                )
+              {(!editMode || !categoriaElegivel) ? (
+                <>
+                  {categoriaServico.length ? (
+                    <p style={{ margin:0, fontSize:13.5, color:"#1a1a2e", lineHeight:1.6 }}>
+                      Você trabalha com: <strong>{categoriaServico.map(id => CATS.find(c => c.id === id)?.label || id).join(", ")}</strong>
+                    </p>
+                  ) : (
+                    <p style={{ margin:0, fontSize:12.5, color:"#E53935", fontWeight:700 }}>Nenhuma categoria selecionada{!editMode ? " — toque em Editar pra escolher." : "."}</p>
+                  )}
+                  {!categoriaElegivel && (
+                    <p style={{ margin:"8px 0 0", fontSize:11.5, color:"#9CA3AF", lineHeight:1.5 }}>
+                      {categoriaTrocasEsgotadas
+                        ? "Você já usou as 2 trocas de categoria disponíveis. Pra corrigir por engano ou em caso excepcional, fale com o suporte."
+                        : "Troca de categoria só é permitida quando sua assinatura renovar ou você mudar de plano."}
+                    </p>
+                  )}
+                </>
               ) : (
                 <>
                   <p style={{ margin:"0 0 10px", fontSize:11, color:"#9CA3AF" }}>
                     Necessárias pra ficar online e receber pedidos no Mural.
                     {limiteCategoria != null && ` ${plano === "pro" ? "Multi Pro" : "Multi Autônomo"}: até ${limiteCategoria}.`}
+                    {!categoriaEhPrimeiraEscolha && ` Você tem ${2 - trocasCategoriaUsadas} troca${2 - trocasCategoriaUsadas === 1 ? "" : "s"} de categoria restante${2 - trocasCategoriaUsadas === 1 ? "" : "s"} — confirme com atenção ao Salvar.`}
                   </p>
                   <CategoriaMultiSelect
                     value={categoriaServico}
@@ -10623,7 +10652,7 @@ const renderContent = () => {
     if (screen === "wallet") return <WalletScreen onBack={() => setScreen("profile")} pedidos={meusGanhos} />;
     if (screen === "profile") {
       if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
-      return <ProfileScreen role="professional" userName={userName} userEmail={userEmail} isPro={isPro} plano={plano} planoStatus={planoStatus} planoExpiraEm={planoExpiraEm} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenWallet={() => setScreen("wallet")} meusGanhos={meusGanhos} onOpenAdmin={() => setShowAdmin(true)} docStatus={docStatus} onDocStatusChange={(id, st) => setDocStatus(d => ({ ...d, [id]: st }))} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
+      return <ProfileScreen role="professional" userName={userName} userEmail={userEmail} isPro={isPro} plano={plano} planoStatus={planoStatus} planoExpiraEm={planoExpiraEm} planoInicio={planoInicio} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenWallet={() => setScreen("wallet")} meusGanhos={meusGanhos} onOpenAdmin={() => setShowAdmin(true)} docStatus={docStatus} onDocStatusChange={(id, st) => setDocStatus(d => ({ ...d, [id]: st }))} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
     }
     if (screen === "service" && selected) return <ServiceDetailPro key={selected.id} service={selected} onBack={() => setScreen("home")} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onOpenPinEntry={() => setScreen("pinjob")} onCancelarPedido={handleCancelarPedidoPosAceite} onSolicitarChegada={handleSolicitarChegada} onConfirmarInicio={handleConfirmarInicio} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
     if (screen === "pinjob"  && selected) return <ServiceDetailPinEntry key={selected.id} service={selected} onBack={() => setScreen("service")} onStatusChange={handlePedidoStatusChange} onConfirmarConclusao={handleConfirmarConclusao} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
