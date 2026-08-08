@@ -647,16 +647,19 @@ function NearbyCard({ s }) {
 }
 
 /* ───────────────────────── LOGO ───────────────────────────────────────────── */
+// Logo novo (multi_logo_transparente.png, 411x348) — raster único, sem variante
+// branca própria; "white" fica aceito por compatibilidade com as 5 chamadas
+// existentes mas não tem mais efeito (o antigo SVG desenhava o traço em
+// branco pra contrastar com headers escuros; o PNG já tem cor de marca fixa).
 function Logo({ size = 28, white = false }) {
-  const stroke = white ? "white" : B;
   return (
-    <svg width={size} height={size * 0.95} viewBox="0 0 44 42" fill="none">
-      <path d="M4 36 L4 12 L15 26 L22 14 L29 26 L40 12 L40 36" stroke={stroke} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M15 36 L15 27" stroke={stroke} strokeWidth="4" strokeLinecap="round" />
-      <path d="M29 36 L29 27" stroke={stroke} strokeWidth="4" strokeLinecap="round" />
-      <path d="M37 4 C33.7 4 31 6.7 31 10 C31 14.5 37 21 37 21 C37 21 43 14.5 43 10 C43 6.7 40.3 4 37 4Z" fill={O} />
-      <path d="M37 6 L37.9 8.8 L40.9 8.8 L38.5 10.6 L39.4 13.4 L37 11.6 L34.6 13.4 L35.5 10.6 L33.1 8.8 L36.1 8.8Z" fill="white" opacity=".95" />
-    </svg>
+    <img
+      src="/logo/multi_logo_transparente.png"
+      alt="Multi"
+      width={size}
+      height={size * (348 / 411)}
+      style={{ display:"block", objectFit:"contain" }}
+    />
   );
 }
 
