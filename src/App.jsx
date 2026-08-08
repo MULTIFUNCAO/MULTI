@@ -7029,13 +7029,12 @@ const ROLE_OPTIONS = [
     desc: "Receba oportunidades de serviços e conquiste novos clientes.",
     tag: "A partir de R$ 29,90/mês", tagBg:`${O}22`, tagBorder:"transparent", tagColor:O,
   },
-  {
-    id: "empresa", icon: Briefcase, accent: "#1a1a2e", accentDeep: "#0A2A6B",
-    title: "Quero crescer minha empresa",
-    hook: "Encontre clientes e profissionais para fazer sua operação acontecer.",
-    desc: "Publique demandas, encontre mão de obra e amplie suas oportunidades.",
-    tag: "Grátis para cadastrar", tagBg:"#1a1a2e14", tagBorder:"transparent", tagColor:"#1a1a2e",
-  },
+  // Card "Quero crescer minha empresa" (id "empresa", cadastro de empresa
+  // parceira) removido daqui por ora — não vamos trabalhar com esse tipo de
+  // cadastro por enquanto. A tela CadastroEmpresaScreen e a rota
+  // authScreen==="cadastro-empresa" continuam no código (só sem ponto de
+  // entrada na UI); ver ROLE_OPTIONS no histórico do git se precisar
+  // reativar o card.
 ];
 
 function RoleSelectScreen({ onSelect, onLogin, onBack }) {
