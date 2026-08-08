@@ -723,7 +723,7 @@ function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua
         <Logo size={26} white />
         <div>
           <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-            <span style={{ fontSize:19, fontWeight:900, color:"white", letterSpacing:-0.5, lineHeight:1 }}>multi</span>
+            <span style={{ fontSize:19, fontWeight:900, color:"white", letterSpacing:-0.5, lineHeight:1 }}>Multi</span>
             {isProfessional && (
               <span style={{ fontSize:9, fontWeight:900, background:O, color:"white", padding:"2px 7px", borderRadius:99 }}>
                 {isPro ? "PRO" : "Profissional"}
@@ -794,7 +794,7 @@ function GuestHeader({ onToggleRole, activeRole = "client" }) {
       <div style={{ display:"flex", alignItems:"center", justifyContent:"center", padding:"2px 18px 10px", gap:8 }}>
         <Logo size={26} white />
         <div>
-          <span style={{ fontSize:19, fontWeight:900, color:"white", letterSpacing:-0.5, lineHeight:1 }}>multi</span>
+          <span style={{ fontSize:19, fontWeight:900, color:"white", letterSpacing:-0.5, lineHeight:1 }}>Multi</span>
           <p style={{ fontSize:9, color:"rgba(255,255,255,.5)", margin:0, lineHeight:1.2 }}>serviços em um toque</p>
         </div>
       </div>
@@ -7073,7 +7073,7 @@ function RoleSelectScreen({ onSelect, onLogin, onBack }) {
 
         <div style={{ display:"flex", alignItems:"center", gap:9, margin:"6px 0 30px", position:"relative", zIndex:1 }}>
           <div style={{ width:32, height:32, borderRadius:10, background:"white", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900, fontSize:15, color:B, flexShrink:0 }}>M</div>
-          <span style={{ fontSize:15, fontWeight:900, color:"white", letterSpacing:-.3 }}>multi</span>
+          <span style={{ fontSize:15, fontWeight:900, color:"white", letterSpacing:-.3 }}>Multi</span>
         </div>
 
         <h1 style={{ position:"relative", zIndex:1, fontSize:32, fontWeight:900, color:"white", margin:"0 0 12px", lineHeight:1.08, letterSpacing:-.6 }}>
@@ -7150,7 +7150,7 @@ function WelcomeScreen({ onEmail, onLogin, onBack }) {
             <Logo size={44} />
           </div>
           <div style={{ textAlign:"center" }}>
-            <p style={{ fontSize:32, fontWeight:900, color:"white", letterSpacing:-1, lineHeight:1, margin:0 }}>multi</p>
+            <p style={{ fontSize:32, fontWeight:900, color:"white", letterSpacing:-1, lineHeight:1, margin:0 }}>Multi</p>
             <p style={{ fontSize:12, color:"rgba(255,255,255,.65)", fontWeight:600, marginTop:4, letterSpacing:.5 }}>serviços gerais em um toque</p>
           </div>
         </div>
