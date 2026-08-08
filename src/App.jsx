@@ -7992,7 +7992,7 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
         </div>
 
         <h2 style={{ fontSize:24, fontWeight:900, color:"#1a1a2e", margin:"0 0 10px" }}>
-          {isProfessional ? "Bem-vindo ao Multi PRO!" : "Bem-vindo ao Multi!"}
+          Bem-vindo ao Multi!
         </h2>
         <p style={{ fontSize:14, color:"#6B7280", lineHeight:1.7, margin:"0 0 20px" }}>
           Olá, <strong style={{ color:"#1a1a2e" }}>{name.trim().split(/\s+/)[0]}</strong>! 🎉<br/>
@@ -8147,7 +8147,7 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
           {loading ? (
             <><span style={{ width:18, height:18, border:"2.5px solid white", borderTopColor:"transparent", borderRadius:"50%", display:"inline-block", animation:"spin .7s linear infinite" }} /> Criando conta…</>
           ) : (
-            <><Check size={17} /> {isProfessional ? "Criar conta e ganhar PRO" : "Finalizar Cadastro"}</>
+            <><Check size={17} /> {isProfessional ? "Criar conta" : "Finalizar Cadastro"}</>
           )}
         </button>
       </div>
