@@ -3801,7 +3801,7 @@ function limitesTexto(planoId) {
     `Valor máximo R$${l.valorMaxServico.toLocaleString("pt-BR")}/serviço`,
   ];
 }
-function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, onDone, showToast }) {
+function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, onDone, showToast, onSkip }) {
   // Planos pagos de empresa deixaram de existir — titularTipo é sempre
   // "usuario" a partir de agora (nenhum call site restante manda "empresa").
   // isEmpresa fica hardcoded pra não precisar reescrever cada ternário de
@@ -3977,6 +3977,20 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
           );
         })}
       </div>
+
+      {/* Skip — só aparece no cadastro (RegisterScreen/VirarProfissionalScreen
+          passam onSkip); o "upgrade" de quem já é profissional ativo não
+          recebe essa prop, então nunca mostra esse link ali. Profissional sem
+          plano pago completa o cadastro grátis e navega/vê o mural
+          normalmente — só fica bloqueado na hora de se candidatar a um
+          serviço (ver PLAN BLOCK POPUP em ProfessionalHome). */}
+      {onSkip && (
+        <p style={{ textAlign:"center", margin:"22px 0 0" }}>
+          <button onClick={onSkip} style={{ background:"none", border:"none", color:"#9CA3AF", fontWeight:700, fontSize:13, cursor:"pointer", textDecoration:"underline", textUnderlineOffset:3, fontFamily:"inherit" }}>
+            Continuar sem plano por enquanto
+          </button>
+        </p>
+      )}
     </div>
   );
 }
@@ -7825,6 +7839,7 @@ function VirarProfissionalScreen({ userEmail, userName, showToast, onBack, onDon
         onBack={onBack}
         showToast={showToast}
         onDone={() => setStep("completar-perfil")}
+        onSkip={() => setStep("completar-perfil")}
       />
     );
   }
@@ -7942,6 +7957,7 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
         onBack={() => setStep("success")}
         showToast={showToast}
         onDone={() => setStep("completar-perfil")}
+        onSkip={() => setStep("completar-perfil")}
       />
     );
   }
@@ -8634,6 +8650,10 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   }, [userEmail]);
 
   const [showDocBlock, setShowDocBlock] = useState(false); // pop-up modal
+  // Pop-up modal — profissional sem plano pago ativo (Autônomo/Pro/Premium)
+  // tentando demonstrar interesse num serviço. Ver radar/mural continua
+  // liberado sem plano; só a ação de se candidatar é bloqueada aqui.
+  const [showPlanBlock, setShowPlanBlock] = useState(false);
 
   const filters = [
     { id:"all",    label:"Todos",           emoji:"📋" },
@@ -8862,7 +8882,13 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
       {/* Modal fixed inset:0 — precisa ficar fora do <button> "Ficar Online"
           (botão dentro de botão é HTML inválido e quebra o clique real do
           navegador em "Aceitar agora"/"Recusar"). */}
-      {newOrder && <NewOrderCard order={newOrder} onAccept={()=>{stopNewOrderSound();setNewOrder(null);setOnline(false);pararEscutaPedidos();onAcceptOrder&&onAcceptOrder({id:newOrder.id,cliente_id:newOrder.cliente_id,title:newOrder.category,category:newOrder.category,clientName:safeGetUser().name||"Cliente",location:newOrder.location,value:newOrder.value,description:newOrder.description,photo:newOrder.photo,photos:newOrder.photos||[]});}} onReject={()=>{stopNewOrderSound();setNewOrder(null);}} />}
+      {newOrder && <NewOrderCard order={newOrder} onAccept={()=>{
+        stopNewOrderSound();setNewOrder(null);
+        // Mesmo gate do botão "Tenho Interesse" do mural — sem plano pago
+        // ativo, "Aceitar agora" também não pode virar candidatura direto.
+        if (!isPro) { setOnline(false); pararEscutaPedidos(); setShowPlanBlock(true); return; }
+        setOnline(false);pararEscutaPedidos();onAcceptOrder&&onAcceptOrder({id:newOrder.id,cliente_id:newOrder.cliente_id,title:newOrder.category,category:newOrder.category,clientName:safeGetUser().name||"Cliente",location:newOrder.location,value:newOrder.value,description:newOrder.description,photo:newOrder.photo,photos:newOrder.photos||[]});
+      }} onReject={()=>{stopNewOrderSound();setNewOrder(null);}} />}
 
       {/* ── UPGRADE BANNER (free users, sem plano ativo — some sozinho pra
           quem já é PRO, ver !isPro acima) ── */}
@@ -8970,26 +8996,31 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                       </span>
                     </div>
 
-                    {/* Action button — triggers doc-block popup if docs not verified */}
+                    {/* Action button — triggers doc-block popup if docs not verified,
+                        ou plan-block popup se não tem plano pago ativo (ver radar/mural
+                        continua liberado sem plano; só demonstrar interesse é bloqueado) */}
                     <button
                       onClick={e => {
                         e.stopPropagation();
                         if (!allDocsVerified) { setShowDocBlock(true); return; }
+                        if (!isPro) { setShowPlanBlock(true); return; }
                         if (isLocked) { onUpgrade(); return; }
                       const proUser=safeGetUser();
                       supabase.from("propostas").upsert({pedido_id:s.id,profissional_id:proUser.email||proUser.whatsapp,profissional_nome:proUser.name||"Profissional",profissional_email:proUser.email||proUser.whatsapp,valor:s.value||0,mensagem:"Tenho interesse neste serviço!",status:"pendente",cliente_email:s.cliente_id||""},{onConflict:"pedido_id,profissional_id"}).then(()=>{}).catch(()=>{});
                       onViewService({ _notify:{ serviceId:s.id, serviceTitle:s.title, value:s.value, proName:proUser.name||"Profissional" } });
                       }}
                       style={{ padding:"11px 0", borderRadius:12, border:"none", cursor:"pointer", fontWeight:900, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:7,
-                        background: !allDocsVerified ? "#F5F6FA" : isLocked ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : `linear-gradient(135deg,${O},#E64A19)`,
+                        background: !allDocsVerified ? "#F5F6FA" : !isPro ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : isLocked ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : `linear-gradient(135deg,${O},#E64A19)`,
                         color:      !allDocsVerified ? "#9CA3AF" : "white",
-                        boxShadow:  !allDocsVerified ? "none" : isLocked ? "0 3px 10px rgba(124,58,237,.28)" : "0 3px 10px rgba(255,87,34,.28)",
+                        boxShadow:  !allDocsVerified ? "none" : !isPro ? "0 3px 10px rgba(124,58,237,.28)" : isLocked ? "0 3px 10px rgba(124,58,237,.28)" : "0 3px 10px rgba(255,87,34,.28)",
                       }}>
                       {!allDocsVerified
                         ? <><Lock size={13} /> Candidatar-me</>
-                        : isLocked
-                          ? <><Crown size={13} /> Assinar PRO</>
-                          : "Tenho Interesse"}
+                        : !isPro
+                          ? <><Crown size={13} /> Assinar plano</>
+                          : isLocked
+                            ? <><Crown size={13} /> Assinar PRO</>
+                            : "Tenho Interesse"}
                     </button>
                   </>
                 )}
@@ -9191,6 +9222,35 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════ PLAN BLOCK POPUP — sem plano pago ativo ══════════════ */}
+      {showPlanBlock && (
+        <div
+          onClick={() => setShowPlanBlock(false)}
+          style={{ position:"fixed", inset:0, zIndex:500, background:"rgba(15,23,42,.7)", backdropFilter:"blur(6px)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ width:"100%", maxWidth:440, background:"white", borderRadius:"28px 28px 0 0", padding:"32px 24px 28px", textAlign:"center" }}>
+            <div style={{ width:64, height:64, borderRadius:20, background:"linear-gradient(135deg,#7C3AED,#4F46E5)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 18px", boxShadow:"0 10px 24px rgba(124,58,237,.35)" }}>
+              <Crown size={30} color="white" />
+            </div>
+            <p style={{ fontSize:18, fontWeight:900, color:"#1a1a2e", margin:"0 0 8px" }}>Assine um plano pra se candidatar</p>
+            <p style={{ fontSize:13.5, color:"#666", lineHeight:1.55, margin:"0 0 24px", padding:"0 6px" }}>
+              Você pode explorar o mural à vontade — mas pra demonstrar interesse e ser escolhido por um cliente, é preciso ter um plano ativo (Autônomo, Pro ou Premium).
+            </p>
+            <button
+              onClick={() => { setShowPlanBlock(false); onUpgrade?.(); }}
+              style={{ width:"100%", padding:"15px 0", borderRadius:16, border:"none", cursor:"pointer", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", color:"white", fontWeight:900, fontSize:14, boxShadow:"0 8px 22px rgba(124,58,237,.35)", marginBottom:10, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+              <Crown size={16} /> Ver planos
+            </button>
+            <button
+              onClick={() => setShowPlanBlock(false)}
+              style={{ width:"100%", padding:"12px 0", background:"none", border:"none", color:"#94A3B8", fontSize:13, fontWeight:600, cursor:"pointer", textDecoration:"underline", textUnderlineOffset:3 }}>
+              Agora não
+            </button>
           </div>
         </div>
       )}
