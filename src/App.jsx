@@ -120,322 +120,243 @@ function getOneSignalPlayerId() {
 // (revertendo a ideia de "19 grupos contam pro plano + item é tag de busca"
 // de um dia antes). Cada item de CATS (ex.: "Pedreiro", "Encanador") é a
 // categoria de verdade — é o que o cliente escolhe ao publicar um pedido e o
-// que o profissional escolhe no perfil, e é isso que conta pro limite do
-// plano (Autônomo:1 / Pro:3 / Premium:ilimitado), exatamente como era antes
-// da tentativa dos 19 grupos. O campo `grupo` é só metadado visual (usado
-// pra organizar o modal "Ver todas as categorias" em seções) — não tem
-// efeito nenhum sobre o limite do plano ou sobre a coluna categoria_servico,
-// que continua text[] sem nenhuma migration nova necessária. Itens que
-// apareciam em mais de um dos 19 grupos (ex.: "Encanador" em Reformas e em
-// Hidráulica) foram mantidos uma única vez, no grupo mais específico.
+// que o profissional escolhe no perfil. O campo `grupo` é só metadado visual
+// (usado pra organizar o modal "Ver todas as categorias" e o seletor em 2
+// passos do perfil/publicação em seções) — não muda a coluna categoria_servico,
+// que continua text[] sem nenhuma migration nova necessária.
+//
+// Nova lista de categorias 2026-08-09: substitui os 19 grupos/265 itens
+// antigos por 23 grupos/157 profissões distintas (165 entradas — 8 profissões
+// aparecem listadas em 2 grupos de propósito, ver abaixo). O limite de plano
+// não é mais um teto flat de itens: agora é grupos×profissões-por-grupo
+// (ver PLANO_LIMITES_USUARIO). Itens que fazem sentido em mais de um grupo
+// (ex.: "Fotógrafo" em Festas e Eventos e em Fotografia e Vídeo) foram
+// mantidos com o MESMO id nos dois — descobrível pelos dois caminhos de
+// navegação, sem contar em dobro no limite do plano, já que é o mesmo id
+// entrando uma única vez em categoria_servico. Lista completa dos 8 ids
+// cross-listados: carpinteiro (Reformas e Construção + Móveis/Marcenaria/
+// Montagem), garcom/barman/churrasqueiro/cozinheiro (Festas e Eventos +
+// Alimentação), fotografo/videomaker (Festas e Eventos + Fotografia e
+// Vídeo), editor_de_video (Marketing e Serviços Digitais + Fotografia e
+// Vídeo). Qualquer componente que faça `CATS.filter(c => value.includes(c.id))`
+// pra montar chips de "selecionados" precisa deduplicar por id — um id
+// cross-listado aparece 2x em CATS e geraria chip duplicado sem isso.
 const CATS = [
   // ── Reformas e Construção ──
   { id:"pedreiro", label:"Pedreiro", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"servente", label:"Servente", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"mestre_obras", label:"Mestre de obras", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"eletricista", label:"Eletricista", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
+  { id:"ajudante_de_pedreiro", label:"Ajudante de Pedreiro", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
+  { id:"mestre_de_obras", label:"Mestre de Obras", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
   { id:"pintor", label:"Pintor", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
   { id:"gesseiro", label:"Gesseiro", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"drywall", label:"Drywall", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
   { id:"serralheiro", label:"Serralheiro", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
   { id:"soldador", label:"Soldador", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
   { id:"vidraceiro", label:"Vidraceiro", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"marceneiro", label:"Marceneiro", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
   { id:"carpinteiro", label:"Carpinteiro", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"azulejista", label:"Azulejista", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"assentador_porcelanato", label:"Assentador de porcelanato", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"instalador_piso_laminado", label:"Instalador de pisos laminados", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"instalador_piso_vinilico", label:"Instalador de piso vinílico", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"marmoreiro", label:"Marmoreiro", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"granito", label:"Granito", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"estrutura_metalica", label:"Estrutura metálica", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
   { id:"telhadista", label:"Telhadista", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
   { id:"calheiro", label:"Calheiro", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"impermeabilizacao", label:"Impermeabilização", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"forro_pvc", label:"Forro PVC", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"sanca", label:"Sanca", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"fachadas", label:"Fachadas", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"muros", label:"Muros", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"cercamentos", label:"Cercamentos", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"pavimentacao", label:"Pavimentação", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"concretagem", label:"Concretagem", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"demolicao", label:"Demolição", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"escavacao", label:"Escavação", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"terraplanagem", label:"Terraplanagem", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  // ── Instalação e Montagem ──
-  { id:"marido_aluguel", label:"Marido de aluguel", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Instalação e Montagem" },
-  { id:"montador_moveis", label:"Montador de móveis", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Instalação e Montagem" },
-  { id:"instalacao_portas", label:"Instalação de portas", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Instalação e Montagem" },
-  { id:"instalacao_janelas", label:"Instalação de janelas", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Instalação e Montagem" },
-  { id:"instalacao_portoes", label:"Instalação de portões", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Instalação e Montagem" },
-  { id:"automatizacao_portoes", label:"Automatização de portões", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Instalação e Montagem" },
-  { id:"instalacao_fechaduras", label:"Instalação de fechaduras", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Instalação e Montagem" },
-  { id:"instalacao_cortinas", label:"Instalação de cortinas", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Instalação e Montagem" },
-  { id:"instalacao_persianas", label:"Instalação de persianas", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Instalação e Montagem" },
-  { id:"instalacao_suporte_tv", label:"Instalação de suporte de TV", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Instalação e Montagem" },
-  { id:"instalacao_tv", label:"Instalação de TV", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Instalação e Montagem" },
-  { id:"instalacao_antenas", label:"Instalação de antenas", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Instalação e Montagem" },
-  { id:"instalacao_ventiladores", label:"Instalação de ventiladores", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Instalação e Montagem" },
-  { id:"instalacao_chuveiros", label:"Instalação de chuveiros", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Instalação e Montagem" },
-  { id:"instalacao_luminarias", label:"Instalação de luminárias", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Instalação e Montagem" },
-  { id:"instalacao_toldos", label:"Instalação de toldos", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Instalação e Montagem" },
-  { id:"instalacao_varais", label:"Instalação de varais", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Instalação e Montagem" },
-  { id:"redes", label:"Redes de Proteção", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Instalação e Montagem" },
-  // ── Elétrica e Segurança Eletrônica ──
-  { id:"eletricista_industrial", label:"Eletricista industrial", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Segurança Eletrônica" },
-  { id:"cftv", label:"CFTV", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Segurança Eletrônica" },
-  { id:"instalacao_cameras", label:"Instalação de câmeras", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Segurança Eletrônica" },
-  { id:"alarmes", label:"Alarmes", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Segurança Eletrônica" },
-  { id:"cerca_eletrica", label:"Cerca elétrica", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Segurança Eletrônica" },
-  { id:"interfone", label:"Interfone", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Segurança Eletrônica" },
-  { id:"controle_acesso", label:"Controle de acesso", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Segurança Eletrônica" },
-  { id:"portao_eletronico", label:"Portão eletrônico", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Segurança Eletrônica" },
-  { id:"automacao_residencial", label:"Automação residencial", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Segurança Eletrônica" },
-  { id:"automacao_comercial", label:"Automação comercial", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Segurança Eletrônica" },
-  { id:"energia_solar", label:"Energia solar", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Segurança Eletrônica" },
-  { id:"carregador_veicular", label:"Instalação de carregador para carro elétrico", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Segurança Eletrônica" },
+  { id:"impermeabilizador", label:"Impermeabilizador", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
+  { id:"marmorista", label:"Marmorista", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
+  { id:"instalador_de_pisos", label:"Instalador de Pisos", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
+  { id:"instalador_de_drywall", label:"Instalador de Drywall", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
+  // ── Elétrica e Automação ──
+  { id:"eletricista", label:"Eletricista", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Automação" },
+  { id:"eletricista_industrial", label:"Eletricista Industrial", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Automação" },
+  { id:"tecnico_em_automacao", label:"Técnico em Automação", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Automação" },
+  { id:"instalador_de_energia_solar", label:"Instalador de Energia Solar", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Automação" },
+  { id:"instalador_de_carregador_para_veiculos_eletricos", label:"Instalador de Carregador para Veículos Elétricos", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Automação" },
+  { id:"tecnico_de_seguranca_eletronica", label:"Técnico de Segurança Eletrônica", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Automação" },
   // ── Hidráulica e Desentupimento ──
   { id:"encanador", label:"Encanador", emoji:"🔧", star:4.6, bg:"#E8F4FF", dot:"#0070F3", grupo:"Hidráulica e Desentupimento" },
-  { id:"caca_vazamentos", label:"Caça vazamentos", emoji:"🔧", star:4.6, bg:"#E8F4FF", dot:"#0070F3", grupo:"Hidráulica e Desentupimento" },
-  { id:"desentupimento", label:"Desentupimento", emoji:"🔧", star:4.6, bg:"#E8F4FF", dot:"#0070F3", grupo:"Hidráulica e Desentupimento" },
-  { id:"hidrojateamento", label:"Hidrojateamento", emoji:"🔧", star:4.6, bg:"#E8F4FF", dot:"#0070F3", grupo:"Hidráulica e Desentupimento" },
-  { id:"limpeza_fossa", label:"Limpeza de fossa", emoji:"🔧", star:4.6, bg:"#E8F4FF", dot:"#0070F3", grupo:"Hidráulica e Desentupimento" },
-  { id:"instalacao_bombas", label:"Instalação de bombas", emoji:"🔧", star:4.6, bg:"#E8F4FF", dot:"#0070F3", grupo:"Hidráulica e Desentupimento" },
-  { id:"manutencao_hidraulica", label:"Manutenção hidráulica", emoji:"🔧", star:4.6, bg:"#E8F4FF", dot:"#0070F3", grupo:"Hidráulica e Desentupimento" },
-  // ── Climatização ──
-  { id:"instalacao_ar_condicionado", label:"Instalação de ar-condicionado", emoji:"❄️", star:4.7, bg:"#E1F5FE", dot:"#0277BD", grupo:"Climatização" },
-  { id:"manutencao", label:"Manutenção", emoji:"❄️", star:4.7, bg:"#E1F5FE", dot:"#0277BD", grupo:"Climatização" },
-  { id:"higienizacao", label:"Higienização", emoji:"❄️", star:4.7, bg:"#E1F5FE", dot:"#0277BD", grupo:"Climatização" },
-  { id:"exaustores", label:"Exaustores", emoji:"❄️", star:4.7, bg:"#E1F5FE", dot:"#0277BD", grupo:"Climatização" },
-  { id:"ventilacao", label:"Ventilação", emoji:"❄️", star:4.7, bg:"#E1F5FE", dot:"#0277BD", grupo:"Climatização" },
-  { id:"camara_fria", label:"Câmara fria", emoji:"❄️", star:4.7, bg:"#E1F5FE", dot:"#0277BD", grupo:"Climatização" },
-  // ── Assistência Técnica ──
-  { id:"maquina_lavar", label:"Máquina de lavar", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Assistência Técnica" },
-  { id:"lava_e_seca", label:"Lava e seca", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Assistência Técnica" },
-  { id:"geladeira", label:"Geladeira", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Assistência Técnica" },
-  { id:"freezer", label:"Freezer", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Assistência Técnica" },
-  { id:"fogao", label:"Fogão", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Assistência Técnica" },
-  { id:"cooktop", label:"Cooktop", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Assistência Técnica" },
-  { id:"forno", label:"Forno", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Assistência Técnica" },
-  { id:"microondas", label:"Micro-ondas", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Assistência Técnica" },
-  { id:"purificador", label:"Purificador", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Assistência Técnica" },
-  { id:"bebedouro", label:"Bebedouro", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Assistência Técnica" },
-  { id:"televisao", label:"Televisão", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Assistência Técnica" },
-  { id:"antena", label:"Antena", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Assistência Técnica" },
-  { id:"computador", label:"Computador", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Assistência Técnica" },
-  { id:"notebook", label:"Notebook", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Assistência Técnica" },
-  { id:"impressora", label:"Impressora", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Assistência Técnica" },
-  { id:"redes_ti", label:"Redes", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Assistência Técnica" },
-  { id:"wifi", label:"Wi-Fi", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Assistência Técnica" },
-  { id:"servidor", label:"Servidor", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Assistência Técnica" },
-  { id:"equip_industriais", label:"Equipamentos industriais", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Assistência Técnica" },
-  { id:"equip_medicos", label:"Equipamentos médicos", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Assistência Técnica" },
-  { id:"equip_odontologicos", label:"Equipamentos odontológicos", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Assistência Técnica" },
-  // ── Limpeza Especializada ──
-  { id:"faxina", label:"Faxina", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza Especializada" },
-  { id:"diarista", label:"Diarista", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza Especializada" },
-  { id:"limpeza_residencial", label:"Limpeza residencial", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza Especializada" },
-  { id:"limpeza_comercial", label:"Limpeza comercial", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza Especializada" },
-  { id:"limpeza_pos_obra", label:"Limpeza pós-obra", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza Especializada" },
-  { id:"limpeza_condominio", label:"Limpeza de condomínio", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza Especializada" },
-  { id:"limpeza_escritorios", label:"Limpeza de escritórios", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza Especializada" },
-  { id:"lavagem_fachadas", label:"Lavagem de fachadas", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza Especializada" },
-  { id:"lavagem_telhados", label:"Lavagem de telhados", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza Especializada" },
-  { id:"limpeza_calhas", label:"Limpeza de calhas", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza Especializada" },
-  { id:"limpeza_piscinas", label:"Limpeza de piscinas", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza Especializada" },
-  { id:"limpeza_vidros", label:"Limpeza de vidros", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza Especializada" },
-  { id:"limpeza_caixa_dagua", label:"Limpeza de caixa d'água", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza Especializada" },
-  { id:"higienizacao_sofas", label:"Higienização de sofás", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza Especializada" },
-  { id:"higienizacao_colchoes", label:"Higienização de colchões", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza Especializada" },
-  { id:"higienizacao_estofados", label:"Higienização de estofados", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza Especializada" },
-  { id:"lavagem_tapetes", label:"Lavagem de tapetes", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza Especializada" },
-  { id:"lavagem_carpetes", label:"Lavagem de carpetes", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza Especializada" },
-  { id:"impermeabilizacao_estofados", label:"Impermeabilização de estofados", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza Especializada" },
-  // ── Jardinagem e Piscinas ──
-  { id:"jardineiro", label:"Jardineiro", emoji:"🌿", star:4.8, bg:"#E8F8EE", dot:"#2E7D32", grupo:"Jardinagem e Piscinas" },
-  { id:"paisagista", label:"Paisagista", emoji:"🌿", star:4.8, bg:"#E8F8EE", dot:"#2E7D32", grupo:"Jardinagem e Piscinas" },
-  { id:"corte_grama", label:"Corte de grama", emoji:"🌿", star:4.8, bg:"#E8F8EE", dot:"#2E7D32", grupo:"Jardinagem e Piscinas" },
-  { id:"poda_arvores", label:"Poda de árvores", emoji:"🌿", star:4.8, bg:"#E8F8EE", dot:"#2E7D32", grupo:"Jardinagem e Piscinas" },
-  { id:"limpeza_terrenos", label:"Limpeza de terrenos", emoji:"🌿", star:4.8, bg:"#E8F8EE", dot:"#2E7D32", grupo:"Jardinagem e Piscinas" },
-  { id:"irrigacao", label:"Irrigação", emoji:"🌿", star:4.8, bg:"#E8F8EE", dot:"#2E7D32", grupo:"Jardinagem e Piscinas" },
-  { id:"piscineiro", label:"Piscineiro", emoji:"🌿", star:4.8, bg:"#E8F8EE", dot:"#2E7D32", grupo:"Jardinagem e Piscinas" },
-  { id:"manutencao_piscinas", label:"Manutenção de piscinas", emoji:"🌿", star:4.8, bg:"#E8F8EE", dot:"#2E7D32", grupo:"Jardinagem e Piscinas" },
-  // ── Serviços Domésticos ──
-  { id:"empregada_domestica", label:"Empregada doméstica", emoji:"🏠", star:4.7, bg:"#FFF0F5", dot:"#C2185B", grupo:"Serviços Domésticos" },
-  { id:"diarista_domestica", label:"Diarista", emoji:"🏠", star:4.7, bg:"#FFF0F5", dot:"#C2185B", grupo:"Serviços Domésticos" },
-  { id:"baba", label:"Babá", emoji:"🏠", star:4.7, bg:"#FFF0F5", dot:"#C2185B", grupo:"Serviços Domésticos" },
-  { id:"cuidador_infantil", label:"Cuidador infantil", emoji:"🏠", star:4.7, bg:"#FFF0F5", dot:"#C2185B", grupo:"Serviços Domésticos" },
-  { id:"cuidador_idosos", label:"Cuidador de idosos", emoji:"🏠", star:4.7, bg:"#FFF0F5", dot:"#C2185B", grupo:"Serviços Domésticos" },
-  { id:"acompanhante_hospitalar", label:"Acompanhante hospitalar", emoji:"🏠", star:4.7, bg:"#FFF0F5", dot:"#C2185B", grupo:"Serviços Domésticos" },
-  { id:"cozinheira", label:"Cozinheira", emoji:"🏠", star:4.7, bg:"#FFF0F5", dot:"#C2185B", grupo:"Serviços Domésticos" },
-  { id:"passadeira", label:"Passadeira", emoji:"🏠", star:4.7, bg:"#FFF0F5", dot:"#C2185B", grupo:"Serviços Domésticos" },
-  { id:"lavadeira", label:"Lavadeira", emoji:"🏠", star:4.7, bg:"#FFF0F5", dot:"#C2185B", grupo:"Serviços Domésticos" },
-  { id:"governanta", label:"Governanta", emoji:"🏠", star:4.7, bg:"#FFF0F5", dot:"#C2185B", grupo:"Serviços Domésticos" },
-  { id:"costureira", label:"Costureira", emoji:"🏠", star:4.7, bg:"#FFF0F5", dot:"#C2185B", grupo:"Serviços Domésticos" },
-  { id:"personal_organizer", label:"Personal Organizer", emoji:"🏠", star:4.7, bg:"#FFF0F5", dot:"#C2185B", grupo:"Serviços Domésticos" },
-  { id:"sapateiro", label:"Sapateiro", emoji:"🏠", star:4.7, bg:"#FFF0F5", dot:"#C2185B", grupo:"Serviços Domésticos" },
-  // ── Serviços para Pets ──
-  { id:"banho_tosa", label:"Banho e tosa", emoji:"🐕", star:4.8, bg:"#FFF3E0", dot:"#E65100", grupo:"Serviços para Pets" },
-  { id:"dog_walker", label:"Dog Walker", emoji:"🐕", star:4.8, bg:"#FFF3E0", dot:"#E65100", grupo:"Serviços para Pets" },
-  { id:"pet_sitter", label:"Pet Sitter", emoji:"🐕", star:4.8, bg:"#FFF3E0", dot:"#E65100", grupo:"Serviços para Pets" },
-  { id:"adestrador", label:"Adestrador", emoji:"🐕", star:4.8, bg:"#FFF3E0", dot:"#E65100", grupo:"Serviços para Pets" },
-  { id:"hotel_pets", label:"Hotel para pets", emoji:"🐕", star:4.8, bg:"#FFF3E0", dot:"#E65100", grupo:"Serviços para Pets" },
-  { id:"taxi_pet", label:"Táxi Pet", emoji:"🐕", star:4.8, bg:"#FFF3E0", dot:"#E65100", grupo:"Serviços para Pets" },
-  { id:"veterinario_domiciliar", label:"Veterinário domiciliar", emoji:"🐕", star:4.8, bg:"#FFF3E0", dot:"#E65100", grupo:"Serviços para Pets" },
+  { id:"desentupidor", label:"Desentupidor", emoji:"🔧", star:4.6, bg:"#E8F4FF", dot:"#0070F3", grupo:"Hidráulica e Desentupimento" },
+  { id:"tecnico_de_caca_vazamento", label:"Técnico de Caça-Vazamento", emoji:"🔧", star:4.6, bg:"#E8F4FF", dot:"#0070F3", grupo:"Hidráulica e Desentupimento" },
+  { id:"hidrojatista", label:"Hidrojatista", emoji:"🔧", star:4.6, bg:"#E8F4FF", dot:"#0070F3", grupo:"Hidráulica e Desentupimento" },
+  { id:"tecnico_de_bombas", label:"Técnico de Bombas", emoji:"🔧", star:4.6, bg:"#E8F4FF", dot:"#0070F3", grupo:"Hidráulica e Desentupimento" },
+  // ── Móveis, Marcenaria e Montagem ──
+  { id:"montador_de_moveis", label:"Montador de Móveis", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Móveis, Marcenaria e Montagem" },
+  { id:"marceneiro", label:"Marceneiro", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Móveis, Marcenaria e Montagem" },
+  { id:"carpinteiro", label:"Carpinteiro", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Móveis, Marcenaria e Montagem" },
+  { id:"restaurador_de_moveis", label:"Restaurador de Móveis", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Móveis, Marcenaria e Montagem" },
+  { id:"projetista_de_moveis", label:"Projetista de Móveis", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Móveis, Marcenaria e Montagem" },
+  // ── Limpeza e Higienização ──
+  { id:"diarista", label:"Diarista", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza e Higienização" },
+  { id:"higienizador_de_estofados", label:"Higienizador de Estofados", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza e Higienização" },
+  { id:"limpador_de_vidros", label:"Limpador de Vidros", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza e Higienização" },
+  { id:"limpador_de_fachadas", label:"Limpador de Fachadas", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza e Higienização" },
+  { id:"limpador_de_caixa_d_agua", label:"Limpador de Caixa d'Água", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza e Higienização" },
+  { id:"piscineiro", label:"Piscineiro", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza e Higienização" },
+  { id:"profissional_de_limpeza_pos_obra", label:"Profissional de Limpeza Pós-Obra", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza e Higienização" },
+  { id:"profissional_de_limpeza_comercial", label:"Profissional de Limpeza Comercial", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza e Higienização" },
+  { id:"personal_organizer", label:"Personal Organizer", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza e Higienização" },
+  // ── Climatização e Refrigeração ──
+  { id:"tecnico_de_ar_condicionado", label:"Técnico de Ar-Condicionado", emoji:"❄️", star:4.7, bg:"#E1F5FE", dot:"#0277BD", grupo:"Climatização e Refrigeração" },
+  { id:"tecnico_de_refrigeracao", label:"Técnico de Refrigeração", emoji:"❄️", star:4.7, bg:"#E1F5FE", dot:"#0277BD", grupo:"Climatização e Refrigeração" },
+  // ── Técnica e Manutenção ──
+  { id:"tecnico_de_eletrodomesticos", label:"Técnico de Eletrodomésticos", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Técnica e Manutenção" },
+  { id:"tecnico_de_eletronicos", label:"Técnico de Eletrônicos", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Técnica e Manutenção" },
+  { id:"tecnico_de_celulares", label:"Técnico de Celulares", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Técnica e Manutenção" },
+  { id:"tecnico_de_informatica", label:"Técnico de Informática", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Técnica e Manutenção" },
+  // ── Beleza ──
+  { id:"cabeleireiro", label:"Cabeleireiro(a)", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
+  { id:"barbeiro", label:"Barbeiro", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
+  { id:"trancista", label:"Trancista", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
+  { id:"manicure", label:"Manicure", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
+  { id:"pedicure", label:"Pedicure", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
+  { id:"nail_designer", label:"Nail Designer", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
+  { id:"designer_de_sobrancelhas", label:"Designer de Sobrancelhas", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
+  { id:"lash_designer", label:"Lash Designer", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
+  { id:"maquiador", label:"Maquiador(a)", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
+  { id:"penteadista", label:"Penteadista", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
+  { id:"esteticista", label:"Esteticista", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
+  { id:"massoterapeuta", label:"Massoterapeuta", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
+  { id:"depilador", label:"Depilador(a)", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
+  { id:"micropigmentador", label:"Micropigmentador(a)", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
+  // ── Instalações e Pequenos Reparos ──
+  { id:"marido_de_aluguel", label:"Marido de Aluguel", emoji:"🔨", star:4.6, bg:"#FDECEA", dot:"#D84315", grupo:"Instalações e Pequenos Reparos" },
+  { id:"instalador", label:"Instalador", emoji:"🔨", star:4.6, bg:"#FDECEA", dot:"#D84315", grupo:"Instalações e Pequenos Reparos" },
+  { id:"instalador_de_tv", label:"Instalador de TV", emoji:"🔨", star:4.6, bg:"#FDECEA", dot:"#D84315", grupo:"Instalações e Pequenos Reparos" },
+  { id:"instalador_de_cortinas_e_persianas", label:"Instalador de Cortinas e Persianas", emoji:"🔨", star:4.6, bg:"#FDECEA", dot:"#D84315", grupo:"Instalações e Pequenos Reparos" },
+  { id:"instalador_de_redes_de_protecao", label:"Instalador de Redes de Proteção", emoji:"🔨", star:4.6, bg:"#FDECEA", dot:"#D84315", grupo:"Instalações e Pequenos Reparos" },
+  { id:"instalador_de_varais", label:"Instalador de Varais", emoji:"🔨", star:4.6, bg:"#FDECEA", dot:"#D84315", grupo:"Instalações e Pequenos Reparos" },
+  { id:"instalador_de_prateleiras_e_suportes", label:"Instalador de Prateleiras e Suportes", emoji:"🔨", star:4.6, bg:"#FDECEA", dot:"#D84315", grupo:"Instalações e Pequenos Reparos" },
+  // ── Chaveiro ──
+  { id:"chaveiro", label:"Chaveiro", emoji:"🔑", star:4.6, bg:"#FFF8E1", dot:"#F9A825", grupo:"Chaveiro" },
+  // ── Jardinagem e Áreas Externas ──
+  { id:"jardineiro", label:"Jardineiro", emoji:"🌿", star:4.8, bg:"#E8F8EE", dot:"#2E7D32", grupo:"Jardinagem e Áreas Externas" },
+  { id:"paisagista", label:"Paisagista", emoji:"🌿", star:4.8, bg:"#E8F8EE", dot:"#2E7D32", grupo:"Jardinagem e Áreas Externas" },
+  { id:"podador", label:"Podador", emoji:"🌿", star:4.8, bg:"#E8F8EE", dot:"#2E7D32", grupo:"Jardinagem e Áreas Externas" },
+  { id:"rocador", label:"Roçador", emoji:"🌿", star:4.8, bg:"#E8F8EE", dot:"#2E7D32", grupo:"Jardinagem e Áreas Externas" },
+  { id:"cortador_de_grama", label:"Cortador de Grama", emoji:"🌿", star:4.8, bg:"#E8F8EE", dot:"#2E7D32", grupo:"Jardinagem e Áreas Externas" },
+  { id:"instalador_de_irrigacao", label:"Instalador de Irrigação", emoji:"🌿", star:4.8, bg:"#E8F8EE", dot:"#2E7D32", grupo:"Jardinagem e Áreas Externas" },
   // ── Automotivo ──
   { id:"mecanico", label:"Mecânico", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"mecanico_diesel", label:"Mecânico diesel", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"auto_eletrica", label:"Auto elétrica", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"borracharia", label:"Borracharia", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"funilaria", label:"Funilaria", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"pintura_automotiva", label:"Pintura automotiva", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"martelinho_ouro", label:"Martelinho de ouro", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"estetica_automotiva", label:"Estética automotiva", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"polimento", label:"Polimento", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"cristalizacao", label:"Cristalização", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"higienizacao_automotiva", label:"Higienização automotiva", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"lava_rapido", label:"Lava-rápido", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"insulfilm", label:"Insulfilm", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"guincho", label:"Guincho", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"troca_bateria", label:"Troca de bateria", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  // ── Transporte e Mudanças ──
-  { id:"frete", label:"Frete", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
-  { id:"carreto", label:"Carreto", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
-  { id:"mudanca_residencial", label:"Mudança residencial", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
-  { id:"mudanca_comercial", label:"Mudança comercial", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
-  { id:"motoboy", label:"Motoboy", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
-  { id:"entregador", label:"Entregador", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
-  { id:"reboque", label:"Reboque", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
-  { id:"motorista_particular", label:"Motorista particular", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
-  { id:"motorista_executivo", label:"Motorista executivo", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
-  { id:"transporte_cargas", label:"Transporte de cargas", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
+  { id:"eletricista_automotivo", label:"Eletricista Automotivo", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
+  { id:"funileiro", label:"Funileiro", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
+  { id:"pintor_automotivo", label:"Pintor Automotivo", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
+  { id:"martelinho_de_ouro", label:"Martelinho de Ouro", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
+  { id:"polidor", label:"Polidor", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
+  { id:"esteticista_automotivo", label:"Esteticista Automotivo", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
+  { id:"lavador_automotivo", label:"Lavador Automotivo", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
+  { id:"higienizador_automotivo", label:"Higienizador Automotivo", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
+  { id:"instalador_de_acessorios_automotivos", label:"Instalador de Acessórios Automotivos", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
+  { id:"borracheiro", label:"Borracheiro", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
+  { id:"guincheiro", label:"Guincheiro", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
+  { id:"mecanico_de_motos", label:"Mecânico de Motos", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
+  // ── Pets ──
+  { id:"tosador", label:"Tosador", emoji:"🐕", star:4.8, bg:"#FFF3E0", dot:"#E65100", grupo:"Pets" },
+  { id:"banhista", label:"Banhista", emoji:"🐕", star:4.8, bg:"#FFF3E0", dot:"#E65100", grupo:"Pets" },
+  { id:"pet_sitter", label:"Pet Sitter", emoji:"🐕", star:4.8, bg:"#FFF3E0", dot:"#E65100", grupo:"Pets" },
+  { id:"dog_walker", label:"Dog Walker", emoji:"🐕", star:4.8, bg:"#FFF3E0", dot:"#E65100", grupo:"Pets" },
+  { id:"adestrador", label:"Adestrador", emoji:"🐕", star:4.8, bg:"#FFF3E0", dot:"#E65100", grupo:"Pets" },
+  { id:"cuidador_de_pets", label:"Cuidador de Pets", emoji:"🐕", star:4.8, bg:"#FFF3E0", dot:"#E65100", grupo:"Pets" },
+  { id:"pet_taxi", label:"Pet Taxi", emoji:"🐕", star:4.8, bg:"#FFF3E0", dot:"#E65100", grupo:"Pets" },
+  // ── Estofaria, Reparos e Artesanato ──
+  { id:"estofador", label:"Estofador", emoji:"🪡", star:4.5, bg:"#EFEBE9", dot:"#6D4C41", grupo:"Estofaria, Reparos e Artesanato" },
+  { id:"tapeceiro", label:"Tapeceiro", emoji:"🪡", star:4.5, bg:"#EFEBE9", dot:"#6D4C41", grupo:"Estofaria, Reparos e Artesanato" },
+  { id:"sapateiro", label:"Sapateiro", emoji:"🪡", star:4.5, bg:"#EFEBE9", dot:"#6D4C41", grupo:"Estofaria, Reparos e Artesanato" },
+  { id:"restaurador", label:"Restaurador", emoji:"🪡", star:4.5, bg:"#EFEBE9", dot:"#6D4C41", grupo:"Estofaria, Reparos e Artesanato" },
+  { id:"artesao", label:"Artesão", emoji:"🪡", star:4.5, bg:"#EFEBE9", dot:"#6D4C41", grupo:"Estofaria, Reparos e Artesanato" },
+  { id:"customizador", label:"Customizador", emoji:"🪡", star:4.5, bg:"#EFEBE9", dot:"#6D4C41", grupo:"Estofaria, Reparos e Artesanato" },
   // ── Festas e Eventos ──
-  { id:"decoracao", label:"Decoração", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"buffet", label:"Buffet", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
+  { id:"decorador", label:"Decorador", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
+  { id:"montador_de_eventos", label:"Montador de Eventos", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
   { id:"garcom", label:"Garçom", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
   { id:"barman", label:"Barman", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
   { id:"churrasqueiro", label:"Churrasqueiro", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
+  { id:"cozinheiro", label:"Cozinheiro(a)", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
   { id:"dj", label:"DJ", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"banda", label:"Banda", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"cantor", label:"Cantor", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
   { id:"fotografo", label:"Fotógrafo", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"filmagem", label:"Filmagem", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"drone", label:"Drone", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"cabine_fotos", label:"Cabine de fotos", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"robo_led", label:"Robô de LED", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"recreacao_infantil", label:"Recreação infantil", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"personagens_vivos", label:"Personagens vivos", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"recepcionista", label:"Recepcionista", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"mestre_cerimonias", label:"Mestre de cerimônias", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"locacao_brinquedos", label:"Locação de brinquedos", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"locacao_tendas", label:"Locação de tendas", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"sonorizacao", label:"Sonorização", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"iluminacao", label:"Iluminação", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"palco", label:"Palco", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  // ── Segurança ──
-  { id:"vigilante", label:"Vigilante", emoji:"🛡️", star:4.6, bg:"#E8EAF6", dot:"#283593", grupo:"Segurança" },
-  { id:"porteiro", label:"Porteiro", emoji:"🛡️", star:4.6, bg:"#E8EAF6", dot:"#283593", grupo:"Segurança" },
-  { id:"controlador_acesso", label:"Controlador de acesso", emoji:"🛡️", star:4.6, bg:"#E8EAF6", dot:"#283593", grupo:"Segurança" },
-  { id:"seguranca_patrimonial", label:"Segurança patrimonial", emoji:"🛡️", star:4.6, bg:"#E8EAF6", dot:"#283593", grupo:"Segurança" },
-  { id:"seguranca_eventos", label:"Segurança para eventos", emoji:"🛡️", star:4.6, bg:"#E8EAF6", dot:"#283593", grupo:"Segurança" },
-  // ── Segurança do Trabalho ──
-  { id:"tecnico_seguranca_trabalho", label:"Técnico em Segurança do Trabalho", emoji:"🦺", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Segurança do Trabalho" },
-  { id:"engenheiro_seguranca_trabalho", label:"Engenheiro de Segurança do Trabalho", emoji:"🦺", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Segurança do Trabalho" },
-  { id:"pgr", label:"PGR", emoji:"🦺", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Segurança do Trabalho" },
-  { id:"pcmso", label:"PCMSO", emoji:"🦺", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Segurança do Trabalho" },
-  { id:"ltcat", label:"LTCAT", emoji:"🦺", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Segurança do Trabalho" },
-  { id:"ltip", label:"LTIP", emoji:"🦺", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Segurança do Trabalho" },
-  { id:"apr", label:"APR", emoji:"🦺", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Segurança do Trabalho" },
-  { id:"laudos_tecnicos", label:"Laudos técnicos", emoji:"🦺", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Segurança do Trabalho" },
-  { id:"laudos_insalubridade", label:"Laudos de insalubridade", emoji:"🦺", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Segurança do Trabalho" },
-  { id:"laudos_periculosidade", label:"Laudos de periculosidade", emoji:"🦺", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Segurança do Trabalho" },
-  { id:"gestao_sst", label:"Gestão de SST", emoji:"🦺", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Segurança do Trabalho" },
-  { id:"treinamentos_nr", label:"Treinamentos NR", emoji:"🦺", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Segurança do Trabalho" },
-  { id:"brigada_incendio", label:"Brigada de incêndio", emoji:"🦺", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Segurança do Trabalho" },
-  { id:"avcb", label:"AVCB", emoji:"🦺", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Segurança do Trabalho" },
-  { id:"clcb", label:"CLCB", emoji:"🦺", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Segurança do Trabalho" },
-  { id:"esocial_sst", label:"eSocial SST", emoji:"🦺", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Segurança do Trabalho" },
-  { id:"consultoria_seguranca", label:"Consultoria em segurança", emoji:"🦺", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Segurança do Trabalho" },
-  // ── Engenharia e Projetos ──
-  { id:"eng_civil", label:"Engenheiro Civil", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"eng_eletrico", label:"Engenheiro Elétrico", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"eng_mecanico", label:"Engenheiro Mecânico", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"eng_estrutural", label:"Engenheiro Estrutural", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"eng_hidraulico", label:"Engenheiro Hidráulico", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"eng_ambiental", label:"Engenheiro Ambiental", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"arquiteto", label:"Arquiteto", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"designer_interiores", label:"Designer de Interiores", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"tecnico_edificacoes", label:"Técnico em Edificações", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"topografo", label:"Topógrafo", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"georreferenciamento", label:"Georreferenciamento", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"sondagem_solo", label:"Sondagem de solo", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"projeto_arquitetonico", label:"Projeto arquitetônico", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"projeto_estrutural", label:"Projeto estrutural", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"projeto_eletrico", label:"Projeto elétrico", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"projeto_hidraulico", label:"Projeto hidráulico", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"projeto_hidrossanitario", label:"Projeto hidrossanitário", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"projeto_combate_incendio", label:"Projeto de combate a incêndio", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"projeto_acessibilidade", label:"Projeto de acessibilidade", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"aprovacao_projetos", label:"Aprovação de projetos", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"regularizacao_imoveis", label:"Regularização de imóveis", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"regularizacao_obras", label:"Regularização de obras", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"habite_se", label:"Habite-se", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"art_projeto", label:"ART", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"rrt", label:"RRT", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"avaliacao_imoveis", label:"Avaliação de imóveis", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"inspecao_predial", label:"Inspeção predial", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"pericias", label:"Perícias", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"fiscalizacao_obras", label:"Fiscalização de obras", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"gerenciamento_obras", label:"Gerenciamento de obras", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  { id:"orcamento_obras", label:"Orçamento de obras", emoji:"📐", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Engenharia e Projetos" },
-  // ── Chaveiro ──
-  { id:"chaveiro_residencial", label:"Chaveiro residencial", emoji:"🔑", star:4.6, bg:"#FFF8E1", dot:"#F9A825", grupo:"Chaveiro" },
-  { id:"chaveiro_automotivo", label:"Chaveiro automotivo", emoji:"🔑", star:4.6, bg:"#FFF8E1", dot:"#F9A825", grupo:"Chaveiro" },
-  { id:"copia_chaves", label:"Cópia de chaves", emoji:"🔑", star:4.6, bg:"#FFF8E1", dot:"#F9A825", grupo:"Chaveiro" },
-  { id:"fechaduras", label:"Fechaduras", emoji:"🔑", star:4.6, bg:"#FFF8E1", dot:"#F9A825", grupo:"Chaveiro" },
-  { id:"fechaduras_eletronicas", label:"Fechaduras eletrônicas", emoji:"🔑", star:4.6, bg:"#FFF8E1", dot:"#F9A825", grupo:"Chaveiro" },
-  { id:"chaveiro", label:"Chaveiro 24h", emoji:"🔑", star:4.6, bg:"#FFF8E1", dot:"#F9A825", grupo:"Chaveiro" },
+  { id:"videomaker", label:"Videomaker", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
+  { id:"cerimonialista", label:"Cerimonialista", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
+  { id:"recreador", label:"Recreador", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
+  { id:"animador", label:"Animador", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
+  { id:"recepcionista_de_eventos", label:"Recepcionista de Eventos", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
+  { id:"seguranca_de_eventos", label:"Segurança de Eventos", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
+  // ── Alimentação ──
+  { id:"cozinheiro", label:"Cozinheiro(a)", emoji:"🍽️", star:4.7, bg:"#FFEBEE", dot:"#C62828", grupo:"Alimentação" },
+  { id:"chef_particular", label:"Chef Particular", emoji:"🍽️", star:4.7, bg:"#FFEBEE", dot:"#C62828", grupo:"Alimentação" },
+  { id:"churrasqueiro", label:"Churrasqueiro", emoji:"🍽️", star:4.7, bg:"#FFEBEE", dot:"#C62828", grupo:"Alimentação" },
+  { id:"confeiteiro", label:"Confeiteiro(a)", emoji:"🍽️", star:4.7, bg:"#FFEBEE", dot:"#C62828", grupo:"Alimentação" },
+  { id:"padeiro", label:"Padeiro", emoji:"🍽️", star:4.7, bg:"#FFEBEE", dot:"#C62828", grupo:"Alimentação" },
+  { id:"salgadeiro", label:"Salgadeiro(a)", emoji:"🍽️", star:4.7, bg:"#FFEBEE", dot:"#C62828", grupo:"Alimentação" },
+  { id:"sushiman", label:"Sushiman", emoji:"🍽️", star:4.7, bg:"#FFEBEE", dot:"#C62828", grupo:"Alimentação" },
+  { id:"garcom", label:"Garçom", emoji:"🍽️", star:4.7, bg:"#FFEBEE", dot:"#C62828", grupo:"Alimentação" },
+  { id:"barman", label:"Barman", emoji:"🍽️", star:4.7, bg:"#FFEBEE", dot:"#C62828", grupo:"Alimentação" },
+  // ── Transporte e Mudanças ──
+  { id:"freteiro", label:"Freteiro", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
+  { id:"motorista_de_mudanca", label:"Motorista de Mudança", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
+  { id:"ajudante_de_mudanca", label:"Ajudante de Mudança", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
+  { id:"carregador", label:"Carregador", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
+  { id:"motoboy", label:"Motoboy", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
+  { id:"entregador", label:"Entregador", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
+  { id:"motorista_particular", label:"Motorista Particular", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
+  { id:"transportador", label:"Transportador", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
+  // ── Marketing e Serviços Digitais ──
+  { id:"social_media", label:"Social Media", emoji:"🎯", star:4.6, bg:"#EDE7F6", dot:"#5E35B1", grupo:"Marketing e Serviços Digitais" },
+  { id:"designer_grafico", label:"Designer Gráfico", emoji:"🎯", star:4.6, bg:"#EDE7F6", dot:"#5E35B1", grupo:"Marketing e Serviços Digitais" },
+  { id:"gestor_de_trafego", label:"Gestor de Tráfego", emoji:"🎯", star:4.6, bg:"#EDE7F6", dot:"#5E35B1", grupo:"Marketing e Serviços Digitais" },
+  { id:"copywriter", label:"Copywriter", emoji:"🎯", star:4.6, bg:"#EDE7F6", dot:"#5E35B1", grupo:"Marketing e Serviços Digitais" },
+  { id:"editor_de_video", label:"Editor de Vídeo", emoji:"🎯", star:4.6, bg:"#EDE7F6", dot:"#5E35B1", grupo:"Marketing e Serviços Digitais" },
+  { id:"web_designer", label:"Web Designer", emoji:"🎯", star:4.6, bg:"#EDE7F6", dot:"#5E35B1", grupo:"Marketing e Serviços Digitais" },
+  { id:"desenvolvedor", label:"Desenvolvedor", emoji:"🎯", star:4.6, bg:"#EDE7F6", dot:"#5E35B1", grupo:"Marketing e Serviços Digitais" },
+  { id:"criador_de_conteudo", label:"Criador de Conteúdo", emoji:"🎯", star:4.6, bg:"#EDE7F6", dot:"#5E35B1", grupo:"Marketing e Serviços Digitais" },
+  { id:"fotografo_de_produtos", label:"Fotógrafo de Produtos", emoji:"🎯", star:4.6, bg:"#EDE7F6", dot:"#5E35B1", grupo:"Marketing e Serviços Digitais" },
+  // ── Educação e Aulas ──
+  { id:"professor_particular", label:"Professor Particular", emoji:"📚", star:4.7, bg:"#F1F8E9", dot:"#558B2F", grupo:"Educação e Aulas" },
+  { id:"professor_de_idiomas", label:"Professor de Idiomas", emoji:"📚", star:4.7, bg:"#F1F8E9", dot:"#558B2F", grupo:"Educação e Aulas" },
+  { id:"professor_de_musica", label:"Professor de Música", emoji:"📚", star:4.7, bg:"#F1F8E9", dot:"#558B2F", grupo:"Educação e Aulas" },
+  { id:"professor_de_informatica", label:"Professor de Informática", emoji:"📚", star:4.7, bg:"#F1F8E9", dot:"#558B2F", grupo:"Educação e Aulas" },
+  { id:"professor_de_reforco_escolar", label:"Professor de Reforço Escolar", emoji:"📚", star:4.7, bg:"#F1F8E9", dot:"#558B2F", grupo:"Educação e Aulas" },
+  { id:"tutor", label:"Tutor", emoji:"📚", star:4.7, bg:"#F1F8E9", dot:"#558B2F", grupo:"Educação e Aulas" },
+  { id:"instrutor", label:"Instrutor", emoji:"📚", star:4.7, bg:"#F1F8E9", dot:"#558B2F", grupo:"Educação e Aulas" },
+  // ── Fotografia e Vídeo ──
+  { id:"fotografo", label:"Fotógrafo", emoji:"📷", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Fotografia e Vídeo" },
+  { id:"videomaker", label:"Videomaker", emoji:"📷", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Fotografia e Vídeo" },
+  { id:"cinegrafista", label:"Cinegrafista", emoji:"📷", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Fotografia e Vídeo" },
+  { id:"editor_de_video", label:"Editor de Vídeo", emoji:"📷", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Fotografia e Vídeo" },
+  { id:"editor_de_fotos", label:"Editor de Fotos", emoji:"📷", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Fotografia e Vídeo" },
+  // ── Engenharia, Projetos e Segurança do Trabalho ──
+  { id:"engenheiro", label:"Engenheiro", emoji:"📐", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Engenharia, Projetos e Segurança do Trabalho" },
+  { id:"arquiteto", label:"Arquiteto", emoji:"📐", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Engenharia, Projetos e Segurança do Trabalho" },
+  { id:"tecnico_em_edificacoes", label:"Técnico em Edificações", emoji:"📐", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Engenharia, Projetos e Segurança do Trabalho" },
+  { id:"projetista", label:"Projetista", emoji:"📐", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Engenharia, Projetos e Segurança do Trabalho" },
+  { id:"topografo", label:"Topógrafo", emoji:"📐", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Engenharia, Projetos e Segurança do Trabalho" },
+  { id:"tecnico_em_seguranca_do_trabalho", label:"Técnico em Segurança do Trabalho", emoji:"📐", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Engenharia, Projetos e Segurança do Trabalho" },
+  { id:"engenheiro_de_seguranca_do_trabalho", label:"Engenheiro de Segurança do Trabalho", emoji:"📐", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Engenharia, Projetos e Segurança do Trabalho" },
+  { id:"consultor_de_seguranca_do_trabalho", label:"Consultor de Segurança do Trabalho", emoji:"📐", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Engenharia, Projetos e Segurança do Trabalho" },
   // ── Controle de Pragas ──
-  { id:"dedetizacao", label:"Dedetização", emoji:"🐜", star:4.5, bg:"#EFEBE9", dot:"#5D4037", grupo:"Controle de Pragas" },
-  { id:"descupinizacao", label:"Descupinização", emoji:"🐜", star:4.5, bg:"#EFEBE9", dot:"#5D4037", grupo:"Controle de Pragas" },
-  { id:"desratizacao", label:"Desratização", emoji:"🐜", star:4.5, bg:"#EFEBE9", dot:"#5D4037", grupo:"Controle de Pragas" },
-  { id:"sanitizacao", label:"Sanitização", emoji:"🐜", star:4.5, bg:"#EFEBE9", dot:"#5D4037", grupo:"Controle de Pragas" },
-  { id:"controle_pombos", label:"Controle de pombos", emoji:"🐜", star:4.5, bg:"#EFEBE9", dot:"#5D4037", grupo:"Controle de Pragas" },
-  // ── Tecnologia e Redes ──
-  { id:"cabeamento_rede", label:"Cabeamento de rede", emoji:"🌐", star:4.6, bg:"#E8EAF6", dot:"#3949AB", grupo:"Tecnologia e Redes" },
-  { id:"instalacao_wifi", label:"Instalação de Wi-Fi", emoji:"🌐", star:4.6, bg:"#E8EAF6", dot:"#3949AB", grupo:"Tecnologia e Redes" },
-  { id:"configuracao_roteadores", label:"Configuração de roteadores", emoji:"🌐", star:4.6, bg:"#E8EAF6", dot:"#3949AB", grupo:"Tecnologia e Redes" },
-  { id:"infraestrutura_ti", label:"Infraestrutura de TI", emoji:"🌐", star:4.6, bg:"#E8EAF6", dot:"#3949AB", grupo:"Tecnologia e Redes" },
-  { id:"servidores", label:"Servidores", emoji:"🌐", star:4.6, bg:"#E8EAF6", dot:"#3949AB", grupo:"Tecnologia e Redes" },
-  { id:"cabeamento_estruturado", label:"Cabeamento estruturado", emoji:"🌐", star:4.6, bg:"#E8EAF6", dot:"#3949AB", grupo:"Tecnologia e Redes" },
-  { id:"fibra_optica", label:"Fibra óptica", emoji:"🌐", star:4.6, bg:"#E8EAF6", dot:"#3949AB", grupo:"Tecnologia e Redes" },
-  { id:"telefonia_pabx", label:"Telefonia PABX", emoji:"🌐", star:4.6, bg:"#E8EAF6", dot:"#3949AB", grupo:"Tecnologia e Redes" },
-  { id:"controle_ponto", label:"Controle de ponto", emoji:"🌐", star:4.6, bg:"#E8EAF6", dot:"#3949AB", grupo:"Tecnologia e Redes" },
-  { id:"controle_acesso_ti", label:"Controle de acesso", emoji:"🌐", star:4.6, bg:"#E8EAF6", dot:"#3949AB", grupo:"Tecnologia e Redes" },
-  { id:"suporte_tecnico_empresarial", label:"Suporte técnico empresarial", emoji:"🌐", star:4.6, bg:"#E8EAF6", dot:"#3949AB", grupo:"Tecnologia e Redes" },
+  { id:"controlador_de_pragas", label:"Controlador de Pragas", emoji:"🐜", star:4.5, bg:"#EFEBE9", dot:"#5D4037", grupo:"Controle de Pragas" },
+  // ── Segurança e Controle de Acesso ──
+  { id:"seguranca", label:"Segurança", emoji:"🛡️", star:4.6, bg:"#E8EAF6", dot:"#283593", grupo:"Segurança e Controle de Acesso" },
+  { id:"vigilante", label:"Vigilante", emoji:"🛡️", star:4.6, bg:"#E8EAF6", dot:"#283593", grupo:"Segurança e Controle de Acesso" },
+  { id:"controlador_de_acesso", label:"Controlador de Acesso", emoji:"🛡️", star:4.6, bg:"#E8EAF6", dot:"#283593", grupo:"Segurança e Controle de Acesso" },
+  { id:"porteiro", label:"Porteiro", emoji:"🛡️", star:4.6, bg:"#E8EAF6", dot:"#283593", grupo:"Segurança e Controle de Acesso" },
 ];
 
 // Ordem de exibição dos grupos no modal "Ver todas as categorias".
 const CAT_GRUPOS = [
   "Reformas e Construção",
-  "Instalação e Montagem",
-  "Elétrica e Segurança Eletrônica",
+  "Elétrica e Automação",
   "Hidráulica e Desentupimento",
-  "Climatização",
-  "Assistência Técnica",
-  "Limpeza Especializada",
-  "Jardinagem e Piscinas",
-  "Serviços Domésticos",
-  "Serviços para Pets",
-  "Automotivo",
-  "Transporte e Mudanças",
-  "Festas e Eventos",
-  "Segurança",
-  "Segurança do Trabalho",
-  "Engenharia e Projetos",
+  "Móveis, Marcenaria e Montagem",
+  "Limpeza e Higienização",
+  "Climatização e Refrigeração",
+  "Técnica e Manutenção",
+  "Beleza",
+  "Instalações e Pequenos Reparos",
   "Chaveiro",
+  "Jardinagem e Áreas Externas",
+  "Automotivo",
+  "Pets",
+  "Estofaria, Reparos e Artesanato",
+  "Festas e Eventos",
+  "Alimentação",
+  "Transporte e Mudanças",
+  "Marketing e Serviços Digitais",
+  "Educação e Aulas",
+  "Fotografia e Vídeo",
+  "Engenharia, Projetos e Segurança do Trabalho",
   "Controle de Pragas",
-  "Tecnologia e Redes",
+  "Segurança e Controle de Acesso",
 ];
 
 /* usuarios.categoria_servico / empresas.categoria_servico agora são text[]
@@ -3785,21 +3706,31 @@ const PLANOS_USUARIO = [
 // replicada manualmente lá (e vice-versa). O backend é o gate real (endpoint
 // /api/pedidos/confirmar-servico); isto aqui só decide UX/copy (cards de
 // mural, tela de perfil). null = sem limite (Premium).
+// 2026-08-09: teto de categoria deixou de ser um número flat de itens e virou
+// duas dimensões — quantos GRUPOS (ex.: "Reformas e Construção") e quantas
+// PROFISSÕES por grupo escolhido (ex.: "Pedreiro", "Gesseiro" dentro do mesmo
+// grupo). Autônomo é 1 grupo × 1 profissão (mesmo resultado prático de
+// antes). Pro é 2 grupos × 3 profissões cada (até 6 no total — mais generoso
+// que o antigo teto flat de 3). Premium continua ilimitado nas duas
+// dimensões. maxServicosMes/valorMaxServico não mudam.
 const PLANO_LIMITES_USUARIO = {
-  autonomo: { maxCategorias: 1, maxServicosMes: 3,  valorMaxServico: 600  },
-  pro:      { maxCategorias: 3, maxServicosMes: 10, valorMaxServico: 3000 },
-  premium:  { maxCategorias: null, maxServicosMes: null, valorMaxServico: null },
+  autonomo: { maxGrupos: 1, maxItensPorGrupo: 1, maxServicosMes: 3,  valorMaxServico: 600  },
+  pro:      { maxGrupos: 2, maxItensPorGrupo: 3, maxServicosMes: 10, valorMaxServico: 3000 },
+  premium:  { maxGrupos: null, maxItensPorGrupo: null, maxServicosMes: null, valorMaxServico: null },
 };
 // Lista curta de "Limites do plano" pros cards de EscolherPlanoScreen — deriva
 // de PLANO_LIMITES_USUARIO em vez de duplicar os números soltos num segundo
 // lugar (fonte única: mudou o limite ali, o card já reflete sozinho).
 function limitesTexto(planoId) {
   const l = PLANO_LIMITES_USUARIO[planoId];
-  if (!l || l.maxCategorias == null) {
+  if (!l || l.maxGrupos == null) {
     return ["Categorias ilimitadas", "Serviços ilimitados", "Sem limite de valor"];
   }
+  const categoriaTexto = l.maxGrupos === 1 && l.maxItensPorGrupo === 1
+    ? "1 categoria de serviço"
+    : `${l.maxGrupos} categorias × até ${l.maxItensPorGrupo} profissões cada`;
   return [
-    `${l.maxCategorias} categoria${l.maxCategorias > 1 ? "s" : ""} de serviço`,
+    categoriaTexto,
     `Até ${l.maxServicosMes} serviços aceitos/mês`,
     `Valor máximo R$${l.valorMaxServico.toLocaleString("pt-BR")}/serviço`,
   ];
@@ -5406,16 +5337,18 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
   const categoriaCicloNovo = !!planoInicio && (!trocasCategoriaUltimoCiclo || new Date(planoInicio) > new Date(trocasCategoriaUltimoCiclo));
   const categoriaElegivel = categoriaEhPrimeiraEscolha || (!categoriaTrocasEsgotadas && categoriaCicloNovo);
 
-  // Teto de categorias vem de PLANO_LIMITES_USUARIO (Autônomo:1 / Pro:3 /
-  // Premium:ilimitado — definido no topo do arquivo, espelhado no backend).
-  // Importante: usa "plano" (id exato da assinatura: "autonomo"/"pro"/"premium"),
-  // não "isPro" — isPro só indica "tem alguma assinatura ativa" (inclui
-  // Autônomo), então usá-lo aqui deixava o Autônomo sem limite nenhum assim
-  // que a trial/assinatura ficava ativa. Sem plano ativo trata como Autônomo
-  // (teto mais restritivo) pra fins de cadastro de categoria.
+  // Teto de categorias vem de PLANO_LIMITES_USUARIO (Autônomo:1 grupo×1 profissão /
+  // Pro:2 grupos×3 profissões cada / Premium:ilimitado — definido no topo do
+  // arquivo, espelhado no backend). Importante: usa "plano" (id exato da
+  // assinatura: "autonomo"/"pro"/"premium"), não "isPro" — isPro só indica
+  // "tem alguma assinatura ativa" (inclui Autônomo), então usá-lo aqui deixava
+  // o Autônomo sem limite nenhum assim que a trial/assinatura ficava ativa.
+  // Sem plano ativo trata como Autônomo (teto mais restritivo) pra fins de
+  // cadastro de categoria.
   const limitePlanoAtual = PLANO_LIMITES_USUARIO[plano];
   const isPlanoPro = plano === "pro";
-  const limiteCategoria = limitePlanoAtual ? (limitePlanoAtual.maxCategorias ?? undefined) : 1;
+  const limiteMaxGrupos       = limitePlanoAtual ? (limitePlanoAtual.maxGrupos ?? undefined)       : 1;
+  const limiteMaxItensPorGrupo = limitePlanoAtual ? (limitePlanoAtual.maxItensPorGrupo ?? undefined) : 1;
 
   // Categoria não grava mais sozinha a cada toggle (autosave) — com o limite
   // de 2 trocas na vida da conta, "1 sessão de edição = 1 troca", então cada
@@ -5427,10 +5360,17 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
     setCategoriaServico(novasCategorias);
   };
 
-  const handleLimiteCategoria = () => {
-    const cap = limiteCategoria ?? 1;
+  // motivo: "grupos" (tentou abrir uma categoria nova além do teto) ou
+  // "itens" (tentou marcar mais uma profissão dentro de uma categoria já no
+  // teto por-grupo) — CategoriaMultiSelect distingue os dois casos.
+  const handleLimiteCategoria = (motivo) => {
     const proximoPlano = plano === "pro" ? "Multi Premium" : "Multi Pro";
-    showToast?.(`⚠️ Seu plano permite até ${cap} categoria${cap === 1 ? "" : "s"} de serviço${cap === 1 ? "" : "s"}. Para cadastrar todos os serviços que você oferece, faça upgrade para o ${proximoPlano}.`, O);
+    const capGrupos = limiteMaxGrupos ?? 1;
+    const capItens  = limiteMaxItensPorGrupo ?? 1;
+    const msg = motivo === "itens"
+      ? `⚠️ Seu plano permite até ${capItens} ${capItens === 1 ? "profissão" : "profissões"} por categoria escolhida.`
+      : `⚠️ Seu plano permite até ${capGrupos} categoria${capGrupos === 1 ? "" : "s"} de serviço.`;
+    showToast?.(`${msg} Para cadastrar todos os serviços que você oferece, faça upgrade para o ${proximoPlano}.`, O);
   };
   const [showNotif, setShowNotif] = useState(false);
   const [showSeguranca, setShowSeguranca] = useState(false);
@@ -5771,13 +5711,14 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
                 <>
                   <p style={{ margin:"0 0 10px", fontSize:11, color:"#9CA3AF" }}>
                     Necessárias pra ficar online e receber pedidos no Mural.
-                    {limiteCategoria != null && ` ${plano === "pro" ? "Multi Pro" : "Multi Autônomo"}: até ${limiteCategoria}.`}
+                    {limiteMaxGrupos != null && ` ${plano === "pro" ? "Multi Pro" : "Multi Autônomo"}: até ${limiteMaxGrupos} categoria${limiteMaxGrupos === 1 ? "" : "s"}${limiteMaxItensPorGrupo != null && limiteMaxItensPorGrupo > 1 ? ` (até ${limiteMaxItensPorGrupo} profissões cada)` : ""}.`}
                     {!categoriaEhPrimeiraEscolha && ` Você tem ${2 - trocasCategoriaUsadas} troca${2 - trocasCategoriaUsadas === 1 ? "" : "s"} de categoria restante${2 - trocasCategoriaUsadas === 1 ? "" : "s"} — confirme com atenção ao Salvar.`}
                   </p>
                   <CategoriaMultiSelect
                     value={categoriaServico}
                     onChange={handleSaveCategoria}
-                    max={limiteCategoria}
+                    maxGrupos={limiteMaxGrupos}
+                    maxItensPorGrupo={limiteMaxItensPorGrupo}
                     onLimitReached={handleLimiteCategoria}
                   />
                   {plano !== "premium" && (
@@ -7405,25 +7346,51 @@ function PasswordField({ style, ...rest }) {
 }
 
 /* Seletor de categorias em chips (multi-escolha). Usado no cadastro de
-   empresa e no editor de categoria do profissional (ProfileScreen).
-   max=null/undefined = sem limite; onLimitReached dispara ao tentar
-   marcar uma categoria além do limite (usado pro upsell Autônomo→Pro). */
-// Navegação em 2 passos (2026-08-07): em vez de rolar uma lista solta dos
-// ~265 itens de uma vez, primeiro escolhe o grupo (ex.: "Reformas e
+   empresa (limite flat via `max`, ex.: até 3 categorias) e no editor de
+   categoria do profissional (ProfileScreen, limite duplo via `maxGrupos`/
+   `maxItensPorGrupo` — ver PLANO_LIMITES_USUARIO). Passe `max` OU o par
+   `maxGrupos`+`maxItensPorGrupo`, nunca os dois; nenhum dos três = sem
+   limite. onLimitReached(motivo) dispara ao tentar marcar uma categoria
+   além do limite — motivo é "grupos"/"itens" no modo duplo, undefined no
+   modo flat (usado pro upsell Autônomo→Pro→Premium). */
+// Navegação em 2 passos (2026-08-07): em vez de rolar uma lista solta de
+// centenas de itens de uma vez, primeiro escolhe o grupo (ex.: "Reformas e
 // Construção"), depois vê só os itens daquele grupo — com botão de voltar
 // pra trocar de grupo. Puramente navegação: `value`/onChange continuam
 // guardando só os itens específicos escolhidos (ex.: "pedreiro"), exatamente
-// como antes — não muda categoria_servico nem o limite do plano. Um resumo
-// dos itens já selecionados (com "x" pra remover) fica sempre visível acima,
-// já que a seleção pode vir de vários grupos diferentes.
-function CategoriaMultiSelect({ value, onChange, max, onLimitReached, error }) {
+// como antes — não muda categoria_servico. Um resumo dos itens já
+// selecionados (com "x" pra remover) fica sempre visível acima, já que a
+// seleção pode vir de vários grupos diferentes.
+function CategoriaMultiSelect({ value, onChange, max, maxGrupos, maxItensPorGrupo, onLimitReached, error }) {
   const [openGrupo, setOpenGrupo] = useState(null); // null = grade de grupos
+  const grupoDoId = (id) => CATS.find(c => c.id === id)?.grupo;
   const toggle = (id) => {
     const has = value.includes(id);
-    if (!has && max && value.length >= max) { onLimitReached?.(); return; }
-    onChange(has ? value.filter(v => v !== id) : [...value, id]);
+    if (has) { onChange(value.filter(v => v !== id)); return; }
+    if (maxGrupos != null || maxItensPorGrupo != null) {
+      // Modo duplo (profissional): grupo novo além do teto de grupos, OU
+      // grupo já usado mas essa categoria já bateu o teto de profissões
+      // dela — são dois limites independentes, cada um com sua mensagem.
+      const grupo = grupoDoId(id);
+      const gruposUsados = [...new Set(value.map(grupoDoId))];
+      const jaNesseGrupo = value.filter(v => grupoDoId(v) === grupo).length;
+      const ehGrupoNovo = !gruposUsados.includes(grupo);
+      if (ehGrupoNovo && maxGrupos != null && gruposUsados.length >= maxGrupos) { onLimitReached?.("grupos"); return; }
+      if (maxItensPorGrupo != null && jaNesseGrupo >= maxItensPorGrupo) { onLimitReached?.("itens"); return; }
+    } else if (max && value.length >= max) {
+      onLimitReached?.();
+      return;
+    }
+    onChange([...value, id]);
   };
-  const selecionados = CATS.filter(c => value.includes(c.id));
+  // Dedupe por id — itens cross-listados em 2 grupos (ex.: "Fotógrafo" em
+  // Festas e Eventos e em Fotografia e Vídeo) têm 2 entradas em CATS com o
+  // mesmo id; sem isso o chip do resumo apareceria duplicado.
+  const selecionados = [];
+  const idsVistos = new Set();
+  for (const c of CATS) {
+    if (value.includes(c.id) && !idsVistos.has(c.id)) { idsVistos.add(c.id); selecionados.push(c); }
+  }
 
   return (
     <div>
@@ -7529,7 +7496,7 @@ function PlanoUpgradeCTA({ tipo, plano, onUpgrade }) {
     ctaLabel = "FAZER UPGRADE";
     detalhe = ehPro
       ? "Com o Multi Premium você aceita serviços ilimitados por mês e cadastra categorias ilimitadas."
-      : `Com o Multi Pro você pode aceitar até ${PLANO_LIMITES_USUARIO.pro.maxServicosMes} serviços por mês e cadastrar até ${PLANO_LIMITES_USUARIO.pro.maxCategorias} categorias.`;
+      : `Com o Multi Pro você pode aceitar até ${PLANO_LIMITES_USUARIO.pro.maxServicosMes} serviços por mês e cadastrar até ${PLANO_LIMITES_USUARIO.pro.maxGrupos} categorias (com até ${PLANO_LIMITES_USUARIO.pro.maxItensPorGrupo} profissões cada).`;
   }
   return (
     <div style={{ background:"#FFF7ED", border:"1.5px solid #FDBA74", borderRadius:14, padding:"14px 16px", display:"flex", flexDirection:"column", gap:8 }}>
