@@ -4973,6 +4973,9 @@ function AdminAccessTrigger({ onOpenAdmin }) {
       <p onClick={tap} style={{ fontSize:11, color:"#ccc", margin:"0 0 8px", cursor:"default", userSelect:"none" }}>
         Multi v2.0.0 · Plataforma Nacional {taps > 0 && taps < 5 && `(${5-taps} toques)`}
       </p>
+      <a href="/privacidade.html" target="_blank" rel="noopener noreferrer" style={{ display:"block", fontSize:11, color:"#ccc", textDecoration:"underline", marginBottom:8 }}>
+        Política de Privacidade
+      </a>
       {taps >= 5 && (
         <button onClick={onOpenAdmin} style={{ padding:"8px 20px", borderRadius:99, border:"1.5px solid #334155", background:"#0F172A", color:"#6366F1", fontWeight:800, fontSize:12, cursor:"pointer", display:"inline-flex", alignItems:"center", gap:7 }}>
           <ShieldCheck size={14} /> Acesso Admin
