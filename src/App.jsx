@@ -7628,7 +7628,7 @@ function LoginScreen({ onBack, onComplete, onRegister, onForgot }) {
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Erro ao entrar");
-      const session = { name: d.user.name, email: d.user.email, role: d.user.role, isPro: d.user.isPro || false, token: d.token };
+      const session = { name: d.user.name, email: d.user.email, role: d.user.role, isPro: d.user.isPro || false, token: d.token, refreshToken: d.refresh_token };
       localStorage.setItem("multiSession", JSON.stringify(session));
       onComplete(d.user.name, d.user.email, false, "", d.user.role, "");
     } catch(e) {
@@ -7941,6 +7941,15 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Erro ao criar conta");
+      // Guarda o token de sessão já aqui — o fluxo até finishLogin (que lê e
+      // aplica isso no cliente Supabase) ainda passa por "plano"/"completar
+      // perfil" pro profissional, então não dá pra esperar chegar lá.
+      if (d.token) {
+        try {
+          const prev = JSON.parse(localStorage.getItem("multiSession") || "{}") || {};
+          localStorage.setItem("multiSession", JSON.stringify({ ...prev, token: d.token, refreshToken: d.refresh_token }));
+        } catch {}
+      }
       setLoading(false);
       setStep("success");
     } catch(e) {
@@ -9605,6 +9614,16 @@ export default function App() {
     if (window.location.hash.includes("access_token")) return null;
     try { return JSON.parse(localStorage.getItem("multiSession")) || null; } catch { return null; }
   })();
+  // Reaplica a sessão real do Supabase Auth (JWT) no reload — sem isso,
+  // quem já estava logado antes continua "logado" na UI (multiSession no
+  // localStorage), mas toda chamada supabase.from(...) volta a ir como
+  // anônima até deslogar/logar de novo.
+  useEffect(() => {
+    if (savedSession?.token) {
+      supabase.auth.setSession({ access_token: savedSession.token, refresh_token: savedSession.refreshToken })
+        .catch(err => console.error("[auth] setSession (boot) falhou:", err.message));
+    }
+  }, []);
   // Auth: starts as guest, modal layers appear on demand
   const [isLoggedIn,    setIsLoggedIn]    = useState(!!savedSession);
   // Home é a tela inicial pra todo mundo agora, logado ou não — a
@@ -9986,9 +10005,22 @@ export default function App() {
       // Save session to localStorage — persists across page reloads
       let upsertPromise = Promise.resolve();
       try {
-        const session = { name: firstName, email, whatsapp, location, role: resolvedRole };
+        // Preserva o token/refreshToken já salvo por LoginScreen ou pelo
+        // cadastro (ver /api/auth/login, /api/auth/cadastro) — esse objeto
+        // aqui sobrescrevia multiSession inteiro e apagava o token sem
+        // querer, deixando o cliente Supabase sempre anônimo depois do login.
+        let tokenPrevio = {};
+        try {
+          const prev = JSON.parse(localStorage.getItem("multiSession") || "{}") || {};
+          if (prev.token) tokenPrevio = { token: prev.token, refreshToken: prev.refreshToken };
+        } catch {}
+        const session = { name: firstName, email, whatsapp, location, role: resolvedRole, ...tokenPrevio };
         localStorage.setItem("multiSession", JSON.stringify(session));
         localStorage.setItem("multiUser",    JSON.stringify(session));
+        if (tokenPrevio.token) {
+          supabase.auth.setSession({ access_token: tokenPrevio.token, refresh_token: tokenPrevio.refreshToken })
+            .catch(err => console.error("[auth] setSession falhou:", err.message));
+        }
         // "role" só entra nesse upsert na criação da conta (isNewAccount).
         // Em logins seguintes, gravar role aqui sobrescrevia o valor real do
         // Supabase com o que estava cacheado na sessão local, revertendo
@@ -10400,6 +10432,7 @@ export default function App() {
       localStorage.removeItem("multiSession");
       localStorage.removeItem("multiUser");
     } catch {}
+    supabase.auth.signOut().catch(() => {});
     showToast("👋 Até logo!");
   };
 
