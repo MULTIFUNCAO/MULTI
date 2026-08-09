@@ -7295,6 +7295,9 @@ function TermsOfUseModal({ onClose, variant = "general" }) {
               <p style={{ fontSize:10, color:"#bbb", lineHeight:1.6, marginTop:12 }}>
                 Versão 2.0 · Última atualização: 09/07/2026 · Multi Serviços Gerais Ltda. · CNPJ 00.000.000/0001-00
               </p>
+              <a href="/privacidade.html" target="_blank" rel="noopener noreferrer" style={{ display:"inline-block", fontSize:11, color:B, fontWeight:800, textDecoration:"underline", marginTop:10 }}>
+                Ler Política de Privacidade completa
+              </a>
             </>
           )}
         </div>
