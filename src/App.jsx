@@ -2265,7 +2265,7 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName, 
         {/* content */}
         <div style={{ position:"relative", zIndex:1, padding:"26px 24px", height:"100%", display:"flex", flexDirection:"column", justifyContent:"center" }}>
           <p style={{ fontSize:10, fontWeight:800, color:"rgba(255,255,255,.65)", textTransform:"uppercase", letterSpacing:2, margin:"0 0 8px" }}>Multi · Serviços Premium</p>
-          <h3 style={{ fontSize:21, fontWeight:900, color:"white", lineHeight:1.35, margin:"0 0 16px" }}>Sua casa em boas<br/>mãos, num toque.</h3>
+          <h3 style={{ fontSize:21, fontWeight:900, color:"white", lineHeight:1.35, margin:"0 0 16px" }}>Seu serviço,<br/>num toque.</h3>
           <button onClick={() => onPost()} style={{
             alignSelf:"flex-start", padding:"10px 20px", borderRadius:99,
             background:"rgba(255,255,255,.95)", border:"none", cursor:"pointer",
