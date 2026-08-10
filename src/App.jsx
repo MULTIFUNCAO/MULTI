@@ -3713,10 +3713,16 @@ const PLANOS_USUARIO = [
 // antes). Pro é 2 grupos × 3 profissões cada (até 6 no total — mais generoso
 // que o antigo teto flat de 3). Premium continua ilimitado nas duas
 // dimensões. maxServicosMes/valorMaxServico não mudam.
+// 2026-08-10: categorias voltou a ser uma lista plana (maxCategorias) —
+// decisão explícita de manter a reforma comercial separada da reforma de
+// 23 grupos/profissões aninhadas (que fica como projeto à parte). O par
+// maxGrupos/maxItensPorGrupo do modelo 2D (2026-08-09) não é mais usado
+// pra limite de plano; CategoriaMultiSelect ainda sabe operar nesse modo
+// duplo (não removido do componente), só não é mais chamado assim daqui.
 const PLANO_LIMITES_USUARIO = {
-  autonomo: { maxGrupos: 1, maxItensPorGrupo: 1, maxServicosMes: 3,  valorMaxServico: 600  },
-  pro:      { maxGrupos: 2, maxItensPorGrupo: 3, maxServicosMes: 10, valorMaxServico: 3000 },
-  premium:  { maxGrupos: null, maxItensPorGrupo: null, maxServicosMes: null, valorMaxServico: null },
+  autonomo: { maxCategorias: 1, maxServicosMes: 3,  valorMaxServico: 5000 },
+  pro:      { maxCategorias: 3, maxServicosMes: 10, valorMaxServico: 5000 },
+  premium:  { maxCategorias: null, maxServicosMes: null, valorMaxServico: null },
 };
 // Busca os limites reais de "configuracoes_planos" (Supabase) e sobrescreve os
 // valores acima NO MESMO OBJETO (mutação, não reatribuição) — assim os
@@ -3735,8 +3741,7 @@ async function carregarPlanoLimitesReais() {
     data.forEach(row => {
       if (PLANO_LIMITES_USUARIO[row.plano]) {
         Object.assign(PLANO_LIMITES_USUARIO[row.plano], {
-          maxGrupos: row.max_grupos,
-          maxItensPorGrupo: row.max_itens_por_grupo,
+          maxCategorias: row.max_categorias,
           maxServicosMes: row.max_servicos_mes,
           valorMaxServico: row.valor_max_servico,
         });
@@ -3750,12 +3755,12 @@ carregarPlanoLimitesReais();
 // lugar (fonte única: mudou o limite ali, o card já reflete sozinho).
 function limitesTexto(planoId) {
   const l = PLANO_LIMITES_USUARIO[planoId];
-  if (!l || l.maxGrupos == null) {
+  if (!l || l.maxCategorias == null) {
     return ["Categorias ilimitadas", "Serviços ilimitados", "Sem limite de valor"];
   }
-  const categoriaTexto = l.maxGrupos === 1 && l.maxItensPorGrupo === 1
+  const categoriaTexto = l.maxCategorias === 1
     ? "1 categoria de serviço"
-    : `${l.maxGrupos} categorias × até ${l.maxItensPorGrupo} profissões cada`;
+    : `Até ${l.maxCategorias} categorias de serviço`;
   return [
     categoriaTexto,
     `Até ${l.maxServicosMes} serviços aceitos/mês`,
@@ -5374,8 +5379,9 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
   // cadastro de categoria.
   const limitePlanoAtual = PLANO_LIMITES_USUARIO[plano];
   const isPlanoPro = plano === "pro";
-  const limiteMaxGrupos       = limitePlanoAtual ? (limitePlanoAtual.maxGrupos ?? undefined)       : 1;
-  const limiteMaxItensPorGrupo = limitePlanoAtual ? (limitePlanoAtual.maxItensPorGrupo ?? undefined) : 1;
+  // 2026-08-10: voltou a ser um teto flat (nenhum agrupamento) — ver
+  // PLANO_LIMITES_USUARIO acima.
+  const limiteMaxCategorias = limitePlanoAtual ? (limitePlanoAtual.maxCategorias ?? undefined) : 1;
 
   // Categoria não grava mais sozinha a cada toggle (autosave) — com o limite
   // de 2 trocas na vida da conta, "1 sessão de edição = 1 troca", então cada
@@ -5387,17 +5393,10 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
     setCategoriaServico(novasCategorias);
   };
 
-  // motivo: "grupos" (tentou abrir uma categoria nova além do teto) ou
-  // "itens" (tentou marcar mais uma profissão dentro de uma categoria já no
-  // teto por-grupo) — CategoriaMultiSelect distingue os dois casos.
-  const handleLimiteCategoria = (motivo) => {
+  const handleLimiteCategoria = () => {
     const proximoPlano = plano === "pro" ? "Multi Premium" : "Multi Pro";
-    const capGrupos = limiteMaxGrupos ?? 1;
-    const capItens  = limiteMaxItensPorGrupo ?? 1;
-    const msg = motivo === "itens"
-      ? `⚠️ Seu plano permite até ${capItens} ${capItens === 1 ? "profissão" : "profissões"} por categoria escolhida.`
-      : `⚠️ Seu plano permite até ${capGrupos} categoria${capGrupos === 1 ? "" : "s"} de serviço.`;
-    showToast?.(`${msg} Para cadastrar todos os serviços que você oferece, faça upgrade para o ${proximoPlano}.`, O);
+    const cap = limiteMaxCategorias ?? 1;
+    showToast?.(`⚠️ Seu plano permite até ${cap} categoria${cap === 1 ? "" : "s"} de serviço. Para cadastrar todos os serviços que você oferece, faça upgrade para o ${proximoPlano}.`, O);
   };
   const [showNotif, setShowNotif] = useState(false);
   const [showSeguranca, setShowSeguranca] = useState(false);
@@ -5738,14 +5737,13 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
                 <>
                   <p style={{ margin:"0 0 10px", fontSize:11, color:"#9CA3AF" }}>
                     Necessárias pra ficar online e receber pedidos no Mural.
-                    {limiteMaxGrupos != null && ` ${plano === "pro" ? "Multi Pro" : "Multi Autônomo"}: até ${limiteMaxGrupos} categoria${limiteMaxGrupos === 1 ? "" : "s"}${limiteMaxItensPorGrupo != null && limiteMaxItensPorGrupo > 1 ? ` (até ${limiteMaxItensPorGrupo} profissões cada)` : ""}.`}
+                    {limiteMaxCategorias != null && ` ${plano === "pro" ? "Multi Pro" : "Multi Autônomo"}: até ${limiteMaxCategorias} categoria${limiteMaxCategorias === 1 ? "" : "s"} de serviço.`}
                     {!categoriaEhPrimeiraEscolha && ` Você tem ${2 - trocasCategoriaUsadas} troca${2 - trocasCategoriaUsadas === 1 ? "" : "s"} de categoria restante${2 - trocasCategoriaUsadas === 1 ? "" : "s"} — confirme com atenção ao Salvar.`}
                   </p>
                   <CategoriaMultiSelect
                     value={categoriaServico}
                     onChange={handleSaveCategoria}
-                    maxGrupos={limiteMaxGrupos}
-                    maxItensPorGrupo={limiteMaxItensPorGrupo}
+                    max={limiteMaxCategorias}
                     onLimitReached={handleLimiteCategoria}
                   />
                   {plano !== "premium" && (
@@ -7373,13 +7371,16 @@ function PasswordField({ style, ...rest }) {
 }
 
 /* Seletor de categorias em chips (multi-escolha). Usado no cadastro de
-   empresa (limite flat via `max`, ex.: até 3 categorias) e no editor de
-   categoria do profissional (ProfileScreen, limite duplo via `maxGrupos`/
-   `maxItensPorGrupo` — ver PLANO_LIMITES_USUARIO). Passe `max` OU o par
-   `maxGrupos`+`maxItensPorGrupo`, nunca os dois; nenhum dos três = sem
-   limite. onLimitReached(motivo) dispara ao tentar marcar uma categoria
-   além do limite — motivo é "grupos"/"itens" no modo duplo, undefined no
-   modo flat (usado pro upsell Autônomo→Pro→Premium). */
+   empresa e no editor de categoria do profissional (ProfileScreen) — os
+   dois em modo flat via `max` (ver PLANO_LIMITES_USUARIO), ex.: até 3
+   categorias, sem agrupamento. nenhum limite passado = sem limite.
+   onLimitReached() dispara ao tentar marcar categoria além do limite
+   (usado pro upsell Autônomo→Pro→Premium). O modo duplo via `maxGrupos`+
+   `maxItensPorGrupo` (grupo×profissões-por-grupo, usado até 2026-08-09)
+   continua implementado abaixo mas nenhum call site usa mais — decisão
+   explícita de 2026-08-10 de manter a reforma comercial separada da
+   reforma de 23 grupos/profissões aninhadas, que fica como projeto à
+   parte. */
 // Navegação em 2 passos (2026-08-07): em vez de rolar uma lista solta de
 // centenas de itens de uma vez, primeiro escolhe o grupo (ex.: "Reformas e
 // Construção"), depois vê só os itens daquele grupo — com botão de voltar
@@ -7523,7 +7524,7 @@ function PlanoUpgradeCTA({ tipo, plano, onUpgrade }) {
     ctaLabel = "FAZER UPGRADE";
     detalhe = ehPro
       ? "Com o Multi Premium você aceita serviços ilimitados por mês e cadastra categorias ilimitadas."
-      : `Com o Multi Pro você pode aceitar até ${PLANO_LIMITES_USUARIO.pro.maxServicosMes} serviços por mês e cadastrar até ${PLANO_LIMITES_USUARIO.pro.maxGrupos} categorias (com até ${PLANO_LIMITES_USUARIO.pro.maxItensPorGrupo} profissões cada).`;
+      : `Com o Multi Pro você pode aceitar até ${PLANO_LIMITES_USUARIO.pro.maxServicosMes} serviços por mês e cadastrar até ${PLANO_LIMITES_USUARIO.pro.maxCategorias} categorias.`;
   }
   return (
     <div style={{ background:"#FFF7ED", border:"1.5px solid #FDBA74", borderRadius:14, padding:"14px 16px", display:"flex", flexDirection:"column", gap:8 }}>
