@@ -9675,10 +9675,37 @@ export default function App() {
   // quem já estava logado antes continua "logado" na UI (multiSession no
   // localStorage), mas toda chamada supabase.from(...) volta a ir como
   // anônima até deslogar/logar de novo.
+  //
+  // Achado investigando "foto/telefone somem do Perfil" (2026-08-10): uma
+  // sessão salva sem token (de antes deste wiring, commit 20ce467) ou com
+  // um token que falha ao restaurar deixa o app "logado" na UI pra sempre,
+  // mas o client Supabase real fica anônimo — silenciosamente, sem erro
+  // nenhum. Tabelas com RLS restrita a `authenticated` (usuarios, pedidos,
+  // propostas, chat_propostas_valor — Fase 1 de hardening) então leem/gravam
+  // vazio pra sempre nessa sessão (SELECT volta [], UPDATE "sucede" sem
+  // alterar nada, já que RLS bloqueando 0 linhas não é um erro pro
+  // supabase-js). Detecta os dois casos e força um novo login — a única
+  // forma de recuperar um JWT válido de verdade.
   useEffect(() => {
+    const forceReauth = () => {
+      try { localStorage.removeItem("multiSession"); localStorage.removeItem("multiUser"); } catch {}
+      setIsLoggedIn(false);
+      setUserEmail("");
+      setAuthScreen("welcome");
+      showToast?.("🔒 Sua sessão expirou. Entre novamente.", "#DC2626");
+    };
     if (savedSession?.token) {
       supabase.auth.setSession({ access_token: savedSession.token, refresh_token: savedSession.refreshToken })
-        .catch(err => console.error("[auth] setSession (boot) falhou:", err.message));
+        .then(({ data, error }) => {
+          if (error || !data?.session) {
+            console.warn("[auth] sessão salva inválida/expirada, forçando novo login:", error?.message);
+            forceReauth();
+          }
+        })
+        .catch(err => { console.error("[auth] setSession (boot) falhou:", err.message); forceReauth(); });
+    } else if (savedSession) {
+      console.warn("[auth] sessão local sem token Supabase Auth — forçando novo login");
+      forceReauth();
     }
   }, []);
   // Auth: starts as guest, modal layers appear on demand
