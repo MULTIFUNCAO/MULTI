@@ -2474,7 +2474,7 @@ function TodasCategoriasModal({ onClose, onSelect }) {
 
 /* ───────────────────────── POST SERVICE SCREEN ──────────────────────────────── */
 function PostServiceScreen({ onBack, onSuccess, initialCat = "" }) {
-  const [form,       setForm]       = useState({ cat:initialCat, desc:"", value:"", cep:"", material: false, urgent:"normal", scheduledDate:"" });
+  const [form,       setForm]       = useState({ cat:initialCat, desc:"", value:"", cep:"", material: false, urgent:"normal", scheduledDate:"", tipoAtendimento:"residencial" });
   const [photos,     setPhotos]     = useState([]);
   const [cepInfo,    setCepInfo]    = useState(null);  // { bairro, cidade, uf }
   const [cepLoading, setCepLoading] = useState(false);
@@ -2599,6 +2599,32 @@ function PostServiceScreen({ onBack, onSuccess, initialCat = "" }) {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Tipo de solicitação — natureza da demanda (Residencial/Empresarial),
+          não o tipo de cliente (PF/CNPJ): um cliente pessoa física pode
+          fazer uma solicitação Empresarial. Determina quais profissionais
+          (por plano) enxergam o pedido no mural — ver EmpresaHomeScreen/
+          ProfileScreen, filtro por tipo_atendimento. */}
+      <div>
+        <label style={{fontSize:12,color:"#666",display:"block", marginBottom:6}}>Tipo de solicitação</label>
+        <div style={{ display:"flex", gap:8 }}>
+          {[
+            { val:"residencial", icon:"🏠", label:"Residencial", sub:"Para sua casa" },
+            { val:"empresarial",  icon:"🏢", label:"Empresarial",  sub:"Para seu negócio" },
+          ].map(opt => (
+            <button key={opt.val} type="button" onClick={() => setForm(f => ({ ...f, tipoAtendimento:opt.val }))} style={{
+              flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:2,
+              padding:"12px 8px", borderRadius:12, cursor:"pointer",
+              border: form.tipoAtendimento === opt.val ? `2px solid ${B}` : "1.5px solid #E5E7EB",
+              background: form.tipoAtendimento === opt.val ? "#EBF4FF" : "white",
+            }}>
+              <span style={{ fontSize:20 }}>{opt.icon}</span>
+              <span style={{ fontWeight:800, fontSize:12.5, color: form.tipoAtendimento === opt.val ? B : "#555" }}>{opt.label}</span>
+              <span style={{ fontSize:10.5, color:"#9CA3AF" }}>{opt.sub}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Descrição */}
@@ -2763,7 +2789,7 @@ function PostServiceScreen({ onBack, onSuccess, initialCat = "" }) {
       </div>
 
         <button
-            onClick={() => { if (canPublish) { (async()=>{ const ts=Date.now(); const urls=await Promise.all((window._photos||[]).map(async(b64,i)=>{ const res=await fetch(b64); const blob=await res.blob(); const ext=blob.type.includes("png")?"png":"jpg"; const path="pedido_"+ts+"_"+i+"."+ext; const{error:ue}=await supabase.storage.from("pedidos-fotos").upload(path,blob,{contentType:blob.type,upsert:true,cacheControl:"31536000"}); if(ue){console.warn("upload:",ue);return null;} return supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl; })); const fotos=urls.filter(Boolean); const{data:novoPedido,error}=await supabase.from("pedidos").insert({cliente_id:safeGetUser().email||"anonimo",cliente_nome:safeGetUser().name||"Cliente",categoria:form.cat,descricao:form.desc,valor:Number(form.value),cep:form.cep,cidade:cepInfo.cidade||null,fotos,status:"aberto"}).select().single(); if(error){alert("Erro ao publicar serviço: "+(error.message||"")); return;} fetch(`${NOTIFY_API}/notify-pedido`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({categoria:form.cat,descricao:form.desc})}).catch(()=>{}); (async()=>{ const clienteEmail=safeGetUser().email; if(!clienteEmail) return; const playerId=await getOneSignalPlayerId(); if(playerId){ supabase.from("usuarios").update({onesignal_player_id:playerId}).eq("email",clienteEmail).then(()=>{}); } })(); onSuccess({...mapPedidoRow(novoPedido), cepInfo, material:form.material}); })(); }}}
+            onClick={() => { if (canPublish) { (async()=>{ const ts=Date.now(); const urls=await Promise.all((window._photos||[]).map(async(b64,i)=>{ const res=await fetch(b64); const blob=await res.blob(); const ext=blob.type.includes("png")?"png":"jpg"; const path="pedido_"+ts+"_"+i+"."+ext; const{error:ue}=await supabase.storage.from("pedidos-fotos").upload(path,blob,{contentType:blob.type,upsert:true,cacheControl:"31536000"}); if(ue){console.warn("upload:",ue);return null;} return supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl; })); const fotos=urls.filter(Boolean); const{data:novoPedido,error}=await supabase.from("pedidos").insert({cliente_id:safeGetUser().email||"anonimo",cliente_nome:safeGetUser().name||"Cliente",categoria:form.cat,descricao:form.desc,valor:Number(form.value),cep:form.cep,cidade:cepInfo.cidade||null,fotos,status:"aberto",tipo_atendimento:form.tipoAtendimento}).select().single(); if(error){alert("Erro ao publicar serviço: "+(error.message||"")); return;} fetch(`${NOTIFY_API}/notify-pedido`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({categoria:form.cat,descricao:form.desc})}).catch(()=>{}); (async()=>{ const clienteEmail=safeGetUser().email; if(!clienteEmail) return; const playerId=await getOneSignalPlayerId(); if(playerId){ supabase.from("usuarios").update({onesignal_player_id:playerId}).eq("email",clienteEmail).then(()=>{}); } })(); onSuccess({...mapPedidoRow(novoPedido), cepInfo, material:form.material}); })(); }}}
             style={{ padding:"15px 0", borderRadius:14, border:"none", cursor: canPublish ? "pointer" : "not-allowed", background: canPublish ? `linear-gradient(135deg,${O},#E64A19)` : "#9CA3AF", color: canPublish ? "white" : "#4B5563", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow: canPublish ? "0 5px 18px rgba(255,87,34,.30)" : "none", transition:"all .2s" }}>
             <Send size={15} /> Publicar Serviço
           </button>
@@ -8669,10 +8695,13 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
       .then(({ count }) => setUsadosCiclo(count || 0))
       .catch(() => {});
   }, [userEmail, planoInicio]);
-  // Demandas de empresa (publico_alvo:"pro") só entram no feed de quem é
-  // Multi Pro — Autônomo continua vendo só pedido normal de cliente.
-  const isPlanoPro = plano === "pro";
-  useEffect(()=>{ supabase.from("pedidos").select("*").eq("status","aberto").in("publico_alvo", isPlanoPro ? ["geral","pro"] : ["geral"]).order("created_at",{ascending:false}).limit(50).then(({data})=>{ if(data&&data.length>0) setRealPedidos(data.map(p=>({id:p.id,cliente_id:p.cliente_id,cat:p.categoria||"servico",title:(p.descricao||p.categoria||"Serviço").slice(0,40),desc:p.descricao||"",value:p.valor||0,loc:p.cidade||"sua região",time:new Date(p.created_at).toLocaleDateString("pt-BR"),client:p.cliente_nome||"Cliente",rating:4.5,urgent:false,emoji:"🔧",bg:"#FFF8E1",photo:null,photos:p.fotos,publicoAlvo:p.publico_alvo,prazo:p.prazo}))); }).catch(()=>{}); },[isPlanoPro]);
+  // Demandas de empresa (publico_alvo:"pro") e demandas Empresariais
+  // (tipo_atendimento:"empresarial") só entram no feed de quem é Multi Pro
+  // ou Premium — Autônomo só vê pedido "geral"/residencial. Antes esse gate
+  // só considerava plano==="pro" (Premium ficava de fora por uma lacuna
+  // pré-existente, corrigida junto aqui em 2026-08-10).
+  const podeVerEmpresarial = plano === "pro" || plano === "premium";
+  useEffect(()=>{ supabase.from("pedidos").select("*").eq("status","aberto").in("publico_alvo", podeVerEmpresarial ? ["geral","pro"] : ["geral"]).in("tipo_atendimento", podeVerEmpresarial ? ["residencial","empresarial"] : ["residencial"]).order("created_at",{ascending:false}).limit(50).then(({data})=>{ if(data&&data.length>0) setRealPedidos(data.map(p=>({id:p.id,cliente_id:p.cliente_id,cat:p.categoria||"servico",title:(p.descricao||p.categoria||"Serviço").slice(0,40),desc:p.descricao||"",value:p.valor||0,loc:p.cidade||"sua região",time:new Date(p.created_at).toLocaleDateString("pt-BR"),client:p.cliente_nome||"Cliente",rating:4.5,urgent:false,emoji:"🔧",bg:"#FFF8E1",photo:null,photos:p.fotos,publicoAlvo:p.publico_alvo,tipoAtendimento:p.tipo_atendimento,prazo:p.prazo}))); }).catch(()=>{}); },[podeVerEmpresarial]);
 
   // Carrega categoria + status persistidos, mesmo padrão do handleToggleOnline da empresa.
   // userToggledRef evita que essa carga inicial (assíncrona) sobrescreva um clique em
