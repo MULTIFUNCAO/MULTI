@@ -3718,6 +3718,33 @@ const PLANO_LIMITES_USUARIO = {
   pro:      { maxGrupos: 2, maxItensPorGrupo: 3, maxServicosMes: 10, valorMaxServico: 3000 },
   premium:  { maxGrupos: null, maxItensPorGrupo: null, maxServicosMes: null, valorMaxServico: null },
 };
+// Busca os limites reais de "configuracoes_planos" (Supabase) e sobrescreve os
+// valores acima NO MESMO OBJETO (mutação, não reatribuição) — assim os
+// vários pontos do arquivo que leem PLANO_LIMITES_USUARIO.<plano>.<campo>
+// direto (limitesTexto, telas de upgrade, cota do ciclo, etc.) enxergam o
+// valor atualizado sem precisar virar consumidor de state/prop. Se a busca
+// falhar (rede, RLS, ou o bug de durabilidade desse projeto Supabase — ver
+// memória "Supabase multifuncao project"), os valores hardcoded acima
+// continuam valendo — fail-open, mesmo padrão já usado pro doc-status em
+// outro lugar do app. Roda uma vez ao carregar o módulo (fire-and-forget,
+// não bloqueia o primeiro render).
+async function carregarPlanoLimitesReais() {
+  try {
+    const { data, error } = await supabase.from("configuracoes_planos").select("*");
+    if (error || !data?.length) return;
+    data.forEach(row => {
+      if (PLANO_LIMITES_USUARIO[row.plano]) {
+        Object.assign(PLANO_LIMITES_USUARIO[row.plano], {
+          maxGrupos: row.max_grupos,
+          maxItensPorGrupo: row.max_itens_por_grupo,
+          maxServicosMes: row.max_servicos_mes,
+          valorMaxServico: row.valor_max_servico,
+        });
+      }
+    });
+  } catch { /* fail-open: mantém os valores hardcoded acima */ }
+}
+carregarPlanoLimitesReais();
 // Lista curta de "Limites do plano" pros cards de EscolherPlanoScreen — deriva
 // de PLANO_LIMITES_USUARIO em vez de duplicar os números soltos num segundo
 // lugar (fonte única: mudou o limite ali, o card já reflete sozinho).
