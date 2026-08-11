@@ -1089,7 +1089,7 @@ function CandidatoCard({ proposta: p, perfil, reputacao, onAceitar, onVerPerfil 
       {perfil?.bio && (
         <div style={{color:"#555",fontSize:12.5,lineHeight:1.5,marginBottom:10,background:"#F8F9FB",borderRadius:10,padding:"8px 10px"}}>{perfil.bio}</div>
       )}
-      <div style={{color:"#007BFF",fontWeight:800,fontSize:18,margin:"6px 0"}}>R$ {p.valor||0}</div>
+      <div style={{color: p.valor != null ? "#007BFF" : "#9CA3AF",fontWeight:800,fontSize:18,margin:"6px 0"}}>{p.valor != null ? `R$ ${p.valor}` : "A combinar"}</div>
       <div style={{color:"#666",fontSize:13,marginBottom:12}}>{p.mensagem||""}</div>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:9 }}>
         <button onClick={()=>onVerPerfil&&onVerPerfil({ email, isEmpresa })} style={{padding:"12px 0",borderRadius:10,border:`1.5px solid ${B}`,background:"white",color:B,fontWeight:800,fontSize:13,cursor:"pointer"}}>
@@ -1527,7 +1527,7 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
                         <Clock size={10} />{formatTimeAgo(p.created_at)}
                       </p>
                     </div>
-                    <span style={{ fontSize:15, fontWeight:900, color:B, flexShrink:0 }}>R$ {p.valor || 0}</span>
+                    <span style={{ fontSize:15, fontWeight:900, color: p.valor != null ? B : "#9CA3AF", flexShrink:0 }}>{p.valor != null ? `R$ ${p.valor}` : "A combinar"}</span>
                   </div>
                 );
               })}
@@ -1794,7 +1794,8 @@ function EmpresaPedidosScreen({ userEmail }) {
             cat: p.categoria || "servico",
             title: (p.descricao || p.categoria || "Serviço").slice(0, 40),
             desc: p.descricao || "",
-            value: p.valor || 0,
+            value: p.valor,
+            tipoValor: p.tipo_valor,
             loc: p.cidade || "sua região",
             time: p.created_at ? new Date(p.created_at).toLocaleDateString("pt-BR") : "",
             client: p.cliente_nome || "Cliente",
@@ -1890,7 +1891,7 @@ function EmpresaPedidosScreen({ userEmail }) {
                 <span style={{ display:"flex", alignItems:"center", gap:4 }}><Clock size={11} />{s.time}</span>
               </div>
               <div style={{ borderTop:"1px solid #F4F4F6", paddingTop:10, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                <span style={{ fontSize:22, fontWeight:900, color:B }}>R$ {s.value}</span>
+                <span style={{ fontSize:22, fontWeight:900, color: s.value != null ? B : "#9CA3AF" }}>{s.value != null ? `R$ ${s.value}` : "A combinar"}</span>
                 <span style={{ fontSize:12, color:"#aaa" }}>👤 {s.client}</span>
               </div>
               {whatsapp && (
@@ -2025,7 +2026,7 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted, onA
           <ArrowLeft size={15} /> Voltar
         </button>
         <p style={{ color:'#ffffff99', fontSize:12, marginBottom:4, textTransform:'uppercase', letterSpacing:1 }}>{service.title}</p>
-        <p style={{ color:'white', fontSize:16, fontWeight:700, marginBottom:32 }}>R$ {service.value}</p>
+        <p style={{ color:'white', fontSize:16, fontWeight:700, marginBottom:32 }}>{service.value != null ? `R$ ${service.value}` : "A combinar"}</p>
         <svg width="240" height="240" viewBox="0 0 240 240" style={{ marginBottom:24 }}>
           <circle cx="120" cy="120" r="100" fill="#FF572208" stroke="#FF572218" strokeWidth="0.5"/>
           <circle cx="120" cy="120" r="72" fill="#FF572210" stroke="#FF572228" strokeWidth="0.5"/>
@@ -2091,7 +2092,7 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted, onA
             <div style={{ width:40, height:40, borderRadius:12, background:cat?.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>{cat?.emoji}</div>
             <div>
               <p style={{ fontSize:12, color:"#aaa", margin:0 }}>{service.title}</p>
-              <p style={{ fontSize:14, fontWeight:900, color:"#1a1a2e", margin:0 }}>R$ {service.value} · {service.loc || "sua região"}</p>
+              <p style={{ fontSize:14, fontWeight:900, color:"#1a1a2e", margin:0 }}>{service.value != null ? `R$ ${service.value}` : "A combinar"} · {service.loc || "sua região"}</p>
             </div>
           </div>
           {/* nao apareceu */}
@@ -2176,7 +2177,7 @@ function RadarSearchScreen({ service, onStatusChange, showToast, onAccepted, onA
         </div>
         <div style={{ marginTop:28, padding:"12px 20px", borderRadius:14, background:"#F8F9FA", border:"1px solid #E9ECEF" }}>
           <p style={{ fontSize:12, color:"#888", margin:0 }}>Seu pedido: <strong style={{ color:"#1a1a2e" }}>{service.title}</strong></p>
-          <p style={{ fontSize:13, fontWeight:900, color:B, margin:"4px 0 0" }}>R$ {service.value}</p>
+          <p style={{ fontSize:13, fontWeight:900, color:B, margin:"4px 0 0" }}>{service.value != null ? `R$ ${service.value}` : "A combinar"}</p>
         </div>
       </div>
     </>
@@ -2400,7 +2401,7 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName, 
                     </div>
                   </div>
                   <div style={{ textAlign:"right", flexShrink:0 }}>
-                    <p style={{ fontSize:15, fontWeight:900, color:B, margin:0 }}>R$ {s.value}</p>
+                    <p style={{ fontSize:15, fontWeight:900, color:B, margin:0 }}>{s.value != null ? `R$ ${s.value}` : "A combinar"}</p>
                   </div>
                 </div>
               );
@@ -2474,7 +2475,7 @@ function TodasCategoriasModal({ onClose, onSelect }) {
 
 /* ───────────────────────── POST SERVICE SCREEN ──────────────────────────────── */
 function PostServiceScreen({ onBack, onSuccess, initialCat = "" }) {
-  const [form,       setForm]       = useState({ cat:initialCat, desc:"", value:"", cep:"", material: false, urgent:"normal", scheduledDate:"", tipoAtendimento:"residencial" });
+  const [form,       setForm]       = useState({ cat:initialCat, desc:"", value:"", cep:"", material: false, urgent:"normal", scheduledDate:"", tipoAtendimento:"residencial", tipoValor:"referencia" });
   const [photos,     setPhotos]     = useState([]);
   const [cepInfo,    setCepInfo]    = useState(null);  // { bairro, cidade, uf }
   const [cepLoading, setCepLoading] = useState(false);
@@ -2529,10 +2530,14 @@ function PostServiceScreen({ onBack, onSuccess, initialCat = "" }) {
 
   // Valor mínimo fixo (R$20) — antes só checava form.value truthy, então
   // "0" (string não-vazia) passava como válido e publicava pedido de R$0.
+  // Só se aplica à opção A (tipoValor:"referencia") — na opção B
+  // ("a_combinar", Fase 3) o cliente não informa valor nenhum, então não há
+  // o que validar aqui, e o pedido é publicado com valor:null.
   const valorNum = Number(form.value);
   const valorPreenchido = form.value !== "" && !Number.isNaN(valorNum);
-  const valorAbaixoMinimo = valorPreenchido && valorNum < VALOR_MINIMO_PEDIDO;
-  const canPublish = form.cat && form.desc && valorPreenchido && valorNum >= VALOR_MINIMO_PEDIDO && cepInfo && cepInfo.cidade;
+  const valorAbaixoMinimo = form.tipoValor === "referencia" && valorPreenchido && valorNum < VALOR_MINIMO_PEDIDO;
+  const valorOk = form.tipoValor === "a_combinar" || (valorPreenchido && valorNum >= VALOR_MINIMO_PEDIDO);
+  const canPublish = form.cat && form.desc && valorOk && cepInfo && cepInfo.cidade;
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:18, padding:"18px 16px 40px" }}>
@@ -2774,22 +2779,47 @@ function PostServiceScreen({ onBack, onSuccess, initialCat = "" }) {
         </div>
       </div>
 
-      {/* Valor */}
+      {/* Valor — Fase 3 da reforma comercial: opção A (valor de referência,
+          não vinculante — o profissional pode propor outro pelo chat) vs
+          opção B (sem valor nenhum, cliente quer só receber orçamentos).
+          Nos dois casos a negociação por chat_propostas_valor funciona
+          igual; a diferença é só se existe ou não um valor inicial. */}
       <div>
-        <label style={{fontSize:12,color:"#666",display:"block"}}>Valor que posso pagar</label>
-        <div style={{ position:"relative" }}>
-          <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", fontWeight:800, color:"#999", fontSize:13 }}>R$</span>
-          <input type="number" placeholder="0,00" style={{ ...F, paddingLeft:38, ...(valorAbaixoMinimo ? { border:"1.5px solid #EF4444" } : {}) }} value={form.value} onChange={e => setForm({ ...form, value:e.target.value })} />
+        <label style={{fontSize:12,color:"#666",display:"block", marginBottom:6}}>Valor do serviço</label>
+        <div style={{ display:"flex", gap:8, marginBottom: form.tipoValor === "referencia" ? 10 : 0 }}>
+          {[
+            { val:"referencia",  icon:"💰", label:"Tenho um valor em mente",    sub:"A partir de quanto você pretende investir?" },
+            { val:"a_combinar",  icon:"🤝", label:"Não sei quanto custa",       sub:"Quero receber orçamentos e negociar" },
+          ].map(opt => (
+            <button key={opt.val} type="button" onClick={() => setForm(f => ({ ...f, tipoValor:opt.val }))} style={{
+              flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:2,
+              padding:"12px 8px", borderRadius:12, cursor:"pointer",
+              border: form.tipoValor === opt.val ? `2px solid ${B}` : "1.5px solid #E5E7EB",
+              background: form.tipoValor === opt.val ? "#EBF4FF" : "white",
+            }}>
+              <span style={{ fontSize:20 }}>{opt.icon}</span>
+              <span style={{ fontWeight:800, fontSize:12.5, color: form.tipoValor === opt.val ? B : "#555" }}>{opt.label}</span>
+              <span style={{ fontSize:10.5, color:"#9CA3AF", textAlign:"center" }}>{opt.sub}</span>
+            </button>
+          ))}
         </div>
-        {valorAbaixoMinimo && (
-          <p style={{ fontSize:11.5, color:"#EF4444", fontWeight:700, margin:"6px 0 0" }}>
-            ⚠️ Valor mínimo pra publicar um pedido é R$ {VALOR_MINIMO_PEDIDO},00
-          </p>
+        {form.tipoValor === "referencia" && (
+          <>
+            <div style={{ position:"relative" }}>
+              <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", fontWeight:800, color:"#999", fontSize:13 }}>R$</span>
+              <input type="number" placeholder="0,00" style={{ ...F, paddingLeft:38, ...(valorAbaixoMinimo ? { border:"1.5px solid #EF4444" } : {}) }} value={form.value} onChange={e => setForm({ ...form, value:e.target.value })} />
+            </div>
+            {valorAbaixoMinimo && (
+              <p style={{ fontSize:11.5, color:"#EF4444", fontWeight:700, margin:"6px 0 0" }}>
+                ⚠️ Valor mínimo pra publicar um pedido é R$ {VALOR_MINIMO_PEDIDO},00
+              </p>
+            )}
+          </>
         )}
       </div>
 
         <button
-            onClick={() => { if (canPublish) { (async()=>{ const ts=Date.now(); const urls=await Promise.all((window._photos||[]).map(async(b64,i)=>{ const res=await fetch(b64); const blob=await res.blob(); const ext=blob.type.includes("png")?"png":"jpg"; const path="pedido_"+ts+"_"+i+"."+ext; const{error:ue}=await supabase.storage.from("pedidos-fotos").upload(path,blob,{contentType:blob.type,upsert:true,cacheControl:"31536000"}); if(ue){console.warn("upload:",ue);return null;} return supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl; })); const fotos=urls.filter(Boolean); const{data:novoPedido,error}=await supabase.from("pedidos").insert({cliente_id:safeGetUser().email||"anonimo",cliente_nome:safeGetUser().name||"Cliente",categoria:form.cat,descricao:form.desc,valor:Number(form.value),cep:form.cep,cidade:cepInfo.cidade||null,fotos,status:"aberto",tipo_atendimento:form.tipoAtendimento}).select().single(); if(error){alert("Erro ao publicar serviço: "+(error.message||"")); return;} fetch(`${NOTIFY_API}/notify-pedido`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({categoria:form.cat,descricao:form.desc})}).catch(()=>{}); (async()=>{ const clienteEmail=safeGetUser().email; if(!clienteEmail) return; const playerId=await getOneSignalPlayerId(); if(playerId){ supabase.from("usuarios").update({onesignal_player_id:playerId}).eq("email",clienteEmail).then(()=>{}); } })(); onSuccess({...mapPedidoRow(novoPedido), cepInfo, material:form.material}); })(); }}}
+            onClick={() => { if (canPublish) { (async()=>{ const ts=Date.now(); const urls=await Promise.all((window._photos||[]).map(async(b64,i)=>{ const res=await fetch(b64); const blob=await res.blob(); const ext=blob.type.includes("png")?"png":"jpg"; const path="pedido_"+ts+"_"+i+"."+ext; const{error:ue}=await supabase.storage.from("pedidos-fotos").upload(path,blob,{contentType:blob.type,upsert:true,cacheControl:"31536000"}); if(ue){console.warn("upload:",ue);return null;} return supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl; })); const fotos=urls.filter(Boolean); const{data:novoPedido,error}=await supabase.from("pedidos").insert({cliente_id:safeGetUser().email||"anonimo",cliente_nome:safeGetUser().name||"Cliente",categoria:form.cat,descricao:form.desc,valor:form.tipoValor==="a_combinar"?null:Number(form.value),cep:form.cep,cidade:cepInfo.cidade||null,fotos,status:"aberto",tipo_atendimento:form.tipoAtendimento,tipo_valor:form.tipoValor}).select().single(); if(error){alert("Erro ao publicar serviço: "+(error.message||"")); return;} fetch(`${NOTIFY_API}/notify-pedido`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({categoria:form.cat,descricao:form.desc})}).catch(()=>{}); (async()=>{ const clienteEmail=safeGetUser().email; if(!clienteEmail) return; const playerId=await getOneSignalPlayerId(); if(playerId){ supabase.from("usuarios").update({onesignal_player_id:playerId}).eq("email",clienteEmail).then(()=>{}); } })(); onSuccess({...mapPedidoRow(novoPedido), cepInfo, material:form.material}); })(); }}}
             style={{ padding:"15px 0", borderRadius:14, border:"none", cursor: canPublish ? "pointer" : "not-allowed", background: canPublish ? `linear-gradient(135deg,${O},#E64A19)` : "#9CA3AF", color: canPublish ? "white" : "#4B5563", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow: canPublish ? "0 5px 18px rgba(255,87,34,.30)" : "none", transition:"all .2s" }}>
             <Send size={15} /> Publicar Serviço
           </button>
@@ -2850,6 +2880,7 @@ function mapPedidoRow(p) {
     concluido_profissional_em: p.concluido_profissional_em,
     conclusao_fotos_cliente: p.conclusao_fotos_cliente,
     conclusao_fotos_profissional: p.conclusao_fotos_profissional,
+    tipoValor: p.tipo_valor,
   };
 }
 
@@ -2995,7 +3026,7 @@ function ServiceDetailClient({ service, onBack, onConfirmarConclusao, onCancelar
               <span style={{ fontSize:11, fontWeight:800, color:currentColor, background:currentColor+"18", padding:"2px 8px", borderRadius:99 }}>
                 {PHASES[phase].label}
               </span>
-              <span style={{ fontSize:11, color:"#aaa" }}>R$ {service.value}</span>
+              <span style={{ fontSize:11, color:"#aaa" }}>{service.value != null ? `R$ ${service.value}` : "A combinar"}</span>
             </div>
           </div>
         </div>
@@ -3046,7 +3077,7 @@ function ServiceDetailClient({ service, onBack, onConfirmarConclusao, onCancelar
               <p style={{ fontSize:13, fontWeight:900, color:"white", margin:0 }}>Confirmação de Conclusão</p>
               <p style={{ fontSize:11, color:"rgba(255,255,255,.55)", margin:0 }}>PIN de confirmação</p>
             </div>
-            <span style={{ marginLeft:"auto", fontSize:16, fontWeight:900, color:"#4ade80" }}>R$ {service.proposalValue || service.value}</span>
+            <span style={{ marginLeft:"auto", fontSize:16, fontWeight:900, color:"#4ade80" }}>{(service.proposalValue ?? service.value) != null ? `R$ ${service.proposalValue || service.value}` : "A combinar"}</span>
           </div>
 
           {/* body */}
@@ -3270,7 +3301,7 @@ function ServiceDetailPinEntry({ service, onBack, onStatusChange, onConfirmarCon
         <div style={{ width:46, height:46, borderRadius:14, background:cat?.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, flexShrink:0 }}>{cat?.emoji}</div>
         <div>
           <p style={{ fontWeight:900, fontSize:14, color:"#1a1a2e", margin:"0 0 3px" }}>{service.title}</p>
-          <p style={{ fontSize:12, color:"#aaa", margin:0 }}>R$ {service.proposalValue || service.value} · {service.loc || "Sua região"}</p>
+          <p style={{ fontSize:12, color:"#aaa", margin:0 }}>{(service.proposalValue ?? service.value) != null ? `R$ ${service.proposalValue || service.value}` : "A combinar"} · {service.loc || "Sua região"}</p>
         </div>
       </div>
 
@@ -3555,7 +3586,7 @@ function ServiceDetailPro({ service, onBack, isPro, onUpgrade, onOpenPinEntry, o
       <div style={{ borderRadius:20, padding:20, color:"white", background:`linear-gradient(135deg,${cat?.dot ?? B},${cat?.dot ?? B}bb)`, boxShadow:"0 6px 18px rgba(0,0,0,.13)" }}>
         <p style={{ fontSize:11, color:"rgba(255,255,255,.65)", marginBottom:4 }}>{cat?.label}</p>
         <h2 style={{ fontSize:18, fontWeight:900, marginBottom:8 }}>{service.title}</h2>
-        <span style={{ fontSize:28, fontWeight:900 }}>R$ {service.value}</span>
+        <span style={{ fontSize:28, fontWeight:900 }}>{service.value != null ? `R$ ${service.value}` : "A combinar"}</span>
       </div>
 
       {(service.photos&&service.photos.length>0?service.photos:[service.photo]).filter(Boolean).length>0 && <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>{(service.photos&&service.photos.length>0?service.photos:[service.photo]).filter(Boolean).map((src,i)=><img key={i} src={src} style={{width:service.photos&&service.photos.length>1?"calc(50% - 4px)":"100%",borderRadius:16,maxHeight:200,objectFit:"cover"}} />)}</div>}
@@ -5979,7 +6010,7 @@ function MyServicesScreen({ myServices, onOpenService, onOpenChat, onViewPropost
                     <span style={{ marginLeft:6, fontSize:11, fontWeight:700, padding:"2px 9px", borderRadius:99, background:"#FEE2E2", color:"#DC2626" }}>🚨 Em disputa</span>
                   )}
                 </div>
-                <span style={{ fontSize:16, fontWeight:900, color:B, flexShrink:0 }}>R$ {s.value}</span>
+                <span style={{ fontSize:16, fontWeight:900, color:B, flexShrink:0 }}>{s.value != null ? `R$ ${s.value}` : "A combinar"}</span>
               </div>
 
               <p style={{ fontSize:12, color:"#aaa", lineHeight:1.5, marginBottom:12 }}>{s.desc}</p>
@@ -6074,7 +6105,7 @@ function ChatInbox({ myServices, onOpenChat }) {
                 <span style={{ fontSize:11, color:"#bbb" }}>Agora</span>
               </div>
               <p style={{ fontSize:12, color: unread ? "#555" : "#aaa", fontWeight: unread ? 700 : 400, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                {isEmAndamentoTab(s.status) ? `Orçamento R$ ${s.proposalValue || s.value} confirmado 👍` : "✅ Serviço concluído"}
+                {isEmAndamentoTab(s.status) ? `Orçamento ${(s.proposalValue ?? s.value) != null ? `R$ ${s.proposalValue || s.value}` : "a combinar"} confirmado 👍` : "✅ Serviço concluído"}
               </p>
               <p style={{ fontSize:11, color:"#bbb", marginTop:2 }}>{s.title}</p>
             </div>
@@ -8701,7 +8732,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   // só considerava plano==="pro" (Premium ficava de fora por uma lacuna
   // pré-existente, corrigida junto aqui em 2026-08-10).
   const podeVerEmpresarial = plano === "pro" || plano === "premium";
-  useEffect(()=>{ supabase.from("pedidos").select("*").eq("status","aberto").in("publico_alvo", podeVerEmpresarial ? ["geral","pro"] : ["geral"]).in("tipo_atendimento", podeVerEmpresarial ? ["residencial","empresarial"] : ["residencial"]).order("created_at",{ascending:false}).limit(50).then(({data})=>{ if(data&&data.length>0) setRealPedidos(data.map(p=>({id:p.id,cliente_id:p.cliente_id,cat:p.categoria||"servico",title:(p.descricao||p.categoria||"Serviço").slice(0,40),desc:p.descricao||"",value:p.valor||0,loc:p.cidade||"sua região",time:new Date(p.created_at).toLocaleDateString("pt-BR"),client:p.cliente_nome||"Cliente",rating:4.5,urgent:false,emoji:"🔧",bg:"#FFF8E1",photo:null,photos:p.fotos,publicoAlvo:p.publico_alvo,tipoAtendimento:p.tipo_atendimento,prazo:p.prazo}))); }).catch(()=>{}); },[podeVerEmpresarial]);
+  useEffect(()=>{ supabase.from("pedidos").select("*").eq("status","aberto").in("publico_alvo", podeVerEmpresarial ? ["geral","pro"] : ["geral"]).in("tipo_atendimento", podeVerEmpresarial ? ["residencial","empresarial"] : ["residencial"]).order("created_at",{ascending:false}).limit(50).then(({data})=>{ if(data&&data.length>0) setRealPedidos(data.map(p=>({id:p.id,cliente_id:p.cliente_id,cat:p.categoria||"servico",title:(p.descricao||p.categoria||"Serviço").slice(0,40),desc:p.descricao||"",value:p.valor,tipoValor:p.tipo_valor,loc:p.cidade||"sua região",time:new Date(p.created_at).toLocaleDateString("pt-BR"),client:p.cliente_nome||"Cliente",rating:4.5,urgent:false,emoji:"🔧",bg:"#FFF8E1",photo:null,photos:p.fotos,publicoAlvo:p.publico_alvo,tipoAtendimento:p.tipo_atendimento,prazo:p.prazo}))); }).catch(()=>{}); },[podeVerEmpresarial]);
 
   // Carrega categoria + status persistidos, mesmo padrão do handleToggleOnline da empresa.
   // userToggledRef evita que essa carga inicial (assíncrona) sobrescreva um clique em
@@ -9060,7 +9091,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                 ) : (
                   <>
                     <div style={{ borderTop:"1px solid #F4F4F6", paddingTop:10, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                      <span style={{ fontSize:22, fontWeight:900, color:B }}>R$ {s.value}</span>
+                      <span style={{ fontSize:22, fontWeight:900, color: s.value != null ? B : "#9CA3AF" }}>{s.value != null ? `R$ ${s.value}` : "A combinar"}</span>
                       {/* client name — hidden for non-PRO */}
                       <span style={{ fontSize:12, color:"#aaa", filter: isLocked ? "blur(4px)" : "none" }}>
                         👤 {isLocked ? "Cliente PRO" : (s.client || "Cliente")}
@@ -9077,7 +9108,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                         if (!isPro) { setShowPlanBlock(true); return; }
                         if (isLocked) { onUpgrade(); return; }
                       const proUser=safeGetUser();
-                      supabase.from("propostas").upsert({pedido_id:s.id,profissional_id:proUser.email||proUser.whatsapp,profissional_nome:proUser.name||"Profissional",profissional_email:proUser.email||proUser.whatsapp,valor:s.value||0,mensagem:"Tenho interesse neste serviço!",status:"pendente",cliente_email:s.cliente_id||""},{onConflict:"pedido_id,profissional_id"}).then(()=>{}).catch(()=>{});
+                      supabase.from("propostas").upsert({pedido_id:s.id,profissional_id:proUser.email||proUser.whatsapp,profissional_nome:proUser.name||"Profissional",profissional_email:proUser.email||proUser.whatsapp,valor:s.value,mensagem:"Tenho interesse neste serviço!",status:"pendente",cliente_email:s.cliente_id||""},{onConflict:"pedido_id,profissional_id"}).then(()=>{}).catch(()=>{});
                       onViewService({ _notify:{ serviceId:s.id, serviceTitle:s.title, value:s.value, proName:proUser.name||"Profissional" } });
                       }}
                       style={{ padding:"11px 0", borderRadius:12, border:"none", cursor:"pointer", fontWeight:900, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:7,
@@ -9440,7 +9471,7 @@ function mapPedidoParaNewOrder(p) {
   try { const f = p.fotos; fotos = Array.isArray(f) ? f : (typeof f === "string" ? JSON.parse(f) : []); } catch (e) { fotos = []; }
   return {
     id: p.id, cliente_id: p.cliente_id, category: p.categoria,
-    location: p.cidade || "Guarulhos, SP", value: String(p.valor || "0"),
+    location: p.cidade || "Guarulhos, SP", value: p.valor != null ? String(p.valor) : null,
     description: p.descricao || "", photos: fotos, photo: fotos[0] || null,
   };
 }
@@ -9502,7 +9533,7 @@ function NewOrderCard({ order, onAccept, onReject }) {
         <div style={{display:'flex',justifyContent:'center',gap:10,marginBottom:16}}>
           <div style={{background:'#FF572220',borderRadius:10,padding:'8px 14px'}}>
             <div style={{fontSize:10,color:'#FF572299',marginBottom:2}}>Valor</div>
-            <div style={{fontSize:17,fontWeight:900,color:'#FF5722'}}>R$ {order.value}</div>
+            <div style={{fontSize:17,fontWeight:900,color:'#FF5722'}}>{order.value != null ? `R$ ${order.value}` : "A combinar"}</div>
           </div>
           <div style={{background:'#4CAF5020',borderRadius:10,padding:'8px 14px'}}>
             <div style={{fontSize:10,color:'#4CAF5099',marginBottom:2}}>Distância</div>
@@ -10310,7 +10341,7 @@ export default function App() {
       profissional_id: userEmail,
       profissional_nome: nomeOverride || userName || "Profissional",
       profissional_email: userEmail,
-      valor: valor || 0,
+      valor: valor != null && valor !== "" ? valor : null,
       mensagem: "Tenho interesse neste serviço!",
       status: "pendente",
       cliente_email: clienteId || "",
