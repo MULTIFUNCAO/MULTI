@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MULTI — Precisou? Chama a MULTI.</title>
+<meta name="description" content="A MULTI conecta quem precisa de um serviço com quem sabe fazer. Encontre profissionais de dezenas de especialidades.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="MULTI">
+<meta property="og:title" content="MULTI — Precisou? Chama a MULTI.">
+<meta property="og:description" content="Encontre profissionais para sua casa, sua rotina ou seu negócio. Da limpeza à tecnologia, mais de 100 especialidades num só lugar.">
+<meta property="og:url" content="https://multifuncao.com.br/site.html">
+<meta property="og:image" content="https://multifuncao.com.br/og-image.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="MULTI — Precisou? Chama a MULTI.">
+<meta name="twitter:description" content="Encontre profissionais para sua casa, sua rotina ou seu negócio.">
+<meta name="twitter:image" content="https://multifuncao.com.br/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 34'%3E%3Crect width='34' height='34' rx='9' fill='%23FF6A00'/%3E%3Cpath d='M9 7c-0.9 0-1.6 0.7-1.6 1.6v16.8c0 1.4 1.6 2.2 2.7 1.3L21 17 10.1 7.3C9.8 7.1 9.4 7 9 7Z' fill='white'/%3E%3Cpath d='M25 7c0.9 0 1.6 0.7 1.6 1.6v16.8c0 1.4-1.6 2.2-2.7 1.3L13 17 23.9 7.3C24.2 7.1 24.6 7 25 7Z' fill='white'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --white:#FFFFFF;
+    --mist:#F2F6FF;
+    --mist-2:#EAF0FC;
+    --navy:#0D1B2A;
+    --navy-soft:#16304C;
+    --blue:#0057FF;
+    --blue-soft:#4C86FF;
+    --orange:#FF6A00;
+    --orange-soft:#FF8C42;
+    --ink:#0D1B2A;
+    --muted:#5B6474;
+    --line:#E4E9F5;
+    --font:'Plus Jakarta Sans',sans-serif;
+    --mono:'IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{font-family:var(--font); color:var(--ink); background:var(--white); -webkit-font-smoothing:antialiased; overflow-x:hidden;}
+  a{color:inherit; text-decoration:none;}
+  button{font-family:inherit; cursor:pointer; border:none; background:none;}
+  .wrap{max-width:1200px; margin:0 auto; padding:0 24px;}
+  :focus-visible{outline:2px solid var(--orange); outline-offset:3px; border-radius:4px;}
+
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:15px 28px; border-radius:999px; font-weight:700; font-size:15px; transition:transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease;}
+  .btn:active{transform:scale(.97);}
+  .btn-orange{background:var(--orange); color:#fff; box-shadow:0 10px 26px -10px rgba(255,106,0,.55);}
+  .btn-orange:hover{transform:translateY(-2px); box-shadow:0 16px 32px -12px rgba(255,106,0,.65);}
+  .btn-outline-navy{background:transparent; color:var(--navy); border:1.5px solid var(--navy);}
+  .btn-outline-navy:hover{background:var(--navy); color:#fff; transform:translateY(-2px);}
+  .btn-outline-white{background:transparent; color:#fff; border:1.5px solid rgba(255,255,255,.5);}
+  .btn-outline-white:hover{background:rgba(255,255,255,.12); transform:translateY(-2px);}
+  .btn-white{background:#fff; color:var(--navy); box-shadow:0 10px 26px -10px rgba(0,0,0,.25);}
+  .btn-white:hover{transform:translateY(-2px);}
+
+  .eyebrow{font-family:var(--mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--orange); display:inline-flex; align-items:center; gap:9px;}
+  .eyebrow::before{content:''; width:16px; height:1.5px; background:var(--orange);}
+  .eyebrow.blue{color:var(--blue);}
+  .eyebrow.blue::before{background:var(--blue);}
+  .eyebrow.light{color:rgba(255,255,255,.7);}
+  .eyebrow.light::before{background:var(--orange-soft);}
+
+  section{padding:120px 0;}
+  [id]{scroll-margin-top:90px;}
+  @media (max-width:800px){ section{padding:76px 0;} }
+  .reveal{opacity:0; transform:translateY(26px); transition:opacity .8s ease, transform .8s ease;}
+  .reveal.in{opacity:1; transform:translateY(0);}
+  @media (prefers-reduced-motion: reduce){ *{animation:none !important; transition:none !important;} }
+
+  /* ===== Connector divider (signature motif) ===== */
+  .connector{display:flex; align-items:center; justify-content:center; gap:10px; padding:0 0 0;}
+  .connector .cl{width:80px; height:1px; background:linear-gradient(90deg, transparent, var(--line));}
+  .connector .cl.r{background:linear-gradient(90deg, var(--line), transparent);}
+  .connector .cm{width:9px; height:9px; border-radius:2px; background:var(--orange); transform:rotate(45deg); position:relative;}
+  .connector .cm::after{content:''; position:absolute; inset:-5px; border:1px solid var(--orange); border-radius:4px; opacity:.35; animation:ringPulse 2.4s ease-out infinite;}
+  @keyframes ringPulse{0%{transform:scale(.6); opacity:.5;} 100%{transform:scale(1.8); opacity:0;}}
+
+  /* ===== NAV ===== */
+  header{position:fixed; top:0; left:0; right:0; z-index:100; padding:24px 0; transition:all .3s ease;}
+  header.scrolled{background:rgba(255,255,255,.88); backdrop-filter:blur(14px); padding:14px 0; box-shadow:0 4px 24px -14px rgba(13,27,42,.18);}
+  nav{display:flex; align-items:center; justify-content:space-between;}
+  .brand{display:flex; align-items:center; gap:9px; font-family:var(--font); font-weight:800; font-size:19px; color:var(--navy); letter-spacing:-.01em;}
+  .brand-m{width:30px; height:22px;}
+  .nav-links{display:flex; align-items:center; gap:30px; list-style:none;}
+  .nav-links a{color:var(--muted); font-size:14px; font-weight:600; transition:color .2s;}
+  .nav-links a:hover{color:var(--orange);}
+  .nav-actions{display:flex; align-items:center; gap:14px;}
+  .nav-enter{color:var(--navy); font-size:14px; font-weight:600;}
+  .menu-btn{display:none; width:34px; height:34px; position:relative; z-index:210;}
+  .menu-btn .bar{display:block; width:20px; height:2px; background:var(--navy); margin:5px auto; transition:transform .25s ease, opacity .25s ease;}
+  .menu-btn.open .bar:nth-child(1){transform:translateY(7px) rotate(45deg);}
+  .menu-btn.open .bar:nth-child(2){opacity:0;}
+  .menu-btn.open .bar:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+  @media (max-width:900px){ .nav-links{display:none;} .nav-actions .nav-enter{display:none;} .menu-btn{display:flex; align-items:center; justify-content:center;} }
+  .mobile-panel{position:fixed; top:0; right:0; bottom:0; width:min(300px,80vw); z-index:200; background:var(--navy); padding:100px 28px 28px; transform:translateX(100%); transition:transform .35s cubic-bezier(.2,.8,.2,1); display:flex; flex-direction:column; gap:24px;}
+  .mobile-panel.open{transform:translateX(0);}
+  .mobile-panel a{color:#fff; font-size:19px; font-weight:600;}
+  .scrim{position:fixed; inset:0; background:rgba(6,9,17,.5); z-index:190; opacity:0; pointer-events:none; transition:opacity .3s ease;}
+  .scrim.open{opacity:1; pointer-events:auto;}
+
+  /* ===== HERO ===== */
+  .hero{position:relative; background:linear-gradient(180deg, var(--mist) 0%, var(--white) 78%); padding:190px 0 60px; overflow:hidden; text-align:center;}
+  .hero-canvas{position:absolute; inset:0; z-index:0; pointer-events:none;}
+  .hero-inner{position:relative; z-index:2;}
+  .hero-typer{font-family:var(--mono); font-size:clamp(13px,1.6vw,15px); letter-spacing:.1em; color:var(--blue); text-transform:uppercase; height:20px; margin-bottom:22px;}
+  .hero-typer .cursor{display:inline-block; width:2px; height:14px; background:var(--orange); margin-left:2px; vertical-align:middle; animation:blink 1s step-start infinite;}
+  @keyframes blink{50%{opacity:0;}}
+  .hero h1{font-family:var(--font); font-weight:800; font-size:clamp(52px,9vw,120px); line-height:.94; letter-spacing:-.02em; color:var(--navy);}
+  .hero h1 .o{color:var(--orange);}
+  .hero-sub{margin:26px auto 0; font-size:clamp(17px,1.9vw,21px); font-weight:600; color:var(--navy);}
+  .hero-desc{margin:14px auto 0; max-width:520px; font-size:15.5px; color:var(--muted); line-height:1.6;}
+  .hero-actions{display:flex; gap:14px; justify-content:center; margin-top:36px; flex-wrap:wrap;}
+  .hero-scale{position:relative; height:420px; margin-top:20px;}
+  @media (max-width:700px){ .hero{padding-top:150px;} .hero-scale{height:320px;} }
+
+  /* network node styling */
+  .net-node{position:absolute; transform:translate(-50%,-50%); font-family:var(--mono); font-weight:500; letter-spacing:.02em; padding:8px 14px; border-radius:999px; white-space:nowrap; animation:drift 7s ease-in-out infinite;}
+  .net-node.core{background:var(--navy); color:#fff; font-family:var(--font); font-weight:800; font-size:15px; padding:16px 22px; letter-spacing:0; animation:none; box-shadow:0 20px 40px -16px rgba(13,27,42,.4);}
+  .net-node.ring1{background:#fff; color:var(--blue); font-size:13px; border:1.5px solid var(--blue-soft); box-shadow:0 10px 24px -12px rgba(0,87,255,.25);}
+  .net-node.ring2{background:var(--mist); color:var(--muted); font-size:11.5px; border:1px solid var(--line);}
+  @keyframes drift{0%,100%{transform:translate(-50%,-50%) translateY(0);} 50%{transform:translate(-50%,-50%) translateY(-8px);}}
+
+  /* ===== MARQUEE SECTION ===== */
+  .platform-sec{text-align:center; padding-bottom:0;}
+  .platform-sec h2{font-family:var(--font); font-weight:800; font-size:clamp(30px,4.6vw,50px); color:var(--navy); line-height:1.05; letter-spacing:-.01em;}
+  .marquee{margin-top:56px; overflow:hidden; border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:26px 0; background:var(--mist);}
+  .marquee-track{display:flex; width:max-content; gap:36px; animation:marquee 30s linear infinite; align-items:center;}
+  .marquee-track span{font-family:var(--font); font-weight:800; font-size:clamp(22px,3vw,30px); color:var(--navy); white-space:nowrap; letter-spacing:-.01em;}
+  .marquee-track .mm{width:9px; height:9px; background:var(--orange); transform:rotate(45deg); flex-shrink:0;}
+  @keyframes marquee{ from{transform:translateX(0);} to{transform:translateX(-50%);} }
+
+  /* ===== CONNECT SECTION (need -> professional) ===== */
+  .connect-sec{background:var(--white);}
+  .connect-head{text-align:center; max-width:600px; margin:0 auto 70px;}
+  .connect-head h2{font-family:var(--font); font-weight:800; font-size:clamp(30px,4vw,46px); color:var(--navy); margin-top:14px;}
+  .connect-rows{max-width:720px; margin:0 auto; display:flex; flex-direction:column; gap:0;}
+  .connect-row{display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:18px; padding:26px 0; border-bottom:1px solid var(--line);}
+  .connect-row:first-child{padding-top:0;}
+  .connect-row:last-child{border-bottom:none;}
+  .cr-need{font-size:clamp(16px,2vw,19px); font-weight:600; color:var(--navy); text-align:right;}
+  .cr-need span{display:block; font-family:var(--mono); font-size:10.5px; color:var(--muted); font-weight:400; text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px;}
+  .cr-line{width:64px; height:2px; background:repeating-linear-gradient(90deg, var(--orange) 0 6px, transparent 6px 11px); position:relative;}
+  .cr-line::after{content:'→'; position:absolute; right:-16px; top:50%; transform:translateY(-50%); color:var(--orange); font-weight:700;}
+  .cr-pro{font-size:clamp(16px,2vw,19px); font-weight:800; color:var(--blue);}
+  .cr-pro span{display:block; font-family:var(--mono); font-size:10.5px; color:var(--muted); font-weight:400; text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px;}
+  @media (max-width:640px){ .connect-row{grid-template-columns:1fr; text-align:center; gap:10px;} .cr-need{text-align:center;} .cr-line{margin:0 auto; transform:rotate(90deg);} }
+
+  /* ===== EMOTIONAL SECTION ===== */
+  .emo-sec{background:var(--navy); color:#fff; text-align:center; position:relative; overflow:hidden;}
+  .emo-glow{position:absolute; top:-20%; left:50%; transform:translateX(-50%); width:600px; height:600px; border-radius:50%; background:radial-gradient(circle, rgba(0,87,255,.28), transparent 70%); pointer-events:none;}
+  .emo-sec .wrap{position:relative; z-index:1;}
+  .emo-sec h2{font-family:var(--font); font-weight:800; font-size:clamp(28px,3.8vw,44px); max-width:680px; margin:0 auto; line-height:1.18;}
+  .emo-list{margin:36px auto; max-width:420px; font-family:var(--mono); font-size:15px; line-height:2.1; color:rgba(255,255,255,.7);}
+  .emo-tail{margin:30px auto 0; max-width:480px; font-size:16px; color:rgba(255,255,255,.75); line-height:1.6;}
+  .emo-big{font-family:var(--font); font-weight:800; font-size:clamp(24px,3.2vw,34px); margin-top:38px; color:#fff;}
+  .emo-big .o{color:var(--orange-soft);}
+  .emo-sec .btn{margin-top:30px;}
+
+  /* ===== CATEGORIES (asymmetric editorial) ===== */
+  .cat-sec{background:var(--white);}
+  .cat-bento{display:grid; grid-template-columns:repeat(6,1fr); grid-auto-rows:130px; gap:14px; margin-top:56px;}
+  .cat-tile{position:relative; border-radius:20px; overflow:hidden; background-position:center; background-size:cover; display:flex; align-items:flex-end; padding:20px;}
+  .cat-tile::after{content:''; position:absolute; inset:0; background:linear-gradient(180deg, rgba(13,27,42,0) 35%, rgba(13,27,42,.82) 100%);}
+  .cat-tile span{position:relative; z-index:2; color:#fff; font-family:var(--font); font-weight:800; font-size:15px; text-transform:uppercase; letter-spacing:.01em;}
+  .cat-illo{position:absolute; top:10px; right:10px; z-index:1; opacity:.9; pointer-events:none;}
+  .cat-illo svg{display:block;}
+  .t-casa{grid-column:1/4; grid-row:1/3;}
+  .t-limpeza{grid-column:4/6; grid-row:1/2;}
+  .t-beleza{grid-column:6/7; grid-row:1/3;}
+  .t-jardim{grid-column:4/5; grid-row:2/3;}
+  .t-tech{grid-column:5/6; grid-row:2/3;}
+  .t-auto{grid-column:1/3; grid-row:3/4;}
+  .t-eventos{grid-column:3/5; grid-row:3/4;}
+  .t-construcao{grid-column:5/6; grid-row:3/4;}
+  .t-empresas{grid-column:6/7; grid-row:3/4;}
+  .t-casa span{font-size:20px;}
+  @media (max-width:860px){
+    .cat-bento{grid-template-columns:repeat(2,1fr); grid-auto-rows:150px;}
+    .t-casa{grid-column:1/3; grid-row:1/2;}
+    .t-limpeza{grid-column:1/2; grid-row:2/3;}
+    .t-beleza{grid-column:2/3; grid-row:2/3;}
+    .t-jardim{grid-column:1/2; grid-row:3/4;}
+    .t-tech{grid-column:2/3; grid-row:3/4;}
+    .t-auto{grid-column:1/2; grid-row:4/5;}
+    .t-eventos{grid-column:2/3; grid-row:4/5;}
+    .t-construcao{grid-column:1/2; grid-row:5/6;}
+    .t-empresas{grid-column:2/3; grid-row:5/6;}
+  }
+
+  /* ===== SPLIT (para quem precisa / para quem faz) ===== */
+  .split-sec{display:grid; grid-template-columns:1fr 1fr; padding:0;}
+  @media (max-width:800px){ .split-sec{grid-template-columns:1fr;} }
+  .split-half{padding:100px 48px; display:flex; flex-direction:column; justify-content:center;}
+  .split-half.light{background:var(--mist);}
+  .split-half.dark{background:var(--navy); color:#fff;}
+  .split-half h3{font-family:var(--font); font-weight:800; font-size:clamp(26px,3.2vw,38px); line-height:1.1; margin-top:16px;}
+  .split-half p{margin-top:16px; font-size:15.5px; line-height:1.6; max-width:380px;}
+  .split-half.light p{color:var(--muted);}
+  .split-half.dark p{color:rgba(255,255,255,.65);}
+  .split-half .btn{margin-top:26px; align-self:flex-start;}
+
+  /* ===== CONSTELLATION (100+) ===== */
+  .const-sec{background:var(--mist); text-align:center; position:relative; overflow:hidden;}
+  .const-stage{position:relative; height:380px; max-width:760px; margin:56px auto 0; display:flex; align-items:center; justify-content:center;}
+  .const-num{font-family:var(--font); font-weight:800; font-size:clamp(72px,10vw,128px); color:var(--navy); line-height:.9; position:relative; z-index:2;}
+  .const-num span{display:block; font-family:var(--mono); font-size:13px; font-weight:500; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-top:8px;}
+  .const-word{position:absolute; font-family:var(--mono); color:var(--blue-soft); font-size:13px; animation:drift 8s ease-in-out infinite;}
+  @media (max-width:700px){ .const-word{display:none;} .const-word.keep{display:block; font-size:11px;} }
+
+  /* ===== APP SECTION ===== */
+  .app-sec{background:var(--navy); color:#fff; text-align:center; position:relative; overflow:hidden;}
+  .app-sec h2{font-family:var(--font); font-weight:800; font-size:clamp(28px,3.8vw,44px);}
+  .app-sec p{margin:16px auto 0; max-width:440px; color:rgba(255,255,255,.62); font-size:16px; line-height:1.6;}
+  .app-phones{position:relative; height:auto; margin-top:70px; display:flex; align-items:center; justify-content:center; perspective:1400px;}
+  .phone-frame{position:relative; width:250px; padding:14px; border-radius:46px; background:linear-gradient(160deg,#3A4E6B,#0A121D); box-shadow:0 50px 100px -28px rgba(0,0,0,.65), inset 0 1px 1px rgba(255,255,255,.2);
+    transform:rotateY(-12deg) rotateX(5deg) rotateZ(1deg); transform-style:preserve-3d; transition:transform .6s cubic-bezier(.2,.8,.2,1); cursor:grab;}
+  .phone-frame:hover{transform:rotateY(-4deg) rotateX(2deg) rotateZ(0deg);}
+  .phone-frame::before{content:''; position:absolute; left:-3px; top:90px; width:3px; height:34px; background:#1B2C4A; border-radius:2px 0 0 2px;}
+  .phone-frame::after{content:''; position:absolute; right:-3px; top:130px; width:3px; height:56px; background:#1B2C4A; border-radius:0 2px 2px 0;}
+  .phone-floor{position:absolute; left:50%; bottom:-30px; transform:translateX(-50%); width:220px; height:36px; background:radial-gradient(ellipse, rgba(0,0,0,.5), transparent 70%); filter:blur(4px); z-index:-1;}
+  .phone-gloss{position:absolute; inset:14px; border-radius:34px; background:linear-gradient(115deg, rgba(255,255,255,.14) 0%, transparent 30%, transparent 70%, rgba(255,255,255,.06) 100%); pointer-events:none; z-index:30;}
+  .phone-frame::before{content:''; position:absolute; left:-3px; top:90px; width:3px; height:34px; background:#1B2C4A; border-radius:2px 0 0 2px;}
+  .phone-frame::after{content:''; position:absolute; right:-3px; top:130px; width:3px; height:56px; background:#1B2C4A; border-radius:0 2px 2px 0;}
+  .app-phone{position:relative; width:100%; border-radius:34px; background:#fff; overflow:hidden; box-shadow:inset 0 0 0 1px rgba(0,0,0,.04);}
+  .phone-notch{position:absolute; top:0; left:50%; transform:translateX(-50%); width:86px; height:22px; background:#0A121D; border-radius:0 0 14px 14px; z-index:20;}
+  .phone-statusbar{display:flex; justify-content:space-between; align-items:center; padding:8px 20px 0; font-size:10px; font-weight:700; color:#fff; position:relative; z-index:10;}
+  .app-phone .real-topbar{background:linear-gradient(135deg,#1166FF,#0043C7); padding:4px 14px 14px; text-align:left;}
+  .app-phone .real-loc{display:flex; align-items:center; justify-content:space-between; margin-top:8px;}
+  .app-phone .real-loc-text{color:rgba(255,255,255,.8); font-size:8px; font-family:var(--mono); text-transform:uppercase;}
+  .app-phone .real-loc-city{color:#fff; font-size:11px; font-weight:700; margin-top:1px;}
+  .app-phone .real-avatar{width:20px; height:20px; border-radius:50%; background:rgba(255,255,255,.25);}
+  .app-phone .real-brand{display:flex; align-items:center; gap:6px; margin-top:10px;}
+  .app-phone .real-brand svg{width:16px; height:11px;}
+  .app-phone .real-brand-text{color:#fff; font-size:13px; font-weight:800; font-family:var(--font); line-height:1;}
+  .app-phone .real-brand-sub{color:rgba(255,255,255,.65); font-size:6.5px; margin-top:1px;}
+  .app-phone .real-toggle{display:flex; gap:4px; margin-top:12px; background:rgba(255,255,255,.15); border-radius:8px; padding:3px;}
+  .app-phone .real-toggle span{flex:1; text-align:center; font-size:8px; font-weight:700; padding:5px 0; border-radius:6px; color:rgba(255,255,255,.75);}
+  .app-phone .real-toggle span.active{background:#fff; color:var(--navy);}
+  .app-phone .real-body{padding:14px; position:relative; min-height:260px;}
+  .app-phone .real-hi{font-size:8.5px; color:var(--muted);}
+  .app-phone .real-title{font-size:13px; font-weight:800; color:var(--navy); margin-top:2px; font-family:var(--font);}
+  .app-phone .real-banner{margin-top:12px; border-radius:14px; padding:14px; background:linear-gradient(135deg,#3D7CFF,#1166FF); position:relative; overflow:hidden;}
+  .app-phone .real-banner .rb-tag{color:rgba(255,255,255,.7); font-size:6.5px; font-weight:700; letter-spacing:.04em;}
+  .app-phone .real-banner .rb-title{color:#fff; font-size:13px; font-weight:800; margin-top:4px; line-height:1.2; font-family:var(--font);}
+  .app-phone .real-banner .rb-btn{display:inline-block; margin-top:9px; background:#fff; color:var(--navy); font-size:7.5px; font-weight:800; padding:5px 11px; border-radius:999px;}
+  .app-phone .real-banner .rb-icon{position:absolute; right:12px; top:12px; font-size:24px; opacity:.9;}
+  .app-phone .real-banner-2{margin-top:9px; border-radius:14px; padding:12px; background:var(--orange); display:flex; align-items:flex-start; gap:10px;}
+  .app-phone .real-banner-2 .rb2-icon{font-size:18px; flex-shrink:0; margin-top:1px;}
+  .app-phone .real-banner-2 .rb2-title{color:#fff; font-size:9.5px; font-weight:800; font-family:var(--font);}
+  .app-phone .real-banner-2 .rb2-text{color:rgba(255,255,255,.9); font-size:6.5px; margin-top:3px; line-height:1.4;}
+  .app-phone .real-banner-2 .rb-btn{background:#fff; color:var(--orange); margin-top:7px;}
+  .app-phone .real-nav{display:flex; border-top:1px solid var(--line); padding:9px 6px 22px; margin-top:14px;}
+  .app-phone .real-nav div{flex:1; text-align:center; font-size:6.5px; font-weight:700; color:#B4B9C4; cursor:pointer; transition:color .2s;}
+  .app-phone .real-nav div.on{color:var(--blue-soft);}
+  .phone-fab{position:absolute; right:10px; bottom:34px; z-index:15; background:var(--orange); color:#fff; font-size:7px; font-weight:800; padding:7px 10px; border-radius:999px; box-shadow:0 8px 16px -4px rgba(255,106,0,.6); cursor:pointer; transition:transform .15s;}
+  .phone-fab:active{transform:scale(.9);}
+  .phone-chat{position:absolute; left:10px; bottom:34px; z-index:15; width:26px; height:26px; border-radius:50%; background:var(--blue); display:flex; align-items:center; justify-content:center; font-size:11px; box-shadow:0 8px 16px -4px rgba(17,102,255,.5); cursor:pointer;}
+  .phone-screen-panel{display:none;}
+  .phone-screen-panel.active{display:block;}
+  .toast{position:absolute; left:50%; bottom:60px; transform:translateX(-50%) translateY(10px); background:var(--navy); color:#fff; font-size:8.5px; font-weight:700; padding:8px 14px; border-radius:999px; z-index:40; opacity:0; transition:opacity .25s ease, transform .25s ease; white-space:nowrap;}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .order-card{background:var(--paper-2); border-radius:12px; padding:10px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;}
+  .order-card .oc-name{font-size:9.5px; font-weight:800; color:var(--navy); font-family:var(--font);}
+  .order-card .oc-sub{font-size:6.5px; color:var(--muted); margin-top:2px;}
+  .order-status{font-size:6px; font-weight:800; padding:3px 7px; border-radius:999px;}
+  .order-status.andamento{background:var(--blue-light); color:var(--blue);}
+  .order-status.concluido{background:#E8F7EE; color:#16A34A;}
+  .chat-row{display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid var(--line);}
+  .chat-row .cr-av{width:26px; height:26px; border-radius:50%; background:var(--blue-soft); flex-shrink:0;}
+  .chat-row .cr-name{font-size:9px; font-weight:800; color:var(--navy); font-family:var(--font);}
+  .chat-row .cr-msg{font-size:7px; color:var(--muted); margin-top:1px;}
+  .chat-row .cr-dot{width:7px; height:7px; border-radius:50%; background:var(--orange); margin-left:auto;}
+  .profile-card{text-align:center; padding-top:8px;}
+  .profile-card .pc-av{width:52px; height:52px; border-radius:50%; background:linear-gradient(135deg,var(--orange),var(--orange-soft)); margin:0 auto 10px; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:18px; font-family:var(--font);}
+  .profile-card .pc-name{font-size:12px; font-weight:800; color:var(--navy); font-family:var(--font);}
+  .profile-card .pc-plan{display:inline-block; margin-top:5px; background:var(--orange); color:#fff; font-size:6.5px; font-weight:800; padding:3px 9px; border-radius:999px;}
+  .profile-menu{margin-top:16px; text-align:left;}
+  .profile-menu div{font-size:8.5px; font-weight:600; color:var(--navy); padding:9px 0; border-bottom:1px solid var(--line);}
+  .app-sec .btn{margin-top:40px;}
+
+  /* ===== CTA FINAL ===== */
+  .cta-final{background:var(--blue); color:#fff; text-align:center;}
+  .cta-final h2{font-family:var(--font); font-weight:800; font-size:clamp(34px,5vw,58px); letter-spacing:-.01em;}
+  .cta-final .sub{margin-top:14px; font-size:17px; color:rgba(255,255,255,.8);}
+  .cta-final .btn-orange{margin-top:34px;}
+  .cta-actions{display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-top:34px;}
+
+  /* ===== TRUST STRIP ===== */
+  .trust-strip{background:var(--white); padding:60px 0;}
+  .ts-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:24px; text-align:center;}
+  @media (max-width:700px){ .ts-grid{grid-template-columns:repeat(2,1fr);} }
+  .ts-item strong{display:block; font-family:var(--font); font-weight:800; font-size:clamp(28px,3.6vw,40px); color:var(--navy);}
+  .ts-item span{font-family:var(--mono); font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em;}
+
+  footer{background:var(--navy); color:rgba(255,255,255,.5); padding:50px 0 32px; text-align:center; font-size:13.5px;}
+  .foot-brand{color:#fff; font-family:var(--font); font-weight:800; font-size:20px; display:flex; align-items:center; justify-content:center; gap:9px;}
+  .foot-tag{font-size:13px; color:var(--orange-soft); margin-top:6px; font-weight:600;}
+  .foot-social{display:flex; justify-content:center; gap:12px; margin-top:24px;}
+  .foot-social a{width:40px; height:40px; border-radius:12px; background:rgba(255,255,255,.08); display:flex; align-items:center; justify-content:center; transition:background .2s, transform .2s;}
+  .foot-social a:hover{background:var(--orange); transform:translateY(-2px);}
+  .foot-legal{margin-top:14px; font-size:11.5px; color:rgba(255,255,255,.35); line-height:1.6;}
+  .foot-bottom{margin-top:26px; padding-top:22px; border-top:1px solid rgba(255,255,255,.08); display:flex; justify-content:center; gap:18px; flex-wrap:wrap;}
+  .wa-float{position:fixed; right:22px; bottom:22px; z-index:150; width:58px; height:58px; border-radius:50%; background:#25D366; display:flex; align-items:center; justify-content:center; box-shadow:0 14px 30px -10px rgba(37,211,102,.6); transition:transform .2s;}
+  .wa-float:hover{transform:scale(1.08);}
+  .wa-float .wa-ping{position:absolute; inset:0; border-radius:50%; border:2px solid #25D366; animation:waPing 2.2s ease-out infinite;}
+  @keyframes waPing{0%{transform:scale(1); opacity:.6;} 100%{transform:scale(1.6); opacity:0;}}
+  @media (max-width:600px){ .wa-float{right:16px; bottom:16px; width:52px; height:52px;} }
+
+  /* ===== APP DOWNLOAD MODAL ===== */
+  .app-modal-scrim{position:fixed; inset:0; background:rgba(6,9,17,.6); backdrop-filter:blur(4px); z-index:300; opacity:0; pointer-events:none; transition:opacity .3s ease;}
+  .app-modal-scrim.show{opacity:1; pointer-events:auto;}
+  .app-modal{position:fixed; left:50%; top:50%; transform:translate(-50%,-50%) scale(.94); width:min(380px,88vw); background:var(--navy); border-radius:26px; padding:40px 30px 32px; text-align:center; z-index:310; opacity:0; pointer-events:none; transition:opacity .3s ease, transform .3s cubic-bezier(.2,.8,.2,1); box-shadow:0 40px 90px -20px rgba(0,0,0,.6);}
+  .app-modal.show{opacity:1; pointer-events:auto; transform:translate(-50%,-50%) scale(1);}
+  .app-modal-close{position:absolute; top:16px; right:16px; width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,.08); color:#fff; font-size:14px; display:flex; align-items:center; justify-content:center;}
+  .app-modal-icon{width:60px; height:44px; margin:0 auto 18px; background:linear-gradient(135deg,var(--orange),var(--orange-soft)); border-radius:16px; display:flex; align-items:center; justify-content:center; box-shadow:0 14px 28px -10px rgba(255,106,0,.55);}
+  .app-modal-icon svg{width:30px; height:21px;}
+  .app-modal h3{font-family:var(--font); font-weight:800; font-size:22px; color:#fff; text-transform:uppercase;}
+  .app-modal p{margin-top:10px; font-size:13.5px; color:rgba(255,255,255,.62); line-height:1.55;}
+  .app-modal-badges{display:flex; flex-direction:column; gap:10px; margin-top:24px;}
+  .store-badge-lg{display:flex; align-items:center; gap:12px; background:#fff; color:var(--navy); padding:13px 18px; border-radius:14px; transition:transform .2s;}
+  .store-badge-lg:hover{transform:translateY(-2px);}
+  .store-badge-lg.soon{opacity:.55; pointer-events:none;}
+  .store-badge-lg .si{font-size:22px;}
+  .store-badge-lg small{display:block; font-size:9.5px; color:var(--muted); font-family:var(--mono);}
+  .store-badge-lg strong{font-size:15px; font-family:var(--font);}
+  .app-modal-notify{display:flex; align-items:center; justify-content:center; gap:8px; margin-top:22px; background:#25D366; color:#fff; font-weight:700; font-size:13.5px; padding:12px 18px; border-radius:12px; transition:transform .2s;}
+  .app-modal-notify:hover{transform:translateY(-2px);}
+  .app-modal-skip{display:block; margin-top:16px; font-size:12.5px; color:rgba(255,255,255,.45); font-weight:600;}
+  .app-modal-skip:hover{color:rgba(255,255,255,.75);}
+</style>
+</head>
+<body>
+
+<header id="siteHeader">
+  <div class="wrap">
+    <nav>
+      <div class="brand">
+        <svg class="brand-m" viewBox="0 0 40 28" fill="none">
+          <defs><linearGradient id="lgNav" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#FF8C42"/><stop offset="100%" stop-color="#E85A00"/></linearGradient></defs>
+          <path d="M4 3C2.9 3 2 3.9 2 5v18c0 1.66 1.9 2.6 3.2 1.6L19 14 5.2 3.4C4.85 3.14 4.43 3 4 3Z" fill="url(#lgNav)"/>
+          <path d="M36 3c1.1 0 2 .9 2 2v18c0 1.66-1.9 2.6-3.2 1.6L21 14 34.8 3.4C35.15 3.14 35.57 3 36 3Z" fill="url(#lgNav)"/>
+        </svg>
+        MULTI
+      </div>
+      <ul class="nav-links">
+        <li><a href="#categorias">Serviços</a></li>
+        <li><a href="#como">Como funciona</a></li>
+        <li><a href="#profissionais">Para profissionais</a></li>
+        <li><a href="#app">App</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="https://multifuncao.com.br" class="nav-enter">Entrar</a>
+        <a href="#categorias" class="btn btn-orange cta-download-app" style="padding:11px 20px; font-size:13.5px;">Pedir um serviço</a>
+      </div>
+      <button class="menu-btn" id="menuBtn" aria-label="Abrir menu" aria-expanded="false"><span class="bar"></span><span class="bar"></span><span class="bar"></span></button>
+    </nav>
+  </div>
+</header>
+<div class="scrim" id="scrim"></div>
+<nav class="mobile-panel" id="mobilePanel">
+  <a href="#categorias">Serviços</a>
+  <a href="#como">Como funciona</a>
+  <a href="#profissionais">Para profissionais</a>
+  <a href="#app">App</a>
+  <a href="#categorias" class="btn btn-orange cta-download-app">Pedir um serviço</a>
+</nav>
+
+<section class="hero">
+  <div class="hero-inner wrap">
+    <div class="hero-typer" id="heroTyper"><span id="typerText">PRECISOU?</span><span class="cursor"></span></div>
+    <h1>PRECISOU?<br><span class="o">MULTI.</span></h1>
+    <p class="hero-sub">Você pede. Alguém resolve.</p>
+    <p class="hero-desc">Casa, manutenção, beleza, automotivo, empresas e muito mais.</p>
+    <div class="hero-actions">
+      <a href="#categorias" class="btn btn-orange cta-download-app">Pedir um serviço</a>
+      <a href="#profissionais" class="btn btn-outline-navy cta-download-app" data-context="pro">Sou profissional</a>
+    </div>
+
+    <div class="hero-scale">
+      <div class="hero-canvas" id="heroCanvas"></div>
+    </div>
+  </div>
+</section>
+
+<div class="connector"><div class="cl"></div><div class="cm"></div><div class="cl r"></div></div>
+
+<section class="platform-sec">
+  <div class="wrap reveal">
+    <h2>Tudo que é serviço.<br>Em um só lugar.</h2>
+  </div>
+  <div class="marquee">
+    <div class="marquee-track" id="marqueeTrack"></div>
+  </div>
+</section>
+
+<section class="connect-sec">
+  <div class="wrap">
+    <div class="connect-head reveal">
+      <span class="eyebrow blue" style="justify-content:center;">A conexão acontecendo</span>
+      <h2>Você pede.<br>A MULTI conecta.</h2>
+    </div>
+    <div class="connect-rows reveal" id="connectRows"></div>
+  </div>
+</section>
+
+<section class="emo-sec">
+  <div class="emo-glow"></div>
+  <div class="wrap reveal">
+    <h2>Todo dia tem uma coisa para resolver.</h2>
+    <div class="emo-list">
+      Uma torneira.<br>Um jardim.<br>Uma mudança.<br>Uma festa.<br>Um computador.<br>Um móvel.<br>Uma casa.<br>Uma empresa.
+    </div>
+    <p class="emo-tail">Você não precisa saber quem faz.<br>Só precisa dizer o que precisa.</p>
+    <div class="emo-big">DEIXA A <span class="o">MULTI</span> ENCONTRAR.</div>
+    <a href="#categorias" class="btn btn-orange cta-download-app">Pedir um serviço</a>
+  </div>
+</section>
+
+<section class="cat-sec" id="categorias">
+  <div class="wrap">
+    <div class="connect-head reveal" style="margin-bottom:0;">
+      <span class="eyebrow" style="justify-content:center;">Especialidades</span>
+      <h2>Um universo de serviços.</h2>
+    </div>
+    <div class="cat-bento reveal">
+      <!-- Ilustrações desenhadas — sem depender de fotos externas -->
+      <div class="cat-tile t-casa" style="background:linear-gradient(160deg,#4C86FF,#0057FF);">
+        <div class="cat-illo" style="top:16px; right:16px;"><svg width="92" height="92" viewBox="0 0 92 92" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".92"><path d="M18 44 46 20l28 24"/><path d="M24 40v30h44V40"/><rect x="38" y="52" width="16" height="18"/><path d="M60 30V20h8v6"/></svg></div>
+        <span>Casa</span>
+      </div>
+      <div class="cat-tile t-limpeza" style="background:linear-gradient(160deg,#8FB4FF,#4C86FF);">
+        <div class="cat-illo" style="top:12px; right:12px;"><svg width="60" height="60" viewBox="0 0 60 60" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".92"><path d="M22 10c6 4 6 10 0 14"/><path d="M14 24h20l-3 26H17Z"/><circle cx="42" cy="14" r="2.2" fill="#fff" stroke="none"/><circle cx="48" cy="22" r="1.6" fill="#fff" stroke="none"/><circle cx="44" cy="30" r="1.4" fill="#fff" stroke="none"/></svg></div>
+        <span>Limpeza</span>
+      </div>
+      <div class="cat-tile t-beleza" style="background:linear-gradient(160deg,#C084FC,#8B5CF6);">
+        <div class="cat-illo" style="top:12px; right:12px;"><svg width="58" height="58" viewBox="0 0 58 58" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".92"><circle cx="16" cy="14" r="5"/><circle cx="16" cy="30" r="5"/><path d="M20 17 44 40M20 27 44 4"/></svg></div>
+        <span>Beleza</span>
+      </div>
+      <div class="cat-tile t-jardim" style="background:linear-gradient(160deg,#4ADE80,#16A34A);">
+        <div class="cat-illo" style="top:10px; right:10px;"><svg width="52" height="52" viewBox="0 0 52 52" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".92"><path d="M26 46V26"/><path d="M26 26c0-9-6-13-16-13 0 9 6 13 16 13Z"/><path d="M26 26c0-8 6-11 14-11 0 7-4 11-14 11Z"/></svg></div>
+        <span>Jardim</span>
+      </div>
+      <div class="cat-tile t-tech" style="background:linear-gradient(160deg,#0EA5E9,#0369A1);">
+        <div class="cat-illo" style="top:10px; right:10px;"><svg width="52" height="52" viewBox="0 0 52 52" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".92"><rect x="6" y="8" width="40" height="26" rx="2.4"/><path d="M2 40h48"/><path d="M20 40 22 34h8l2 6"/></svg></div>
+        <span>Tecnologia</span>
+      </div>
+      <div class="cat-tile t-auto" style="background:linear-gradient(160deg,#3A4250,#0D1B2A);">
+        <div class="cat-illo" style="top:14px; right:14px;"><svg width="72" height="72" viewBox="0 0 72 72" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".92"><path d="M8 44 14 26a5 5 0 0 1 5-3.6h24A5 5 0 0 1 48 26l6 18"/><rect x="4" y="44" width="56" height="14" rx="3"/><circle cx="18" cy="58" r="4.4" fill="#0D1B2A" stroke="#fff"/><circle cx="46" cy="58" r="4.4" fill="#0D1B2A" stroke="#fff"/></svg></div>
+        <span>Automotivo</span>
+      </div>
+      <div class="cat-tile t-eventos" style="background:linear-gradient(160deg,#F472B6,#DB2777);">
+        <div class="cat-illo" style="top:14px; right:14px;"><svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".92"><rect x="6" y="18" width="38" height="28" rx="3"/><path d="m44 28 14-8v28l-14-8Z"/><circle cx="25" cy="32" r="7"/></svg></div>
+        <span>Eventos</span>
+      </div>
+      <div class="cat-tile t-construcao" style="background:linear-gradient(160deg,#FF8C42,#FF6A00);">
+        <div class="cat-illo" style="top:12px; right:12px;"><svg width="56" height="56" viewBox="0 0 56 56" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".92"><path d="M8 48 40 16"/><path d="M30 6l20 20-6 6-20-20Z"/><path d="M8 48h10"/></svg></div>
+        <span>Construção</span>
+      </div>
+      <div class="cat-tile t-empresas" style="background:linear-gradient(160deg,#1F4066,#0D1B2A);">
+        <div class="cat-illo" style="top:12px; right:12px;"><svg width="58" height="58" viewBox="0 0 58 58" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".92"><rect x="10" y="6" width="26" height="46"/><path d="M18 16h4M28 16h4M18 26h4M28 26h4M18 36h4M28 36h4"/><rect x="36" y="24" width="14" height="28"/></svg></div>
+        <span>Empresas</span>
+      </div>
+    </div>
+    <div class="cat-more reveal" style="text-align:center; margin-top:44px;">
+      <p style="font-family:var(--font); font-weight:800; font-size:clamp(20px,2.6vw,26px); color:var(--navy); text-transform:uppercase;">Precisou de outra coisa?<br><span style="color:var(--orange);">Joga na Multi.</span></p>
+    </div>
+  </div>
+</section>
+
+<section class="split-sec" id="como">
+  <div class="split-half light reveal">
+    <span class="eyebrow">Para quem precisa</span>
+    <h3>Diga o que você precisa resolver.</h3>
+    <p>Você não precisa saber quem contratar. Só precisa dizer o que precisa.</p>
+    <a href="#categorias" class="btn btn-orange cta-download-app">Pedir um serviço</a>
+  </div>
+  <div class="split-half dark reveal" id="profissionais">
+    <span class="eyebrow light">Você faz</span>
+    <h3>A Multi encontra quem precisa.</h3>
+    <p>Mostre o que você sabe fazer e encontre novas oportunidades.</p>
+    <a href="#" class="btn btn-outline-white cta-download-app" data-context="pro">Quero ser Multi</a>
+  </div>
+</section>
+
+<section class="const-sec">
+  <div class="wrap reveal">
+    <span class="eyebrow" style="justify-content:center;">Dimensão MULTI</span>
+    <div class="const-stage" id="constStage">
+      <div class="const-num">100<span>especialidades</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="app-sec" id="app">
+  <div class="wrap reveal">
+    <span class="eyebrow light" style="justify-content:center;">Na palma da sua mão</span>
+    <h2>A MULTI vai com você.</h2>
+    <p>Encontre serviços e profissionais onde estiver.</p>
+    <div class="app-phones">
+      <div class="phone-frame" id="phoneFrame">
+        <div class="phone-floor"></div>
+        <div class="app-phone">
+          <div class="phone-gloss"></div>
+          <div class="phone-notch"></div>
+          <div class="real-topbar">
+            <div class="phone-statusbar"><span>9:41</span><span>●●● ▲ 100%</span></div>
+            <div class="real-loc">
+              <div><div class="real-loc-text">📍 Sua localização</div><div class="real-loc-city">Guarulhos, SP</div></div>
+              <div class="real-avatar"></div>
+            </div>
+            <div class="real-brand">
+              <svg viewBox="0 0 40 28" fill="none">
+                <defs><linearGradient id="lgPhone" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#FF8C42"/><stop offset="100%" stop-color="#E85A00"/></linearGradient></defs>
+                <path d="M4 3C2.9 3 2 3.9 2 5v18c0 1.66 1.9 2.6 3.2 1.6L19 14 5.2 3.4C4.85 3.14 4.43 3 4 3Z" fill="url(#lgPhone)"/><path d="M36 3c1.1 0 2 .9 2 2v18c0 1.66-1.9 2.6-3.2 1.6L21 14 34.8 3.4C35.15 3.14 35.57 3 36 3Z" fill="url(#lgPhone)"/>
+              </svg>
+              <div><div class="real-brand-text">MULTI</div><div class="real-brand-sub">serviços em um toque</div></div>
+            </div>
+            <div class="real-toggle"><span class="active">👤 Cliente</span><span>🧰 Profissional</span></div>
+          </div>
+          <div class="real-body">
+
+            <div class="phone-screen-panel active" data-screen="inicio">
+              <div class="real-hi">Olá! Seja bem-vindo 👋</div>
+              <div class="real-title">Vamos resolver algo hoje?</div>
+              <div class="real-banner">
+                <div class="rb-icon">🏠</div>
+                <div class="rb-tag">MULTI · SERVIÇOS PREMIUM</div>
+                <div class="rb-title">Seu serviço,<br>num toque.</div>
+                <div class="rb-btn" id="novoPedidoBtn">＋ Novo Pedido</div>
+              </div>
+              <div class="real-banner-2">
+                <div class="rb2-icon">🔧</div>
+                <div>
+                  <div class="rb2-title">Quer também prestar serviços?</div>
+                  <div class="rb2-text">Receba oportunidades perto de você — a partir de R$ 29,90/mês.</div>
+                  <div class="rb-btn">Vire Profissional ›</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="phone-screen-panel" data-screen="pedidos">
+              <div class="real-title" style="margin-bottom:10px;">Meus Pedidos</div>
+              <div class="order-card"><div><div class="oc-name">Diarista</div><div class="oc-sub">Hoje · 24 min</div></div><div class="order-status andamento">Em andamento</div></div>
+              <div class="order-card"><div><div class="oc-name">Fotografia de evento</div><div class="oc-sub">R$ 450,00</div></div><div class="order-status andamento">Proposta nova</div></div>
+              <div class="order-card"><div><div class="oc-name">Técnico de TI</div><div class="oc-sub">Concluído · 5★</div></div><div class="order-status concluido">Concluído</div></div>
+            </div>
+
+            <div class="phone-screen-panel" data-screen="mensagens">
+              <div class="real-title" style="margin-bottom:10px;">Mensagens</div>
+              <div class="chat-row"><div class="cr-av"></div><div><div class="cr-name">Rafael M.</div><div class="cr-msg">Chego em 10 minutos!</div></div><div class="cr-dot"></div></div>
+              <div class="chat-row"><div class="cr-av"></div><div><div class="cr-name">Camila S.</div><div class="cr-msg">Obrigada pela avaliação 😊</div></div></div>
+              <div class="chat-row" style="border-bottom:none;"><div class="cr-av"></div><div><div class="cr-name">Suporte MULTI</div><div class="cr-msg">Como podemos ajudar?</div></div></div>
+            </div>
+
+            <div class="phone-screen-panel" data-screen="perfil">
+              <div class="profile-card">
+                <div class="pc-av">T</div>
+                <div class="pc-name">Thiago Santos</div>
+                <div class="pc-plan">MULTI PREMIUM</div>
+                <div class="profile-menu">
+                  <div>📍 Meus endereços</div>
+                  <div>💳 Pagamentos</div>
+                  <div>⭐ Minhas avaliações</div>
+                  <div>⚙️ Configurações</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="real-nav">
+              <div class="on" data-target="inicio">🏠<br>Início</div>
+              <div data-target="pedidos">📋<br>Meus Pedidos</div>
+              <div data-target="mensagens">💬<br>Mensagens</div>
+              <div data-target="perfil">👤<br>Perfil</div>
+            </div>
+            <div class="phone-chat" id="phoneChatBtn">💬</div>
+            <div class="phone-fab" id="phoneFabBtn">＋ Pedido</div>
+            <div class="toast" id="phoneToast">Pedido criado ✅</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p style="margin-top:18px; font-size:12px; color:rgba(255,255,255,.4);">A Home real do app MULTI, hoje em produção.</p>
+    <a href="https://wa.me/5511960326911?text=Quero%20saber%20quando%20o%20app%20da%20MULTI%20estiver%20dispon%C3%ADvel" target="_blank" rel="noopener" class="btn btn-orange">Me avise quando sair</a>
+  </div>
+</section>
+
+<section class="trust-strip">
+  <div class="wrap reveal">
+    <div class="ts-grid">
+      <div class="ts-item"><strong data-count="20000">0</strong><span>Profissionais</span></div>
+      <div class="ts-item"><strong data-count="100000">0</strong><span>Serviços realizados</span></div>
+      <div class="ts-item"><strong data-count="500">0</strong><span>Cidades atendidas</span></div>
+      <div class="ts-item"><strong data-count="98" data-suffix="%">0</strong><span>De satisfação</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-final">
+  <div class="wrap reveal">
+    <h2>PRECISOU?<br>MULTI.</h2>
+    <p class="sub">Você pede. Alguém resolve.</p>
+    <div class="cta-actions">
+      <a href="#categorias" class="btn btn-white cta-download-app">Pedir um serviço</a>
+      <a href="#profissionais" class="btn btn-outline-white cta-download-app" data-context="pro">Sou profissional</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-brand">
+      <svg width="30" height="21" viewBox="0 0 40 28" fill="none">
+        <defs><linearGradient id="lgFoot" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff"/><stop offset="100%" stop-color="#C7CDD6"/></linearGradient></defs>
+        <path d="M4 3C2.9 3 2 3.9 2 5v18c0 1.66 1.9 2.6 3.2 1.6L19 14 5.2 3.4C4.85 3.14 4.43 3 4 3Z" fill="url(#lgFoot)"/>
+        <path d="M36 3c1.1 0 2 .9 2 2v18c0 1.66-1.9 2.6-3.2 1.6L21 14 34.8 3.4C35.15 3.14 35.57 3 36 3Z" fill="url(#lgFoot)"/>
+      </svg>
+      MULTI
+    </div>
+    <div class="foot-tag">Encontre. Conecte. Resolva.</div>
+    <div class="foot-social">
+      <a href="https://www.instagram.com/oficialmulti/" target="_blank" rel="noopener" aria-label="Instagram da MULTI">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="#fff" stroke="none"/></svg>
+      </a>
+      <a href="https://wa.me/5511960326911" target="_blank" rel="noopener" aria-label="WhatsApp da MULTI">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.1-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.2-.7.8-.8.9-.1.2-.3.2-.6.1-.2-.1-1-.4-1.9-1.2-.7-.6-1.2-1.4-1.3-1.6-.1-.2 0-.4.1-.5l.4-.4c.1-.1.2-.2.2-.4.1-.2 0-.3 0-.4-.1-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4.1-.6.3-.2.2-.8.8-.8 1.9s.8 2.2.9 2.4c.1.2 1.6 2.5 3.9 3.4.5.2 1 .4 1.3.5.5.2 1 .1 1.4.1.4-.1 1.3-.5 1.5-1 .2-.5.2-.9.1-1Z"/></svg>
+      </a>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 MULTI</span><a href="/termos.html">Termos</a><a href="/privacidade.html">Privacidade</a><a href="https://wa.me/5511960326911">Contato</a>
+    </div>
+  </div>
+</footer>
+
+<div class="app-modal-scrim" id="appModalScrim"></div>
+<div class="app-modal" id="appModal" role="dialog" aria-modal="true" aria-label="Baixar o app MULTI">
+  <button class="app-modal-close" id="appModalClose" aria-label="Fechar">✕</button>
+  <div class="app-modal-icon">
+    <svg viewBox="0 0 40 28" fill="none">
+      <defs><linearGradient id="lgModal" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff"/><stop offset="100%" stop-color="#D9DEE6"/></linearGradient></defs>
+      <path d="M4 3C2.9 3 2 3.9 2 5v18c0 1.66 1.9 2.6 3.2 1.6L19 14 5.2 3.4C4.85 3.14 4.43 3 4 3Z" fill="url(#lgModal)"/><path d="M36 3c1.1 0 2 .9 2 2v18c0 1.66-1.9 2.6-3.2 1.6L21 14 34.8 3.4C35.15 3.14 35.57 3 36 3Z" fill="url(#lgModal)"/>
+    </svg>
+  </div>
+  <h3 id="appModalTitle">Peça pelo app MULTI.</h3>
+  <p id="appModalText">Pedir um serviço é mais rápido no app — acompanhe propostas, converse com o profissional e resolva em poucos toques.</p>
+  <div class="app-modal-badges">
+    <a href="#" target="_blank" rel="noopener" class="store-badge-lg soon">
+      <span class="si">▶</span>
+      <span><small>Em breve no</small><strong>Google Play</strong></span>
+    </a>
+    <a href="#" target="_blank" rel="noopener" class="store-badge-lg soon">
+      <span class="si">🍎</span>
+      <span><small>Em breve na</small><strong>App Store</strong></span>
+    </a>
+  </div>
+  <a href="https://wa.me/5511960326911?text=Quero%20saber%20quando%20o%20app%20da%20MULTI%20estiver%20dispon%C3%ADvel" target="_blank" rel="noopener" class="app-modal-notify">Me avise quando o app sair 🔔</a>
+  <a href="#categorias" class="app-modal-skip" id="appModalSkip">Prefiro continuar pelo site →</a>
+</div>
+<a href="https://wa.me/5511960326911" target="_blank" rel="noopener" class="wa-float" aria-label="Fale conosco pelo WhatsApp"><div class="wa-ping"></div><svg width="27" height="27" viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.1-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.2-.7.8-.8.9-.1.2-.3.2-.6.1-.2-.1-1-.4-1.9-1.2-.7-.6-1.2-1.4-1.3-1.6-.1-.2 0-.4.1-.5l.4-.4c.1-.1.2-.2.2-.4.1-.2 0-.3 0-.4-.1-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4.1-.6.3-.2.2-.8.8-.8 1.9s.8 2.2.9 2.4c.1.2 1.6 2.5 3.9 3.4.5.2 1 .4 1.3.5.5.2 1 .1 1.4.1.4-.1 1.3-.5 1.5-1 .2-.5.2-.9.1-1Z"/></svg></a>
+
+<script>
+// Header on scroll
+const header = document.getElementById('siteHeader');
+window.addEventListener('scroll', () => header.classList.toggle('scrolled', window.scrollY > 30));
+
+// Mobile menu
+const menuBtn = document.getElementById('menuBtn');
+const mobilePanel = document.getElementById('mobilePanel');
+const scrim = document.getElementById('scrim');
+function toggleMenu(open){
+  const isOpen = open ?? !mobilePanel.classList.contains('open');
+  mobilePanel.classList.toggle('open', isOpen);
+  scrim.classList.toggle('open', isOpen);
+  menuBtn.classList.toggle('open', isOpen);
+  document.body.style.overflow = isOpen ? 'hidden' : '';
+}
+menuBtn.addEventListener('click', ()=>toggleMenu());
+scrim.addEventListener('click', ()=>toggleMenu(false));
+mobilePanel.querySelectorAll('a').forEach(a=>a.addEventListener('click', ()=>toggleMenu(false)));
+
+// Reveal on scroll
+const io = new IntersectionObserver((entries)=>{ entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} }); }, {threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+// ---- "Pedir um serviço" / "Sou profissional" opens the app download screen ----
+const appModal = document.getElementById('appModal');
+const appModalScrim = document.getElementById('appModalScrim');
+const appModalTitle = document.getElementById('appModalTitle');
+const appModalText = document.getElementById('appModalText');
+const MODAL_COPY = {
+  client: { title: 'Peça pelo app MULTI.', text: 'Pedir um serviço é mais rápido no app — acompanhe propostas, converse com o profissional e resolva em poucos toques.' },
+  pro: { title: 'Vire Multi no app.', text: 'Cadastre seus serviços, receba oportunidades perto de você e converse com clientes direto do app MULTI.' }
+};
+function openAppModal(context){
+  const copy = MODAL_COPY[context] || MODAL_COPY.client;
+  appModalTitle.textContent = copy.title;
+  appModalText.textContent = copy.text;
+  appModal.classList.add('show');
+  appModalScrim.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closeAppModal(){
+  appModal.classList.remove('show');
+  appModalScrim.classList.remove('show');
+  document.body.style.overflow = '';
+}
+document.querySelectorAll('.cta-download-app').forEach(btn=>{
+  btn.addEventListener('click', (e)=>{ e.preventDefault(); openAppModal(btn.dataset.context === 'pro' ? 'pro' : 'client'); });
+});
+document.getElementById('appModalClose').addEventListener('click', closeAppModal);
+appModalScrim.addEventListener('click', closeAppModal);
+document.getElementById('appModalSkip').addEventListener('click', (e)=>{ closeAppModal(); });
+document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeAppModal(); });
+
+// ---- Working 3D phone demo ----
+(function(){
+  const navItems = document.querySelectorAll('.real-nav [data-target]');
+  const panels = document.querySelectorAll('.phone-screen-panel');
+  navItems.forEach(item=>{
+    item.addEventListener('click', ()=>{
+      navItems.forEach(n=>n.classList.remove('on'));
+      item.classList.add('on');
+      const target = item.dataset.target;
+      panels.forEach(p=>p.classList.toggle('active', p.dataset.screen === target));
+    });
+  });
+
+  const toast = document.getElementById('phoneToast');
+  function showToast(msg){
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(()=>toast.classList.remove('show'), 1800);
+  }
+  const novoPedidoBtn = document.getElementById('novoPedidoBtn');
+  if (novoPedidoBtn) novoPedidoBtn.addEventListener('click', (e)=>{ e.stopPropagation(); showToast('Pedido criado ✅'); });
+  const fabBtn = document.getElementById('phoneFabBtn');
+  if (fabBtn) fabBtn.addEventListener('click', ()=>showToast('Pedido criado ✅'));
+  const chatBtn = document.getElementById('phoneChatBtn');
+  if (chatBtn) chatBtn.addEventListener('click', ()=>showToast('Abrindo chat…'));
+
+  // Subtle interactive tilt following the pointer, on top of the base 3D angle
+  const frame = document.getElementById('phoneFrame');
+  if (frame){
+    frame.addEventListener('mousemove', (e)=>{
+      const r = frame.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width - 0.5;
+      const py = (e.clientY - r.top) / r.height - 0.5;
+      frame.style.transform = `rotateY(${-12 + px*14}deg) rotateX(${5 - py*10}deg)`;
+    });
+    frame.addEventListener('mouseleave', ()=>{ frame.style.transform = 'rotateY(-12deg) rotateX(5deg) rotateZ(1deg)'; });
+  }
+})();
+
+// Animated trust counters
+const statIO = new IntersectionObserver((entries)=>{
+  entries.forEach(entry=>{
+    if(!entry.isIntersecting) return;
+    const el = entry.target;
+    const target = parseInt(el.dataset.count, 10);
+    const suffix = el.dataset.suffix || '+';
+    const dur = 1300; const start = performance.now();
+    function tick(now){
+      const p = Math.min(1, (now-start)/dur);
+      const eased = 1 - Math.pow(1-p, 3);
+      el.textContent = Math.floor(eased*target).toLocaleString('pt-BR');
+      if(p<1) requestAnimationFrame(tick);
+      else el.innerHTML = target.toLocaleString('pt-BR') + suffix;
+    }
+    requestAnimationFrame(tick);
+    statIO.unobserve(el);
+  });
+}, {threshold:.4});
+document.querySelectorAll('[data-count]').forEach(el=>statIO.observe(el));
+
+// ---- Hero typer animation ----
+const TYPE_LINES = ['PRECISOU?','DE UMA DIARISTA?','DE UM MONTADOR?','DE UM JARDINEIRO?','DE UM FOTÓGRAFO?','DE UM TÉCNICO?','DE QUALQUER SERVIÇO?','MULTI.'];
+const typerText = document.getElementById('typerText');
+let typeIdx = 0;
+function nextTypeLine(){
+  typerText.style.opacity = 0;
+  setTimeout(()=>{
+    typeIdx = (typeIdx+1) % TYPE_LINES.length;
+    typerText.textContent = TYPE_LINES[typeIdx];
+    typerText.style.opacity = 1;
+  }, 260);
+}
+typerText.style.transition = 'opacity .25s ease';
+setInterval(nextTypeLine, 1500);
+
+// ---- Hero living network ----
+const heroCanvas = document.getElementById('heroCanvas');
+const CORE = {label:'VOCÊ PRECISA'};
+const RING1 = ['LIMPEZA','BELEZA','JARDIM','TECNOLOGIA','AUTOMOTIVO','EVENTOS','CASA','CONSTRUÇÃO'];
+const RING2 = ['Diarista','Jardineiro','Manicure','Fotógrafo','Montador','Eletricista','Designer','Técnico'];
+
+function placeRing(items, radiusPct, cls){
+  const n = items.length;
+  return items.map((label, i) => {
+    const angle = (i / n) * Math.PI * 2 - Math.PI/2;
+    const x = 50 + radiusPct * Math.cos(angle);
+    const y = 50 + radiusPct * Math.sin(angle) * 0.72;
+    return {label, x, y, cls};
+  });
+}
+const ring1Nodes = placeRing(RING1, 40, 'ring1');
+const ring2Nodes = placeRing(RING2, 62, 'ring2');
+
+// lines (SVG) from core to ring1
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.createElementNS(NS, 'svg');
+svg.setAttribute('viewBox','0 0 100 100');
+svg.setAttribute('preserveAspectRatio','none');
+svg.style.position='absolute'; svg.style.inset='0'; svg.style.width='100%'; svg.style.height='100%';
+ring1Nodes.forEach(n=>{
+  const line = document.createElementNS(NS,'line');
+  line.setAttribute('x1','50'); line.setAttribute('y1','50');
+  line.setAttribute('x2', n.x); line.setAttribute('y2', n.y);
+  line.setAttribute('stroke', 'rgba(0,87,255,.18)');
+  line.setAttribute('stroke-width', '0.3');
+  svg.appendChild(line);
+});
+heroCanvas.appendChild(svg);
+
+// core node
+const coreEl = document.createElement('div');
+coreEl.className = 'net-node core';
+coreEl.style.left = '50%'; coreEl.style.top = '50%';
+coreEl.textContent = CORE.label;
+heroCanvas.appendChild(coreEl);
+
+[...ring1Nodes, ...ring2Nodes].forEach((n, i) => {
+  const el = document.createElement('div');
+  el.className = 'net-node ' + n.cls;
+  el.style.left = n.x + '%'; el.style.top = n.y + '%';
+  el.style.animationDelay = (i * 0.35) + 's';
+  el.textContent = n.label;
+  heroCanvas.appendChild(el);
+});
+
+// ---- Marquee words ----
+const MARQUEE_WORDS = ['CASA','LIMPEZA','BELEZA','JARDIM','AUTOMOTIVO','TECNOLOGIA','EVENTOS','CONSTRUÇÃO','EMPRESAS','LOGÍSTICA','AULAS','MANUTENÇÃO'];
+function buildMarquee(){
+  const seq = [...MARQUEE_WORDS, ...MARQUEE_WORDS].map(w => `<span>${w}</span><span class="mm"></span>`).join('');
+  document.getElementById('marqueeTrack').innerHTML = seq;
+}
+buildMarquee();
+
+// ---- Connect rows (need -> professional) ----
+const CONNECTIONS = [
+  { need:'Preciso montar meu guarda-roupa.', pro:'Montador de móveis' },
+  { need:'Preciso cuidar do meu jardim.', pro:'Jardineiro' },
+  { need:'Preciso de fotos para meu evento.', pro:'Fotógrafo' },
+  { need:'Preciso limpar meu sofá.', pro:'Especialista em limpeza' },
+];
+document.getElementById('connectRows').innerHTML = CONNECTIONS.map(c => `
+  <div class="connect-row">
+    <div class="cr-need"><span>Necessidade</span>"${c.need}"</div>
+    <div class="cr-line"></div>
+    <div class="cr-pro"><span>Profissional</span>${c.pro}</div>
+  </div>
+`).join('');
+
+// ---- Constellation of specialties ----
+const SPECIALTIES = ['Eletricista','Diarista','Jardineiro','Fotógrafo','Manicure','Técnico de TI','Designer','Montador','Encanador','Cabeleireiro','Pintor','Personal Trainer','Professor','Motorista','Segurança','Confeiteira'];
+const constStage = document.getElementById('constStage');
+SPECIALTIES.forEach((w, i) => {
+  const angle = (i / SPECIALTIES.length) * Math.PI * 2;
+  const rx = 42 + (i % 3) * 4;
+  const ry = 42 + (i % 2) * 6;
+  const x = 50 + rx * Math.cos(angle);
+  const y = 50 + ry * Math.sin(angle) * 0.85;
+  const el = document.createElement('div');
+  el.className = 'const-word' + (i % 3 === 0 ? ' keep' : '');
+  el.style.left = x + '%'; el.style.top = y + '%';
+  el.style.animationDelay = (i * 0.3) + 's';
+  el.textContent = w;
+  constStage.appendChild(el);
+});
+</script>
+</body>
+</html>

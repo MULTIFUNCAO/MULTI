@@ -1,6 +1,5 @@
 node_modules/
 dist/
-dist-mobile/
 .env
 .env.local
 .DS_Store
