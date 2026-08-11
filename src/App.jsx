@@ -2786,36 +2786,45 @@ function PostServiceScreen({ onBack, onSuccess, initialCat = "" }) {
           igual; a diferença é só se existe ou não um valor inicial. */}
       <div>
         <label style={{fontSize:12,color:"#666",display:"block", marginBottom:6}}>Valor do serviço</label>
-        <div style={{ display:"flex", gap:8, marginBottom: form.tipoValor === "referencia" ? 10 : 0 }}>
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
           {[
-            { val:"referencia",  icon:"💰", label:"Tenho um valor em mente",    sub:"A partir de quanto você pretende investir?" },
-            { val:"a_combinar",  icon:"🤝", label:"Não sei quanto custa",       sub:"Quero receber orçamentos e negociar" },
-          ].map(opt => (
-            <button key={opt.val} type="button" onClick={() => setForm(f => ({ ...f, tipoValor:opt.val }))} style={{
-              flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:2,
-              padding:"12px 8px", borderRadius:12, cursor:"pointer",
-              border: form.tipoValor === opt.val ? `2px solid ${B}` : "1.5px solid #E5E7EB",
-              background: form.tipoValor === opt.val ? "#EBF4FF" : "white",
-            }}>
-              <span style={{ fontSize:20 }}>{opt.icon}</span>
-              <span style={{ fontWeight:800, fontSize:12.5, color: form.tipoValor === opt.val ? B : "#555" }}>{opt.label}</span>
-              <span style={{ fontSize:10.5, color:"#9CA3AF", textAlign:"center" }}>{opt.sub}</span>
-            </button>
-          ))}
+            { val:"referencia", label:"Tenho um valor em mente", sub:"A partir de quanto você pretende investir?" },
+            { val:"a_combinar", label:"Não sei quanto custa",    sub:"Quero receber orçamentos e negociar" },
+          ].map(opt => {
+            const selected = form.tipoValor === opt.val;
+            return (
+              <div key={opt.val} onClick={() => setForm(f => ({ ...f, tipoValor:opt.val }))} style={{
+                borderRadius:14, cursor:"pointer", padding:"13px 14px",
+                border: selected ? `2px solid ${B}` : "1.5px solid #E5E7EB",
+                background: selected ? "#EBF4FF" : "white",
+                transition:"all .15s",
+              }}>
+                <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                  <div style={{ width:20, height:20, borderRadius:"50%", border:(selected?"2px solid "+B:"2px solid #D1D5DB"), background: selected ? B : "white", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .15s" }}>
+                    {selected && <div style={{ width:8, height:8, borderRadius:"50%", background:"white" }} />}
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <p style={{ fontSize:13, fontWeight:800, color: selected ? B : "#1a1a2e", margin:"0 0 2px" }}>{opt.label}</p>
+                    <p style={{ fontSize:11, color:"#9CA3AF", margin:0 }}>{opt.sub}</p>
+                  </div>
+                </div>
+                {opt.val === "referencia" && selected && (
+                  <div onClick={e => e.stopPropagation()} style={{ marginTop:12, paddingTop:12, marginLeft:32, borderTop:"1px solid #DCE8FA" }}>
+                    <div style={{ position:"relative" }}>
+                      <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", fontWeight:800, color:"#999", fontSize:13 }}>R$</span>
+                      <input type="number" placeholder="0,00" style={{ ...F, paddingLeft:38, ...(valorAbaixoMinimo ? { border:"1.5px solid #EF4444" } : {}) }} value={form.value} onChange={e => setForm({ ...form, value:e.target.value })} />
+                    </div>
+                    {valorAbaixoMinimo && (
+                      <p style={{ fontSize:11.5, color:"#EF4444", fontWeight:700, margin:"6px 0 0" }}>
+                        ⚠️ Valor mínimo pra publicar um pedido é R$ {VALOR_MINIMO_PEDIDO},00
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
-        {form.tipoValor === "referencia" && (
-          <>
-            <div style={{ position:"relative" }}>
-              <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", fontWeight:800, color:"#999", fontSize:13 }}>R$</span>
-              <input type="number" placeholder="0,00" style={{ ...F, paddingLeft:38, ...(valorAbaixoMinimo ? { border:"1.5px solid #EF4444" } : {}) }} value={form.value} onChange={e => setForm({ ...form, value:e.target.value })} />
-            </div>
-            {valorAbaixoMinimo && (
-              <p style={{ fontSize:11.5, color:"#EF4444", fontWeight:700, margin:"6px 0 0" }}>
-                ⚠️ Valor mínimo pra publicar um pedido é R$ {VALOR_MINIMO_PEDIDO},00
-              </p>
-            )}
-          </>
-        )}
       </div>
 
         <button
