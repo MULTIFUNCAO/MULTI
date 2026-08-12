@@ -617,6 +617,16 @@ function SectionCupons({ adminKey }) {
   const [novoCodigo, setNovoCodigo] = useState("");
   const [novoExpira, setNovoExpira] = useState("");
   const [novoUsosMax, setNovoUsosMax] = useState("");
+  // Checkboxes explícitos em vez de confiar em "campo vazio" — achado
+  // 2026-08-12: um clique sem querer na setinha do input numérico (que pula
+  // pra "1" mesmo partindo de vazio, comportamento padrão do browser) ou no
+  // seletor de data nativo criava um cupom com expira_em/usos_maximos reais
+  // mesmo sem a pessoa perceber que preencheu algo. Os inputs abaixo agora
+  // ficam desabilitados enquanto o checkbox "sem limite/sem expiração"
+  // (marcado por padrão) estiver ativo, e o valor é ignorado no envio nesse
+  // caso independente do que estiver digitado neles.
+  const [semExpiracao, setSemExpiracao] = useState(true);
+  const [semLimite, setSemLimite] = useState(true);
   const [criando, setCriando] = useState(false);
   const [erro, setErro] = useState("");
   // Qual cupom está com a lista de "quem usou" expandida — só 1 por vez,
@@ -644,13 +654,16 @@ function SectionCupons({ adminKey }) {
         headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
         body: JSON.stringify({
           codigo: novoCodigo,
-          expiraEm: novoExpira ? new Date(novoExpira).toISOString() : null,
-          usosMaximos: novoUsosMax,
+          // Ignora o que estiver nos inputs quando o checkbox "sem
+          // limite/sem expiração" está marcado — não basta o campo estar
+          // vazio, o checkbox é quem decide de verdade.
+          expiraEm: semExpiracao || !novoExpira ? null : new Date(novoExpira).toISOString(),
+          usosMaximos: semLimite || !novoUsosMax ? null : novoUsosMax,
         }),
       });
       const d = await r.json();
       if (!r.ok) { setErro(d.error || "Erro ao criar cupom"); return; }
-      setNovoCodigo(""); setNovoExpira(""); setNovoUsosMax("");
+      setNovoCodigo(""); setNovoExpira(""); setNovoUsosMax(""); setSemExpiracao(true); setSemLimite(true);
       carregar();
     } catch {
       setErro("Erro de conexão");
@@ -703,12 +716,28 @@ function SectionCupons({ adminKey }) {
             <input value={novoCodigo} onChange={e => setNovoCodigo(e.target.value.toUpperCase())} placeholder="DIVULGA30" style={{ ...inputStyle, width: 160, textTransform: "uppercase" }} />
           </div>
           <div>
-            <label style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 600, display: "block", marginBottom: 6 }}>EXPIRA EM (opcional)</label>
-            <input type="date" value={novoExpira} onChange={e => setNovoExpira(e.target.value)} style={{ ...inputStyle, width: 150 }} />
+            <label style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 600, display: "block", marginBottom: 6 }}>EXPIRA EM</label>
+            <input
+              type="date" value={novoExpira} disabled={semExpiracao}
+              onChange={e => setNovoExpira(e.target.value)}
+              style={{ ...inputStyle, width: 150, opacity: semExpiracao ? 0.4 : 1, cursor: semExpiracao ? "not-allowed" : "text" }}
+            />
+            <label style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 6, fontSize: 11, color: COLORS.textMuted, cursor: "pointer" }}>
+              <input type="checkbox" checked={semExpiracao} onChange={e => setSemExpiracao(e.target.checked)} />
+              Sem expiração
+            </label>
           </div>
           <div>
-            <label style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 600, display: "block", marginBottom: 6 }}>LIMITE DE USOS (opcional)</label>
-            <input type="number" min="1" value={novoUsosMax} onChange={e => setNovoUsosMax(e.target.value)} placeholder="Ilimitado" style={{ ...inputStyle, width: 150 }} />
+            <label style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 600, display: "block", marginBottom: 6 }}>LIMITE DE USOS</label>
+            <input
+              type="number" min="1" value={novoUsosMax} disabled={semLimite}
+              onChange={e => setNovoUsosMax(e.target.value)}
+              style={{ ...inputStyle, width: 150, opacity: semLimite ? 0.4 : 1, cursor: semLimite ? "not-allowed" : "text" }}
+            />
+            <label style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 6, fontSize: 11, color: COLORS.textMuted, cursor: "pointer" }}>
+              <input type="checkbox" checked={semLimite} onChange={e => setSemLimite(e.target.checked)} />
+              Sem limite de usos
+            </label>
           </div>
           <button onClick={criarCupom} disabled={criando || !novoCodigo.trim()} style={{
             background: criando || !novoCodigo.trim() ? COLORS.border : COLORS.blue,
