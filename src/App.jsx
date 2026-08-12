@@ -3849,12 +3849,48 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
   // estavam em trial antes dessa mudança continuam valendo até expirar.
   const [planoEscolhido, setPlanoEscolhido] = useState(null);
 
+  // Cupom de parceria/divulgação — só vale pro Multi Autônomo (regra de
+  // negócio), por isso o campo só aparece no card desse plano abaixo. A
+  // validação aqui é só feedback visual instantâneo (chama
+  // /api/assinatura/validar-cupom, que NÃO consome o cupom) — quem decide de
+  // verdade se ativa o mês grátis é o backend, revalidando tudo de novo
+  // dentro de /api/assinatura/cobrar antes de gravar qualquer coisa.
+  const [cupom, setCupom] = useState("");
+  const [cupomStatus, setCupomStatus] = useState(null); // null | "checking" | "valido" | { motivo }
+  const CUPOM_MOTIVOS = {
+    cupom_vazio: "Digite um código",
+    cupom_nao_encontrado: "Cupom não encontrado",
+    cupom_inativo: "Esse cupom não está mais ativo",
+    cupom_expirado: "Esse cupom expirou",
+    cupom_esgotado: "Esse cupom já atingiu o limite de usos",
+    cupom_ja_usado: "Você já usou esse cupom antes",
+  };
+  const validarCupom = async (codigo) => {
+    if (!codigo.trim()) { setCupomStatus(null); return; }
+    setCupomStatus("checking");
+    try {
+      const r = await fetch(`${API_BASE}/api/assinatura/validar-cupom`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cupom: codigo, titularEmail }),
+      });
+      const d = await r.json();
+      setCupomStatus(d.valido ? "valido" : { motivo: CUPOM_MOTIVOS[d.motivo] || "Cupom inválido" });
+    } catch {
+      setCupomStatus({ motivo: "Não foi possível validar agora" });
+    }
+  };
+
   if (planoEscolhido) {
     const info = planos.find(p => p.id === planoEscolhido);
+    // Cupom só viaja pra tela de pagamento se o plano escolhido for mesmo o
+    // Autônomo e a última validação tiver dado "valido" — escolher outro
+    // plano com um cupom digitado (mas não aplicado) não deve ativar nada.
+    const cupomAtivo = planoEscolhido === "autonomo" && cupomStatus === "valido" ? cupom.trim() : "";
     return (
       <PagamentoPlanoScreen
         titularTipo={titularTipo} titularEmail={titularEmail} titularNome={titularNome}
         planoId={planoEscolhido} planoLabel={info?.label || ""} planoPreco={info?.price || "0,00"}
+        cupomCodigo={cupomAtivo}
         onBack={() => setPlanoEscolhido(null)}
         showToast={showToast}
         onSuccess={() => onDone?.(planoEscolhido)}
@@ -3977,6 +4013,34 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
                 </p>
               )}
 
+              {/* Cupom de parceria/divulgação — 1 mês grátis, só no Multi
+                  Autônomo (regra de negócio). Reutilizável: o mesmo código
+                  serve pra vários profissionais diferentes. */}
+              {p.id === "autonomo" && (
+                <div style={{ marginTop:16 }}>
+                  <label style={{ fontSize:11, fontWeight:800, color:"#8A8DAE", textTransform:"uppercase", letterSpacing:.5 }}>
+                    Código de cupom (opcional)
+                  </label>
+                  <div style={{ display:"flex", gap:8, marginTop:6 }}>
+                    <input
+                      value={cupom}
+                      onChange={e => { setCupom(e.target.value); setCupomStatus(null); }}
+                      onBlur={e => validarCupom(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && validarCupom(cupom)}
+                      placeholder="Ex: DIVULGA30"
+                      style={{
+                        flex:1, padding:"10px 12px", borderRadius:10, fontSize:13,
+                        border:`1.5px solid ${cupomStatus === "valido" ? "#16A34A" : cupomStatus?.motivo ? "#DC2626" : "#E5E7EB"}`,
+                        outline:"none", textTransform:"uppercase",
+                      }}
+                    />
+                  </div>
+                  {cupomStatus === "checking" && <p style={{ fontSize:11.5, color:"#9CA3AF", margin:"6px 0 0" }}>Verificando cupom...</p>}
+                  {cupomStatus === "valido" && <p style={{ fontSize:11.5, color:"#16A34A", fontWeight:700, margin:"6px 0 0" }}>✓ Cupom válido — 1º mês grátis!</p>}
+                  {cupomStatus?.motivo && <p style={{ fontSize:11.5, color:"#DC2626", margin:"6px 0 0" }}>{cupomStatus.motivo}</p>}
+                </div>
+              )}
+
               <button onClick={() => setPlanoEscolhido(p.id)} style={{
                 marginTop:22, width:"100%", border:"none", borderRadius:16, padding:"16px 0",
                 fontWeight:800, fontSize:13, letterSpacing:.4, textTransform:"uppercase",
@@ -4041,7 +4105,14 @@ function maskCardNumber(v) { return v.replace(/\D/g, "").slice(0, 16).replace(/(
    Asaas) antes de deixar o plano virar "ativa". Nada aqui grava direto no
    Supabase — só o backend faz isso, com service_role (ver migration
    supabase_pendencias_doc_pagamento_migration.sql). ─────────────────────── */
-function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId, planoLabel, planoPreco, onBack, showToast, onSuccess }) {
+function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId, planoLabel, planoPreco, cupomCodigo, onBack, showToast, onSuccess }) {
+  // Cupom exige cartão cadastrado (é ele que garante a renovação automática
+  // via Asaas a partir do 2º mês — ver /api/assinatura/cobrar) — Pix não tem
+  // débito automático no Brasil, então não dá pra oferecer "mês grátis +
+  // renova sozinho" por esse método. Trava o toggle em "cartao" quando tem
+  // cupom em vez de deixar escolher Pix e o mês grátis silenciosamente não
+  // se aplicar.
+  const temCupom = !!cupomCodigo;
   const [metodo, setMetodo] = useState("cartao"); // "cartao" | "pix"
 
   // ── Cartão ──
@@ -4086,6 +4157,7 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           titularTipo, titularEmail, titularNome, plano: planoId,
+          cupom: cupomCodigo || undefined,
           cardNumber: cardNumber.replace(/\D/g,""), cardHolder: cardHolder.trim(),
           expiryMonth, expiryYear: `20${expiryYearShort}`,
           cvv: cvv.replace(/\D/g,""), cpf: cpf.replace(/\D/g,""),
@@ -4093,7 +4165,12 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Pagamento não confirmado");
-      showToast?.(`🎉 ${planoLabel} ativado! Próxima cobrança em ${proximaCobranca.toLocaleDateString("pt-BR")}.`, G);
+      showToast?.(
+        d.cortesia
+          ? `🎉 ${planoLabel} ativado com cupom — 1º mês grátis! Próxima cobrança em ${proximaCobranca.toLocaleDateString("pt-BR")}.`
+          : `🎉 ${planoLabel} ativado! Próxima cobrança em ${proximaCobranca.toLocaleDateString("pt-BR")}.`,
+        G
+      );
       onSuccess?.();
     } catch (err) {
       showToast?.("❌ " + (err.message || "Não conseguimos processar o cartão"), "#DC2626");
@@ -4220,24 +4297,32 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
 
       <h2 style={{ textAlign:"center", fontWeight:900, fontSize:21, color:"#1a1a2e", margin:"0 0 6px" }}>Dados de pagamento</h2>
       <p style={{ textAlign:"center", color:"#666", fontSize:13.5, margin:"0 auto 22px", maxWidth:320 }}>
-        Sem período de teste — a cobrança acontece agora, ao confirmar.
+        {temCupom
+          ? "Cupom aplicado — 1º mês grátis. Só pedimos o cartão pra manter a assinatura ativa a partir do 2º mês."
+          : "Sem período de teste — a cobrança acontece agora, ao confirmar."}
       </p>
 
       {/* Resumo do plano */}
       <div style={{ maxWidth:420, margin:"0 auto 20px", background:"white", borderRadius:16, padding:"16px 18px", border:"1.5px solid #ECEDF5", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <div>
           <p style={{ margin:"0 0 2px", fontWeight:800, fontSize:14, color:"#1a1a2e" }}>{planoLabel}</p>
-          <p style={{ margin:0, fontSize:11.5, color:"#9CA3AF" }}>Cobrado hoje · renova em {proximaCobranca.toLocaleDateString("pt-BR")}</p>
+          <p style={{ margin:0, fontSize:11.5, color:"#9CA3AF" }}>
+            {temCupom ? "Grátis hoje (cupom)" : "Cobrado hoje"} · {temCupom ? "1ª cobrança" : "renova"} em {proximaCobranca.toLocaleDateString("pt-BR")}
+          </p>
         </div>
-        <p style={{ margin:0, fontWeight:900, fontSize:20, color:"#1a1a2e" }}>R$ {planoPreco}<span style={{ fontSize:11, fontWeight:700, color:"#9CA3AF" }}>/mês</span></p>
+        <p style={{ margin:0, fontWeight:900, fontSize:20, color: temCupom ? "#16A34A" : "#1a1a2e" }}>
+          {temCupom ? "R$ 0,00" : `R$ ${planoPreco}`}<span style={{ fontSize:11, fontWeight:700, color:"#9CA3AF" }}>{temCupom ? " hoje" : "/mês"}</span>
+        </p>
       </div>
 
-      {/* Toggle Cartão / Pix */}
+      {/* Toggle Cartão / Pix — travado em cartão quando tem cupom (ver
+          comentário no topo do componente: Pix não tem débito automático,
+          não dá pra garantir a renovação do 2º mês por esse método). */}
       <div style={{ maxWidth:420, margin:"0 auto 18px", display:"flex", gap:8, padding:6, background:"#EFF1F6", borderRadius:14 }}>
-        {[{ id:"cartao", label:"💳 Cartão de crédito" }, { id:"pix", label:"⚡ Pix" }].map(m => (
-          <button key={m.id} onClick={() => setMetodo(m.id)} style={{
-            flex:1, padding:"10px 0", borderRadius:10, border:"none", cursor:"pointer",
-            fontWeight:800, fontSize:12.5, transition:"all .15s",
+        {[{ id:"cartao", label:"💳 Cartão de crédito" }, { id:"pix", label:"⚡ Pix", disabled: temCupom }].map(m => (
+          <button key={m.id} onClick={() => !m.disabled && setMetodo(m.id)} disabled={m.disabled} title={m.disabled ? "Cupom exige cartão, pra garantir a renovação automática" : undefined} style={{
+            flex:1, padding:"10px 0", borderRadius:10, border:"none", cursor: m.disabled ? "not-allowed" : "pointer",
+            fontWeight:800, fontSize:12.5, transition:"all .15s", opacity: m.disabled ? .45 : 1,
             background: metodo === m.id ? "white" : "transparent",
             color: metodo === m.id ? "#1a1a2e" : "#8A8DAE",
             boxShadow: metodo === m.id ? "0 2px 8px rgba(0,0,0,.08)" : "none",

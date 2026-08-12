@@ -5,7 +5,7 @@ import {
   Wallet, CreditCard, HeartHandshake, KeyRound, BellRing,
   BadgeCheck, Banknote, ShieldCheck, Mail, TrendingUp,
   Clock, MapPin, Phone, Star, XCircle, ChevronDown, ChevronUp,
-  Search, Filter, Download, RefreshCw
+  Search, Filter, Download, RefreshCw, Tag, Plus
 } from "lucide-react";
 
 const COLORS = {
@@ -607,6 +607,191 @@ function SectionFinanceiro({ adminKey }) {
   );
 }
 
+// ─── Seção: Cupons ────────────────────────────────────────────────
+// Cupons de parceria/divulgação — 1 mês grátis do Multi Autônomo, código
+// reutilizável (mesmo código serve pra vários profissionais). Ver
+// supabase_cupons_migration.sql e /api/admin/cupons* no backend.
+function SectionCupons({ adminKey }) {
+  const [cupons, setCupons] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [novoCodigo, setNovoCodigo] = useState("");
+  const [novoExpira, setNovoExpira] = useState("");
+  const [novoUsosMax, setNovoUsosMax] = useState("");
+  const [criando, setCriando] = useState(false);
+  const [erro, setErro] = useState("");
+  // Qual cupom está com a lista de "quem usou" expandida — só 1 por vez,
+  // busca sob demanda (não carrega os usos de todos os cupons de cara).
+  const [expandido, setExpandido] = useState(null);
+  const [usos, setUsos] = useState({}); // { [cupomId]: [...] }
+  const [carregandoUsos, setCarregandoUsos] = useState(false);
+
+  const carregar = () => {
+    setLoading(true);
+    fetch(API + "/api/admin/cupons", { headers: { "x-admin-key": adminKey } })
+      .then(r => r.json())
+      .then(d => { setCupons(d.cupons || []); setLoading(false); })
+      .catch(() => { setCupons([]); setLoading(false); });
+  };
+  useEffect(carregar, []);
+
+  const criarCupom = async () => {
+    if (!novoCodigo.trim()) return;
+    setCriando(true);
+    setErro("");
+    try {
+      const r = await fetch(API + "/api/admin/cupons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({
+          codigo: novoCodigo,
+          expiraEm: novoExpira ? new Date(novoExpira).toISOString() : null,
+          usosMaximos: novoUsosMax,
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setErro(d.error || "Erro ao criar cupom"); return; }
+      setNovoCodigo(""); setNovoExpira(""); setNovoUsosMax("");
+      carregar();
+    } catch {
+      setErro("Erro de conexão");
+    } finally {
+      setCriando(false);
+    }
+  };
+
+  const alternarAtivo = async (cupom) => {
+    await fetch(API + "/api/admin/cupons/" + cupom.id, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+      body: JSON.stringify({ ativo: !cupom.ativo }),
+    });
+    carregar();
+  };
+
+  const verUsos = async (cupom) => {
+    if (expandido === cupom.id) { setExpandido(null); return; }
+    setExpandido(cupom.id);
+    if (usos[cupom.id]) return; // já carregado, só reabre
+    setCarregandoUsos(true);
+    try {
+      const r = await fetch(API + "/api/admin/cupons/" + cupom.id + "/usos", { headers: { "x-admin-key": adminKey } });
+      const d = await r.json();
+      setUsos(u => ({ ...u, [cupom.id]: d.usos || [] }));
+    } finally {
+      setCarregandoUsos(false);
+    }
+  };
+
+  const inputStyle = {
+    background: COLORS.bg, border: "1px solid " + COLORS.border, borderRadius: 8,
+    padding: "10px 14px", color: COLORS.textPrimary, fontSize: 13,
+    outline: "none", fontFamily: "inherit",
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <Card>
+        <div style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 16, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+          <Tag size={17} /> Novo cupom
+        </div>
+        <div style={{ color: COLORS.textMuted, fontSize: 12, marginBottom: 14 }}>
+          Dá 1 mês grátis do Multi Autônomo. Reutilizável — o mesmo código serve pra vários profissionais (cada um só pode usar uma vez).
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div>
+            <label style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 600, display: "block", marginBottom: 6 }}>CÓDIGO</label>
+            <input value={novoCodigo} onChange={e => setNovoCodigo(e.target.value.toUpperCase())} placeholder="DIVULGA30" style={{ ...inputStyle, width: 160, textTransform: "uppercase" }} />
+          </div>
+          <div>
+            <label style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 600, display: "block", marginBottom: 6 }}>EXPIRA EM (opcional)</label>
+            <input type="date" value={novoExpira} onChange={e => setNovoExpira(e.target.value)} style={{ ...inputStyle, width: 150 }} />
+          </div>
+          <div>
+            <label style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 600, display: "block", marginBottom: 6 }}>LIMITE DE USOS (opcional)</label>
+            <input type="number" min="1" value={novoUsosMax} onChange={e => setNovoUsosMax(e.target.value)} placeholder="Ilimitado" style={{ ...inputStyle, width: 150 }} />
+          </div>
+          <button onClick={criarCupom} disabled={criando || !novoCodigo.trim()} style={{
+            background: criando || !novoCodigo.trim() ? COLORS.border : COLORS.blue,
+            color: "#fff", border: "none", borderRadius: 8, padding: "10px 18px",
+            fontSize: 13, fontWeight: 700, cursor: criando || !novoCodigo.trim() ? "not-allowed" : "pointer",
+            display: "flex", alignItems: "center", gap: 6, height: 38,
+          }}>
+            <Plus size={15} /> {criando ? "Criando..." : "Criar cupom"}
+          </button>
+        </div>
+        {erro && <div style={{ color: COLORS.red, fontSize: 12, marginTop: 10, fontWeight: 600 }}>{erro}</div>}
+      </Card>
+
+      {loading ? (
+        <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted }}>Carregando...</div>
+      ) : cupons.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted }}>Nenhum cupom criado ainda</div>
+      ) : (
+        <Card>
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            {cupons.map((c, i) => {
+              const expirado = c.expira_em && new Date(c.expira_em) < new Date();
+              const esgotado = c.usos_maximos != null && c.usos_count >= c.usos_maximos;
+              return (
+                <div key={c.id} style={{ borderBottom: i < cupons.length - 1 ? "1px solid " + COLORS.border : "none", padding: "12px 0" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ color: COLORS.textPrimary, fontWeight: 800, fontSize: 14, fontFamily: "monospace" }}>{c.codigo}</span>
+                      <Badge color={c.ativo && !expirado && !esgotado ? "green" : "red"}>
+                        {!c.ativo ? "Desativado" : expirado ? "Expirado" : esgotado ? "Esgotado" : "Ativo"}
+                      </Badge>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                      <span style={{ color: COLORS.textMuted, fontSize: 12 }}>
+                        {c.usos_count} uso{c.usos_count === 1 ? "" : "s"}{c.usos_maximos != null ? ` / ${c.usos_maximos}` : ""}
+                      </span>
+                      {c.expira_em && (
+                        <span style={{ color: COLORS.textMuted, fontSize: 12 }}>expira {new Date(c.expira_em).toLocaleDateString("pt-BR")}</span>
+                      )}
+                      <button onClick={() => verUsos(c)} style={{
+                        background: "none", border: "1px solid " + COLORS.border, borderRadius: 6,
+                        color: COLORS.textMuted, fontSize: 11.5, fontWeight: 600, padding: "5px 10px", cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: 4,
+                      }}>
+                        Ver usos {expandido === c.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                      </button>
+                      <button onClick={() => alternarAtivo(c)} style={{
+                        background: c.ativo ? COLORS.red + "22" : COLORS.green + "22",
+                        color: c.ativo ? COLORS.red : COLORS.green, border: "none", borderRadius: 6,
+                        fontSize: 11.5, fontWeight: 700, padding: "5px 10px", cursor: "pointer",
+                      }}>
+                        {c.ativo ? "Desativar" : "Ativar"}
+                      </button>
+                    </div>
+                  </div>
+                  {expandido === c.id && (
+                    <div style={{ marginTop: 10, paddingLeft: 4 }}>
+                      {carregandoUsos && !usos[c.id] ? (
+                        <div style={{ color: COLORS.textMuted, fontSize: 12 }}>Carregando...</div>
+                      ) : !usos[c.id]?.length ? (
+                        <div style={{ color: COLORS.textMuted, fontSize: 12 }}>Ninguém usou esse cupom ainda</div>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          {usos[c.id].map(u => (
+                            <div key={u.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: COLORS.textPrimary, background: COLORS.bg, borderRadius: 6, padding: "6px 10px" }}>
+                              <span>{u.titular_email}</span>
+                              <span style={{ color: COLORS.textMuted }}>{new Date(u.usado_em).toLocaleDateString("pt-BR")}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ─── Seção: Email ─────────────────────────────────────────────────
 function SectionEmail({ adminKey }) {
   const [subject, setSubject] = useState("");
@@ -826,6 +1011,7 @@ function AdminDashboard({ onExit }) {
     { id: "clients", label: "Clientes", icon: Users },
     { id: "services", label: "Serviços", icon: FileText },
     { id: "financial", label: "Financeiro", icon: DollarSign },
+    { id: "cupons", label: "Cupons", icon: Tag },
     { id: "email", label: "Email", icon: Mail },
   ];
 
@@ -863,6 +1049,7 @@ function AdminDashboard({ onExit }) {
         {tab === "clients" && <SectionClientes adminKey={ADMIN_KEY} />}
         {tab === "services" && <SectionServicos adminKey={ADMIN_KEY} />}
         {tab === "financial" && <SectionFinanceiro adminKey={ADMIN_KEY} />}
+        {tab === "cupons" && <SectionCupons adminKey={ADMIN_KEY} />}
         {tab === "email" && <SectionEmail adminKey={ADMIN_KEY} />}
       </div>
     </div>
