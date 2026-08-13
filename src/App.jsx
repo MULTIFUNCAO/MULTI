@@ -4827,13 +4827,16 @@ const DOC_TYPES = [
   { id:"address", label:"Comprovante Endereço",  icon:"🏠", hint:"Conta de luz, água ou telefone" },
 ];
 
-// Status possíveis: "pending" | "uploading" | "analysis" | "verified" | "rejected"
+// Status possíveis: "pending" | "uploading" | "frente_enviada" | "analysis" | "verified" | "rejected"
+// "frente_enviada" só existe pro doc "rg" (RG/CNH exige frente E verso —
+// ver handleFileSelect: só marca "analysis"/dispara a IA depois das duas).
 const STATUS_CONFIG = {
-  pending:   { label:"Pendente",    color:"#9CA3AF", bg:"#F5F5F5",  icon:null,            border:"#E5E7EB" },
-  uploading: { label:"Enviando…",   color:"#3B82F6", bg:"#EBF4FF",  icon:null,            border:"#93C5FD" },
-  analysis:  { label:"Em análise",  color:"#F59E0B", bg:"#FFFBEB",  icon:"clock",         border:"#FDE68A" },
-  verified:  { label:"Verificado",  color:"#16a34a", bg:"#F0FDF4",  icon:"badge",         border:"#BBF7D0" },
-  rejected:  { label:"Reprovado",   color:"#DC2626", bg:"#FFF5F5",  icon:"x",             border:"#FECACA" },
+  pending:        { label:"Pendente",       color:"#9CA3AF", bg:"#F5F5F5",  icon:null,    border:"#E5E7EB" },
+  uploading:      { label:"Enviando…",      color:"#3B82F6", bg:"#EBF4FF",  icon:null,    border:"#93C5FD" },
+  frente_enviada: { label:"Falta o verso",  color:"#3B82F6", bg:"#EFF6FF",  icon:"clock", border:"#93C5FD" },
+  analysis:       { label:"Em análise",     color:"#F59E0B", bg:"#FFFBEB",  icon:"clock", border:"#FDE68A" },
+  verified:       { label:"Verificado",     color:"#16a34a", bg:"#F0FDF4",  icon:"badge", border:"#BBF7D0" },
+  rejected:       { label:"Reprovado",      color:"#DC2626", bg:"#FFF5F5",  icon:"x",     border:"#FECACA" },
 };
 
 function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocStatusChange, userEmail }) {
@@ -4860,17 +4863,73 @@ function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocSta
     if (!file) return;
     e.target.value = "";
 
+    // RG/CNH exige as duas faces — a tela já dizia "Frente e verso legível"
+    // mas nada impedia marcar "Em análise" com 1 foto só. side infere qual
+    // lado é esta foto a partir do status atual: só "frente_enviada" pede o
+    // verso, qualquer outro status (inclusive "Substituir documento" a
+    // partir de analysis/verified/rejected) volta a pedir a frente.
+    const isRg = docId === "rg";
+    const side = isRg && docs.rg.status === "frente_enviada" ? "verso" : "frente";
+
     const preview = URL.createObjectURL(file);
     setLocalDocs(d => ({ ...d, [docId]: { ...d[docId], file, preview, progress:0 } }));
     onDocStatusChange?.(docId, "uploading");
 
     try {
       const ext = file.type.includes("png") ? "png" : file.type.includes("pdf") ? "pdf" : "jpg";
-      const path = `${DOC_STORAGE_PREFIX[docId]}_${(userEmail||"anon").replace(/[^a-z0-9]/gi,"_")}_${Date.now()}.${ext}`;
+      const suffix = isRg ? `_${side}` : "";
+      const path = `${DOC_STORAGE_PREFIX[docId]}${suffix}_${(userEmail||"anon").replace(/[^a-z0-9]/gi,"_")}_${Date.now()}.${ext}`;
       const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, file, { contentType: file.type, upsert: true, cacheControl: "31536000" });
       if (upErr) throw upErr;
       const url = supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl;
       setLocalDocs(d => ({ ...d, [docId]: { ...d[docId], progress:100 } }));
+
+      if (isRg && side === "frente") {
+        // Só a frente — ainda não completa. Fica "frente_enviada" até o
+        // verso chegar; não dispara IA nem vira "analysis" com 1 foto só.
+        if (userEmail) {
+          const { error: dbErr } = await supabase.from("usuarios")
+            .update({ doc_rg_status: "frente_enviada", doc_rg_url: url })
+            .eq("email", userEmail);
+          if (dbErr) throw dbErr;
+        }
+        onDocStatusChange?.("rg", "frente_enviada");
+        showToast?.("✅ Frente enviada! Agora envie o verso do documento.", "#3B82F6");
+        return;
+      }
+
+      if (isRg && side === "verso") {
+        // Busca a URL da frente já salva (pode ter sido enviada numa sessão
+        // anterior) pra mandar as duas faces pra IA de uma vez.
+        const { data: row } = userEmail
+          ? await supabase.from("usuarios").select("doc_rg_url").eq("email", userEmail).maybeSingle()
+          : { data: null };
+        const urlFrente = row?.doc_rg_url;
+        if (userEmail) {
+          const { error: dbErr } = await supabase.from("usuarios")
+            .update({ doc_rg_status: "analysis", doc_rg_url_verso: url })
+            .eq("email", userEmail);
+          if (dbErr) throw dbErr;
+        }
+        onDocStatusChange?.("rg", "analysis");
+        showToast?.("📋 Documento completo! Status: Em análise.", "#F59E0B");
+
+        // Pré-checagem automática por IA — só um apoio pro admin revisar no
+        // painel Multi Admin (nunca aprova sozinha). Dispara e esquece: se
+        // falhar, não afeta o profissional em nada, a revisão humana segue
+        // normal sem o parecer da IA.
+        if (userEmail) {
+          fetch(`${API_BASE}/api/documentos/analisar-ia`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: userEmail, url: urlFrente, urlVerso: url }),
+          }).catch(() => {});
+        }
+        return;
+      }
+
+      // Antecedentes Criminais / Comprovante de Endereço — documento único,
+      // comportamento de sempre.
       if (userEmail) {
         const { error: dbErr } = await supabase.from("usuarios")
           .update({ [`doc_${docId}_status`]: "analysis", [`doc_${docId}_url`]: url })
@@ -4879,20 +4938,8 @@ function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocSta
       }
       onDocStatusChange?.(docId, "analysis");
       showToast?.("📋 Documento enviado! Status: Em análise.", "#F59E0B");
-
-      // Pré-checagem automática por IA — só pro RG/CNH, só um apoio pro
-      // admin revisar no painel Multi Admin (nunca aprova sozinha). Dispara
-      // e esquece: se falhar, não afeta o profissional em nada, a revisão
-      // humana segue normal sem o parecer da IA.
-      if (docId === "rg" && userEmail) {
-        fetch(`${API_BASE}/api/documentos/analisar-ia`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: userEmail, url }),
-        }).catch(() => {});
-      }
     } catch (err) {
-      onDocStatusChange?.(docId, "pending");
+      onDocStatusChange?.(docId, isRg && side === "verso" ? "frente_enviada" : "pending");
       showToast?.("❌ Erro ao enviar documento: " + (err.message || ""), "#DC2626");
     }
   };
@@ -4972,7 +5019,19 @@ function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocSta
                   <button
                     onClick={() => fileRefs[doc.id].current?.click()}
                     style={{ width:"100%", padding:"12px 0", borderRadius:12, border:`1.5px dashed ${B}`, background:"#EBF4FF", color:B, fontWeight:800, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:8 }}>
-                    <Camera size={16} /> {state.status === "rejected" ? "Reenviar documento" : "Tirar foto ou escolher arquivo"}
+                    <Camera size={16} />
+                    {state.status === "rejected"
+                      ? (doc.id === "rg" ? "Reenviar frente do documento" : "Reenviar documento")
+                      : (doc.id === "rg" ? "Tirar foto da FRENTE" : "Tirar foto ou escolher arquivo")}
+                  </button>
+                )}
+
+                {/* RG/CNH — falta o verso */}
+                {doc.id === "rg" && state.status === "frente_enviada" && (
+                  <button
+                    onClick={() => fileRefs[doc.id].current?.click()}
+                    style={{ width:"100%", padding:"12px 0", borderRadius:12, border:`1.5px dashed ${B}`, background:"#EBF4FF", color:B, fontWeight:800, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:8 }}>
+                    <Camera size={16} /> Tirar foto do VERSO
                   </button>
                 )}
 
@@ -4981,7 +5040,7 @@ function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocSta
                   <button
                     onClick={() => fileRefs[doc.id].current?.click()}
                     style={{ width:"100%", padding:"10px 0", borderRadius:12, border:"1.5px solid #E5E7EB", background:"white", color:"#888", fontWeight:700, fontSize:12, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:7, marginBottom:8 }}>
-                    <Camera size={14} /> Substituir documento
+                    <Camera size={14} /> {doc.id === "rg" ? "Substituir documento (frente e verso)" : "Substituir documento"}
                   </button>
                 )}
 
@@ -4990,6 +5049,16 @@ function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocSta
                   <div style={{ marginBottom:10 }}>
                     <img src={state.preview} alt="preview" style={{ width:"100%", maxHeight:140, objectFit:"cover", borderRadius:12, border:"1px solid #E5E7EB" }} />
                     <p style={{ fontSize:10, color:"#aaa", fontWeight:700, margin:"5px 0 0", textAlign:"center" }}>Documento enviado</p>
+                  </div>
+                )}
+
+                {/* Frente enviada — falta o verso */}
+                {doc.id === "rg" && state.status === "frente_enviada" && (
+                  <div style={{ background:"#EFF6FF", border:"1px solid #93C5FD", borderRadius:10, padding:"10px 12px", display:"flex", gap:8 }}>
+                    <Clock size={15} color="#3B82F6" style={{ flexShrink:0, marginTop:1 }} />
+                    <p style={{ fontSize:12, color:"#1D4ED8", fontWeight:700, margin:0, lineHeight:1.5 }}>
+                      Frente recebida! Falta o verso — o documento só entra em análise depois das duas fotos.
+                    </p>
                   </div>
                 )}
 
@@ -9235,10 +9304,11 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
               </p>
               {(() => {
                 const st = docStatus?.rg || "pending";
-                const isOk  = st === "verified";
-                const isMid = st === "analysis";
+                const isOk   = st === "verified";
+                const isMid  = st === "analysis";
+                const isMeio = st === "frente_enviada";
                 return (
-                  <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:16, background: isOk ? "#F0FDF4" : isMid ? "#FFFBEB" : "white", border:`1px solid ${isOk ? "#BBF7D0" : isMid ? "#FDE68A" : "#E5E7EB"}` }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:16, background: isOk ? "#F0FDF4" : (isMid || isMeio) ? "#FFFBEB" : "white", border:`1px solid ${isOk ? "#BBF7D0" : (isMid || isMeio) ? "#FDE68A" : "#E5E7EB"}` }}>
                     <div style={{ width:44, height:44, borderRadius:12, background:"#EFF6FF", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>
                       🆔
                     </div>
@@ -9247,10 +9317,10 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                       <p style={{ fontSize:11, color:"#94A3B8", margin:0 }}>Documento de identidade</p>
                     </div>
                     <span style={{ fontSize:11, fontWeight:800, borderRadius:99, padding:"4px 11px", whiteSpace:"nowrap", flexShrink:0,
-                      background: isOk ? "#DCFCE7" : isMid ? "#FEF3C7" : "#F1F5F9",
-                      color:      isOk ? "#166534" : isMid ? "#92400E" : "#94A3B8",
+                      background: isOk ? "#DCFCE7" : (isMid || isMeio) ? "#FEF3C7" : "#F1F5F9",
+                      color:      isOk ? "#166534" : (isMid || isMeio) ? "#92400E" : "#94A3B8",
                     }}>
-                      {isOk ? "✓ Aprovado" : isMid ? "⏳ Em análise" : "Pendente"}
+                      {isOk ? "✓ Aprovado" : isMid ? "⏳ Em análise" : isMeio ? "Falta o verso" : "Pendente"}
                     </span>
                   </div>
                 );

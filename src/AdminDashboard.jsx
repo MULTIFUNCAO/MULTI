@@ -328,15 +328,22 @@ function SectionProfissionais({ filter, adminKey }) {
                       card, acima). A IA só dá um parecer, nunca aprova
                       sozinha. */}
                   <div style={{ display: "flex", gap: 14, alignItems: "flex-start", flexWrap: "wrap", marginBottom: 16, paddingBottom: 16, borderBottom: "1px solid " + COLORS.border }}>
-                    {p.docRgUrl ? (
-                      <a href={p.docRgUrl} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0 }}>
-                        <img src={p.docRgUrl} alt="RG/CNH" style={{ width: 130, height: 86, objectFit: "cover", borderRadius: 10, border: "1px solid " + COLORS.border }} />
-                      </a>
-                    ) : (
-                      <div style={{ width: 130, height: 86, borderRadius: 10, border: "1.5px dashed " + COLORS.border, display: "flex", alignItems: "center", justifyContent: "center", color: COLORS.textMuted, fontSize: 11, textAlign: "center", padding: 8, flexShrink: 0 }}>
-                        Documento ainda não enviado
-                      </div>
-                    )}
+                    <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                      {[{ url: p.docRgUrl, label: "Frente" }, { url: p.docRgUrlVerso, label: "Verso" }].map((doc, i) => (
+                        <div key={i}>
+                          {doc.url ? (
+                            <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                              <img src={doc.url} alt={"RG/CNH — " + doc.label} style={{ width: 110, height: 74, objectFit: "cover", borderRadius: 10, border: "1px solid " + COLORS.border, display: "block" }} />
+                            </a>
+                          ) : (
+                            <div style={{ width: 110, height: 74, borderRadius: 10, border: "1.5px dashed " + COLORS.border, display: "flex", alignItems: "center", justifyContent: "center", color: COLORS.textMuted, fontSize: 10, textAlign: "center", padding: 6 }}>
+                              {doc.label} não enviada
+                            </div>
+                          )}
+                          <div style={{ textAlign: "center", color: COLORS.textMuted, fontSize: 10, fontWeight: 700, marginTop: 3 }}>{doc.label}</div>
+                        </div>
+                      ))}
+                    </div>
                     <div style={{ flex: 1, minWidth: 200 }}>
                       {(() => {
                         const ia = {
