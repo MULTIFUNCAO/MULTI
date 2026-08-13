@@ -186,10 +186,15 @@ const PLANO_INFO = {
   premium:  { label: "Premium",  color: "purple" },
 };
 const PAGAMENTO_INFO = {
-  pago:      { label: "Pago em dia",       color: "green" },
-  vencido:   { label: "Pagamento vencido", color: "red" },
-  cancelado: { label: "Cancelado",         color: "textMuted" },
-  sem_plano: { label: "Nunca pagou",       color: "textMuted" },
+  pago:            { label: "Pago em dia",          color: "green" },
+  vencido:         { label: "Pagamento vencido",    color: "red" },
+  cancelado:       { label: "Cancelado",            color: "textMuted" },
+  sem_plano:       { label: "Nunca pagou",          color: "textMuted" },
+  // "ativa" no banco mas sem asaas_customer_id/cortesia — dado de teste
+  // ativado por SQL direto, nunca passou por pagamento real nenhum (ver
+  // comentário em server.js /api/admin/professionals). Laranja de propósito:
+  // não é "pago" (verde) nem "nunca tentou" (cinza) — precisa de atenção.
+  sem_confirmacao: { label: "Sem confirmação Asaas", color: "orange" },
 };
 
 function PaymentStatusDot({ status }) {
@@ -332,6 +337,12 @@ function SectionProfissionais({ filter, adminKey }) {
     // cadastrou mas nunca chegou a pagar nada", independente de já ter sido
     // aprovado ou não. Ver server.js.
     if (subTab === "nunca_pagou") return p.paymentStatus === "sem_plano";
+    // "ativa" no banco sem asaas_customer_id/cortesia — dado de teste ativado
+    // por SQL direto, nunca teve pagamento real por trás (achado 2026-08-13,
+    // ver server.js). Filtro à parte porque tecnicamente "tem plano" mas não
+    // deve contar nem como "pago" nem se misturar com quem nunca teve linha
+    // nenhuma em "assinaturas".
+    if (subTab === "sem_confirmacao") return p.paymentStatus === "sem_confirmacao";
     if (subTab === "sem_fechar") return p.approved && (p.services_count || 0) === 0;
     return true;
   });
@@ -345,6 +356,7 @@ function SectionProfissionais({ filter, adminKey }) {
     { id: "premium", label: "Premium", count: pros.filter(p => p.plano === "premium").length },
     { id: "vencidos", label: "Pagamento Vencido", count: pros.filter(p => p.paymentStatus === "vencido").length },
     { id: "nunca_pagou", label: "Nunca Pagou", count: pros.filter(p => p.paymentStatus === "sem_plano").length },
+    { id: "sem_confirmacao", label: "Sem Confirmação Asaas", count: pros.filter(p => p.paymentStatus === "sem_confirmacao").length },
     { id: "sem_fechar", label: "Sem Fechar", count: pros.filter(p => p.approved && (p.services_count || 0) === 0).length },
   ];
 
