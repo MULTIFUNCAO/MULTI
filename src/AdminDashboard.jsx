@@ -961,24 +961,38 @@ function SectionEmail({ adminKey }) {
 
 // ─── AdminDashboard principal ─────────────────────────────────────
 function AdminDashboard({ onExit }) {
-  const [authed, setAuthed] = useState(false);
+  // 2026-08-13: a senha real não mora mais aqui — só o token que o backend
+  // devolve depois de validar a senha (POST /api/admin/login). Guardado em
+  // sessionStorage pra sobreviver a reload, mas some ao fechar a aba/1x
+  // sem precisar logar nada persistente no disco.
+  const [token, setToken] = useState(() => sessionStorage.getItem("adminToken") || "");
+  const [authed, setAuthed] = useState(() => !!sessionStorage.getItem("adminToken"));
   const [pass, setPass] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
+  const [loggingIn, setLoggingIn] = useState(false);
   const [tab, setTab] = useState("metrics");
   const [metrics, setMetrics] = useState({});
-  const ADMIN_KEY = "multi2026";
+
+  const handleLogout = () => {
+    sessionStorage.removeItem("adminToken");
+    setToken("");
+    setAuthed(false);
+  };
 
   useEffect(() => {
     if (authed) {
-      const headers = { "x-admin-key": ADMIN_KEY };
+      const headers = { "x-admin-key": token };
+      // se o token expirou (24h) ou foi revogado, o backend responde 401 —
+      // desloga em vez de deixar o painel travado mostrando tudo em branco.
+      const getJson = r => (r.status === 401 ? (handleLogout(), Promise.reject("unauthorized")) : r.json());
       // /api/admin/stats não tem pendingApproval/totalServices/activeServices —
       // completa com /professionals e /services. conclusionRate fica 0: não
       // existe status "concluído" nos pedidos reais ainda para calcular a taxa.
       Promise.all([
-        fetch(API + "/api/admin/stats", { headers }).then(r => r.json()).catch(() => ({})),
-        fetch(API + "/api/admin/professionals", { headers }).then(r => r.json()).catch(() => ({ professionals: [] })),
-        fetch(API + "/api/admin/services", { headers }).then(r => r.json()).catch(() => ({ services: [] })),
+        fetch(API + "/api/admin/stats", { headers }).then(getJson).catch(() => ({})),
+        fetch(API + "/api/admin/professionals", { headers }).then(getJson).catch(() => ({ professionals: [] })),
+        fetch(API + "/api/admin/services", { headers }).then(getJson).catch(() => ({ services: [] })),
       ]).then(([stats, prosData, servicesData]) => {
         const pros = prosData.professionals || [];
         const services = servicesData.services || [];
@@ -997,12 +1011,23 @@ function AdminDashboard({ onExit }) {
   }, [authed]);
 
   const handleLogin = () => {
-    if (pass === ADMIN_KEY) {
-      setAuthed(true);
-      setError("");
-    } else {
-      setError("Senha incorreta");
-    }
+    setLoggingIn(true);
+    setError("");
+    fetch(API + "/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pass }),
+    })
+      .then(async r => {
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok || !data.token) throw new Error(data.error || "Senha incorreta");
+        sessionStorage.setItem("adminToken", data.token);
+        setToken(data.token);
+        setPass("");
+        setAuthed(true);
+      })
+      .catch(err => setError(err.message === "Failed to fetch" ? "Não foi possível conectar ao servidor" : err.message))
+      .finally(() => setLoggingIn(false));
   };
 
   // ── Tela de login ──
@@ -1048,12 +1073,13 @@ function AdminDashboard({ onExit }) {
 
           {error && <div style={{ color: COLORS.red, fontSize: 12, marginBottom: 12 }}>{error}</div>}
 
-          <button onClick={handleLogin} style={{
+          <button onClick={handleLogin} disabled={loggingIn} style={{
             background: COLORS.blue, color: "#fff", border: "none",
             borderRadius: 10, padding: "12px 24px", fontSize: 14, fontWeight: 700,
-            cursor: "pointer", width: "100%",
+            cursor: loggingIn ? "default" : "pointer", width: "100%",
+            opacity: loggingIn ? 0.7 : 1,
           }}>
-            Entrar
+            {loggingIn ? "Entrando..." : "Entrar"}
           </button>
 
           {onExit && (
@@ -1093,7 +1119,7 @@ function AdminDashboard({ onExit }) {
           <span style={{ color: COLORS.textPrimary, fontWeight: 800, fontSize: 16 }}>Multi Admin</span>
           <Badge color="blue">v2</Badge>
         </div>
-        <button onClick={() => { setAuthed(false); if (onExit) onExit(); }} style={{
+        <button onClick={() => { handleLogout(); if (onExit) onExit(); }} style={{
           background: COLORS.red + "22", color: COLORS.red, border: "none",
           borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer",
           display: "flex", alignItems: "center", gap: 6,
@@ -1110,12 +1136,12 @@ function AdminDashboard({ onExit }) {
       {/* Content */}
       <div style={{ padding: 20, maxWidth: 1200, margin: "0 auto" }}>
         {tab === "metrics" && <SectionMetrics data={metrics} />}
-        {tab === "pros" && <SectionProfissionais adminKey={ADMIN_KEY} />}
-        {tab === "clients" && <SectionClientes adminKey={ADMIN_KEY} />}
-        {tab === "services" && <SectionServicos adminKey={ADMIN_KEY} />}
-        {tab === "financial" && <SectionFinanceiro adminKey={ADMIN_KEY} />}
-        {tab === "cupons" && <SectionCupons adminKey={ADMIN_KEY} />}
-        {tab === "email" && <SectionEmail adminKey={ADMIN_KEY} />}
+        {tab === "pros" && <SectionProfissionais adminKey={token} />}
+        {tab === "clients" && <SectionClientes adminKey={token} />}
+        {tab === "services" && <SectionServicos adminKey={token} />}
+        {tab === "financial" && <SectionFinanceiro adminKey={token} />}
+        {tab === "cupons" && <SectionCupons adminKey={token} />}
+        {tab === "email" && <SectionEmail adminKey={token} />}
       </div>
     </div>
   );
