@@ -9722,7 +9722,28 @@ function AvaliacaoScreen({ service, onBack, setScreen, userEmail, showToast }) {
 
 export default function App() {
   console.log("APP FUNCTION START");
+  // ── RESTORE SESSION FROM LOCALSTORAGE ────────────────────────────────────
+  // Lido bem no topo porque tanto os useState iniciais logo abaixo quanto o
+  // efeito que restaura a sessão real do Supabase Auth (mais adiante, perto
+  // de isLoggedIn) precisam do mesmo valor.
+  const savedSession = (() => {
+    if (window.location.hash.includes("access_token")) return null;
+    try { return JSON.parse(localStorage.getItem("multiSession")) || null; } catch { return null; }
+  })();
+  // 2026-08-13 (ver multi_login_hang_critico na memória): quando existe um
+  // token pra restaurar, role/userRole/userName/userEmail/isLoggedIn NÃO
+  // podem vir preenchidos direto do localStorage já no mount — é o mesmo
+  // bug já corrigido no login (commit 2021c22), só que no boot: qualquer
+  // efeito guardado por esses estados (carregarPlano, propostas,
+  // notificações, meusPedidos...) dispararia na mesma hora que o
+  // setSession() do efeito de restauração, competindo pelo mesmo lock do
+  // GoTrueClient. Enquanto a sessão está sendo restaurada, os cinco ficam
+  // no estado "deslogado" — só viram juntos depois que setSession()
+  // confirma a sessão (ver useEffect logo abaixo de isLoggedIn), com o
+  // lock já livre.
+  const needsSessionRestore = !!savedSession?.token;
   const [role,      setRole]      = useState(() => {
+    if (needsSessionRestore) return "client";
     try { return JSON.parse(localStorage.getItem("multiSession") || "null")?.role || "client"; }
     catch { return "client"; }
   });
@@ -9790,11 +9811,6 @@ export default function App() {
   const [docStatusIndisponivel, setDocStatusIndisponivel] = useState(false);
   const allDocsVerified = approvedStatus !== false;
 
-  // ── RESTORE SESSION FROM LOCALSTORAGE ────────────────────────────────────
-  const savedSession = (() => {
-    if (window.location.hash.includes("access_token")) return null;
-    try { return JSON.parse(localStorage.getItem("multiSession")) || null; } catch { return null; }
-  })();
   // Reaplica a sessão real do Supabase Auth (JWT) no reload — sem isso,
   // quem já estava logado antes continua "logado" na UI (multiSession no
   // localStorage), mas toda chamada supabase.from(...) volta a ir como
@@ -9810,6 +9826,15 @@ export default function App() {
   // alterar nada, já que RLS bloqueando 0 linhas não é um erro pro
   // supabase-js). Detecta os dois casos e força um novo login — a única
   // forma de recuperar um JWT válido de verdade.
+  //
+  // 2026-08-13: além disso, isLoggedIn/userEmail/role/userRole/userName só
+  // viram "logado" aqui dentro (nunca no mount — ver needsSessionRestore lá
+  // em cima), depois que setSession() confirma a sessão. timeout de 8s força
+  // reauth em vez de assumir logado — diferente do fix de login (2021c22,
+  // que pode ser otimista pois a senha já foi validada num backend real
+  // antes), aqui ainda não sabemos se o token salvo é válido; assumir logado
+  // sem confirmar reintroduziria exatamente o bug silencioso do parágrafo
+  // acima.
   useEffect(() => {
     const forceReauth = () => {
       try { localStorage.removeItem("multiSession"); localStorage.removeItem("multiUser"); } catch {}
@@ -9819,21 +9844,32 @@ export default function App() {
       showToast?.("🔒 Sua sessão expirou. Entre novamente.", "#DC2626");
     };
     if (savedSession?.token) {
-      supabase.auth.setSession({ access_token: savedSession.token, refresh_token: savedSession.refreshToken })
+      Promise.race([
+        supabase.auth.setSession({ access_token: savedSession.token, refresh_token: savedSession.refreshToken }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout 8s")), 8000)),
+      ])
         .then(({ data, error }) => {
           if (error || !data?.session) {
             console.warn("[auth] sessão salva inválida/expirada, forçando novo login:", error?.message);
             forceReauth();
+            return;
           }
+          setIsLoggedIn(true);
+          setUserEmail(savedSession.email || "");
+          setUserRole(savedSession.role || "client");
+          setRole(savedSession.role || "client");
+          setUserName(savedSession.name || "");
         })
-        .catch(err => { console.error("[auth] setSession (boot) falhou:", err.message); forceReauth(); });
+        .catch(err => { console.error("[auth] setSession (boot) não confirmou a sessão:", err.message); forceReauth(); });
     } else if (savedSession) {
       console.warn("[auth] sessão local sem token Supabase Auth — forçando novo login");
       forceReauth();
     }
   }, []);
-  // Auth: starts as guest, modal layers appear on demand
-  const [isLoggedIn,    setIsLoggedIn]    = useState(!!savedSession);
+  // Auth: starts as guest, modal layers appear on demand — ou "logado" de
+  // cara só quando não há nada pra restaurar (needsSessionRestore=false);
+  // com token salvo, começa deslogado até o efeito acima confirmar.
+  const [isLoggedIn,    setIsLoggedIn]    = useState(!!savedSession && !needsSessionRestore);
   // Home é a tela inicial pra todo mundo agora, logado ou não — a
   // role-select ("Você está aqui para contratar ou trabalhar?") deixou de
   // ser o gate de entrada do app e virou uma
@@ -9861,11 +9897,14 @@ export default function App() {
   // a entrada foi genérica (FAB, banner "Novo Pedido"), pra não vazar a
   // seleção de uma visita anterior.
   const [pendingCat,    setPendingCat]    = useState("");
-  const [userRole,      setUserRole]      = useState(savedSession?.role      || "client");
-  const [userName,      setUserName]      = useState(savedSession?.name      || "");
+  // needsSessionRestore=true: começam vazios/"client" até o efeito de boot
+  // (perto de isLoggedIn) confirmar a sessão e virar os cinco juntos — ver
+  // comentário grande lá.
+  const [userRole,      setUserRole]      = useState(needsSessionRestore ? "client" : (savedSession?.role || "client"));
+  const [userName,      setUserName]      = useState(needsSessionRestore ? ""       : (savedSession?.name || ""));
 
   const [activeChat,    setActiveChat]    = useState(null);
-  const [userEmail,     setUserEmail]     = useState(savedSession?.email    || "");
+  const [userEmail,     setUserEmail]     = useState(needsSessionRestore ? ""       : (savedSession?.email || ""));
 
   useEffect(() => {
     const titularTipo = role === "professional" ? "usuario" : role === "empresa" ? "empresa" : null;
