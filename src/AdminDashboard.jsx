@@ -204,6 +204,63 @@ function PaymentStatusDot({ status }) {
   );
 }
 
+// 2026-08-13: "assinaturas" só guarda o estado atual (1 linha por titular,
+// sobrescrita a cada renovação) — não existe ledger de pagamentos passados
+// no Supabase. Busca o extrato de verdade direto na Asaas (ver
+// GET /api/admin/professional-payments), só quando o card expande — nunca
+// bate na Asaas pra lista inteira de profissionais de uma vez.
+const ASAAS_STATUS_LABEL = {
+  RECEIVED: "Recebido", CONFIRMED: "Confirmado", PENDING: "Pendente",
+  OVERDUE: "Vencido", REFUNDED: "Estornado", RECEIVED_IN_CASH: "Recebido (dinheiro)",
+  AWAITING_RISK_ANALYSIS: "Em análise",
+};
+function PaymentsExtrato({ email, adminKey }) {
+  const [payments, setPayments] = useState(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    setPayments(null);
+    setError(false);
+    fetch(API + "/api/admin/professional-payments?email=" + encodeURIComponent(email), { headers: { "x-admin-key": adminKey } })
+      .then(r => r.json())
+      .then(d => setPayments(d.payments || []))
+      .catch(() => setError(true));
+  }, [email]);
+
+  return (
+    <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid " + COLORS.border }}>
+      <div style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+        Extrato de pagamentos (Asaas)
+      </div>
+      {error ? (
+        <div style={{ color: COLORS.red, fontSize: 12 }}>Erro ao buscar na Asaas.</div>
+      ) : payments === null ? (
+        <div style={{ color: COLORS.textMuted, fontSize: 12 }}>Carregando...</div>
+      ) : payments.length === 0 ? (
+        <div style={{ color: COLORS.textMuted, fontSize: 12 }}>Nenhum pagamento encontrado — nunca virou cliente pago.</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {payments.map(pay => (
+            <div key={pay.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 12.5, padding: "6px 0", borderBottom: "1px solid " + COLORS.border }}>
+              <div>
+                <span style={{ color: COLORS.textPrimary, fontWeight: 700 }}>R$ {Number(pay.value || 0).toFixed(2)}</span>
+                <span style={{ color: COLORS.textMuted, marginLeft: 8 }}>{pay.billingType || "—"}</span>
+              </div>
+              <div style={{ color: COLORS.textMuted }}>
+                venc. {pay.dueDate ? new Date(pay.dueDate).toLocaleDateString("pt-BR") : "—"}
+                {pay.paymentDate && ` · pago ${new Date(pay.paymentDate).toLocaleDateString("pt-BR")}`}
+              </div>
+              <Badge color={pay.status === "RECEIVED" || pay.status === "CONFIRMED" || pay.status === "RECEIVED_IN_CASH" ? "green" : pay.status === "OVERDUE" ? "red" : "blue"}>
+                {ASAAS_STATUS_LABEL[pay.status] || pay.status}
+              </Badge>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Seção: Profissionais ────────────────────────────────────────
 function SectionProfissionais({ filter, adminKey }) {
   const [pros, setPros] = useState([]);
@@ -436,6 +493,7 @@ function SectionProfissionais({ filter, adminKey }) {
                       </div>
                     ))}
                   </div>
+                  <PaymentsExtrato email={p.email} adminKey={adminKey} />
                 </div>
               )}
             </Card>
