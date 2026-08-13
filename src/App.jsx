@@ -4899,12 +4899,12 @@ function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocSta
       }
 
       if (isRg && side === "verso") {
-        // Busca a URL da frente já salva (pode ter sido enviada numa sessão
-        // anterior) pra mandar as duas faces pra IA de uma vez.
-        const { data: row } = userEmail
-          ? await supabase.from("usuarios").select("doc_rg_url").eq("email", userEmail).maybeSingle()
-          : { data: null };
-        const urlFrente = row?.doc_rg_url;
+        // 1 única chamada ao Supabase aqui (igual a frente) — não busca a
+        // URL da frente no client antes de gravar. O backend já recebe o
+        // email e busca as duas URLs (doc_rg_url + doc_rg_url_verso) pelo
+        // client dele próprio; uma segunda leitura aqui no navegador logo
+        // depois do upload já causou trava sem erro nenhum (mesma família
+        // do bug de lock do supabase-js já visto no login desse projeto).
         if (userEmail) {
           const { error: dbErr } = await supabase.from("usuarios")
             .update({ doc_rg_status: "analysis", doc_rg_url_verso: url })
@@ -4917,12 +4917,13 @@ function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocSta
         // Pré-checagem automática por IA — só um apoio pro admin revisar no
         // painel Multi Admin (nunca aprova sozinha). Dispara e esquece: se
         // falhar, não afeta o profissional em nada, a revisão humana segue
-        // normal sem o parecer da IA.
+        // normal sem o parecer da IA. Manda só o email — o backend busca as
+        // duas URLs (frente/verso) direto no banco, com o client dele.
         if (userEmail) {
           fetch(`${API_BASE}/api/documentos/analisar-ia`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: userEmail, url: urlFrente, urlVerso: url }),
+            body: JSON.stringify({ email: userEmail }),
           }).catch(() => {});
         }
         return;
