@@ -779,6 +779,29 @@ function SectionFinanceiro({ adminKey }) {
     } catch {}
   };
 
+  // Auditoria sob demanda (não roda sozinha) — ver comentário grande em
+  // server.js /api/admin/reconciliacao-assinaturas. Nasceu do caso do
+  // RENATO: pagamento real na Asaas, linha em "assinaturas" sumiu sozinha
+  // (bug de durabilidade do Supabase). Só relata — corrigir um problema
+  // encontrado aqui é sempre manual (mesmo processo usado pra restaurar o
+  // Renato), nunca escrita automática.
+  const [reconciliacao, setReconciliacao] = useState(null);
+  const [reconciliando, setReconciliando] = useState(false);
+  const handleReconciliar = async () => {
+    setReconciliando(true);
+    setReconciliacao(null);
+    try {
+      const r = await fetch(API + "/api/admin/reconciliacao-assinaturas?dias=90", { headers: { "x-admin-key": adminKey } });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Erro");
+      setReconciliacao(d);
+    } catch {
+      setReconciliacao({ erro: true });
+    } finally {
+      setReconciliando(false);
+    }
+  };
+
   if (loading) return <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted }}>Carregando...</div>;
   if (!data) return <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted }}>Dados financeiros indisponíveis</div>;
 
@@ -865,6 +888,63 @@ function SectionFinanceiro({ adminKey }) {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+      </Card>
+
+      <Card>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 4 }}>
+          <div>
+            <div style={{ color: COLORS.textPrimary, fontWeight: 700 }}>Auditoria Asaas × Supabase</div>
+            <div style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 2 }}>
+              Compara pagamentos reais dos últimos 90 dias contra "assinaturas" — acha casos como o do Renato antes que precisem de reclamação.
+            </div>
+          </div>
+          <button onClick={handleReconciliar} disabled={reconciliando} style={{
+            background: COLORS.blue, color: "#fff", border: "none", borderRadius: 8,
+            padding: "9px 18px", fontSize: 13, fontWeight: 700, cursor: reconciliando ? "default" : "pointer",
+            opacity: reconciliando ? 0.7 : 1, flexShrink: 0,
+          }}>
+            {reconciliando ? "Auditando..." : "Rodar Auditoria"}
+          </button>
+        </div>
+
+        {reconciliacao?.erro && (
+          <div style={{ color: COLORS.red, fontSize: 13, marginTop: 12 }}>Erro ao auditar — tenta de novo.</div>
+        )}
+
+        {reconciliacao && !reconciliacao.erro && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ color: COLORS.textMuted, fontSize: 12, marginBottom: 10 }}>
+              {reconciliacao.pagamentos_verificados} pagamento(s) · {reconciliacao.clientes_verificados || 0} cliente(s) verificado(s) nos últimos {reconciliacao.periodo_dias} dias
+            </div>
+            {reconciliacao.problemas.length === 0 ? (
+              <div style={{ color: COLORS.green, fontSize: 13, fontWeight: 600 }}>✓ Nenhuma divergência encontrada — tudo bate.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {reconciliacao.problemas.map((p, i) => (
+                  <div key={i} style={{ padding: "10px 12px", borderRadius: 8, background: COLORS.red + "18", border: "1px solid " + COLORS.red + "44" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <Badge color="red">
+                        {p.tipo === "assinatura_ausente" ? "Assinatura sumiu" : p.tipo === "customer_id_divergente" ? "Customer ID divergente" : p.tipo === "cliente_sem_email" ? "Cliente sem email" : "Status desconhecido"}
+                      </Badge>
+                      <span style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 13 }}>{p.nome || p.email || p.asaasCustomerId}</span>
+                    </div>
+                    <div style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 4 }}>
+                      {p.email && <>{p.email} · </>}
+                      {p.asaasCustomerId && <>Asaas: {p.asaasCustomerId}</>}
+                      {p.supabaseCustomerId && <> · Supabase: {p.supabaseCustomerId}</>}
+                      {p.supabaseStatus && <> · status atual: {p.supabaseStatus}</>}
+                    </div>
+                    {p.pagamentos && p.pagamentos.length > 0 && (
+                      <div style={{ color: COLORS.textSecondary, fontSize: 11.5, marginTop: 4 }}>
+                        {p.pagamentos.length} pagamento(s): {p.pagamentos.map(pg => "R$ " + Number(pg.value).toFixed(2)).join(", ")}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </Card>
