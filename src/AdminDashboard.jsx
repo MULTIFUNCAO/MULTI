@@ -715,26 +715,82 @@ function SectionServicos({ adminKey }) {
   );
 }
 
+// Sugestões de categoria — texto livre por trás (ver supabase_despesas_migration.sql,
+// "categorias de despesa mudam mais rápido do que valeria travar num enum"),
+// isso aqui é só datalist pra digitar mais rápido, não trava nada.
+const DESPESA_CATEGORIAS_SUGERIDAS = ["Tráfego pago", "Ferramentas", "Freelancer", "Infraestrutura", "Outros"];
+
 // ─── Seção: Financeiro ────────────────────────────────────────────
 function SectionFinanceiro({ adminKey }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [despesas, setDespesas] = useState([]);
+  const [loadingDespesas, setLoadingDespesas] = useState(true);
+  const [form, setForm] = useState({ categoria: "", descricao: "", valor: "", data: new Date().toISOString().slice(0, 10) });
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
 
-  useEffect(() => {
+  const carregarDespesas = () => {
+    setLoadingDespesas(true);
+    fetch(API + "/api/admin/despesas", { headers: { "x-admin-key": adminKey } })
+      .then(r => r.json())
+      .then(d => { setDespesas(d.despesas || []); setLoadingDespesas(false); })
+      .catch(() => { setDespesas([]); setLoadingDespesas(false); });
+  };
+
+  const carregarFinanceiro = () => {
+    setLoading(true);
     fetch(API + "/api/admin/financial", { headers: { "x-admin-key": adminKey } })
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false); })
       .catch(() => { setData(null); setLoading(false); });
-  }, []);
+  };
+
+  useEffect(() => { carregarFinanceiro(); carregarDespesas(); }, []);
+
+  const handleLancar = async () => {
+    const valorNum = Number(form.valor.replace(",", "."));
+    if (!form.categoria.trim()) return setErro("Categoria é obrigatória");
+    if (!valorNum || valorNum <= 0) return setErro("Valor precisa ser maior que zero");
+    setErro("");
+    setSalvando(true);
+    try {
+      const r = await fetch(API + "/api/admin/despesas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({ categoria: form.categoria.trim(), descricao: form.descricao.trim() || null, valor: valorNum, data: form.data }),
+      });
+      if (!r.ok) throw new Error();
+      setForm({ categoria: "", descricao: "", valor: "", data: new Date().toISOString().slice(0, 10) });
+      carregarDespesas();
+      carregarFinanceiro(); // Lucro Líquido muda com toda despesa nova
+    } catch {
+      setErro("Erro ao lançar despesa");
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const handleApagar = async (id) => {
+    try {
+      await fetch(API + "/api/admin/despesas/" + id, { method: "DELETE", headers: { "x-admin-key": adminKey } });
+      carregarDespesas();
+      carregarFinanceiro();
+    } catch {}
+  };
 
   if (loading) return <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted }}>Carregando...</div>;
   if (!data) return <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted }}>Dados financeiros indisponíveis</div>;
+
+  const lucroPositivo = Number(data.lucroLiquido) >= 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
         {[
           { label: "Receita Total", value: "R$ " + (data.totalRevenue || "0,00"), color: COLORS.green, icon: DollarSign },
+          { label: "Despesas Total", value: "R$ " + (data.totalDespesas || "0,00"), color: COLORS.red, icon: Banknote },
+          { label: "Lucro Líquido", value: "R$ " + (data.lucroLiquido || "0,00"), color: lucroPositivo ? COLORS.green : COLORS.red, icon: TrendingUp },
           { label: "Saldo em Carteiras", value: "R$ " + (data.totalWallets || "0,00"), color: COLORS.blue, icon: Wallet },
           { label: "Saques Realizados", value: "R$ " + (data.totalWithdrawals || "0,00"), color: COLORS.orange, icon: Banknote },
           { label: "Receita PRO", value: "R$ " + (data.proRevenue || "0,00"), color: COLORS.purple, icon: Crown },
@@ -742,6 +798,76 @@ function SectionFinanceiro({ adminKey }) {
           { label: "Assinaturas Ativas", value: data.activeSubscriptions || 0, color: COLORS.orange, icon: CreditCard },
         ].map((m, i) => <MetricCard key={i} {...m} />)}
       </div>
+
+      <Card>
+        <div style={{ color: COLORS.textPrimary, fontWeight: 700, marginBottom: 12 }}>Lançar Despesa</div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div style={{ flex: "1 1 160px" }}>
+            <div style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 600, marginBottom: 4 }}>Categoria</div>
+            <input list="despesa-categorias" value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}
+              placeholder="Ex: Tráfego pago" style={{ background: COLORS.bg, border: "1px solid " + COLORS.border, borderRadius: 8, padding: "8px 10px", color: COLORS.textPrimary, fontSize: 13, width: "100%", outline: "none" }} />
+            <datalist id="despesa-categorias">
+              {DESPESA_CATEGORIAS_SUGERIDAS.map(c => <option key={c} value={c} />)}
+            </datalist>
+          </div>
+          <div style={{ flex: "1 1 200px" }}>
+            <div style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 600, marginBottom: 4 }}>Descrição (opcional)</div>
+            <input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))}
+              placeholder="Ex: Campanha Instagram Ads" style={{ background: COLORS.bg, border: "1px solid " + COLORS.border, borderRadius: 8, padding: "8px 10px", color: COLORS.textPrimary, fontSize: 13, width: "100%", outline: "none" }} />
+          </div>
+          <div style={{ flex: "0 1 130px" }}>
+            <div style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 600, marginBottom: 4 }}>Data</div>
+            <input type="date" value={form.data} onChange={e => setForm(f => ({ ...f, data: e.target.value }))}
+              style={{ background: COLORS.bg, border: "1px solid " + COLORS.border, borderRadius: 8, padding: "8px 10px", color: COLORS.textPrimary, fontSize: 13, width: "100%", outline: "none" }} />
+          </div>
+          <div style={{ flex: "0 1 120px" }}>
+            <div style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 600, marginBottom: 4 }}>Valor (R$)</div>
+            <input value={form.valor} onChange={e => setForm(f => ({ ...f, valor: e.target.value }))}
+              placeholder="40,00" style={{ background: COLORS.bg, border: "1px solid " + COLORS.border, borderRadius: 8, padding: "8px 10px", color: COLORS.textPrimary, fontSize: 13, width: "100%", outline: "none" }} />
+          </div>
+          <button onClick={handleLancar} disabled={salvando} style={{
+            background: COLORS.blue, color: "#fff", border: "none", borderRadius: 8,
+            padding: "9px 18px", fontSize: 13, fontWeight: 700, cursor: salvando ? "default" : "pointer",
+            opacity: salvando ? 0.7 : 1, flexShrink: 0,
+          }}>
+            {salvando ? "Salvando..." : "Lançar"}
+          </button>
+        </div>
+        {erro && <div style={{ color: COLORS.red, fontSize: 12, marginTop: 8 }}>{erro}</div>}
+      </Card>
+
+      <Card>
+        <div style={{ color: COLORS.textPrimary, fontWeight: 700, marginBottom: 12 }}>Despesas Lançadas</div>
+        {loadingDespesas ? (
+          <div style={{ color: COLORS.textMuted, fontSize: 13 }}>Carregando...</div>
+        ) : despesas.length === 0 ? (
+          <div style={{ color: COLORS.textMuted, fontSize: 13 }}>Nenhuma despesa lançada ainda.</div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {despesas.map((d, i) => (
+              <div key={d.id} style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap",
+                padding: "10px 0", borderBottom: i < despesas.length - 1 ? "1px solid " + COLORS.border : "none",
+              }}>
+                <div>
+                  <div style={{ color: COLORS.textPrimary, fontSize: 13, fontWeight: 600 }}>
+                    {d.categoria}{d.descricao ? " — " + d.descricao : ""}
+                  </div>
+                  <div style={{ color: COLORS.textMuted, fontSize: 11 }}>{d.data ? new Date(d.data + "T00:00:00").toLocaleDateString("pt-BR") : "—"}</div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ color: COLORS.red, fontWeight: 700 }}>- R$ {Number(d.valor).toFixed(2)}</div>
+                  <button onClick={() => handleApagar(d.id)} style={{
+                    background: "none", border: "none", color: COLORS.textMuted, cursor: "pointer", padding: 4,
+                  }} title="Apagar">
+                    <X size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
 
       {data.transactions && data.transactions.length > 0 && (
         <Card>
