@@ -174,6 +174,19 @@ function SectionMetrics({ data }) {
   );
 }
 
+// plano/paymentStatus vêm de "assinaturas" via /api/admin/professionals (ver
+// server.js) — plano real do profissional (usuarios.pro_plan é coluna morta).
+const PLANO_INFO = {
+  autonomo: { label: "Autônomo", color: "blue" },
+  pro:      { label: "Pro",      color: "orange" },
+  premium:  { label: "Premium",  color: "purple" },
+};
+const PAGAMENTO_INFO = {
+  pago:      { label: "Pago em dia",       color: "green" },
+  vencido:   { label: "Pagamento vencido", color: "red" },
+  cancelado: { label: "Cancelado",         color: "orange" },
+};
+
 // ─── Seção: Profissionais ────────────────────────────────────────
 function SectionProfissionais({ filter, adminKey }) {
   const [pros, setPros] = useState([]);
@@ -227,13 +240,18 @@ function SectionProfissionais({ filter, adminKey }) {
     } catch { showToast("Erro ao reprovar", "red"); }
   };
 
+  // 2026-08-13: is_pro (usuarios.pro_plan, coluna morta) virou plano/paymentStatus
+  // de verdade, lidos de "assinaturas" pelo backend — ver /api/admin/professionals.
   const filtered = pros.filter(p => {
     const q = search.toLowerCase();
     const matchSearch = !q || (p.name || "").toLowerCase().includes(q) || (p.email || "").toLowerCase().includes(q) || (p.whatsapp || "").includes(q);
     if (!matchSearch) return false;
     if (subTab === "pendentes") return !p.approved;
-    if (subTab === "aprovados") return p.approved && !p.is_pro;
-    if (subTab === "pro") return p.is_pro;
+    if (subTab === "aprovados") return p.approved && !p.plano;
+    if (subTab === "autonomo") return p.plano === "autonomo";
+    if (subTab === "pro") return p.plano === "pro";
+    if (subTab === "premium") return p.plano === "premium";
+    if (subTab === "vencidos") return p.paymentStatus === "vencido";
     if (subTab === "sem_fechar") return p.approved && (p.services_count || 0) === 0;
     return true;
   });
@@ -241,8 +259,11 @@ function SectionProfissionais({ filter, adminKey }) {
   const subTabs = [
     { id: "todos", label: "Todos", count: pros.length },
     { id: "pendentes", label: "Pendentes", count: pros.filter(p => !p.approved).length },
-    { id: "aprovados", label: "Aprovados", count: pros.filter(p => p.approved && !p.is_pro).length },
-    { id: "pro", label: "PRO", count: pros.filter(p => p.is_pro).length },
+    { id: "aprovados", label: "Aprovados", count: pros.filter(p => p.approved && !p.plano).length },
+    { id: "autonomo", label: "Autônomo", count: pros.filter(p => p.plano === "autonomo").length },
+    { id: "pro", label: "Pro", count: pros.filter(p => p.plano === "pro").length },
+    { id: "premium", label: "Premium", count: pros.filter(p => p.plano === "premium").length },
+    { id: "vencidos", label: "Pagamento Vencido", count: pros.filter(p => p.paymentStatus === "vencido").length },
     { id: "sem_fechar", label: "Sem Fechar", count: pros.filter(p => p.approved && (p.services_count || 0) === 0).length },
   ];
 
@@ -291,7 +312,9 @@ function SectionProfissionais({ filter, adminKey }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 14 }}>{p.name || "Sem nome"}</span>
-                    {p.is_pro && <Badge color="orange">PRO</Badge>}
+                    {p.plano && <Badge color={PLANO_INFO[p.plano]?.color || "blue"}>{PLANO_INFO[p.plano]?.label || p.plano}</Badge>}
+                    {p.plano && <Badge color={PAGAMENTO_INFO[p.paymentStatus]?.color || "blue"}>{PAGAMENTO_INFO[p.paymentStatus]?.label || p.paymentStatus}</Badge>}
+                    {p.cortesia && <Badge color="purple">Cortesia</Badge>}
                     {p.approved ? <Badge color="green">Aprovado</Badge> : <Badge color="red">Pendente</Badge>}
                   </div>
                   <div style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 2 }}>
@@ -370,6 +393,9 @@ function SectionProfissionais({ filter, adminKey }) {
                       { label: "Serviços", value: p.services_count || 0 },
                       { label: "Serviços sem fechar", value: p.open_services || 0 },
                       { label: "Receita", value: p.revenue ? "R$ " + p.revenue : "R$ 0" },
+                      { label: "Plano", value: p.plano ? (PLANO_INFO[p.plano]?.label || p.plano) : "Sem plano" },
+                      { label: "Status pagamento", value: p.plano ? (PAGAMENTO_INFO[p.paymentStatus]?.label || p.paymentStatus) : "—" },
+                      { label: "Próxima cobrança", value: p.proximaCobranca ? new Date(p.proximaCobranca).toLocaleDateString("pt-BR") : "—" },
                       { label: "PRO desde", value: p.pro_since ? new Date(p.pro_since).toLocaleDateString("pt-BR") : "—" },
                       { label: "Cadastro", value: p.created_at ? new Date(p.created_at).toLocaleDateString("pt-BR") : "—" },
                       { label: "Último acesso", value: p.last_seen ? new Date(p.last_seen).toLocaleDateString("pt-BR") : "—" },
