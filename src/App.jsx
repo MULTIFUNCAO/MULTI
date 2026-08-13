@@ -4843,11 +4843,7 @@ function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocSta
     crim:    { file:null, preview:null, progress:0 },
     address: { file:null, preview:null, progress:0 },
   });
-  const [showAdmin,   setShowAdmin]   = useState(null);
-  const [adminKey,    setAdminKey]    = useState("");
-  const [keyError,    setKeyError]    = useState(false);
   const [expandedDoc, setExpandedDoc] = useState(null);
-  const [verifying,   setVerifying]   = useState(false);
   const fileRefs = { rg: useRef(), crim: useRef(), address: useRef() };
 
   // Merge external status with local file state
@@ -4883,37 +4879,21 @@ function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocSta
       }
       onDocStatusChange?.(docId, "analysis");
       showToast?.("📋 Documento enviado! Status: Em análise.", "#F59E0B");
+
+      // Pré-checagem automática por IA — só pro RG/CNH, só um apoio pro
+      // admin revisar no painel Multi Admin (nunca aprova sozinha). Dispara
+      // e esquece: se falhar, não afeta o profissional em nada, a revisão
+      // humana segue normal sem o parecer da IA.
+      if (docId === "rg" && userEmail) {
+        fetch(`${API_BASE}/api/documentos/analisar-ia`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: userEmail, url }),
+        }).catch(() => {});
+      }
     } catch (err) {
       onDocStatusChange?.(docId, "pending");
       showToast?.("❌ Erro ao enviar documento: " + (err.message || ""), "#DC2626");
-    }
-  };
-
-  // Aprovação/reprovação passa pelo backend (EMAIL_ADMIN_KEY, guardado só no
-  // Render) em vez de comparar senha no próprio bundle do cliente — mesmo com
-  // o DevTools aberto não dá mais pra se auto-aprovar. O trigger
-  // trg_lock_doc_status no Postgres é a segunda trava, caso essa rota nunca
-  // seja chamada.
-  const handleAdminApprove = async (docId, approve) => {
-    if (!adminKey.trim()) { setKeyError(true); setTimeout(() => setKeyError(false), 1400); return; }
-    setVerifying(true);
-    try {
-      const r = await fetch(`${API_BASE}/api/admin/documentos/verificar`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
-        body: JSON.stringify({ email: userEmail, docId, aprovado: approve }),
-      });
-      if (r.status === 401) { setKeyError(true); setTimeout(() => setKeyError(false), 1400); return; }
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Erro ao verificar documento");
-      onDocStatusChange?.(docId, approve ? "verified" : "rejected");
-      setShowAdmin(null);
-      setAdminKey("");
-      showToast?.(approve ? "✅ Documento verificado!" : "❌ Documento reprovado.", approve ? "#22c55e" : "#DC2626");
-    } catch (err) {
-      showToast?.("❌ " + (err.message || "Erro ao verificar documento"), "#DC2626");
-    } finally {
-      setVerifying(false);
     }
   };
 
@@ -5033,42 +5013,6 @@ function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocSta
                   </div>
                 )}
 
-                {/* Admin panel — approve/reject (shown when analysis status) */}
-                {state.status === "analysis" && (
-                  <div style={{ marginTop:10 }}>
-                    {showAdmin !== doc.id ? (
-                      <button
-                        onClick={e => { e.stopPropagation(); setShowAdmin(doc.id); }}
-                        style={{ width:"100%", padding:"9px 0", borderRadius:10, border:"1.5px solid #334155", background:"#0F172A", color:"#6366F1", fontWeight:800, fontSize:12, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
-                        <ShieldCheck size={14} /> Acesso Admin — Verificar
-                      </button>
-                    ) : (
-                      <div style={{ background:"#0F172A", borderRadius:14, padding:14 }}>
-                        <p style={{ fontSize:11, fontWeight:800, color:"#94A3B8", margin:"0 0 10px", textAlign:"center", textTransform:"uppercase", letterSpacing:1 }}>Senha de Administradora</p>
-                        <input
-                          type="password"
-                          placeholder="Digite a senha admin"
-                          value={adminKey}
-                          onChange={e => { setAdminKey(e.target.value); setKeyError(false); }}
-                          onKeyDown={e => e.key === "Enter" && handleAdminApprove(doc.id, true)}
-                          style={{ width:"100%", padding:"11px 14px", borderRadius:10, border:`1.5px solid ${keyError ? "#EF4444" : "#334155"}`, background:"#1E293B", color:"white", fontSize:13, outline:"none", fontFamily:"inherit", boxSizing:"border-box", animation: keyError ? "shake .4s" : "none" }}
-                        />
-                        {keyError && <p style={{ fontSize:11, color:"#EF4444", textAlign:"center", margin:"5px 0 0", fontWeight:700 }}>Senha incorreta</p>}
-                        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:10 }}>
-                          <button onClick={() => handleAdminApprove(doc.id, false)} style={{ padding:"10px 0", borderRadius:10, border:"1.5px solid #EF4444", background:"transparent", color:"#EF4444", fontWeight:800, fontSize:12, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}>
-                            <X size={13} /> Reprovar
-                          </button>
-                          <button onClick={() => handleAdminApprove(doc.id, true)} style={{ padding:"10px 0", borderRadius:10, border:"none", background:"linear-gradient(135deg,#22c55e,#16a34a)", color:"white", fontWeight:900, fontSize:12, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:5, boxShadow:"0 3px 10px #22c55e44" }}>
-                            <ShieldCheck size={13} /> Aprovar
-                          </button>
-                        </div>
-                        <button onClick={() => { setShowAdmin(null); setAdminKey(""); }} style={{ width:"100%", padding:"8px 0", borderRadius:10, border:"none", background:"transparent", color:"#64748B", fontWeight:700, fontSize:11, cursor:"pointer", marginTop:8 }}>
-                          Cancelar
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -8900,21 +8844,15 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   const next=!online;
   userToggledRef.current=true;
 
-  // Documentação obrigatória (RG/CNH, Antecedentes, Comprovante de
-  // Endereço) precisa estar toda "verified" antes de poder ficar online —
-  // sem isso o profissional apareceria pros clientes sem nunca ter passado
-  // por verificação nenhuma. Esse check aqui é só UX (mensagem clara antes
-  // de tentar); o bloqueio de verdade é o trigger
+  // Cadastro precisa estar aprovado (usuarios.approved) antes de poder
+  // ficar online — sem isso o profissional apareceria pros clientes sem
+  // nunca ter passado por revisão nenhuma. Esse check aqui é só UX
+  // (mensagem clara antes de tentar); o bloqueio de verdade é o trigger
   // trg_block_online_sem_docs no Postgres (ver
-  // supabase_bloqueio_doc_pendente_migration.sql) — sem ele, dava pra
+  // supabase_aprovacao_profissional_ia_migration.sql) — sem ele, dava pra
   // contornar essa tela inteira só chamando o UPDATE direto pelo console.
   if(next && !allDocsVerified){
-    const faltando = [
-      docStatus?.rg !== "verified" && "RG/CNH",
-      docStatus?.crim !== "verified" && "Antecedentes Criminais",
-      docStatus?.address !== "verified" && "Comprovante de Endereço",
-    ].filter(Boolean).join(", ");
-    showToast?.(`⚠️ Documentação pendente (${faltando}) — complete no Perfil antes de ficar online.`, "#DC2626");
+    showToast?.("⚠️ Seu documento está em análise. Você poderá aceitar serviços assim que for aprovado.", "#DC2626");
     onGoToDocs?.();
     return;
   }
@@ -9070,7 +9008,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                 <path d="M3.51 3.51a12 12 0 0 0 0 16.97"/>
               </svg>
             )}
-            {online ? "✓  Online — Clique para ficar Offline" : !allDocsVerified ? "Documentação pendente" : "Offline — Clique para ficar Online"}
+            {online ? "✓  Online — Clique para ficar Offline" : !allDocsVerified ? "Cadastro em análise" : "Offline — Clique para ficar Online"}
           </button>
         </div>
       </div>
@@ -9099,23 +9037,20 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
         </div>
       )}
 
-      {/* ── PENDÊNCIAS DE DOCUMENTAÇÃO — visível direto no mural, sem
-          precisar clicar em "Tenho Interesse" pra descobrir que falta algo
+      {/* ── CADASTRO EM ANÁLISE — visível direto no mural, sem precisar
+          clicar em "Tenho Interesse" pra descobrir que ainda está pendente
           (item 13 do prompt: reforçar status/pendências em todas as telas
-          relevantes). Some sozinho quando tudo está verificado. */}
-      {!allDocsVerified && (() => {
-        const pendentes = ["rg","crim","address"].filter(id => docStatus?.[id] !== "verified").length;
-        return (
-          <div onClick={onGoToDocs} style={{ margin:"14px 16px 0", borderRadius:16, padding:"13px 16px", background:"#FFFBEB", border:"1.5px solid #FDE68A", display:"flex", alignItems:"center", gap:12, cursor:"pointer" }}>
-            <span style={{ fontSize:20, flexShrink:0 }}>⚠️</span>
-            <div style={{ flex:1 }}>
-              <p style={{ fontSize:13, fontWeight:900, color:"#92400E", margin:0 }}>{pendentes} documento{pendentes > 1 ? "s" : ""} pendente{pendentes > 1 ? "s" : ""}</p>
-              <p style={{ fontSize:11, color:"#B45309", margin:0 }}>Complete pra liberar contato dos clientes que aceitarem sua proposta.</p>
-            </div>
-            <ChevronRight size={18} color="#B45309" />
+          relevantes). Some sozinho quando approved vira true. */}
+      {!allDocsVerified && (
+        <div onClick={onGoToDocs} style={{ margin:"14px 16px 0", borderRadius:16, padding:"13px 16px", background:"#FFFBEB", border:"1.5px solid #FDE68A", display:"flex", alignItems:"center", gap:12, cursor:"pointer" }}>
+          <span style={{ fontSize:20, flexShrink:0 }}>⚠️</span>
+          <div style={{ flex:1 }}>
+            <p style={{ fontSize:13, fontWeight:900, color:"#92400E", margin:0 }}>Seu documento está em análise</p>
+            <p style={{ fontSize:11, color:"#B45309", margin:0 }}>Você poderá aceitar serviços assim que for aprovado.</p>
           </div>
-        );
-      })()}
+          <ChevronRight size={18} color="#B45309" />
+        </div>
+      )}
 
       {/* ── FILTERS ── */}
       <div style={{ padding:"20px 16px 0" }}>
@@ -9276,64 +9211,50 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                 </div>
               </div>
 
-              {/* Progress pill */}
-              {(() => {
-                const verified = Object.values(docStatus||{}).filter(s=>s==="verified").length;
-                const pct = Math.round((verified/3)*100);
-                return (
-                  <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:"white", border:"1px solid #BBF7D0", borderRadius:99, padding:"5px 14px", marginBottom:16, boxShadow:"0 2px 8px rgba(34,197,94,.15)" }}>
-                    <div style={{ width:52, height:6, background:"#E5E7EB", borderRadius:99, overflow:"hidden" }}>
-                      <div style={{ height:"100%", width:""+(pct)+"%", background:"linear-gradient(90deg,#22c55e,#16a34a)", borderRadius:99, transition:"width .5s" }} />
-                    </div>
-                    <span style={{ fontSize:12, fontWeight:800, color:"#166534" }}>{verified}/3 verificados</span>
-                  </div>
-                );
-              })()}
+              {/* Status pill — approvedStatus é boolean/null, não tem mais
+                  "X/3" (o gate real hoje é um único approved, revisado a
+                  partir do RG/CNH) */}
+              <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:"white", border:"1px solid #FDE68A", borderRadius:99, padding:"5px 14px", marginBottom:16, boxShadow:"0 2px 8px rgba(245,158,11,.15)" }}>
+                <Clock size={13} color="#F59E0B" />
+                <span style={{ fontSize:12, fontWeight:800, color:"#92400E" }}>Em análise</span>
+              </div>
 
               <h2 style={{ fontSize:20, fontWeight:900, color:"#0F172A", margin:"0 0 10px", lineHeight:1.3, letterSpacing:"-.3px" }}>
-                Quase lá!
+                Seu documento está em análise
               </h2>
               <p style={{ fontSize:13, color:"#6B7280", lineHeight:1.7, margin:"0 0 24px", maxWidth:300, marginLeft:"auto", marginRight:"auto" }}>
-                Pra liberar o contato e os dados necessários para realizar o serviço, você precisa concluir sua documentação.
+                Você poderá aceitar serviços assim que for aprovado.
               </p>
             </div>
 
-            {/* ── DOCUMENT CARDS ── */}
+            {/* ── DOCUMENTO (RG/CNH) — status real, único documento que
+                condiciona a aprovação hoje ── */}
             <div style={{ padding:"0 20px 20px" }}>
               <p style={{ fontSize:11, fontWeight:800, color:"#94A3B8", textTransform:"uppercase", letterSpacing:1.5, margin:"0 0 12px" }}>
-                Documentos necessários
+                Documento enviado
               </p>
-              <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
-                {[
-                  { id:"rg",      label:"RG / CNH",              icon:"🆔", desc:"Documento de identidade",     hue:"#3B82F6", bg:"#EFF6FF" },
-                  { id:"crim",    label:"Antecedentes Criminais", icon:"📜", desc:"Certidão emitida recentemente", hue:"#8B5CF6", bg:"#F5F3FF" },
-                  { id:"address", label:"Comprovante de Endereço",icon:"🏠", desc:"Conta de luz, água ou telefone",hue:"#10B981", bg:"#ECFDF5" },
-                ].map(doc => {
-                  const st = docStatus?.[doc.id] || "pending";
-                  const isOk  = st === "verified";
-                  const isMid = st === "analysis";
-                  return (
-                    <div key={doc.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:16, background: isOk ? "#F0FDF4" : isMid ? "#FFFBEB" : "white", border:`1px solid ${isOk ? "#BBF7D0" : isMid ? "#FDE68A" : "#E5E7EB"}`, transition:"all .2s" }}>
-                      {/* icon box */}
-                      <div style={{ width:44, height:44, borderRadius:12, background:doc.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>
-                        {doc.icon}
-                      </div>
-                      {/* text */}
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <p style={{ fontSize:13, fontWeight:800, color:"#0F172A", margin:"0 0 2px" }}>{doc.label}</p>
-                        <p style={{ fontSize:11, color:"#94A3B8", margin:0, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{doc.desc}</p>
-                      </div>
-                      {/* status badge */}
-                      <span style={{ fontSize:11, fontWeight:800, borderRadius:99, padding:"4px 11px", whiteSpace:"nowrap", flexShrink:0,
-                        background: isOk ? "#DCFCE7" : isMid ? "#FEF3C7" : "#F1F5F9",
-                        color:      isOk ? "#166534" : isMid ? "#92400E" : "#94A3B8",
-                      }}>
-                        {isOk ? "✓ Verificado" : isMid ? "⏳ Análise" : "Pendente"}
-                      </span>
+              {(() => {
+                const st = docStatus?.rg || "pending";
+                const isOk  = st === "verified";
+                const isMid = st === "analysis";
+                return (
+                  <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:16, background: isOk ? "#F0FDF4" : isMid ? "#FFFBEB" : "white", border:`1px solid ${isOk ? "#BBF7D0" : isMid ? "#FDE68A" : "#E5E7EB"}` }}>
+                    <div style={{ width:44, height:44, borderRadius:12, background:"#EFF6FF", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>
+                      🆔
                     </div>
-                  );
-                })}
-              </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontSize:13, fontWeight:800, color:"#0F172A", margin:"0 0 2px" }}>RG / CNH</p>
+                      <p style={{ fontSize:11, color:"#94A3B8", margin:0 }}>Documento de identidade</p>
+                    </div>
+                    <span style={{ fontSize:11, fontWeight:800, borderRadius:99, padding:"4px 11px", whiteSpace:"nowrap", flexShrink:0,
+                      background: isOk ? "#DCFCE7" : isMid ? "#FEF3C7" : "#F1F5F9",
+                      color:      isOk ? "#166534" : isMid ? "#92400E" : "#94A3B8",
+                    }}>
+                      {isOk ? "✓ Aprovado" : isMid ? "⏳ Em análise" : "Pendente"}
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* ── PRO CARD — centre of attention (só faz sentido oferecer upgrade
@@ -9776,20 +9697,27 @@ export default function App() {
 
   // Document verification state — shared between ProfileScreen e ProfessionalHome.
   // Carregado de verdade do Supabase logo abaixo (efeito [userEmail]) — ver
-  // allDocsVerified, calculado a partir desse estado.
+  // allDocsVerified, calculado a partir desse estado. docStatus continua só
+  // pro badge informativo que o profissional vê no próprio Perfil (Pendente/
+  // Em análise/Verificado/Reprovado) — quem decide de verdade se ele pode
+  // aceitar serviço é approvedStatus, abaixo.
   const [docStatus, setDocStatus] = useState({
     rg:      "pending",
     crim:    "pending",
     address: "pending",
   });
-  // Se a query de status falhar (ex: colunas doc_*_status ainda não
-  // existirem no banco por causa do bug de DDL desse projeto — ver
-  // supabase_multifuncao_project na memória), não trata "não sei" como
-  // "bloqueado": falha aberto (libera geral, mesmo comportamento hardcoded
-  // de antes) em vez de bloquear todo profissional real por um problema de
-  // infra que não é dele.
+  // "approved" (usuarios.approved) é o gate real — só o admin muda isso, no
+  // painel Multi Admin, olhando o RG/CNH + parecer da IA (ver
+  // supabase_aprovacao_profissional_ia_migration.sql). null = ainda não
+  // carregou / carregou e a coluna sumiu por causa do bug de durabilidade
+  // desse projeto (ver supabase_multifuncao_project na memória) — falha
+  // aberto nesses dois casos (libera geral) em vez de bloquear todo
+  // profissional real por um problema de infra que não é dele. Só um
+  // "false" explícito (reprovação real, ou default novo pra cadastro que
+  // nunca foi revisado) bloqueia de verdade.
+  const [approvedStatus, setApprovedStatus] = useState(null);
   const [docStatusIndisponivel, setDocStatusIndisponivel] = useState(false);
-  const allDocsVerified = docStatusIndisponivel || (docStatus.rg === "verified" && docStatus.crim === "verified" && docStatus.address === "verified");
+  const allDocsVerified = approvedStatus !== false;
 
   // ── RESTORE SESSION FROM LOCALSTORAGE ────────────────────────────────────
   const savedSession = (() => {
@@ -9878,10 +9806,10 @@ export default function App() {
   // supabase_pendencias_doc_pagamento_migration.sql).
   const [isHybrid, setIsHybrid] = useState(false);
   useEffect(() => {
-    if (!userEmail) { setDocStatus({ rg:"pending", crim:"pending", address:"pending" }); setIsHybrid(false); setDocStatusIndisponivel(false); return; }
-    supabase.from("usuarios").select("doc_rg_status,doc_crim_status,doc_address_status,is_hybrid").eq("email", userEmail).maybeSingle()
+    if (!userEmail) { setDocStatus({ rg:"pending", crim:"pending", address:"pending" }); setIsHybrid(false); setDocStatusIndisponivel(false); setApprovedStatus(null); return; }
+    supabase.from("usuarios").select("doc_rg_status,doc_crim_status,doc_address_status,is_hybrid,approved").eq("email", userEmail).maybeSingle()
       .then(({ data, error }) => {
-        if (error) { setDocStatusIndisponivel(true); console.warn("[docStatus] indisponível:", error.message); return; }
+        if (error) { setDocStatusIndisponivel(true); setApprovedStatus(null); console.warn("[docStatus] indisponível:", error.message); return; }
         setDocStatusIndisponivel(false);
         setDocStatus({
           rg:      data?.doc_rg_status      || "pending",
@@ -9889,8 +9817,12 @@ export default function App() {
           address: data?.doc_address_status || "pending",
         });
         setIsHybrid(!!data?.is_hybrid);
+        // undefined (coluna sumiu por bug de durabilidade) -> null -> falha
+        // aberto, igual ao resto do projeto. false explícito é o único caso
+        // que bloqueia.
+        setApprovedStatus(data?.approved === false ? false : data?.approved === true ? true : null);
       })
-      .catch(() => setDocStatusIndisponivel(true));
+      .catch(() => { setDocStatusIndisponivel(true); setApprovedStatus(null); });
   }, [userEmail]);
 
   // MEUS PEDIDOS — fonte única real (Fase 1 de consolidação): cliente vê os
@@ -10450,10 +10382,11 @@ export default function App() {
     // pelo "Aceitar agora" do popup de novo pedido, que não passa pelo
     // botão "Candidatar-me" do mural (esse já bloqueava). Bloqueio de
     // verdade é o trigger trg_block_proposta_sem_docs no Postgres (ver
-    // supabase_bloqueio_doc_pendente_migration.sql); isso aqui só evita a
-    // viagem de rede quando já dá pra saber que vai falhar.
+    // supabase_aprovacao_profissional_ia_migration.sql), checando
+    // usuarios.approved; isso aqui só evita a viagem de rede quando já dá
+    // pra saber que vai falhar.
     if (!allDocsVerified) {
-      showToast?.("⚠️ Documentação pendente — complete no Perfil antes de se candidatar a pedidos.", "#DC2626");
+      showToast?.("⚠️ Seu documento está em análise. Você poderá aceitar serviços assim que for aprovado.", "#DC2626");
       return;
     }
     supabase.from("propostas").upsert({

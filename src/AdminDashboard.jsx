@@ -322,6 +322,35 @@ function SectionProfissionais({ filter, adminKey }) {
 
               {expanded === p.id && (
                 <div style={{ borderTop: "1px solid " + COLORS.border, padding: "14px 16px", background: COLORS.bg }}>
+                  {/* Documento (RG/CNH) + parecer da pré-checagem por IA —
+                      primeira coisa que o admin precisa olhar antes de
+                      decidir Aprovar/Reprovar (botões ficam no header do
+                      card, acima). A IA só dá um parecer, nunca aprova
+                      sozinha. */}
+                  <div style={{ display: "flex", gap: 14, alignItems: "flex-start", flexWrap: "wrap", marginBottom: 16, paddingBottom: 16, borderBottom: "1px solid " + COLORS.border }}>
+                    {p.docRgUrl ? (
+                      <a href={p.docRgUrl} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0 }}>
+                        <img src={p.docRgUrl} alt="RG/CNH" style={{ width: 130, height: 86, objectFit: "cover", borderRadius: 10, border: "1px solid " + COLORS.border }} />
+                      </a>
+                    ) : (
+                      <div style={{ width: 130, height: 86, borderRadius: 10, border: "1.5px dashed " + COLORS.border, display: "flex", alignItems: "center", justifyContent: "center", color: COLORS.textMuted, fontSize: 11, textAlign: "center", padding: 8, flexShrink: 0 }}>
+                        Documento ainda não enviado
+                      </div>
+                    )}
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      {(() => {
+                        const ia = {
+                          ok:       { color: "green",  label: "IA: documento legível" },
+                          suspeito: { color: "orange", label: "IA: suspeito — revisar com atenção" },
+                          ilegivel: { color: "red",    label: "IA: ilegível" },
+                        }[p.iaStatus] || { color: "blue", label: "IA: análise indisponível" };
+                        return <Badge color={ia.color}>{ia.label}</Badge>;
+                      })()}
+                      {p.iaObservacoes && (
+                        <p style={{ color: COLORS.textSecondary, fontSize: 12.5, margin: "8px 0 0", lineHeight: 1.5 }}>{p.iaObservacoes}</p>
+                      )}
+                    </div>
+                  </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
                     {[
                       { label: "ID", value: p.id },
