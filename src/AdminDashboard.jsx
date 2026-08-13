@@ -176,6 +176,10 @@ function SectionMetrics({ data }) {
 
 // plano/paymentStatus vêm de "assinaturas" via /api/admin/professionals (ver
 // server.js) — plano real do profissional (usuarios.pro_plan é coluna morta).
+// Pílula (Badge) pro plano, ponto+texto (PaymentStatusDot) pro pagamento —
+// linguagem visual diferente de propósito, pra não dar pra confundir os dois
+// mesmo de relance (2026-08-13: "Pro" e "Cancelado" chegaram a colidir na
+// mesma cor laranja quando os dois eram pílula).
 const PLANO_INFO = {
   autonomo: { label: "Autônomo", color: "blue" },
   pro:      { label: "Pro",      color: "orange" },
@@ -184,8 +188,21 @@ const PLANO_INFO = {
 const PAGAMENTO_INFO = {
   pago:      { label: "Pago em dia",       color: "green" },
   vencido:   { label: "Pagamento vencido", color: "red" },
-  cancelado: { label: "Cancelado",         color: "orange" },
+  cancelado: { label: "Cancelado",         color: "textMuted" },
+  sem_plano: { label: "Nunca pagou",       color: "textMuted" },
 };
+
+function PaymentStatusDot({ status }) {
+  const info = PAGAMENTO_INFO[status];
+  if (!info) return null;
+  const dotColor = COLORS[info.color] || COLORS.textMuted;
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: dotColor }}>
+      <span style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
+      {info.label}
+    </span>
+  );
+}
 
 // ─── Seção: Profissionais ────────────────────────────────────────
 function SectionProfissionais({ filter, adminKey }) {
@@ -252,6 +269,12 @@ function SectionProfissionais({ filter, adminKey }) {
     if (subTab === "pro") return p.plano === "pro";
     if (subTab === "premium") return p.plano === "premium";
     if (subTab === "vencidos") return p.paymentStatus === "vencido";
+    // "nunca pagou" = sem linha nenhuma em "assinaturas" — ativarAssinatura()
+    // só grava essa linha DEPOIS de confirmar um pagamento real na Asaas (ou
+    // cortesia explícita), então "sem_plano" aqui é sempre "baixou/se
+    // cadastrou mas nunca chegou a pagar nada", independente de já ter sido
+    // aprovado ou não. Ver server.js.
+    if (subTab === "nunca_pagou") return p.paymentStatus === "sem_plano";
     if (subTab === "sem_fechar") return p.approved && (p.services_count || 0) === 0;
     return true;
   });
@@ -264,6 +287,7 @@ function SectionProfissionais({ filter, adminKey }) {
     { id: "pro", label: "Pro", count: pros.filter(p => p.plano === "pro").length },
     { id: "premium", label: "Premium", count: pros.filter(p => p.plano === "premium").length },
     { id: "vencidos", label: "Pagamento Vencido", count: pros.filter(p => p.paymentStatus === "vencido").length },
+    { id: "nunca_pagou", label: "Nunca Pagou", count: pros.filter(p => p.paymentStatus === "sem_plano").length },
     { id: "sem_fechar", label: "Sem Fechar", count: pros.filter(p => p.approved && (p.services_count || 0) === 0).length },
   ];
 
@@ -310,14 +334,20 @@ function SectionProfissionais({ filter, adminKey }) {
                   {(p.name || "?")[0].toUpperCase()}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
+                  {/* Linha 1: identidade + aprovação. Linha 2 (só quando tem
+                      plano): plano (pílula) + pagamento (ponto+texto) — estilos
+                      visuais diferentes de propósito, pra escanear de relance
+                      sem depender só da cor (ver comentário em PLANO_INFO). */}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 14 }}>{p.name || "Sem nome"}</span>
-                    {p.plano && <Badge color={PLANO_INFO[p.plano]?.color || "blue"}>{PLANO_INFO[p.plano]?.label || p.plano}</Badge>}
-                    {p.plano && <Badge color={PAGAMENTO_INFO[p.paymentStatus]?.color || "blue"}>{PAGAMENTO_INFO[p.paymentStatus]?.label || p.paymentStatus}</Badge>}
-                    {p.cortesia && <Badge color="purple">Cortesia</Badge>}
                     {p.approved ? <Badge color="green">Aprovado</Badge> : <Badge color="red">Pendente</Badge>}
                   </div>
-                  <div style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 2 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 5 }}>
+                    {p.plano && <Badge color={PLANO_INFO[p.plano]?.color || "blue"}>{PLANO_INFO[p.plano]?.label || p.plano}</Badge>}
+                    <PaymentStatusDot status={p.paymentStatus} />
+                    {p.cortesia && <span style={{ fontSize: 11.5, color: COLORS.purple, fontWeight: 700 }}>· Cortesia</span>}
+                  </div>
+                  <div style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 5 }}>
                     {p.email || "—"} • {p.whatsapp || "—"} • {p.city || p.location || "Sem cidade"}
                   </div>
                 </div>
@@ -394,7 +424,7 @@ function SectionProfissionais({ filter, adminKey }) {
                       { label: "Serviços sem fechar", value: p.open_services || 0 },
                       { label: "Receita", value: p.revenue ? "R$ " + p.revenue : "R$ 0" },
                       { label: "Plano", value: p.plano ? (PLANO_INFO[p.plano]?.label || p.plano) : "Sem plano" },
-                      { label: "Status pagamento", value: p.plano ? (PAGAMENTO_INFO[p.paymentStatus]?.label || p.paymentStatus) : "—" },
+                      { label: "Status pagamento", value: PAGAMENTO_INFO[p.paymentStatus]?.label || p.paymentStatus || "—" },
                       { label: "Próxima cobrança", value: p.proximaCobranca ? new Date(p.proximaCobranca).toLocaleDateString("pt-BR") : "—" },
                       { label: "PRO desde", value: p.pro_since ? new Date(p.pro_since).toLocaleDateString("pt-BR") : "—" },
                       { label: "Cadastro", value: p.created_at ? new Date(p.created_at).toLocaleDateString("pt-BR") : "—" },
