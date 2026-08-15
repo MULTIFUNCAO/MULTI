@@ -9473,84 +9473,15 @@ function GuestProfileTab({ onLogin }) {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   ADMIN DASHBOARD — Deep Blue dark mode, owner-only access (Thiago)
-═══════════════════════════════════════════════════════════════════════════ */
-
-/* ── Static admin data ── */
-const ADMIN_PASSWORD = "multi2026";
-
-const REVENUE_7D = [
-  { day:"Seg", val:1240 },
-  { day:"Ter", val:980  },
-  { day:"Qua", val:1620 },
-  { day:"Qui", val:2100 },
-  { day:"Sex", val:1880 },
-  { day:"Sáb", val:2450 },
-  { day:"Dom", val:1730 },
-];
-
-const PENDING_PROS = [
-  { id:1, name:"Carlos Eduardo",  cat:"Encanador",    rg:"✅ Enviado", background:"⏳ Pendente", joined:"08/07/2026" },
-  { id:2, name:"Fernanda Costa",  cat:"Eletricista",  rg:"✅ Enviado", background:"✅ Enviado",  joined:"07/07/2026" },
-  { id:3, name:"Ricardo Matos",   cat:"Pintor",       rg:"⏳ Pendente", background:"⏳ Pendente", joined:"06/07/2026" },
-  { id:4, name:"Juliana Teixeira",cat:"Jardineira",   rg:"✅ Enviado", background:"✅ Enviado",  joined:"05/07/2026" },
-];
-
-const HOT_CATS = [
-  { rank:1, cat:"Encanador",   searches:342, trend:"+18%" },
-  { rank:2, cat:"Pintor",      searches:287, trend:"+12%" },
-  { rank:3, cat:"Eletricista", searches:241, trend:"+9%"  },
-];
-
-/* ── Admin Login Gate ── */
-function AdminLogin({ onSuccess }) {
-  const [pass,  setPass]  = useState("");
-  const [error, setError] = useState(false);
-  const [show,  setShow]  = useState(false);
-
-  const attempt = () => {
-    if (pass === ADMIN_PASSWORD) { onSuccess(); }
-    else { setError(true); setTimeout(() => setError(false), 1400); }
-  };
-
-  return (
-    <div style={{ minHeight:"100vh", background:"#060D1F", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:32 }}>
-      <style>{`@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}`}</style>
-
-      {/* logo */}
-      <div style={{ width:72, height:72, borderRadius:22, background:"linear-gradient(135deg,#1d4ed8,#7c3aed)", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:24, boxShadow:"0 8px 32px rgba(29,78,216,.4)" }}>
-        <ShieldCheck size={36} color="white" />
-      </div>
-      <h2 style={{ fontSize:22, fontWeight:900, color:"white", margin:"0 0 6px" }}>Admin Panel</h2>
-      <p style={{ fontSize:13, color:"#64748B", margin:"0 0 36px" }}>Acesso restrito — Multi HQ</p>
-
-      <div style={{ width:"100%", maxWidth:320 }}>
-        <div style={{ position:"relative", marginBottom:error ? 8 : 20, animation: error ? "shake .4s ease" : "none" }}>
-          <Shield size={16} color="#475569" style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)" }} />
-          <input
-            type={show ? "text" : "password"}
-            placeholder="Senha de administrador"
-            value={pass}
-            onChange={e => setPass(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && attempt()}
-            style={{ width:"100%", background:"#0F172A", border:"1.5px solid "+(error ? "#EF4444" : "#1E293B")+"", borderRadius:14, padding:"13px 44px 13px 42px", fontSize:14, color:"white", outline:"none", fontFamily:"inherit", boxSizing:"border-box", transition:"border-color .2s" }}
-          />
-          <button onClick={() => setShow(v => !v)} style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", padding:0, display:"flex" }}>
-            {show ? <EyeOff size={16} color="#475569" /> : <Eye size={16} color="#475569" />}
-          </button>
-        </div>
-        {error && <p style={{ fontSize:12, color:"#EF4444", fontWeight:700, margin:"0 0 16px", textAlign:"center" }}>Senha incorreta</p>}
-        <button onClick={attempt} style={{ width:"100%", padding:"14px 0", borderRadius:14, border:"none", background:"linear-gradient(135deg,#1d4ed8,#7c3aed)", color:"white", fontWeight:900, fontSize:14, cursor:"pointer", boxShadow:"0 6px 20px rgba(29,78,216,.35)" }}>
-          Acessar Painel
-        </button>
-        <p style={{ fontSize:11, color:"#334155", textAlign:"center", marginTop:16 }}>Multi v2.0.0 · Plataforma Nacional · © 2026</p>
-      </div>
-    </div>
-  );
-}
-
 /* ───────────────────────── ROOT APP ─────────────────────────────────────────── */
+// (o antigo painel "Admin Dashboard" client-only daqui — ADMIN_PASSWORD
+// hardcoded no bundle, dados mock REVENUE_7D/PENDING_PROS/HOT_CATS, gate
+// AdminLogin — foi removido 2026-08-15: código morto, nunca renderizado.
+// showAdmin sempre abriu <AdminDashboard/>, o painel real, que já usa senha
+// só-servidor + token HMAC assinado via POST /api/admin/login — ver
+// server.js. Achado revisando pendências de segurança conhecidas do
+// projeto: a "senha admin hardcoded" que constava como vulnerabilidade não
+// corrigida era exatamente esse código morto.)
 
 // Formata a linha crua de "pedidos" pro shape que o popup de radar
 // (NewOrderCard) espera — usado tanto pelo profissional autônomo
