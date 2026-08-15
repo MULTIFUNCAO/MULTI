@@ -4106,12 +4106,15 @@ function maskCardNumber(v) { return v.replace(/\D/g, "").slice(0, 16).replace(/(
    Supabase — só o backend faz isso, com service_role (ver migration
    supabase_pendencias_doc_pagamento_migration.sql). ─────────────────────── */
 function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId, planoLabel, planoPreco, cupomCodigo, onBack, showToast, onSuccess }) {
-  // Cupom exige cartão cadastrado (é ele que garante a renovação automática
-  // via Asaas a partir do 2º mês — ver /api/assinatura/cobrar) — Pix não tem
-  // débito automático no Brasil, então não dá pra oferecer "mês grátis +
-  // renova sozinho" por esse método. Trava o toggle em "cartao" quando tem
-  // cupom em vez de deixar escolher Pix e o mês grátis silenciosamente não
-  // se aplicar.
+  // 2026-08-15: cupom já foi tratado como "exige cartão" (travava o toggle em
+  // "cartao"), o que excluía quem só usa Pix — justamente quem mais precisa
+  // poder testar antes de se comprometer com pagamento. Corrigido: com cupom
+  // válido, tanto cartão quanto Pix pulam a cobrança do ciclo 1 (ver
+  // /api/assinatura/cobrar e /api/assinatura/gerar-pix, que agora ativa
+  // direto como cortesia sem gerar QR Code nenhum). A diferença que resta é
+  // só o 2º mês: cartão renova sozinho via assinatura Asaas, Pix segue o
+  // padrão manual que já vale pra qualquer assinante Pix (sem cupom) hoje —
+  // não tem débito automático no Brasil.
   const temCupom = !!cupomCodigo;
   const [metodo, setMetodo] = useState("cartao"); // "cartao" | "pix"
 
@@ -4182,6 +4185,10 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
   // Gera a cobrança Pix (QR code + copia-e-cola) — não ativa o plano ainda,
   // só depois que o pagamento for detectado (polling abaixo) e reconfirmado
   // pelo backend em /api/assinatura/confirmar-pix.
+  // Com cupom válido não existe nada pra cobrar no ciclo 1: o backend nem
+  // chega a gerar QR Code, já responde com cortesia:true e a assinatura já
+  // ativada — trata isso como sucesso imediato, igual ao fluxo de cartão com
+  // cupom, em vez de cair na tela de "aguardando pagamento".
   const gerarPix = async () => {
     if (pixCpf.replace(/\D/g,"").length !== 11) { setErrorPixCpf("CPF inválido"); return; }
     setErrorPixCpf("");
@@ -4193,10 +4200,16 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
         body: JSON.stringify({
           titularTipo, titularEmail, titularNome, plano: planoId,
           cpf: pixCpf.replace(/\D/g,""),
+          cupom: cupomCodigo || undefined,
         }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Não foi possível gerar o Pix");
+      if (d.cortesia) {
+        showToast?.(`🎉 ${planoLabel} ativado com cupom — 1º mês grátis! Próxima cobrança em ${proximaCobranca.toLocaleDateString("pt-BR")}.`, G);
+        onSuccess?.();
+        return;
+      }
       setPix(d);
     } catch (err) {
       showToast?.("❌ " + (err.message || "Não foi possível gerar o Pix"), "#DC2626");
@@ -4298,7 +4311,7 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
       <h2 style={{ textAlign:"center", fontWeight:900, fontSize:21, color:"#1a1a2e", margin:"0 0 6px" }}>Dados de pagamento</h2>
       <p style={{ textAlign:"center", color:"#666", fontSize:13.5, margin:"0 auto 22px", maxWidth:320 }}>
         {temCupom
-          ? "Cupom aplicado — 1º mês grátis. Só pedimos o cartão pra manter a assinatura ativa a partir do 2º mês."
+          ? "Cupom aplicado — 1º mês grátis, com cartão ou Pix."
           : "Sem período de teste — a cobrança acontece agora, ao confirmar."}
       </p>
 
@@ -4315,14 +4328,13 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
         </p>
       </div>
 
-      {/* Toggle Cartão / Pix — travado em cartão quando tem cupom (ver
-          comentário no topo do componente: Pix não tem débito automático,
-          não dá pra garantir a renovação do 2º mês por esse método). */}
+      {/* Toggle Cartão / Pix — livre com ou sem cupom (ver comentário no topo
+          do componente: 2026-08-15, a trava em "cartao" foi removida). */}
       <div style={{ maxWidth:420, margin:"0 auto 18px", display:"flex", gap:8, padding:6, background:"#EFF1F6", borderRadius:14 }}>
-        {[{ id:"cartao", label:"💳 Cartão de crédito" }, { id:"pix", label:"⚡ Pix", disabled: temCupom }].map(m => (
-          <button key={m.id} onClick={() => !m.disabled && setMetodo(m.id)} disabled={m.disabled} title={m.disabled ? "Cupom exige cartão, pra garantir a renovação automática" : undefined} style={{
-            flex:1, padding:"10px 0", borderRadius:10, border:"none", cursor: m.disabled ? "not-allowed" : "pointer",
-            fontWeight:800, fontSize:12.5, transition:"all .15s", opacity: m.disabled ? .45 : 1,
+        {[{ id:"cartao", label:"💳 Cartão de crédito" }, { id:"pix", label:"⚡ Pix" }].map(m => (
+          <button key={m.id} onClick={() => setMetodo(m.id)} style={{
+            flex:1, padding:"10px 0", borderRadius:10, border:"none", cursor:"pointer",
+            fontWeight:800, fontSize:12.5, transition:"all .15s",
             background: metodo === m.id ? "white" : "transparent",
             color: metodo === m.id ? "#1a1a2e" : "#8A8DAE",
             boxShadow: metodo === m.id ? "0 2px 8px rgba(0,0,0,.08)" : "none",
@@ -4397,10 +4409,14 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
                 color:"white", fontWeight:900, fontSize:15, cursor: gerandoPix ? "default" : "pointer",
                 display:"flex", alignItems:"center", justifyContent:"center", gap:10,
               }}>
-                {gerandoPix ? "Gerando código Pix..." : <>⚡ Gerar código Pix — R$ {planoPreco}</>}
+                {gerandoPix
+                  ? (temCupom ? "Ativando..." : "Gerando código Pix...")
+                  : temCupom ? <>🎉 Ativar plano grátis (cupom)</> : <>⚡ Gerar código Pix — R$ {planoPreco}</>}
               </button>
               <p style={{ fontSize:11, color:"#9CA3AF", textAlign:"center", margin:0 }}>
-                Cobrança recorrente mensal de R$ {planoPreco}. Cancele quando quiser.
+                {temCupom
+                  ? `Grátis hoje. A partir do 2º mês, R$ ${planoPreco} — como Pix não tem débito automático no Brasil, vamos te avisar pra confirmar o pagamento todo mês.`
+                  : `Cobrança recorrente mensal de R$ ${planoPreco}. Cancele quando quiser.`}
               </p>
             </>
           ) : pixExpirado ? (
