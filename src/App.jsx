@@ -4973,10 +4973,13 @@ function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocSta
             >
               <div style={{ display:"flex", alignItems:"center", gap:11 }}>
                 {/* icon */}
+                {/* Sempre o emoji genérico aqui — uma foto de RG/CNH inteira
+                    espremida em 40x40 fica ilegível (e com frente/verso se
+                    alternando no mesmo slot, parece uma miniatura bagunçada
+                    tentando combinar as duas). O preview de verdade, legível,
+                    já existe no card expandido logo abaixo. */}
                 <div style={{ width:40, height:40, borderRadius:12, background:cfg.bg, border:`1.5px solid ${cfg.border}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0, transition:"all .2s" }}>
-                  {state.preview
-                    ? <img src={state.preview} alt="" style={{ width:40, height:40, objectFit:"cover", borderRadius:11 }} />
-                    : doc.icon}
+                  {doc.icon}
                 </div>
 
                 <div style={{ flex:1, minWidth:0 }}>
