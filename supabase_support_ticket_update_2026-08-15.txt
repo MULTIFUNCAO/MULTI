@@ -1,0 +1,42 @@
+Subject: Update — new evidence of column/constraint reverting on project nlpfjkxqypveontunrxj (usuarios table)
+
+Hi,
+
+Following up on the open ticket (Severity: High, Database/JavaScript client, project ref nlpfjkxqypveontunrxj, opened 2026-08-10) about columns/RLS policies/constraints reverting on their own after being confirmed applied. We have new, more concrete evidence and wanted to add it to the case.
+
+Table affected: public.usuarios
+
+Timeline:
+
+- 2026-08-12: Ran a migration that added column `doc_rg_url_verso` (text, nullable) to `usuarios` and updated the CHECK constraint `usuarios_doc_rg_status_check` to allow an additional status value (`frente_enviada`). Verified working the same day end-to-end in production (file upload flow).
+
+- 2026-08-13 ~04:00: A scheduled job querying `usuarios` found `doc_rg_url`, `doc_rg_url_verso`, and two other columns (`analise_ia_status`, `analise_ia_observacoes`) coming back NULL for every single row (17/17 professional accounts), including accounts we had personally verified had non-null values the day before.
+
+- 2026-08-13 (same day): Application started failing with `new row for relation "usuarios" violates check constraint "usuarios_doc_rg_status_check"` on a value (`frente_enviada`) that had been explicitly added to that same constraint the day before and never should have been rejected. Confirmed via `pg_get_constraintdef` that the constraint had reverted to an earlier, narrower definition. Manually reapplied the constraint (DROP + ADD with the correct value list) and confirmed via SELECT it was correct again.
+
+- 2026-08-14: Re-verified via SELECT (`pg_get_constraintdef`) that the constraint was still correct (no revert since the previous fix).
+
+- 2026-08-14 later the same day / 2026-08-15: The exact same constraint (`usuarios_doc_rg_status_check`) was found reverted AGAIN — back to the version missing `frente_enviada` — confirmed via the same `pg_get_constraintdef` SELECT, with no DDL run by us in between the two checks (we ran the confirmation SELECT twice, hours apart, with no other DB activity from our side, and it changed value in that time). Reapplied manually again.
+
+- 2026-08-15: New finding — this time it's not just the constraint. The column `doc_rg_url_verso` itself is now completely missing from the table. Confirmed via:
+  ```sql
+  select column_name, data_type from information_schema.columns
+  where table_name = 'usuarios' and column_name in ('doc_rg_url','doc_rg_url_verso','doc_rg_status');
+  ```
+  This returns only 2 rows (`doc_rg_status`, `doc_rg_url`) — `doc_rg_url_verso` is absent from `information_schema.columns` entirely, not just from the PostgREST schema cache. The application-level symptom was a PostgREST error: `Could not find the 'doc_rg_url_verso' column of 'usuarios' in the schema cache`, which led us to check directly against `information_schema` and confirm the column itself is gone at the Postgres level.
+
+Summary of what's now been observed reverting/disappearing on this same table across the incident: a CHECK constraint (twice), and now an entire column. No corresponding migration, rollback, PITR restore, or manual DROP was run by us that would explain either the column disappearing or the constraint reverting a second time — both changes were previously confirmed correct via direct SELECT against `information_schema`/`pg_constraint` before reverting.
+
+Could you help us understand:
+1. Whether there's a PITR restore, replica promotion, migration replay, or similar internal operation that could explain a column being dropped and a constraint being reset to an earlier definition on this project, without any corresponding action from our side.
+2. Whether project logs on your end show any DDL (DROP COLUMN / ALTER TABLE) against `public.usuarios` that we wouldn't be able to see from the dashboard's Postgres Logs (we checked "Postgres Logs" > search for "alter table" / the constraint name in the last hour and found nothing, for what that's worth — not sure if DDL is logged there by default).
+3. Any recommended way to make schema changes on this project that would be resistant to whatever is causing this, if this turns out to be an infra-level issue rather than something in our control.
+
+Project ref: nlpfjkxqypveontunrxj
+Table: public.usuarios
+Affected objects: column `doc_rg_url_verso`, CHECK constraint `usuarios_doc_rg_status_check`
+
+Happy to provide more detail, exact timestamps down to the minute for our side's queries, or grant temporary access if that helps investigate.
+
+Thanks,
+Multifuncao team
