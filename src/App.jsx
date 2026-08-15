@@ -10360,8 +10360,24 @@ export default function App() {
     // devolvido pelo login/cadastro diga outra coisa — evita que login/registro
     // regrave "client"/"professional" por cima de uma conta de empresa parceira.
     // "name" vem junto pelo mesmo motivo do comentário em finishLogin.
-    supabase.from("usuarios").select("empresa_id,name").eq("email", email).maybeSingle()
-      .then(({ data }) => finishLogin(data?.empresa_id ? "empresa" : fallbackRole, data?.name))
+    //
+    // "role" também vem junto pelo mesmo motivo (achado 2026-08-15): o backend
+    // de login (/api/auth/login em MULTI-BACKEND/server.js) lê o perfil de
+    // "users" — tabela morta, 0 linhas, mesma raiz do bug já documentado em
+    // multi_admin_dashboard_endpoint_mismatch — então "registeredRole" que
+    // chega aqui via LoginScreen é sempre "client", nunca o role real da
+    // conta. Sem essa releitura, todo profissional (não-híbrido) caía na home
+    // de Cliente a cada login e precisava alternar manualmente toda vez em
+    // Perfil → "Alternar para Profissional". Só aplica em login de conta
+    // JÁ EXISTENTE (!isNewAccount) — cadastro novo continua decidido por
+    // dbRole/fallbackRole como antes, a linha do upsert logo abaixo.
+    supabase.from("usuarios").select("empresa_id,name,role").eq("email", email).maybeSingle()
+      .then(({ data }) => {
+        const resolvedRole = data?.empresa_id
+          ? "empresa"
+          : (!isNewAccount && data?.role) ? data.role : fallbackRole;
+        finishLogin(resolvedRole, data?.name);
+      })
       .catch(() => finishLogin(fallbackRole));
   };
 
