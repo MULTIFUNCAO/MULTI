@@ -3959,6 +3959,13 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
       </p>
 
       <div style={{ display:"flex", flexDirection:"column", gap:24, maxWidth:420, margin:"0 auto" }}>
+        {/* Card "sem plano" (não vem de PLANOS_USUARIO, sem mensalidade) —
+            aparece PRIMEIRO, antes dos planos pagos: alternativa pra quem
+            não quer assinar, paga em moeda só quando responde a uma
+            oportunidade (Fase 2 da monetização por moeda, ver o gate no
+            botão "Tenho Interesse" em ProfessionalHome). */}
+        <SemPlanoMoedaCard onGoToComprarMoedas={onGoToComprarMoedas} />
+
         {planos.map(p => {
           const isPro = !!p.badge;
           // Multi Premium é sempre o plano mais alto (badge "Sem limites") —
@@ -4117,13 +4124,7 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
             <div key={p.id}>{card}</div>
           );
 
-          // Card extra (não vem de PLANOS_USUARIO, sem mensalidade) logo
-          // depois do Autônomo — alternativa pra quem não quer assinar:
-          // pagar em moeda só quando responder a uma oportunidade (Fase 2
-          // da monetização por moeda, ver o gate no botão "Tenho Interesse"
-          // em ProfessionalHome).
-          if (p.id !== "autonomo") return cardEl;
-          return [cardEl, <SemPlanoMoedaCard key="sem-plano-moeda" onGoToComprarMoedas={onGoToComprarMoedas} />];
+          return cardEl;
         })}
       </div>
 
