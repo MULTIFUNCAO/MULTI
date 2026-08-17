@@ -42,7 +42,7 @@ import {
   CreditCard, HeartHandshake, HelpCircle, KeyRound,
   BellRing, BadgeCheck, Users, ShieldCheck,
   Activity, BarChart2, Package, ChevronUp, Eye, EyeOff,
-  Paperclip, Download, ArrowLeftRight, Gem,
+  Paperclip, Download, ArrowLeftRight, Gem, Coins,
 } from "lucide-react";
 
 /* ───────────────────────── DESIGN TOKENS ──────────────────────────────────── */
@@ -4462,6 +4462,239 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
   );
 }
 
+/* ── COMPRAR MOEDAS ("Multi Moeda") ──────────────────────────────────────
+   Fase 1 da monetização por moeda: só carteira + compra, ninguém gasta moeda
+   ainda (isso é Fase 3). Mesmo template de PagamentoPlanoScreen pro fluxo
+   Pix (gera cobrança, mostra QR, faz polling em /api/status-pagamento,
+   confirma em /api/moedas/confirmar-pix quando detecta o pagamento) — sem
+   cartão nem cupom aqui, só Pix, pra manter a Fase 1 simples. */
+function ComprarMoedasScreen({ userEmail, userName, onBack, showToast, onSuccess }) {
+  const [pacotes, setPacotes] = useState([]);
+  const [carregandoPacotes, setCarregandoPacotes] = useState(true);
+  const [pacoteId, setPacoteId] = useState(null);
+
+  // Lê direto do Supabase (RLS permite leitura pública de moedas_pacotes) —
+  // mesmo padrão de carregarPlanoLimitesReais() pra configuracoes_planos:
+  // fonte única, admin edita a tabela, sem precisar mexer em código nem
+  // duplicar endpoint só pra listar.
+  useEffect(() => {
+    supabase.from("moedas_pacotes").select("*").eq("ativo", true).order("ordem")
+      .then(({ data }) => {
+        setPacotes(data || []);
+        if (data?.length) setPacoteId(data[0].id);
+      })
+      .catch(() => {})
+      .finally(() => setCarregandoPacotes(false));
+  }, []);
+
+  const [cpf,      setCpf]      = useState("");
+  const [errorCpf, setErrorCpf] = useState("");
+  const [gerandoPix, setGerandoPix] = useState(false);
+  const [pix,        setPix]        = useState(null); // {paymentId, pixCode, qrCodeBase64, expiresAt, quantidade}
+  const [confirmandoPix, setConfirmandoPix] = useState(false);
+  const [pixExpirado,    setPixExpirado]    = useState(false);
+  const [copiedPix,      setCopiedPix]      = useState(false);
+
+  const pacoteSelecionado = pacotes.find(p => p.id === pacoteId);
+
+  const gerarPix = async () => {
+    if (cpf.replace(/\D/g,"").length !== 11) { setErrorCpf("CPF inválido"); return; }
+    if (!pacoteSelecionado) return;
+    setErrorCpf("");
+    setGerandoPix(true);
+    setPixExpirado(false);
+    try {
+      const r = await fetch(`${API_BASE}/api/moedas/gerar-pix`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: userEmail, nome: userName, cpf: cpf.replace(/\D/g,""),
+          pacoteId: pacoteSelecionado.id,
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Não foi possível gerar o Pix");
+      setPix({ ...d, quantidade: pacoteSelecionado.quantidade });
+    } catch (err) {
+      showToast?.("❌ " + (err.message || "Não foi possível gerar o Pix"), "#DC2626");
+    } finally {
+      setGerandoPix(false);
+    }
+  };
+
+  // Reconfere o pagamento e credita as moedas — chamado pelo polling
+  // automático abaixo. O backend reconfere com a Asaas antes de chamar a RPC
+  // creditar_moedas, nunca confia só no que o front detectou.
+  const confirmarPix = async (paymentId) => {
+    setConfirmandoPix(true);
+    try {
+      const r = await fetch(`${API_BASE}/api/moedas/confirmar-pix`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentId, email: userEmail, pacoteId: pacoteSelecionado.id }),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        if (d.error === "pagamento_nao_confirmado") return false; // ainda pendente, segue no polling
+        throw new Error(d.error || "Não foi possível confirmar o pagamento");
+      }
+      showToast?.(`🎉 ${pix.quantidade} moedas creditadas! Saldo: ${d.saldo}.`, G);
+      onSuccess?.(d.saldo);
+      return true;
+    } catch (err) {
+      showToast?.("❌ " + (err.message || "Não foi possível confirmar o pagamento"), "#DC2626");
+      return false;
+    } finally {
+      setConfirmandoPix(false);
+    }
+  };
+
+  // Polling: consulta /api/status-pagamento a cada 5s enquanto o Pix estiver
+  // pendente — mesmo mecanismo (e mesmos cuidados com visibilitychange/focus,
+  // pro caso do app ir pra segundo plano enquanto a pessoa paga no banco) de
+  // PagamentoPlanoScreen.
+  const verificandoRef = useRef(false);
+  useEffect(() => {
+    if (!pix?.paymentId) return;
+
+    const checar = async () => {
+      if (verificandoRef.current) return;
+      if (pix.expiresAt && new Date(pix.expiresAt) < new Date()) {
+        clearInterval(interval);
+        setPixExpirado(true);
+        return;
+      }
+      verificandoRef.current = true;
+      try {
+        const r = await fetch(`${API_BASE}/api/status-pagamento/${pix.paymentId}`);
+        const d = await r.json();
+        if (d.isPaid) {
+          clearInterval(interval);
+          await confirmarPix(pix.paymentId);
+        }
+      } catch (e) {
+      } finally {
+        verificandoRef.current = false;
+      }
+    };
+
+    const interval = setInterval(checar, 5000);
+    const aoVoltarVisivel = () => { if (document.visibilityState === "visible") checar(); };
+    document.addEventListener("visibilitychange", aoVoltarVisivel);
+    window.addEventListener("focus", aoVoltarVisivel);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", aoVoltarVisivel);
+      window.removeEventListener("focus", aoVoltarVisivel);
+    };
+  }, [pix?.paymentId]);
+
+  const copiarPix = () => {
+    if (!pix?.pixCode) return;
+    navigator.clipboard?.writeText(pix.pixCode);
+    setCopiedPix(true);
+    setTimeout(() => setCopiedPix(false), 2000);
+  };
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#F8F9FA", padding:"20px 16px 48px", fontFamily:"'Nunito', -apple-system, sans-serif" }}>
+      {onBack && <button onClick={onBack} style={{ background:"none", border:"none", fontSize:24, cursor:"pointer", marginBottom:8 }}>←</button>}
+
+      <h2 style={{ textAlign:"center", fontWeight:900, fontSize:21, color:"#1a1a2e", margin:"0 0 6px" }}>Comprar moedas</h2>
+      <p style={{ textAlign:"center", color:"#666", fontSize:13.5, margin:"0 auto 22px", maxWidth:320 }}>
+        Moedas dão o direito de responder oportunidades avulsas — 1 moeda vale R$ 2,50.
+      </p>
+
+      {!pix ? (
+        <div style={{ maxWidth:420, margin:"0 auto", display:"flex", flexDirection:"column", gap:14 }}>
+          {carregandoPacotes ? (
+            <p style={{ textAlign:"center", color:"#9CA3AF", fontSize:13 }}>Carregando pacotes...</p>
+          ) : (
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {pacotes.map(p => {
+                const selected = pacoteId === p.id;
+                return (
+                  <div key={p.id} onClick={() => setPacoteId(p.id)} style={{
+                    display:"flex", alignItems:"center", gap:12, borderRadius:14, cursor:"pointer", padding:"14px 16px",
+                    border: selected ? `2px solid ${B}` : "1.5px solid #E5E7EB",
+                    background: selected ? "#EBF4FF" : "white", transition:"all .15s",
+                  }}>
+                    <div style={{ width:20, height:20, borderRadius:"50%", border:(selected?"2px solid "+B:"2px solid #D1D5DB"), background: selected ? B : "white", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                      {selected && <div style={{ width:8, height:8, borderRadius:"50%", background:"white" }} />}
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <p style={{ margin:"0 0 2px", fontWeight:800, fontSize:14, color:"#1a1a2e", display:"flex", alignItems:"center", gap:6 }}>
+                        <Coins size={15} color={B} /> {p.nome}
+                      </p>
+                      <p style={{ margin:0, fontSize:11, color:"#9CA3AF" }}>R$ {(p.preco_centavos / 100).toFixed(2).replace(".", ",")}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <FormField IconComp={User} label="CPF do titular" error={errorCpf}>
+            <input inputMode="numeric" placeholder="000.000.000-00" value={cpf}
+              onChange={e => { setCpf(maskCpf(e.target.value)); if (errorCpf) setErrorCpf(""); }}
+              style={{ ...REG_INPUT, borderColor: errorCpf ? "#E53935" : undefined }} />
+          </FormField>
+
+          <button onClick={gerarPix} disabled={gerandoPix || !pacoteSelecionado} style={{
+            width:"100%", padding:"16px 0", borderRadius:16, border:"none",
+            background: gerandoPix ? "#93C5FD" : `linear-gradient(135deg,${B},#0055d4)`,
+            color:"white", fontWeight:900, fontSize:15, cursor: gerandoPix ? "default" : "pointer",
+            display:"flex", alignItems:"center", justifyContent:"center", gap:10,
+          }}>
+            {gerandoPix
+              ? "Gerando código Pix..."
+              : <>⚡ Gerar código Pix{pacoteSelecionado ? ` — R$ ${(pacoteSelecionado.preco_centavos / 100).toFixed(2).replace(".", ",")}` : ""}</>}
+          </button>
+        </div>
+      ) : (
+        <div style={{ maxWidth:420, margin:"0 auto", display:"flex", flexDirection:"column", gap:14 }}>
+          {pixExpirado ? (
+            <div style={{ textAlign:"center", padding:"24px 0" }}>
+              <p style={{ fontSize:13.5, color:"#E53935", fontWeight:700, margin:"0 0 14px" }}>Esse código Pix expirou.</p>
+              <button onClick={() => { setPix(null); setPixExpirado(false); }} style={{ padding:"12px 24px", borderRadius:12, border:"none", background:B, color:"white", fontWeight:800, fontSize:13, cursor:"pointer" }}>
+                Gerar novo código
+              </button>
+            </div>
+          ) : (
+            <>
+              <div style={{ textAlign:"center" }}>
+                {pix.qrCodeBase64 && (
+                  <img src={`data:image/png;base64,${pix.qrCodeBase64}`} alt="QR Code Pix"
+                    style={{ width:200, height:200, borderRadius:12, border:"3px solid #1a1a2e", display:"block", margin:"0 auto" }} />
+                )}
+                <div style={{ display:"inline-flex", alignItems:"center", gap:6, background: confirmandoPix ? "#F0FDF4" : "#FFF9E6", border:`1px solid ${confirmandoPix ? "#BBF7D0" : "#FDE68A"}`, borderRadius:99, padding:"5px 14px", marginTop:12 }}>
+                  <div style={{ width:8, height:8, borderRadius:"50%", background: confirmandoPix ? G : "#F59E0B" }} />
+                  <span style={{ fontSize:11, fontWeight:800, color: confirmandoPix ? "#166534" : "#92400E" }}>
+                    {confirmandoPix ? "Confirmando pagamento..." : "Aguardando pagamento"}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ background:"#F8FAFF", border:"1px solid #DBEAFE", borderRadius:12, padding:"12px 14px", display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <p style={{ fontSize:10, fontWeight:800, color:"#3B82F6", textTransform:"uppercase", letterSpacing:.8, margin:"0 0 2px" }}>Ou copie o código Pix</p>
+                  <p style={{ fontSize:11, fontWeight:800, color:"#1E3A8A", margin:0, fontFamily:"monospace", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{pix.pixCode}</p>
+                </div>
+                <button onClick={copiarPix} style={{ background:B, color:"white", border:"none", borderRadius:9, padding:"7px 14px", fontWeight:800, fontSize:12, cursor:"pointer", flexShrink:0 }}>
+                  {copiedPix ? "✓ Copiado" : "Copiar"}
+                </button>
+              </div>
+
+              <p style={{ fontSize:11, color:"#9CA3AF", textAlign:"center", margin:0 }}>
+                Assim que o pagamento cair, as {pix.quantidade} moedas caem sozinhas no seu saldo — não precisa ficar recarregando a tela.
+              </p>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── CHECKOUT SCREEN ── */
 const CheckoutScreen = () => {
   const PIX_KEY = "fcb02632-5dd9-4c2d-92f6-0c3a907d2b81";
@@ -5468,7 +5701,7 @@ function RankingScreen({ onBack, contratacoes }) {
   );
 }
 
-function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoInicio, userName: initialUserName, userEmail, showRankingGlobal, onClearRankingGlobal, onUpgrade, onLogout, showToast, onOpenWallet, meusGanhos, onOpenAdmin, docStatus, onDocStatusChange, onSwitchRole }) {
+function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoInicio, userName: initialUserName, userEmail, showRankingGlobal, onClearRankingGlobal, onUpgrade, onLogout, showToast, onOpenWallet, meusGanhos, saldoMoedas, onOpenComprarMoedas, onOpenAdmin, docStatus, onDocStatusChange, onSwitchRole }) {
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [editMode,  setEditMode]  = useState(false);
@@ -5868,6 +6101,27 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
                 </span>
                 <ChevronRight size={15} color={B} />
               </div>
+            </div>
+          </div>
+
+          {/* Saldo de moedas ("Multi Moeda", Fase 1) — carteira separada dos
+              ganhos acima (aquilo é o que o profissional recebeu do cliente;
+              isto é o saldo pra responder oportunidades avulsas). Ninguém
+              desconta daqui ainda (Fase 3), só compra e exibe. */}
+          <div style={{ padding:"14px 16px 0" }}>
+            <div onClick={onOpenComprarMoedas} style={{ background:"white", borderRadius:20, padding:18, boxShadow:"0 4px 20px rgba(0,0,0,.10)", border:"1px solid #F0F0F0", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ width:40, height:40, borderRadius:12, background:`linear-gradient(135deg,${B},#0055d4)`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <Coins size={20} color="white" />
+                </div>
+                <div>
+                  <p style={{ fontSize:11, color:"#aaa", fontWeight:700, margin:0 }}>Meu saldo de moedas</p>
+                  <p style={{ fontSize:22, fontWeight:900, color:B, margin:0 }}>{saldoMoedas || 0}</p>
+                </div>
+              </div>
+              <span style={{ fontSize:12, color:B, fontWeight:800, display:"flex", alignItems:"center", gap:4 }}>
+                Comprar <ChevronRight size={15} color={B} />
+              </span>
             </div>
           </div>
 
@@ -9728,6 +9982,16 @@ export default function App() {
       })
       .catch(() => {});
   };
+  // Saldo de moedas ("Multi Moeda", Fase 1) — só leitura aqui; a única forma
+  // de subir é via creditar_moedas() no backend (ver ComprarMoedasScreen).
+  // Nenhum lugar ainda desconta (isso é Fase 3), então por ora é só exibição.
+  const [saldoMoedas, setSaldoMoedas] = useState(0);
+  const carregarSaldoMoedas = (email) => {
+    if (!email) { setSaldoMoedas(0); return; }
+    supabase.from("usuarios").select("saldo_moedas").eq("email", email).maybeSingle()
+      .then(({ data }) => setSaldoMoedas(data?.saldo_moedas || 0))
+      .catch(() => {});
+  };
   const [toast,     setToast]     = useState(null);
   const [showRankingGlobal, setShowRankingGlobal] = useState(false);
   useEffect(() => {
@@ -9859,6 +10123,7 @@ export default function App() {
   useEffect(() => {
     const titularTipo = role === "professional" ? "usuario" : role === "empresa" ? "empresa" : null;
     carregarPlano(titularTipo, userEmail);
+    carregarSaldoMoedas(userEmail);
   }, [userEmail, role]);
 
   // Status real de documentação + flag de conta híbrida (cliente+profissional)
@@ -10900,9 +11165,10 @@ const renderContent = () => {
     // Professional screens
   if (screen === "upgrade") return <EscolherPlanoScreen titularTipo="usuario" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("home")} showToast={showToast} onDone={() => { carregarPlano("usuario", userEmail); setScreen("home"); }} />;
     if (screen === "wallet") return <WalletScreen onBack={() => setScreen("profile")} pedidos={meusGanhos} />;
+    if (screen === "comprarmoedas") return <ComprarMoedasScreen userEmail={userEmail} userName={userName} onBack={() => setScreen("profile")} showToast={showToast} onSuccess={() => carregarSaldoMoedas(userEmail)} />;
     if (screen === "profile") {
       if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
-      return <ProfileScreen role="professional" userName={userName} userEmail={userEmail} isPro={isPro} plano={plano} planoStatus={planoStatus} planoExpiraEm={planoExpiraEm} planoInicio={planoInicio} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenWallet={() => setScreen("wallet")} meusGanhos={meusGanhos} onOpenAdmin={() => setShowAdmin(true)} docStatus={docStatus} onDocStatusChange={(id, st) => setDocStatus(d => ({ ...d, [id]: st }))} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
+      return <ProfileScreen role="professional" userName={userName} userEmail={userEmail} isPro={isPro} plano={plano} planoStatus={planoStatus} planoExpiraEm={planoExpiraEm} planoInicio={planoInicio} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenWallet={() => setScreen("wallet")} meusGanhos={meusGanhos} saldoMoedas={saldoMoedas} onOpenComprarMoedas={() => setScreen("comprarmoedas")} onOpenAdmin={() => setShowAdmin(true)} docStatus={docStatus} onDocStatusChange={(id, st) => setDocStatus(d => ({ ...d, [id]: st }))} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
     }
     if (screen === "service" && selected) return <ServiceDetailPro key={selected.id} service={selected} onBack={() => setScreen("home")} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onOpenPinEntry={() => setScreen("pinjob")} onCancelarPedido={handleCancelarPedidoPosAceite} onSolicitarChegada={handleSolicitarChegada} onConfirmarInicio={handleConfirmarInicio} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
     if (screen === "pinjob"  && selected) return <ServiceDetailPinEntry key={selected.id} service={selected} onBack={() => setScreen("service")} onStatusChange={handlePedidoStatusChange} onConfirmarConclusao={handleConfirmarConclusao} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
