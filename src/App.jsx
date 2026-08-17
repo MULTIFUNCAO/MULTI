@@ -9238,6 +9238,21 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   const [gate,      setGate]      = useState(null); // { pedidoId, custoMoedas, proceed }
   const [gateBusy,  setGateBusy]  = useState(false);
   const [gateErro,  setGateErro]  = useState(null); // 'saldo_insuficiente' | 'erro' | null
+  // Saldo mostrado no modal — busca fresco toda vez que o modal abre, em vez
+  // de confiar no `saldoMoedas` (prop, carregado uma vez no login/troca de
+  // role — ver carregarSaldoMoedas em App()). Achado 2026-08-17: profissional
+  // via saldo antigo no modal (ex.: 2) enquanto o saldo real já tinha caído
+  // pra 0 num gasto anterior, só descobrindo a diferença depois de confirmar
+  // e levar "saldo insuficiente" do backend. null = ainda buscando.
+  const [gateSaldoFresco, setGateSaldoFresco] = useState(null);
+
+  const abrirGate = async (pedidoId, custoMoedas, proceed) => {
+    setGate({ pedidoId, custoMoedas: custoMoedas ?? 4, proceed });
+    setGateSaldoFresco(null);
+    const { data } = await supabase.from("usuarios").select("saldo_moedas").eq("email", userEmail).maybeSingle();
+    setGateSaldoFresco(data?.saldo_moedas ?? 0);
+    onSaldoMoedasChange?.(); // mantém o state global (saldoMoedas) sincronizado também
+  };
 
   const confirmarGastoMoeda = async () => {
     if (!gate || gateBusy) return;
@@ -9253,7 +9268,8 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
       if (!r.ok) {
         if (data.error === "saldo_insuficiente") {
           setGateErro("saldo_insuficiente");
-          onSaldoMoedasChange?.(data.saldo ?? 0);
+          setGateSaldoFresco(data.saldo ?? 0);
+          onSaldoMoedasChange?.();
         } else {
           setGateErro("erro");
           showToast?.("❌ " + (data.error || "Não foi possível debitar moeda."), "#DC2626");
@@ -9499,7 +9515,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
         // mas agora oferece pagar em moeda em vez de só bloquear.
         const ordemAtual = newOrder;
         const proceed = () => { setOnline(false);pararEscutaPedidos();onAcceptOrder&&onAcceptOrder({id:ordemAtual.id,cliente_id:ordemAtual.cliente_id,title:ordemAtual.category,category:ordemAtual.category,clientName:safeGetUser().name||"Cliente",location:ordemAtual.location,value:ordemAtual.value,description:ordemAtual.description,photo:ordemAtual.photo,photos:ordemAtual.photos||[]}); };
-        if (!isPro) { setOnline(false); pararEscutaPedidos(); setGate({ pedidoId: ordemAtual.id, custoMoedas: ordemAtual.custoMoedas ?? 4, proceed }); return; }
+        if (!isPro) { setOnline(false); pararEscutaPedidos(); abrirGate(ordemAtual.id, ordemAtual.custoMoedas, proceed); return; }
         proceed();
       }} onReject={()=>{stopNewOrderSound();setNewOrder(null);}} />}
 
@@ -9619,7 +9635,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                           supabase.from("propostas").upsert({pedido_id:s.id,profissional_id:proUser.email||proUser.whatsapp,profissional_nome:proUser.name||"Profissional",profissional_email:proUser.email||proUser.whatsapp,valor:s.value,mensagem:"Tenho interesse neste serviço!",status:"pendente",cliente_email:s.cliente_id||""},{onConflict:"pedido_id,profissional_id"}).then(()=>{}).catch(()=>{});
                           onViewService({ _notify:{ serviceId:s.id, serviceTitle:s.title, value:s.value, proName:proUser.name||"Profissional" } });
                         };
-                        if (!isPro) { setGate({ pedidoId:s.id, custoMoedas:s.custoMoedas ?? 4, proceed:candidatarSe }); return; }
+                        if (!isPro) { abrirGate(s.id, s.custoMoedas, candidatarSe); return; }
                         if (isLocked) { onUpgrade(); return; }
                         candidatarSe();
                       }}
@@ -9849,7 +9865,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                   Responder a este serviço custa <b>{gate.custoMoedas} moedas</b>.
                 </p>
                 <p style={{ fontSize:13.5, color:"#666", lineHeight:1.55, margin:"0 0 24px", padding:"0 6px" }}>
-                  Seu saldo atual é <b>{saldoMoedas ?? 0} moedas</b> — faltam {Math.max(0, gate.custoMoedas - (saldoMoedas ?? 0))}.
+                  Seu saldo atual é <b>{gateSaldoFresco ?? 0} moedas</b> — faltam {Math.max(0, gate.custoMoedas - (gateSaldoFresco ?? 0))}.
                 </p>
                 <button
                   onClick={() => { setGate(null); setGateErro(null); onGoToComprarMoedas?.(); }}
@@ -9861,13 +9877,15 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
               <>
                 <p style={{ fontSize:18, fontWeight:900, color:"#1a1a2e", margin:"0 0 8px" }}>Responder a este serviço custa {gate.custoMoedas} moedas</p>
                 <p style={{ fontSize:13.5, color:"#666", lineHeight:1.55, margin:"0 0 24px", padding:"0 6px" }}>
-                  Seu saldo atual: <b>{saldoMoedas ?? 0} moedas</b>. Confirmando, o valor é debitado e você já pode demonstrar interesse nesse serviço.
+                  {gateSaldoFresco === null
+                    ? "Conferindo seu saldo atual..."
+                    : <>Seu saldo atual: <b>{gateSaldoFresco} moedas</b>. Confirmando, o valor é debitado e você já pode demonstrar interesse nesse serviço.</>}
                 </p>
                 <button
                   onClick={confirmarGastoMoeda}
-                  disabled={gateBusy}
-                  style={{ width:"100%", padding:"15px 0", borderRadius:16, border:"none", cursor: gateBusy ? "default" : "pointer", background: gateBusy ? "#FCD9A8" : "linear-gradient(135deg,#F59E0B,#D97706)", color:"white", fontWeight:900, fontSize:14, boxShadow:"0 8px 22px rgba(217,119,6,.35)", marginBottom:10, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-                  {gateBusy ? "Confirmando..." : <>🪙 Confirmar e responder</>}
+                  disabled={gateBusy || gateSaldoFresco === null}
+                  style={{ width:"100%", padding:"15px 0", borderRadius:16, border:"none", cursor: (gateBusy || gateSaldoFresco === null) ? "default" : "pointer", background: (gateBusy || gateSaldoFresco === null) ? "#FCD9A8" : "linear-gradient(135deg,#F59E0B,#D97706)", color:"white", fontWeight:900, fontSize:14, boxShadow:"0 8px 22px rgba(217,119,6,.35)", marginBottom:10, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                  {gateBusy ? "Confirmando..." : gateSaldoFresco === null ? "Conferindo saldo..." : <>🪙 Confirmar e responder</>}
                 </button>
               </>
             )}
