@@ -2474,8 +2474,20 @@ function TodasCategoriasModal({ onClose, onSelect }) {
 }
 
 /* ───────────────────────── POST SERVICE SCREEN ──────────────────────────────── */
+// Campo guiado do piloto Montador (Fase 2 do motor de precificação) — os
+// values batem com o check constraint de pedidos.escopo_montador e com o
+// CASE do trigger pedidos_precificar() em
+// supabase_motor_precificacao_migration.sql. Vazio/não selecionado = motor
+// assume o nível mais caro (regra de segurança), não precisa de valor aqui
+// pra isso.
+const ESCOPO_MONTADOR_OPTIONS = [
+  { val:"peca_pequena",     label:"Peça pequena ou ajuste (ex: prateleira, mesa simples)" },
+  { val:"ate_2_portas",     label:"Guarda-roupa ou cama — até 2 portas/módulos" },
+  { val:"3_a_4_portas",     label:"3 a 4 portas/módulos" },
+  { val:"mais_de_4_portas", label:"Cozinha planejada — mais de 4 portas/módulos" },
+];
 function PostServiceScreen({ onBack, onSuccess, initialCat = "" }) {
-  const [form,       setForm]       = useState({ cat:initialCat, desc:"", value:"", cep:"", material: false, urgent:"normal", scheduledDate:"", tipoAtendimento:"residencial", tipoValor:"referencia" });
+  const [form,       setForm]       = useState({ cat:initialCat, desc:"", value:"", cep:"", material: false, urgent:"normal", scheduledDate:"", tipoAtendimento:"residencial", tipoValor:"referencia", escopoMontador:null });
   const [photos,     setPhotos]     = useState([]);
   const [cepInfo,    setCepInfo]    = useState(null);  // { bairro, cidade, uf }
   const [cepLoading, setCepLoading] = useState(false);
@@ -2637,6 +2649,34 @@ function PostServiceScreen({ onBack, onSuccess, initialCat = "" }) {
         <label style={{fontSize:12,color:"#666",display:"block"}}>Descrição do problema</label>
         <textarea rows={4} placeholder="Seja detalhado sobre o que precisa…" style={{ ...F, resize:"none", lineHeight:1.6 }} value={form.desc} onChange={e => setForm({ ...form, desc:e.target.value })} />
       </div>
+
+      {/* Escopo do móvel — piloto do motor de precificação (Fase 2): pra
+          Montador de Móveis a descrição livre sozinha não dá um sinal
+          confiável de tamanho do serviço, então captura isso num campo
+          guiado à parte. Opcional — se ficar vazio, o motor assume o nível
+          mais alto de propósito (nunca o mais barato) em vez de chutar. */}
+      {form.cat === "montador_de_moveis" && (
+        <div>
+          <label style={{fontSize:12,color:"#666",display:"block", marginBottom:6}}>Tamanho do móvel/serviço <span style={{ textTransform:'none', fontWeight:400, color:'#ccc' }}>(opcional, ajuda o profissional a entender o serviço)</span></label>
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            {ESCOPO_MONTADOR_OPTIONS.map(opt => {
+              const selected = form.escopoMontador === opt.val;
+              return (
+                <div key={opt.val} onClick={() => setForm(f => ({ ...f, escopoMontador: selected ? null : opt.val }))} style={{
+                  display:"flex", alignItems:"center", gap:12, borderRadius:12, cursor:"pointer", padding:"11px 14px",
+                  border: selected ? `2px solid ${B}` : "1.5px solid #E5E7EB",
+                  background: selected ? "#EBF4FF" : "white", transition:"all .15s",
+                }}>
+                  <div style={{ width:18, height:18, borderRadius:"50%", border:(selected?"2px solid "+B:"2px solid #D1D5DB"), background: selected ? B : "white", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                    {selected && <div style={{ width:7, height:7, borderRadius:"50%", background:"white" }} />}
+                  </div>
+                  <span style={{ fontSize:12.5, fontWeight:700, color: selected ? B : "#1a1a2e" }}>{opt.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Foto do problema */}
         <div>
@@ -2828,7 +2868,7 @@ function PostServiceScreen({ onBack, onSuccess, initialCat = "" }) {
       </div>
 
         <button
-            onClick={() => { if (canPublish) { (async()=>{ const ts=Date.now(); const urls=await Promise.all((window._photos||[]).map(async(b64,i)=>{ const res=await fetch(b64); const blob=await res.blob(); const ext=blob.type.includes("png")?"png":"jpg"; const path="pedido_"+ts+"_"+i+"."+ext; const{error:ue}=await supabase.storage.from("pedidos-fotos").upload(path,blob,{contentType:blob.type,upsert:true,cacheControl:"31536000"}); if(ue){console.warn("upload:",ue);return null;} return supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl; })); const fotos=urls.filter(Boolean); const{data:novoPedido,error}=await supabase.from("pedidos").insert({cliente_id:safeGetUser().email||"anonimo",cliente_nome:safeGetUser().name||"Cliente",categoria:form.cat,descricao:form.desc,valor:form.tipoValor==="a_combinar"?null:Number(form.value),cep:form.cep,cidade:cepInfo.cidade||null,fotos,status:"aberto",tipo_atendimento:form.tipoAtendimento,tipo_valor:form.tipoValor}).select().single(); if(error){alert("Erro ao publicar serviço: "+(error.message||"")); return;} fetch(`${NOTIFY_API}/notify-pedido`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({categoria:form.cat,descricao:form.desc})}).catch(()=>{}); (async()=>{ const clienteEmail=safeGetUser().email; if(!clienteEmail) return; const playerId=await getOneSignalPlayerId(); if(playerId){ supabase.from("usuarios").update({onesignal_player_id:playerId}).eq("email",clienteEmail).then(()=>{}); } })(); onSuccess({...mapPedidoRow(novoPedido), cepInfo, material:form.material}); })(); }}}
+            onClick={() => { if (canPublish) { (async()=>{ const ts=Date.now(); const urls=await Promise.all((window._photos||[]).map(async(b64,i)=>{ const res=await fetch(b64); const blob=await res.blob(); const ext=blob.type.includes("png")?"png":"jpg"; const path="pedido_"+ts+"_"+i+"."+ext; const{error:ue}=await supabase.storage.from("pedidos-fotos").upload(path,blob,{contentType:blob.type,upsert:true,cacheControl:"31536000"}); if(ue){console.warn("upload:",ue);return null;} return supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl; })); const fotos=urls.filter(Boolean); const{data:novoPedido,error}=await supabase.from("pedidos").insert({cliente_id:safeGetUser().email||"anonimo",cliente_nome:safeGetUser().name||"Cliente",categoria:form.cat,descricao:form.desc,valor:form.tipoValor==="a_combinar"?null:Number(form.value),cep:form.cep,cidade:cepInfo.cidade||null,fotos,status:"aberto",tipo_atendimento:form.tipoAtendimento,tipo_valor:form.tipoValor,escopo_montador:form.cat==="montador_de_moveis"?form.escopoMontador:null}).select().single(); if(error){alert("Erro ao publicar serviço: "+(error.message||"")); return;} fetch(`${NOTIFY_API}/notify-pedido`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({categoria:form.cat,descricao:form.desc})}).catch(()=>{}); (async()=>{ const clienteEmail=safeGetUser().email; if(!clienteEmail) return; const playerId=await getOneSignalPlayerId(); if(playerId){ supabase.from("usuarios").update({onesignal_player_id:playerId}).eq("email",clienteEmail).then(()=>{}); } })(); onSuccess({...mapPedidoRow(novoPedido), cepInfo, material:form.material}); })(); }}}
             style={{ padding:"15px 0", borderRadius:14, border:"none", cursor: canPublish ? "pointer" : "not-allowed", background: canPublish ? `linear-gradient(135deg,${O},#E64A19)` : "#9CA3AF", color: canPublish ? "white" : "#4B5563", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow: canPublish ? "0 5px 18px rgba(255,87,34,.30)" : "none", transition:"all .2s" }}>
             <Send size={15} /> Publicar Serviço
           </button>
@@ -2890,6 +2930,11 @@ function mapPedidoRow(p) {
     conclusao_fotos_cliente: p.conclusao_fotos_cliente,
     conclusao_fotos_profissional: p.conclusao_fotos_profissional,
     tipoValor: p.tipo_valor,
+    // Motor de precificação (Fase 2) — gravados pelo trigger
+    // pedidos_precificar() no insert, nunca calculados no client.
+    custoMoedas: p.custo_moedas,
+    valorEstimadoMin: p.valor_estimado_min,
+    valorEstimadoMax: p.valor_estimado_max,
   };
 }
 
@@ -3833,7 +3878,7 @@ function limitesTexto(planoId) {
     `Valor máximo R$${l.valorMaxServico.toLocaleString("pt-BR")}/serviço`,
   ];
 }
-function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, onDone, showToast, onSkip }) {
+function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, onDone, showToast, onSkip, onGoToComprarMoedas }) {
   // Planos pagos de empresa deixaram de existir — titularTipo é sempre
   // "usuario" a partir de agora (nenhum call site restante manda "empresa").
   // isEmpresa fica hardcoded pra não precisar reescrever cada ternário de
@@ -4053,7 +4098,7 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
             </div>
           );
 
-          return isPro ? (
+          const cardEl = isPro ? (
             <div key={p.id} style={{ position:"relative", paddingTop:14 }}>
               <div style={{
                 position:"absolute", inset:"12px -12px -12px", borderRadius:30,
@@ -4071,6 +4116,14 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
           ) : (
             <div key={p.id}>{card}</div>
           );
+
+          // Card extra (não vem de PLANOS_USUARIO, sem mensalidade) logo
+          // depois do Autônomo — alternativa pra quem não quer assinar:
+          // pagar em moeda só quando responder a uma oportunidade (Fase 2
+          // da monetização por moeda, ver o gate no botão "Tenho Interesse"
+          // em ProfessionalHome).
+          if (p.id !== "autonomo") return cardEl;
+          return [cardEl, <SemPlanoMoedaCard key="sem-plano-moeda" onGoToComprarMoedas={onGoToComprarMoedas} />];
         })}
       </div>
 
@@ -4087,6 +4140,46 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
           </button>
         </p>
       )}
+    </div>
+  );
+}
+
+// Card "sem plano" da tela Seja PRO (Fase 2 da monetização por moeda) —
+// alternativa neutra à assinatura: sem mensalidade, paga só quando responde
+// a uma oportunidade (gate de moeda, ver ProfessionalHome). Mesma estrutura
+// visual de card do resto da tela, mas sem o gradiente de destaque dos
+// planos pagos (não é um "plano" de verdade, não passa por
+// PagamentoPlanoScreen).
+function SemPlanoMoedaCard({ onGoToComprarMoedas }) {
+  return (
+    <div style={{ background:"#F8F9FC", borderRadius:22, padding:"22px 20px", border:"1.5px dashed #D8DAEA" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
+        <div style={{ width:38, height:38, borderRadius:12, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:"#FEF3C7", fontSize:19 }}>🪙</div>
+        <p style={{ fontWeight:800, fontSize:16.5, color:"#14152A", margin:0, letterSpacing:-.1 }}>Sem plano</p>
+      </div>
+      <p style={{ fontWeight:700, fontSize:15, color:"#14152A", margin:"0 0 8px", lineHeight:1.35 }}>Pague só quando responder</p>
+      <p style={{ fontSize:13, color:"#6C6F94", lineHeight:1.58, margin:"0 0 18px" }}>
+        Não quer assinar agora? Compre moedas e use quando quiser demonstrar interesse num serviço — sem mensalidade, sem compromisso.
+      </p>
+      <div style={{ display:"flex", flexDirection:"column", gap:9, marginBottom:20 }}>
+        {["Sem mensalidade", "A partir de 2 moedas por oportunidade respondida", "Compre moedas quando precisar"].map((texto, i) => (
+          <div key={i} style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <div style={{ width:20, height:20, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:"#FEF3C7", color:"#D97706" }}>
+              <Check size={12} strokeWidth={3} />
+            </div>
+            <span style={{ fontSize:13, color:"#42436A", fontWeight:600 }}>{texto}</span>
+          </div>
+        ))}
+      </div>
+      <button onClick={() => onGoToComprarMoedas?.()} style={{
+        width:"100%", border:"none", borderRadius:16, padding:"15px 0",
+        fontWeight:800, fontSize:13, letterSpacing:.4, textTransform:"uppercase",
+        color:"white", cursor:"pointer",
+        background:"linear-gradient(135deg,#F59E0B,#D97706)",
+        boxShadow:"0 12px 24px -10px rgba(217,119,6,.5)",
+      }}>
+        🪙 Comprar moedas
+      </button>
     </div>
   );
 }
@@ -9078,7 +9171,7 @@ function GuestMural({ onSignup, allDocsVerified }) {
 }
 
 /* ───────────────────────── PROFESSIONAL HOME ────────────────────────────────── */
-function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro, plano, planoInicio, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet, onAcceptOrder, meusGanhos }) {
+function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro, plano, planoInicio, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet, onAcceptOrder, meusGanhos, saldoMoedas, onGoToComprarMoedas, onSaldoMoedasChange }) {
   const [online,       setOnline]       = useState(false);
   const [categoriaServico, setCategoriaServico] = useState([]);
   const [userCity, setUserCity] = useState("");
@@ -9113,7 +9206,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   // só considerava plano==="pro" (Premium ficava de fora por uma lacuna
   // pré-existente, corrigida junto aqui em 2026-08-10).
   const podeVerEmpresarial = plano === "pro" || plano === "premium";
-  useEffect(()=>{ supabase.from("pedidos").select("*").eq("status","aberto").in("publico_alvo", podeVerEmpresarial ? ["geral","pro"] : ["geral"]).in("tipo_atendimento", podeVerEmpresarial ? ["residencial","empresarial"] : ["residencial"]).order("created_at",{ascending:false}).limit(50).then(({data})=>{ if(data&&data.length>0) setRealPedidos(data.map(p=>({id:p.id,cliente_id:p.cliente_id,cat:p.categoria||"servico",title:(p.descricao||p.categoria||"Serviço").slice(0,40),desc:p.descricao||"",value:p.valor,tipoValor:p.tipo_valor,loc:p.cidade||"sua região",time:new Date(p.created_at).toLocaleDateString("pt-BR"),client:p.cliente_nome||"Cliente",rating:4.5,urgent:false,emoji:"🔧",bg:"#FFF8E1",photo:null,photos:p.fotos,publicoAlvo:p.publico_alvo,tipoAtendimento:p.tipo_atendimento,prazo:p.prazo}))); }).catch(()=>{}); },[podeVerEmpresarial]);
+  useEffect(()=>{ supabase.from("pedidos").select("*").eq("status","aberto").in("publico_alvo", podeVerEmpresarial ? ["geral","pro"] : ["geral"]).in("tipo_atendimento", podeVerEmpresarial ? ["residencial","empresarial"] : ["residencial"]).order("created_at",{ascending:false}).limit(50).then(({data})=>{ if(data&&data.length>0) setRealPedidos(data.map(p=>({id:p.id,cliente_id:p.cliente_id,cat:p.categoria||"servico",title:(p.descricao||p.categoria||"Serviço").slice(0,40),desc:p.descricao||"",value:p.valor,tipoValor:p.tipo_valor,loc:p.cidade||"sua região",time:new Date(p.created_at).toLocaleDateString("pt-BR"),client:p.cliente_nome||"Cliente",rating:4.5,urgent:false,emoji:"🔧",bg:"#FFF8E1",photo:null,photos:p.fotos,publicoAlvo:p.publico_alvo,tipoAtendimento:p.tipo_atendimento,prazo:p.prazo,custoMoedas:p.custo_moedas}))); }).catch(()=>{}); },[podeVerEmpresarial]);
 
   // Carrega categoria + status persistidos, mesmo padrão do handleToggleOnline da empresa.
   // userToggledRef evita que essa carga inicial (assíncrona) sobrescreva um clique em
@@ -9133,10 +9226,50 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   }, [userEmail]);
 
   const [showDocBlock, setShowDocBlock] = useState(false); // pop-up modal
-  // Pop-up modal — profissional sem plano pago ativo (Autônomo/Pro/Premium)
-  // tentando demonstrar interesse num serviço. Ver radar/mural continua
-  // liberado sem plano; só a ação de se candidatar é bloqueada aqui.
-  const [showPlanBlock, setShowPlanBlock] = useState(false);
+  // Gate de moeda (Fase 2) — profissional sem plano pago ativo (Autônomo/
+  // Pro/Premium) tentando demonstrar interesse num serviço. Ver radar/mural
+  // continua liberado sem plano; só a ação de se candidatar é bloqueada
+  // aqui. Substituiu o antigo showPlanBlock (que só bloqueava e mandava pra
+  // assinatura) — agora oferece pagar em moeda pra responder esse pedido
+  // específico, sem precisar assinar. `gate` guarda o pedido sendo
+  // respondido + a função `proceed` que de fato cria a candidatura depois
+  // que o débito confirma (mesma escrita em "propostas" que cada ponto de
+  // entrada já fazia antes, só adiada pra depois da confirmação do modal).
+  const [gate,      setGate]      = useState(null); // { pedidoId, custoMoedas, proceed }
+  const [gateBusy,  setGateBusy]  = useState(false);
+  const [gateErro,  setGateErro]  = useState(null); // 'saldo_insuficiente' | 'erro' | null
+
+  const confirmarGastoMoeda = async () => {
+    if (!gate || gateBusy) return;
+    setGateBusy(true);
+    setGateErro(null);
+    try {
+      const r = await fetch(`${API_BASE}/api/moedas/responder-oportunidade`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: userEmail, pedidoId: gate.pedidoId }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        if (data.error === "saldo_insuficiente") {
+          setGateErro("saldo_insuficiente");
+          onSaldoMoedasChange?.(data.saldo ?? 0);
+        } else {
+          setGateErro("erro");
+          showToast?.("❌ " + (data.error || "Não foi possível debitar moeda."), "#DC2626");
+        }
+        return;
+      }
+      onSaldoMoedasChange?.(data.saldo);
+      gate.proceed();
+      setGate(null);
+    } catch (e) {
+      setGateErro("erro");
+      showToast?.("❌ Erro de conexão. Tente novamente.", "#DC2626");
+    } finally {
+      setGateBusy(false);
+    }
+  };
 
   const filters = [
     { id:"all",    label:"Todos",           emoji:"📋" },
@@ -9362,9 +9495,12 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
       {newOrder && <NewOrderCard order={newOrder} onAccept={()=>{
         stopNewOrderSound();setNewOrder(null);
         // Mesmo gate do botão "Tenho Interesse" do mural — sem plano pago
-        // ativo, "Aceitar agora" também não pode virar candidatura direto.
-        if (!isPro) { setOnline(false); pararEscutaPedidos(); setShowPlanBlock(true); return; }
-        setOnline(false);pararEscutaPedidos();onAcceptOrder&&onAcceptOrder({id:newOrder.id,cliente_id:newOrder.cliente_id,title:newOrder.category,category:newOrder.category,clientName:safeGetUser().name||"Cliente",location:newOrder.location,value:newOrder.value,description:newOrder.description,photo:newOrder.photo,photos:newOrder.photos||[]});
+        // ativo, "Aceitar agora" também não pode virar candidatura direto,
+        // mas agora oferece pagar em moeda em vez de só bloquear.
+        const ordemAtual = newOrder;
+        const proceed = () => { setOnline(false);pararEscutaPedidos();onAcceptOrder&&onAcceptOrder({id:ordemAtual.id,cliente_id:ordemAtual.cliente_id,title:ordemAtual.category,category:ordemAtual.category,clientName:safeGetUser().name||"Cliente",location:ordemAtual.location,value:ordemAtual.value,description:ordemAtual.description,photo:ordemAtual.photo,photos:ordemAtual.photos||[]}); };
+        if (!isPro) { setOnline(false); pararEscutaPedidos(); setGate({ pedidoId: ordemAtual.id, custoMoedas: ordemAtual.custoMoedas ?? 4, proceed }); return; }
+        proceed();
       }} onReject={()=>{stopNewOrderSound();setNewOrder(null);}} />}
 
       {/* ── UPGRADE BANNER (free users, sem plano ativo — some sozinho pra
@@ -9471,17 +9607,21 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                     </div>
 
                     {/* Action button — triggers doc-block popup if docs not verified,
-                        ou plan-block popup se não tem plano pago ativo (ver radar/mural
-                        continua liberado sem plano; só demonstrar interesse é bloqueado) */}
+                        ou o gate de moeda se não tem plano pago ativo (ver radar/mural
+                        continua liberado sem plano; só demonstrar interesse é bloqueado
+                        até pagar em moeda ou assinar) */}
                     <button
                       onClick={e => {
                         e.stopPropagation();
                         if (!allDocsVerified) { setShowDocBlock(true); return; }
-                        if (!isPro) { setShowPlanBlock(true); return; }
+                        const proUser=safeGetUser();
+                        const candidatarSe = () => {
+                          supabase.from("propostas").upsert({pedido_id:s.id,profissional_id:proUser.email||proUser.whatsapp,profissional_nome:proUser.name||"Profissional",profissional_email:proUser.email||proUser.whatsapp,valor:s.value,mensagem:"Tenho interesse neste serviço!",status:"pendente",cliente_email:s.cliente_id||""},{onConflict:"pedido_id,profissional_id"}).then(()=>{}).catch(()=>{});
+                          onViewService({ _notify:{ serviceId:s.id, serviceTitle:s.title, value:s.value, proName:proUser.name||"Profissional" } });
+                        };
+                        if (!isPro) { setGate({ pedidoId:s.id, custoMoedas:s.custoMoedas ?? 4, proceed:candidatarSe }); return; }
                         if (isLocked) { onUpgrade(); return; }
-                      const proUser=safeGetUser();
-                      supabase.from("propostas").upsert({pedido_id:s.id,profissional_id:proUser.email||proUser.whatsapp,profissional_nome:proUser.name||"Profissional",profissional_email:proUser.email||proUser.whatsapp,valor:s.value,mensagem:"Tenho interesse neste serviço!",status:"pendente",cliente_email:s.cliente_id||""},{onConflict:"pedido_id,profissional_id"}).then(()=>{}).catch(()=>{});
-                      onViewService({ _notify:{ serviceId:s.id, serviceTitle:s.title, value:s.value, proName:proUser.name||"Profissional" } });
+                        candidatarSe();
                       }}
                       style={{ padding:"11px 0", borderRadius:12, border:"none", cursor:"pointer", fontWeight:900, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:7,
                         background: !allDocsVerified ? "#F5F6FA" : !isPro ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : isLocked ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : `linear-gradient(135deg,${O},#E64A19)`,
@@ -9491,7 +9631,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                       {!allDocsVerified
                         ? <><Lock size={13} /> Candidatar-me</>
                         : !isPro
-                          ? <><Crown size={13} /> Assinar plano</>
+                          ? <>🪙 Responder{s.custoMoedas ? ` (${s.custoMoedas} moedas)` : ""}</>
                           : isLocked
                             ? <><Crown size={13} /> Assinar PRO</>
                             : "Tenho Interesse"}
@@ -9688,28 +9828,57 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
       )}
 
       {/* ══════════════ PLAN BLOCK POPUP — sem plano pago ativo ══════════════ */}
-      {showPlanBlock && (
+      {/* ══════════════════ GATE DE MOEDA — responder sem plano ══════════════════
+          Substitui o antigo showPlanBlock (só bloqueava). Profissional sem
+          plano pago ativo pode responder pagando custoMoedas do pedido, sem
+          precisar assinar — link secundário ainda leva pra assinatura. */}
+      {gate && (
         <div
-          onClick={() => setShowPlanBlock(false)}
+          onClick={() => { if (!gateBusy) { setGate(null); setGateErro(null); } }}
           style={{ position:"fixed", inset:0, zIndex:500, background:"rgba(15,23,42,.7)", backdropFilter:"blur(6px)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
           <div
             onClick={e => e.stopPropagation()}
             style={{ width:"100%", maxWidth:440, background:"white", borderRadius:"28px 28px 0 0", padding:"32px 24px 28px", textAlign:"center" }}>
-            <div style={{ width:64, height:64, borderRadius:20, background:"linear-gradient(135deg,#7C3AED,#4F46E5)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 18px", boxShadow:"0 10px 24px rgba(124,58,237,.35)" }}>
-              <Crown size={30} color="white" />
+            <div style={{ width:64, height:64, borderRadius:20, background:"linear-gradient(135deg,#F59E0B,#D97706)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 18px", boxShadow:"0 10px 24px rgba(217,119,6,.35)", fontSize:30 }}>
+              🪙
             </div>
-            <p style={{ fontSize:18, fontWeight:900, color:"#1a1a2e", margin:"0 0 8px" }}>Assine um plano pra se candidatar</p>
-            <p style={{ fontSize:13.5, color:"#666", lineHeight:1.55, margin:"0 0 24px", padding:"0 6px" }}>
-              Você pode explorar o mural à vontade — mas pra demonstrar interesse e ser escolhido por um cliente, é preciso ter um plano ativo (Autônomo, Pro ou Premium).
-            </p>
+            {gateErro === "saldo_insuficiente" ? (
+              <>
+                <p style={{ fontSize:18, fontWeight:900, color:"#1a1a2e", margin:"0 0 8px" }}>Saldo insuficiente</p>
+                <p style={{ fontSize:13.5, color:"#666", lineHeight:1.55, margin:"0 0 4px", padding:"0 6px" }}>
+                  Responder a este serviço custa <b>{gate.custoMoedas} moedas</b>.
+                </p>
+                <p style={{ fontSize:13.5, color:"#666", lineHeight:1.55, margin:"0 0 24px", padding:"0 6px" }}>
+                  Seu saldo atual é <b>{saldoMoedas ?? 0} moedas</b> — faltam {Math.max(0, gate.custoMoedas - (saldoMoedas ?? 0))}.
+                </p>
+                <button
+                  onClick={() => { setGate(null); setGateErro(null); onGoToComprarMoedas?.(); }}
+                  style={{ width:"100%", padding:"15px 0", borderRadius:16, border:"none", cursor:"pointer", background:"linear-gradient(135deg,#F59E0B,#D97706)", color:"white", fontWeight:900, fontSize:14, boxShadow:"0 8px 22px rgba(217,119,6,.35)", marginBottom:10, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                  🪙 Comprar moedas
+                </button>
+              </>
+            ) : (
+              <>
+                <p style={{ fontSize:18, fontWeight:900, color:"#1a1a2e", margin:"0 0 8px" }}>Responder a este serviço custa {gate.custoMoedas} moedas</p>
+                <p style={{ fontSize:13.5, color:"#666", lineHeight:1.55, margin:"0 0 24px", padding:"0 6px" }}>
+                  Seu saldo atual: <b>{saldoMoedas ?? 0} moedas</b>. Confirmando, o valor é debitado e você já pode demonstrar interesse nesse serviço.
+                </p>
+                <button
+                  onClick={confirmarGastoMoeda}
+                  disabled={gateBusy}
+                  style={{ width:"100%", padding:"15px 0", borderRadius:16, border:"none", cursor: gateBusy ? "default" : "pointer", background: gateBusy ? "#FCD9A8" : "linear-gradient(135deg,#F59E0B,#D97706)", color:"white", fontWeight:900, fontSize:14, boxShadow:"0 8px 22px rgba(217,119,6,.35)", marginBottom:10, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                  {gateBusy ? "Confirmando..." : <>🪙 Confirmar e responder</>}
+                </button>
+              </>
+            )}
             <button
-              onClick={() => { setShowPlanBlock(false); onUpgrade?.(); }}
-              style={{ width:"100%", padding:"15px 0", borderRadius:16, border:"none", cursor:"pointer", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", color:"white", fontWeight:900, fontSize:14, boxShadow:"0 8px 22px rgba(124,58,237,.35)", marginBottom:10, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-              <Crown size={16} /> Ver planos
+              onClick={() => { setGate(null); setGateErro(null); onUpgrade?.(); }}
+              style={{ width:"100%", padding:"10px 0", background:"none", border:"none", color:"#7C3AED", fontSize:12.5, fontWeight:700, cursor:"pointer" }}>
+              ou assine um plano e responda sem gastar moeda
             </button>
             <button
-              onClick={() => setShowPlanBlock(false)}
-              style={{ width:"100%", padding:"12px 0", background:"none", border:"none", color:"#94A3B8", fontSize:13, fontWeight:600, cursor:"pointer", textDecoration:"underline", textUnderlineOffset:3 }}>
+              onClick={() => { setGate(null); setGateErro(null); }}
+              style={{ width:"100%", padding:"8px 0", background:"none", border:"none", color:"#94A3B8", fontSize:13, fontWeight:600, cursor:"pointer", textDecoration:"underline", textUnderlineOffset:3 }}>
               Agora não
             </button>
           </div>
@@ -9763,6 +9932,7 @@ function mapPedidoParaNewOrder(p) {
     id: p.id, cliente_id: p.cliente_id, category: p.categoria,
     location: p.cidade || "Guarulhos, SP", value: p.valor != null ? String(p.valor) : null,
     description: p.descricao || "", photos: fotos, photo: fotos[0] || null,
+    custoMoedas: p.custo_moedas,
   };
 }
 
@@ -11163,7 +11333,7 @@ const renderContent = () => {
     }
 
     // Professional screens
-  if (screen === "upgrade") return <EscolherPlanoScreen titularTipo="usuario" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("home")} showToast={showToast} onDone={() => { carregarPlano("usuario", userEmail); setScreen("home"); }} />;
+  if (screen === "upgrade") return <EscolherPlanoScreen titularTipo="usuario" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("home")} showToast={showToast} onDone={() => { carregarPlano("usuario", userEmail); setScreen("home"); }} onGoToComprarMoedas={() => setScreen("comprarmoedas")} />;
     if (screen === "wallet") return <WalletScreen onBack={() => setScreen("profile")} pedidos={meusGanhos} />;
     if (screen === "comprarmoedas") return <ComprarMoedasScreen userEmail={userEmail} userName={userName} onBack={() => setScreen("profile")} showToast={showToast} onSuccess={() => carregarSaldoMoedas(userEmail)} />;
     if (screen === "profile") {
@@ -11190,6 +11360,9 @@ const renderContent = () => {
         allDocsVerified={allDocsVerified}
         docStatus={docStatus}
         onGoToDocs={() => setScreen("profile")} onGoToOrders={() => setScreen("orders")} onGoToWallet={() => setScreen("wallet")} onAcceptOrder={(order) => { handleCandidatarPedidoDireto(order.id, order.cliente_id, order.value); showToast?.("💼 Interesse enviado! Aguarde o cliente escolher.", B); }}
+        saldoMoedas={saldoMoedas}
+        onGoToComprarMoedas={() => setScreen("comprarmoedas")}
+        onSaldoMoedasChange={() => carregarSaldoMoedas(userEmail)}
       />
     );
   };
