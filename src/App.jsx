@@ -32,7 +32,7 @@ const ONESIGNAL_APP_ID = "184f4647-8fbd-427d-8a8e-60f5aa38243c";
 
 import AdminDashboard from "./AdminDashboard";
 import {
-  Search, MapPin, Bell, Star, Plus, ChevronRight, ChevronLeft,
+  Search, MapPin, Bell, Star, Plus, ChevronRight, ChevronLeft, ChevronDown,
   Hammer, Wrench, Paintbrush, Scissors, Zap, Square,
   Home, ClipboardList, MessageCircle, User, Settings,
   ArrowLeft, Check, Camera, Send,
@@ -1752,6 +1752,237 @@ function MinhasDemandasScreen({ userEmail, userName, onBack, onVerPropostas, onO
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// Restaurado 2026-08-18 — mesma remoção acidental do commit 3a2193d que
+// levou MinhasDemandasScreen/PRAZO_OPTIONS junto (ver comentário acima):
+// NovaDemandaFuncionarioScreen, e as duas constantes de opção que ela usa,
+// também foram apagadas sem que nada mais no código parasse de referenciá-
+// las — o botão "Nova demanda" dentro do modo Contratante quebrava com
+// ReferenceError ao ser clicado.
+const URGENCIA_OPTIONS = [
+  { id:"normal",         label:"Normal",        emoji:"🟢" },
+  { id:"urgente",        label:"Urgente",       emoji:"🟡" },
+  { id:"muito_urgente",  label:"Muito Urgente", emoji:"🔴" },
+];
+const QUANDO_PRECISA_OPTIONS = ["Hoje","Amanhã","Esta semana","Flexível"];
+
+// Formulário completo de "Preciso de Funcionário" — restaurado verbatim do
+// commit anterior à remoção (3a2193d^); props batem exatamente com a
+// chamada em EmpresaContratanteScreen logo abaixo.
+function NovaDemandaFuncionarioScreen({ userEmail, userName, onBack, showToast }) {
+  const [form, setForm] = useState({ cat:"", desc:"", value:"", cep:"", material:false, urgencia:"normal", quandoPrecisa:"" });
+  const [photos,     setPhotos]     = useState([]); // { id, file, previewUrl }
+  const [cepInfo,    setCepInfo]    = useState(null); // { bairro, cidade, uf }
+  const [cepLoading, setCepLoading] = useState(false);
+  const [cepError,   setCepError]   = useState("");
+  const [saving,     setSaving]     = useState(false);
+
+  const handleAddPhotos = e => {
+    const files = Array.from(e.target.files || []).filter(f => f.type.startsWith("image/"));
+    e.target.value = "";
+    const remaining = 5 - photos.length;
+    const toAdd = files.slice(0, remaining).map(file => ({ id:`${Date.now()}-${Math.random()}`, file, previewUrl:URL.createObjectURL(file) }));
+    setPhotos(p => [...p, ...toAdd]);
+  };
+  const removePhoto = id => {
+    setPhotos(p => {
+      const found = p.find(x => x.id === id);
+      if (found) URL.revokeObjectURL(found.previewUrl);
+      return p.filter(x => x.id !== id);
+    });
+  };
+
+  const handleCepChange = async (raw) => {
+    const cep = raw.replace(/\D/g,"").slice(0,8);
+    const formatted = cep.length > 5 ? cep.slice(0,5) + "-" + cep.slice(5) : cep;
+    setForm(f => ({ ...f, cep: formatted }));
+    setCepError("");
+    setCepInfo(null);
+    if (cep.length === 8) {
+      setCepLoading(true);
+      try {
+        const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        const d = await r.json();
+        if (d.erro || !d.localidade) { setCepError("CEP não encontrado"); }
+        else { setCepInfo({ bairro: d.bairro, cidade: d.localidade, uf: d.uf }); }
+      } catch { setCepError("Erro ao buscar CEP"); }
+      finally { setCepLoading(false); }
+    }
+  };
+
+  const F = { background:"white", border:"1.5px solid #EBEBEB", borderRadius:12, padding:"13px 14px", fontSize:13, color:"#1a1a2e", outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit" };
+  const canPublish = form.cat && form.desc && form.value && cepInfo && cepInfo.cidade;
+
+  const handlePublicar = async () => {
+    if (!canPublish || saving) return;
+    setSaving(true);
+    try {
+      const fotos = (await Promise.all(photos.map(async (p) => {
+        const ext = p.file.name.includes(".") ? p.file.name.split(".").pop() : "jpg";
+        const path = `demanda_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, p.file, { contentType: p.file.type, upsert: true, cacheControl: "31536000" });
+        if (upErr) return null;
+        return supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl;
+      }))).filter(Boolean);
+
+      const { error } = await supabase.from("pedidos").insert({
+        cliente_id: userEmail,
+        cliente_nome: userName,
+        categoria: form.cat,
+        descricao: form.desc.trim(),
+        valor: Number(form.value),
+        cep: form.cep,
+        cidade: cepInfo.cidade || null,
+        fotos,
+        status: "aberto",
+        publico_alvo: "pro",
+        urgencia: form.urgencia,
+        quando_precisa: form.quandoPrecisa || null,
+        material_fornecido: form.material,
+      });
+      if (error) throw error;
+      fetch(`${NOTIFY_API}/notify-pedido`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categoria: form.cat, descricao: form.desc.trim(), publicoAlvo: "pro", cidade: cepInfo.cidade }),
+      }).catch(() => {});
+      showToast?.("✅ Demanda publicada! Profissionais Multi Pro da categoria e cidade já podem ver.", G);
+      onBack?.();
+    } catch (e) {
+      showToast?.("❌ Erro ao publicar demanda: " + (e.message || ""), "#DC2626");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:18, padding:"18px 16px 40px" }}>
+      <BackBtn onClick={onBack} />
+      <h2 style={{ fontSize:20, fontWeight:900, color:"#1a1a2e", margin:0 }}>Preciso de Funcionário</h2>
+
+      {/* Função */}
+      <div>
+        <label style={{fontSize:12,color:"#666",display:"block"}}>Função</label>
+        <div style={{ position:"relative" }}>
+          <select style={{ ...F, paddingRight:36, appearance:"none", cursor:"pointer" }} value={form.cat} onChange={e => setForm({ ...form, cat:e.target.value })}>
+            <option value="">Selecione...</option>
+            {CATS.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+          </select>
+          <ChevronDown size={14} color="#aaa" style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", pointerEvents:"none" }} />
+        </div>
+      </div>
+
+      {/* Descrição */}
+      <div>
+        <label style={{fontSize:12,color:"#666",display:"block"}}>Descrição do serviço</label>
+        <textarea rows={4} placeholder="Seja detalhado sobre o que precisa…" style={{ ...F, resize:"none", lineHeight:1.6 }} value={form.desc} onChange={e => setForm({ ...form, desc:e.target.value })} />
+      </div>
+
+      {/* Fotos do local */}
+      <div>
+        <label style={{fontSize:12,color:"#666",display:"block"}}>Fotos do local <span style={{ textTransform:"none", fontWeight:400, letterSpacing:0, color:"#ccc" }}>(opcional, até 5)</span></label>
+        <label style={{ display:"flex", alignItems:"center", gap:8, marginTop:4, padding:"12px", borderRadius:12, border:"2px dashed #ddd", cursor: photos.length >= 5 ? "default" : "pointer", background:"#fafafa", justifyContent:"center" }}>
+          <input type="file" accept="image/*" multiple disabled={photos.length >= 5} style={{ display:"none" }} onChange={handleAddPhotos} />
+          📷 <span style={{ fontSize:13, color:"#888" }}>{photos.length > 0 ? `${photos.length} foto(s) adicionada(s)` : "Tirar foto ou escolher da galeria"}</span>
+        </label>
+        {photos.length > 0 && (
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:8 }}>
+            {photos.map(p => (
+              <div key={p.id} style={{ position:"relative", width:72, height:72, borderRadius:10, overflow:"hidden" }}>
+                <img src={p.previewUrl} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                <button onClick={() => removePhoto(p.id)} style={{ position:"absolute", top:2, right:2, background:"rgba(0,0,0,.6)", color:"white", border:"none", borderRadius:"50%", width:18, height:18, fontSize:12, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* CEP */}
+      <div>
+        <label style={{fontSize:12,color:"#666",display:"block"}}>CEP do local do serviço</label>
+        <div style={{ position:"relative" }}>
+          <input type="tel" placeholder="00000-000" maxLength={9} value={form.cep} onChange={e => handleCepChange(e.target.value)} style={{ ...F, paddingRight: cepLoading ? 40 : 14 }} />
+          {cepLoading && (
+            <div style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", width:16, height:16, border:"2px solid #E5E7EB", borderTopColor:B, borderRadius:"50%", animation:"spin .7s linear infinite" }} />
+          )}
+        </div>
+        {cepInfo && (
+          <div style={{ marginTop:8, padding:"10px 14px", borderRadius:12, background:"#F0FDF4", border:"1px solid #BBF7D0", display:"flex", alignItems:"center", gap:10 }}>
+            <MapPin size={14} color={G} style={{ flexShrink:0 }} />
+            <div>
+              <p style={{ fontSize:13, fontWeight:800, color:"#166534", margin:"0 0 2px" }}>
+                {cepInfo.bairro ? `${cepInfo.bairro} — ` : ""}{cepInfo.cidade}/{cepInfo.uf}
+              </p>
+              <p style={{ fontSize:11, color:"#16a34a", margin:0 }}>🔒 Endereço completo só liberado após acordo com profissional</p>
+            </div>
+          </div>
+        )}
+        {cepError && <p style={{ fontSize:12, color:"#EF4444", fontWeight:700, margin:"6px 0 0" }}>{cepError}</p>}
+      </div>
+
+      {/* Urgência */}
+      <div>
+        <label style={{ display:"block", fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.2, marginBottom:6 }}>URGÊNCIA</label>
+        <div style={{ display:"flex", gap:8 }}>
+          {URGENCIA_OPTIONS.map(u => (
+            <button key={u.id} onClick={() => setForm({ ...form, urgencia:u.id })} style={{ flex:1, padding:"10px 0", borderRadius:10, border: form.urgencia===u.id ? "2px solid #FF5722" : "1.5px solid #E5E7EB", background: form.urgencia===u.id ? "#FFF3F0" : "white", color: form.urgencia===u.id ? "#FF5722" : "#555", fontWeight: form.urgencia===u.id ? 800 : 500, fontSize:12, cursor:"pointer" }}>
+              {u.emoji} {u.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Quando precisa */}
+      <div>
+        <label style={{ display:"block", fontSize:10, fontWeight:800, color:"#aaa", textTransform:"uppercase", letterSpacing:1.2, marginBottom:6 }}>QUANDO VOCÊ PRECISA?</label>
+        <div style={{ display:"flex", gap:8, marginBottom:8 }}>
+          {QUANDO_PRECISA_OPTIONS.map(op => (
+            <button key={op} onClick={() => setForm({ ...form, quandoPrecisa:op })} style={{ flex:1, padding:"9px 4px", borderRadius:10, border: form.quandoPrecisa===op ? "2px solid #007BFF" : "1.5px solid #E5E7EB", background: form.quandoPrecisa===op ? "#EEF4FF" : "white", color: form.quandoPrecisa===op ? "#007BFF" : "#555", fontWeight: form.quandoPrecisa===op ? 800 : 500, fontSize:11, cursor:"pointer" }}>
+              {op}
+            </button>
+          ))}
+        </div>
+        <input type="text" style={{ ...F }} value={QUANDO_PRECISA_OPTIONS.includes(form.quandoPrecisa) ? "" : form.quandoPrecisa} onChange={e => setForm({ ...form, quandoPrecisa:e.target.value })} placeholder="Ex: 20/05/2026 às 14h" />
+      </div>
+
+      {/* Material */}
+      <div>
+        <label style={{fontSize:12,color:"#666",display:"block"}}>Material necessário</label>
+        <div style={{ background:"white", border:"1.5px solid #EBEBEB", borderRadius:14, overflow:"hidden" }}>
+          {[
+            { val: false, icon:"🧰", label:"Não precisa de material", sub:"O profissional só precisa trazer ferramentas" },
+            { val: true,  icon:"🪣", label:"Empresa fornece material", sub:"Ex: tinta, cano, cimento, peças de reposição" },
+          ].map((opt, i) => (
+            <div key={i} onClick={() => setForm(f => ({ ...f, material: opt.val }))}
+              style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 14px", cursor:"pointer", borderBottom: i === 0 ? "1px solid #F0F0F0" : "none", background: form.material === opt.val ? "#EBF4FF" : "white", transition:"background .15s" }}>
+              <span style={{ fontSize:22, flexShrink:0 }}>{opt.icon}</span>
+              <div style={{ flex:1 }}>
+                <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e", margin:"0 0 2px" }}>{opt.label}</p>
+                <p style={{ fontSize:11, color:"#9CA3AF", margin:0 }}>{opt.sub}</p>
+              </div>
+              <div style={{ width:20, height:20, borderRadius:"50%", border:(form.material===opt.val?"2px solid "+B:"2px solid #D1D5DB"), background: form.material === opt.val ? B : "white", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .15s" }}>
+                {form.material === opt.val && <div style={{ width:8, height:8, borderRadius:"50%", background:"white" }} />}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Valor */}
+      <div>
+        <label style={{fontSize:12,color:"#666",display:"block"}}>Valor que a empresa paga</label>
+        <div style={{ position:"relative" }}>
+          <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", fontWeight:800, color:"#999", fontSize:13 }}>R$</span>
+          <input type="number" placeholder="0,00" style={{ ...F, paddingLeft:38 }} value={form.value} onChange={e => setForm({ ...form, value:e.target.value })} />
+        </div>
+      </div>
+
+      <button onClick={handlePublicar} disabled={!canPublish || saving}
+        style={{ padding:"15px 0", borderRadius:14, border:"none", cursor: (canPublish && !saving) ? "pointer" : "not-allowed", background: (canPublish && !saving) ? `linear-gradient(135deg,${O},#E64A19)` : "#9CA3AF", color: (canPublish && !saving) ? "white" : "#4B5563", fontWeight:900, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow: (canPublish && !saving) ? "0 5px 18px rgba(255,87,34,.30)" : "none", transition:"all .2s" }}>
+        <Send size={15} /> {saving ? "Publicando..." : "Publicar demanda"}
+      </button>
     </div>
   );
 }
