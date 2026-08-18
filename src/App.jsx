@@ -11981,7 +11981,20 @@ const renderContent = () => {
         </div>
       )}
 
-      <Header isPro={isPro} notifCount={notifCount} isLoggedIn={isLoggedIn} userRole={userRole} onAlerts={() => setScreen("alerts")} userLocation={localStorage.getItem("multiLocation") || userLocation} onToggleRole={setGuestRole} activeRole={guestRole} />
+      {/* Header genérico pulado pra conta empresa (2026-08-18, achado ao
+          verificar o fix do redirect pós-cadastro de empresa): AuthHeader só
+          conhece professional vs. "qualquer outra coisa", então uma conta
+          empresa caía no branch de cliente — mostrava o pill "Modo: Cliente
+          (toque p/ alternar)" (que trocaria pra role:"professional", sem
+          sentido pra empresa) e o badge "OURO" (também de cliente), os dois
+          empilhados por cima do próprio header dedicado da tela de empresa
+          ("Modo: Contratante" em EmpresaContratanteScreen/EmpresaHomeScreen),
+          duplicando a barra "Sua Localização" na tela. Nenhuma tela de
+          empresa usa o sino de notificação nem o avatar daqui (grep
+          confirmou), então pular o Header inteiro não tira função nenhuma. */}
+      {!(isLoggedIn && userRole === "empresa") && (
+        <Header isPro={isPro} notifCount={notifCount} isLoggedIn={isLoggedIn} userRole={userRole} onAlerts={() => setScreen("alerts")} userLocation={localStorage.getItem("multiLocation") || userLocation} onToggleRole={setGuestRole} activeRole={guestRole} />
+      )}
 
       {/* paddingBottom cobre a altura do bottom nav (~55px de conteúdo/padding
           + safe-area) — precisa disso agora que o nav é position:fixed (não
