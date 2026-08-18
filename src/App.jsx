@@ -1563,6 +1563,199 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
 }
 
 
+// Restaurado 2026-08-18 — removido sem querer no commit 3a2193d ("Bloco 3:
+// remove planos pagos de empresa"), que dizia manter o Modo Contratante
+// funcionando mas apagou junto essa constante e a função MinhasDemandasScreen
+// logo abaixo, que dependem dela. Sem isso, toda empresa "contratante" (e
+// "pro" no modo Contratante) quebrava com ReferenceError ao abrir a tela —
+// achado investigando o pedido de retomar a feature de Empresa.
+const PRAZO_OPTIONS = [
+  { id:"urgente",     label:"Urgente",      emoji:"🔴" },
+  { id:"essa_semana", label:"Essa semana",  emoji:"🟡" },
+  { id:"sem_pressa",  label:"Sem pressa",   emoji:"🟢" },
+];
+
+/* ───────────────────────── EMPRESA PLUS — MINHAS DEMANDAS ──────────────────── */
+// Demandas postadas pela própria empresa + propostas recebidas nelas. Papel
+// diferente do Mural de Serviços (EmpresaPedidosScreen), que mostra pedidos de
+// CLIENTES na categoria da empresa — aqui a empresa é quem está contratando.
+// Restaurada verbatim do commit anterior à remoção (3a2193d^) — as props
+// onBack/onNovaDemanda/onEditarPerfil já eram opcionais aqui, batem exatamente
+// com o que EmpresaContratanteScreen (logo abaixo) já passa hoje.
+function MinhasDemandasScreen({ userEmail, userName, onBack, onVerPropostas, onOpenChat, onNovaDemanda, onEditarPerfil }) {
+  const [demandas, setDemandas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [candidatos, setCandidatos] = useState({});
+  const [contatos, setContatos] = useState({}); // email do profissional aceito -> whatsapp
+
+  useEffect(() => {
+    if (!userEmail) { setLoading(false); return; }
+    supabase.from("pedidos").select("*").eq("cliente_id", userEmail).eq("publico_alvo", "pro")
+      .order("created_at", { ascending:false })
+      .then(({ data }) => {
+        const lista = data || [];
+        setDemandas(lista);
+        setLoading(false);
+
+        const abertos = lista.filter(p => p.status === "aberto").map(p => p.id);
+        if (abertos.length) {
+          supabase.from("propostas").select("pedido_id").in("pedido_id", abertos).then(({ data: props }) => {
+            const counts = {};
+            (props || []).forEach(p => { counts[p.pedido_id] = (counts[p.pedido_id] || 0) + 1; });
+            setCandidatos(counts);
+          }).catch(() => {});
+        }
+
+        // Whatsapp do profissional aceito — só existe em "usuarios", não em "pedidos".
+        const emails = [...new Set(lista.filter(p => p.status !== "aberto" && p.profissional_aceito).map(p => p.profissional_aceito))];
+        if (emails.length) {
+          supabase.from("usuarios").select("email,whatsapp").in("email", emails).then(({ data: us }) => {
+            const map = {};
+            (us || []).forEach(u => { map[u.email] = u.whatsapp; });
+            setContatos(map);
+          }).catch(() => {});
+        }
+      })
+      .catch(() => setLoading(false));
+  }, [userEmail]);
+
+  const statusLabel = (s) => s === "aberto" ? "Aguardando propostas" : s === "em_andamento" ? "Em andamento" : s === "confirmado" ? "🟢 Serviço agendado" : s === "concluido" ? "Concluído" : s;
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#F8F9FA", paddingBottom:40 }}>
+      <div style={{ background:`linear-gradient(160deg,${B} 0%,#0055d4 100%)`, padding:"14px 18px 16px", borderRadius:"0 0 28px 28px" }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+            <MapPin size={13} color="rgba(255,255,255,.7)" />
+            <div>
+              <p style={{ fontSize:9, color:"rgba(255,255,255,.5)", fontWeight:700, margin:0 }}>Sua Localização</p>
+              <p style={{ fontSize:12, color:"white", fontWeight:800, margin:0 }}>{localStorage.getItem("multiLocation") || "Localização"}</p>
+            </div>
+          </div>
+          {onEditarPerfil && (
+            <button onClick={onEditarPerfil} style={{ background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:32, height:32, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              <Pencil size={14} color="white" />
+            </button>
+          )}
+        </div>
+
+        <div style={{ marginTop:10, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+          <div style={{ width:7, height:7, borderRadius:"50%", background:"#4ade80" }} />
+          <span
+            style={{ fontSize:11, color:"rgba(255,255,255,.7)", fontWeight:700, cursor: onBack ? "pointer" : "default" }}
+            onClick={onBack}>
+            Modo: Contratante{onBack ? " (toque p/ alternar)" : ""}
+          </span>
+        </div>
+      </div>
+
+      {/* Toggle Prestadora/Contratante — só existe pra empresa "pro", que tem
+          os dois modos; "contratante" puro (grátis) não tem pra onde alternar
+          (onBack vem null nesse caso, ver EmpresaContratanteScreen). */}
+      {onBack && (
+        <div style={{ margin:"14px 16px 0", display:"flex", background:"#EEF0F4", borderRadius:14, padding:4, gap:4 }}>
+          <button onClick={onBack} style={{ flex:1, padding:"10px 0", borderRadius:11, border:"none", cursor:"pointer", background:"transparent", color:"#6B7280", fontWeight:800, fontSize:13 }}>
+            Prestadora
+          </button>
+          <button disabled style={{ flex:1, padding:"10px 0", borderRadius:11, border:"none", cursor:"default", background:O, color:"white", fontWeight:900, fontSize:13, boxShadow:`0 3px 10px ${O}55` }}>
+            Contratante
+          </button>
+        </div>
+      )}
+
+      <div style={{ padding:"22px 20px 0" }}>
+        <p style={{ fontSize:13, color:"#888", fontWeight:600, margin:"0 0 3px" }}>Olá, {userName || "Empresa"}</p>
+        <h2 style={{ fontSize:21, fontWeight:900, color:"#1a1a2e", lineHeight:1.3, margin:0 }}>Quem você precisa contratar hoje?</h2>
+      </div>
+
+      {/* Hero — mesmo padrão visual do banner "Multi · Serviços Premium" do
+          ClientHome, com paleta escura/corporativa pro contexto de mão de obra. */}
+      <div style={{ margin:"18px 20px 0", borderRadius:24, overflow:"hidden", position:"relative", background:"#242A31", boxShadow:"0 12px 32px rgba(0,0,0,.22)" }}>
+        <User size={110} color="rgba(255,255,255,.05)" strokeWidth={1.4} style={{ position:"absolute", right:-14, bottom:-18 }} />
+        <div style={{ position:"relative", zIndex:1, padding:"22px 22px 24px" }}>
+          <p style={{ fontSize:10, fontWeight:800, color:"rgba(255,255,255,.5)", textTransform:"uppercase", letterSpacing:2, margin:"0 0 8px" }}>Multi · Mão de Obra</p>
+          <h3 style={{ fontSize:18, fontWeight:900, color:"white", lineHeight:1.4, margin:"0 0 18px", maxWidth:"72%" }}>Publique a vaga, escolha o profissional.</h3>
+          {onNovaDemanda && (
+            <button onClick={onNovaDemanda} style={{ padding:"11px 20px", borderRadius:99, background:O, border:"none", cursor:"pointer", color:"white", fontWeight:900, fontSize:13, display:"flex", alignItems:"center", gap:7, boxShadow:`0 5px 16px ${O}55` }}>
+              <Plus size={15} /> Nova demanda
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div style={{ padding:"24px 16px 0", display:"flex", flexDirection:"column", gap:10 }}>
+        <p style={{ fontSize:12, fontWeight:800, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1.1, margin:"0 0 2px" }}>Demandas ativas</p>
+        {loading && <p style={{ textAlign:"center", color:"#aaa", fontSize:13 }}>Carregando...</p>}
+        {!loading && demandas.length === 0 && (
+          <p style={{ textAlign:"center", color:"#aaa", fontSize:13, padding:"20px 0" }}>Você ainda não publicou nenhuma demanda.</p>
+        )}
+        {demandas.map(d => {
+          const cat = CATS.find(c => c.id === d.categoria);
+          const prazo = PRAZO_OPTIONS.find(p => p.id === d.prazo);
+          const nCandidatos = candidatos[d.id] || 0;
+          const whatsapp = d.profissional_aceito ? contatos[d.profissional_aceito] : null;
+          const liberado = !!(d.aceite_formal_cliente_em && d.aceite_formal_profissional_em);
+
+          // Demanda em aberto — card compacto de uma linha (função · candidatos
+          // · tempo publicado), clicável direto pra tela de propostas.
+          if (d.status === "aberto") {
+            return (
+              <div key={d.id} onClick={() => onVerPropostas(d)} style={{ display:"flex", alignItems:"center", gap:12, background:"white", borderRadius:16, padding:"14px 16px", boxShadow:"0 2px 10px rgba(0,0,0,.06)", cursor:"pointer" }}>
+                <div style={{ width:38, height:38, borderRadius:11, background:cat?.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{cat?.emoji}</div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <p style={{ fontSize:14, fontWeight:800, color:"#1a1a2e", margin:"0 0 2px" }}>{cat?.label || d.categoria}</p>
+                  <p style={{ fontSize:12, color: nCandidatos > 0 ? G : "#9CA3AF", fontWeight:700, margin:0 }}>
+                    {nCandidatos} candidato{nCandidatos === 1 ? "" : "s"} · publicada {formatTimeAgo(d.created_at)}
+                  </p>
+                </div>
+                <span style={{ fontSize:13, fontWeight:900, color:B, flexShrink:0 }}>R$ {d.valor}</span>
+                <ChevronRight size={15} color="#aaa" style={{ flexShrink:0 }} />
+              </div>
+            );
+          }
+
+          return (
+            <div key={d.id} style={{ background:"white", borderRadius:18, padding:16, boxShadow:"0 2px 10px rgba(0,0,0,.06)" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+                <div style={{ width:38, height:38, borderRadius:11, background:cat?.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{cat?.emoji}</div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <p style={{ fontSize:14, fontWeight:800, color:"#1a1a2e", margin:0 }}>{cat?.label || d.categoria}</p>
+                  <p style={{ fontSize:11, color:"#888", margin:0 }}>{statusLabel(d.status)}</p>
+                </div>
+                <span style={{ fontSize:14, fontWeight:900, color:B }}>R$ {d.valor}</span>
+              </div>
+              <p style={{ fontSize:12.5, color:"#555", margin:"0 0 8px", lineHeight:1.5 }}>{d.descricao}</p>
+              {prazo && <p style={{ fontSize:11, color:"#888", fontWeight:700, margin:"0 0 8px" }}>{prazo.emoji} {prazo.label}</p>}
+
+              {d.profissional_nome && (
+                <div style={{ paddingTop:8, borderTop:"1px solid #F0F0F0" }}>
+                  <p style={{ fontSize:12, color:G, fontWeight:800, margin:"0 0 8px" }}>✅ {d.profissional_nome} aceitou essa demanda</p>
+                  <div style={{ display:"flex", gap:8 }}>
+                    <button onClick={() => onOpenChat?.(d)} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 0", borderRadius:12, border:"none", background:`linear-gradient(135deg,${B},#0056c7)`, color:"white", fontWeight:800, fontSize:12, cursor:"pointer" }}>
+                      <MessageCircle size={14} /> Chat
+                    </button>
+                    {liberado ? (
+                      whatsapp && (
+                        <a href={`https://wa.me/55${whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{ flex:1, textDecoration:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:12 }}>
+                          <MessageCircle size={14} /> WhatsApp
+                        </a>
+                      )
+                    ) : (
+                      <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 0", borderRadius:12, background:"#F8F9FA", border:"1px solid #E5E7EB", color:"#aaa", fontWeight:700, fontSize:11 }}>
+                        🔒 Liberado após aceite no chat
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* ───────────────────────── EMPRESA CONTRATANTE — TELA COMPLETA ─────────────── */
 // Home de quem só contrata: tipo_conta "contratante" (grátis, sem toggle) ou
 // "pro" no modo "Contratante" (toggle no topo do EmpresaHomeScreen). Combina
