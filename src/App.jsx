@@ -9084,30 +9084,54 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
             no topo do app leva pro lado profissional já configurado). Opção
             "Empresa" desvia pra CadastroEmpresaScreen (ver o if logo acima
             do return desse componente), nunca chega a renderizar o resto
-            desse formulário. */}
+            desse formulário.
+            Redesenhado 2026-08-18 (achado investigando cadastros que
+            queriam profissional e caíam como cliente, ver
+            multi_cadastro_empresa_home_cliente_bug na memória): antes, a
+            opção selecionada só tinha um fundo azul bem sutil (#EBF4FF) —
+            fácil de não perceber, ainda mais sendo a primeira coisa da tela
+            (antes até de nome/e-mail), o que fazia parecer aviso/banner em
+            vez de pergunta. Agora cada opção tem cor própria (mesma
+            linguagem de cor do RoleSelectScreen: azul=cliente,
+            laranja=profissional), a selecionada ganha borda colorida
+            grossa + barra de destaque no topo + check preenchido em vez de
+            bolinha, e o rótulo acima deixa explícito que dá pra trocar. */}
         <div style={{ marginBottom:22 }}>
-          <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#6B7280", textTransform:"uppercase", letterSpacing:1.1, marginBottom:7 }}>
+          <label style={{ display:"block", fontSize:13, fontWeight:900, color:"#1a1a2e", marginBottom:3 }}>
             Você quer usar o Multi como cliente, profissional, ou os dois?
           </label>
-          <div style={{ background:"white", border:"1.5px solid #EBEBEB", borderRadius:14, overflow:"hidden" }}>
+          <p style={{ fontSize:11.5, color:"#9CA3AF", margin:"0 0 10px" }}>
+            Confira a opção marcada abaixo — toque numa diferente pra trocar.
+          </p>
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {[
-              { val:"cliente",      icon:"🏠", label:"Só cliente",       sub:"Publico pedidos e contrato profissionais (grátis)" },
-              { val:"profissional", icon:"🔧", label:"Só profissional",  sub:"Recebo pedidos e ganho oportunidades (a partir de R$29,90/mês)" },
-              { val:"ambos",        icon:"🔁", label:"Os dois!",         sub:"Contrato quando precisar e também presto serviço (a partir de R$29,90/mês)" },
-              { val:"empresa",      icon:"🏢", label:"Tenho uma empresa", sub:"Cadastro próprio — CNPJ, presta serviço e/ou contrata profissionais" },
-            ].map((opt, i, arr) => (
-              <div key={opt.val} onClick={() => setTipoUso(opt.val)}
-                style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 14px", cursor:"pointer", borderBottom: i < arr.length - 1 ? "1px solid #F0F0F0" : "none", background: tipoUso === opt.val ? "#EBF4FF" : "white", transition:"background .15s" }}>
-                <span style={{ fontSize:22, flexShrink:0 }}>{opt.icon}</span>
-                <div style={{ flex:1 }}>
-                  <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e", margin:"0 0 2px" }}>{opt.label}</p>
-                  <p style={{ fontSize:11, color:"#9CA3AF", margin:0 }}>{opt.sub}</p>
+              { val:"cliente",      icon:"🏠", label:"Só cliente",        sub:"Publico pedidos e contrato profissionais (grátis)", accent:B },
+              { val:"profissional", icon:"🔧", label:"Só profissional",   sub:"Recebo pedidos e ganho oportunidades (a partir de R$29,90/mês)", accent:O },
+              { val:"ambos",        icon:"🔁", label:"Os dois!",          sub:"Contrato quando precisar e também presto serviço (a partir de R$29,90/mês)", accent:"#7C3AED" },
+              { val:"empresa",      icon:"🏢", label:"Tenho uma empresa", sub:"Cadastro próprio — CNPJ, presta serviço e/ou contrata profissionais", accent:"#1a1a2e" },
+            ].map((opt) => {
+              const selecionado = tipoUso === opt.val;
+              return (
+                <div key={opt.val} onClick={() => setTipoUso(opt.val)}
+                  style={{
+                    position:"relative", display:"flex", alignItems:"center", gap:12,
+                    padding:"14px 14px 14px 16px", cursor:"pointer", overflow:"hidden",
+                    background: selecionado ? `${opt.accent}0F` : "white",
+                    border: selecionado ? `2px solid ${opt.accent}` : "1.5px solid #EBEBEB",
+                    borderRadius:14, transition:"all .15s",
+                  }}>
+                  {selecionado && <div style={{ position:"absolute", top:0, left:0, bottom:0, width:5, background:opt.accent }} />}
+                  <span style={{ fontSize:22, flexShrink:0 }}>{opt.icon}</span>
+                  <div style={{ flex:1 }}>
+                    <p style={{ fontSize:13.5, fontWeight:900, color: selecionado ? opt.accent : "#1a1a2e", margin:"0 0 2px" }}>{opt.label}</p>
+                    <p style={{ fontSize:11, color:"#9CA3AF", margin:0 }}>{opt.sub}</p>
+                  </div>
+                  <div style={{ width:23, height:23, borderRadius:"50%", border: selecionado ? `2px solid ${opt.accent}` : "2px solid #D1D5DB", background: selecionado ? opt.accent : "white", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .15s" }}>
+                    {selecionado && <Check size={13} color="white" strokeWidth={3.5} />}
+                  </div>
                 </div>
-                <div style={{ width:20, height:20, borderRadius:"50%", border:(tipoUso===opt.val?"2px solid "+B:"2px solid #D1D5DB"), background: tipoUso === opt.val ? B : "white", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .15s" }}>
-                  {tipoUso === opt.val && <div style={{ width:8, height:8, borderRadius:"50%", background:"white" }} />}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -11774,7 +11798,16 @@ const renderContent = () => {
       if (screen === "chat")   return <ChatInbox myServices={meusPedidosComCandidatos} onOpenChat={openChatFromService} />;
       if (screen === "orders") return <MyServicesScreen initialTab="aberto" myServices={meusPedidosComCandidatos} onViewPropostas={(s)=>{setSelected(s);setScreen("propostas");}} onOpenService={s => abrirDetalheServico(s)} onOpenChat={openChatFromService} onCancelarPedido={(s) => { if (window.confirm('Cancelar esse pedido? O profissional será avisado.')) { handlePedidoStatusChange(s.id, 'cancelado'); showToast?.('Pedido cancelado.', '#DC2626'); } }} isPro={isPro} />;
       if (screen === "profile") {
-        if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
+        // role-select (não welcome direto) — achado 2026-08-18: esse é o
+        // ponto de entrada mais comum/genérico de cadastro (aba Perfil,
+        // botão "Entrar ou Criar Conta"), mas ia direto pro WelcomeScreen,
+        // que é 100% linguagem de cliente ("acompanhar pedidos e falar com
+        // profissionais") e nunca oferece a opção profissional — quem foi
+        // instruído a se cadastrar como profissional e usou esse botão
+        // (o mais óbvio da tela) nunca via a pergunta de intenção, e o
+        // formulário abria com "Só cliente" pré-marcado por padrão. Ver
+        // multi_cadastro_empresa_home_cliente_bug na memória.
+        if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("role-select")} />;
         return <ProfileScreen role="client" userName={userName} userEmail={userEmail} isPro={false} showRankingGlobal={showRankingGlobal} onClearRankingGlobal={() => setShowRankingGlobal(false)} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenAdmin={() => setShowAdmin(true)} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
       }
       if (screen === "propostas" && selected) return <PropostasScreen pedido={selected} onBack={()=>setScreen("orders")} onAceitarProposta={handleAceitarProposta} />;
@@ -11873,7 +11906,11 @@ const renderContent = () => {
     if (screen === "wallet") return <WalletScreen onBack={() => setScreen("profile")} pedidos={meusGanhos} />;
     if (screen === "comprarmoedas") return <ComprarMoedasScreen userEmail={userEmail} userName={userName} onBack={() => setScreen("profile")} showToast={showToast} onSuccess={() => carregarSaldoMoedas(userEmail)} />;
     if (screen === "profile") {
-      if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("welcome")} />;
+      // role-select — mesmo motivo do call site "client" acima. Esse aqui é
+      // alcançado navegando como convidado no modo Profissional (toggle do
+      // GuestHeader); mais um motivo pra não empurrar quem já sinalizou
+      // interesse profissional pra uma tela só de cliente.
+      if (!isLoggedIn) return <GuestProfileTab onLogin={() => setAuthScreen("role-select")} />;
       return <ProfileScreen role="professional" userName={userName} userEmail={userEmail} isPro={isPro} plano={plano} planoStatus={planoStatus} planoExpiraEm={planoExpiraEm} planoInicio={planoInicio} onUpgrade={() => setScreen("upgrade")} onLogout={handleLogout} showToast={showToast} onOpenWallet={() => setScreen("wallet")} meusGanhos={meusGanhos} saldoMoedas={saldoMoedas} onOpenComprarMoedas={() => setScreen("comprarmoedas")} onOpenAdmin={() => setShowAdmin(true)} docStatus={docStatus} onDocStatusChange={(id, st) => setDocStatus(d => ({ ...d, [id]: st }))} onSwitchRole={(r) => { setRole(r); setUserRole(r); try { const s = JSON.parse(localStorage.getItem("multiSession")||"{}"); s.role=r; localStorage.setItem("multiSession",JSON.stringify(s)); } catch {} if (userEmail) supabase.from("usuarios").update({ role:r }).eq("email", userEmail).then(()=>{}).catch(()=>{}); setScreen("home"); }} />;
     }
     if (screen === "service" && selected) return <ServiceDetailPro key={selected.id} service={selected} onBack={() => setScreen("home")} isPro={isPro} onUpgrade={() => setScreen("upgrade")} onOpenPinEntry={() => setScreen("pinjob")} onCancelarPedido={handleCancelarPedidoPosAceite} onSolicitarChegada={handleSolicitarChegada} onConfirmarInicio={handleConfirmarInicio} showToast={showToast} onAvaliar={(svc)=>{ setAvaliacaoSvc(svc); setScreen("avaliacao"); }} />;
@@ -11943,7 +11980,14 @@ const renderContent = () => {
         onBack={() => setAuthScreen(null)}
         onLogin={() => setAuthScreen("login")}
         onSelect={(roleId) => {
-          if (roleId === "cliente") { setAuthScreen("welcome"); return; }
+          // setSignupRole explícito nos dois ramos (não só "profissional")
+          // — achado 2026-08-18 investigando cadastros que queriam
+          // profissional e caíam como cliente: sem isso, signupRole podia
+          // ficar "grudado" em "professional" de uma navegação anterior
+          // (ex: usuária que abriu role-select, olhou "Quero trabalhar",
+          // voltou, e escolheu "cliente" depois) e vazar pro formulário
+          // errado. Ver multi_cadastro_empresa_home_cliente_bug na memória.
+          if (roleId === "cliente") { setSignupRole("client"); setAuthScreen("welcome"); return; }
           if (roleId === "profissional") { setSignupRole("professional"); setAuthScreen("register"); return; }
           if (roleId === "empresa") { setAuthScreen("cadastro-empresa"); return; }
         }}
