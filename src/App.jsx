@@ -5739,12 +5739,20 @@ function DocumentacaoSection({ showToast, docStatus: externalDocStatus, onDocSta
 
         return (
           <div key={doc.id}>
-            {/* hidden file input — accepts images + PDF */}
+            {/* hidden file input — accepts images + PDF.
+                Achado 2026-08-18 (Fabio reportou o campo "indo direto pra
+                foto" em vez de abrir o seletor normal): capture="environment"
+                força o navegador mobile a pular o seletor de arquivo e abrir
+                a câmera traseira direto — incompatível com o accept incluir
+                application/pdf (câmera nunca produz PDF). Removido; sem
+                capture, o mobile mostra o seletor normal do sistema (que já
+                inclui "Câmera" como uma das opções, junto de galeria/
+                arquivos/PDF), não perde a opção de tirar foto, só para de
+                forçá-la como única. */}
             <input
               ref={fileRefs[doc.id]}
               type="file"
               accept="image/*,application/pdf"
-              capture="environment"
               style={{ display:"none" }}
               onChange={e => handleFileSelect(doc.id, e)}
             />
