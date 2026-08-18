@@ -171,6 +171,11 @@ const CATS = [
   { id:"tecnico_de_caca_vazamento", label:"Técnico de Caça-Vazamento", emoji:"🔧", star:4.6, bg:"#E8F4FF", dot:"#0070F3", grupo:"Hidráulica e Desentupimento" },
   { id:"hidrojatista", label:"Hidrojatista", emoji:"🔧", star:4.6, bg:"#E8F4FF", dot:"#0070F3", grupo:"Hidráulica e Desentupimento" },
   { id:"tecnico_de_bombas", label:"Técnico de Bombas", emoji:"🔧", star:4.6, bg:"#E8F4FF", dot:"#0070F3", grupo:"Hidráulica e Desentupimento" },
+  // ── Gás e Fogão ──
+  { id:"conserto_de_fogao", label:"Conserto de Fogão em Geral", emoji:"🔥", star:4.6, bg:"#FFF3E0", dot:"#EF6C00", grupo:"Gás e Fogão" },
+  { id:"conversao_de_gas", label:"Conversão de Gás GN e GLP", emoji:"🔥", star:4.6, bg:"#FFF3E0", dot:"#EF6C00", grupo:"Gás e Fogão" },
+  { id:"vazamento_de_gas", label:"Vazamento de Gás", emoji:"🔥", star:4.6, bg:"#FFF3E0", dot:"#EF6C00", grupo:"Gás e Fogão" },
+  { id:"manutencao_de_fogoes", label:"Manutenção de Fogões", emoji:"🔥", star:4.6, bg:"#FFF3E0", dot:"#EF6C00", grupo:"Gás e Fogão" },
   // ── Móveis, Marcenaria e Montagem ──
   { id:"montador_de_moveis", label:"Montador de Móveis", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Móveis, Marcenaria e Montagem" },
   { id:"marceneiro", label:"Marceneiro", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Móveis, Marcenaria e Montagem" },
@@ -337,6 +342,7 @@ const CAT_GRUPOS = [
   "Reformas e Construção",
   "Elétrica e Automação",
   "Hidráulica e Desentupimento",
+  "Gás e Fogão",
   "Móveis, Marcenaria e Montagem",
   "Limpeza e Higienização",
   "Climatização e Refrigeração",
