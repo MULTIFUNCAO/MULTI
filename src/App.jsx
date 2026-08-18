@@ -8006,12 +8006,18 @@ const ROLE_OPTIONS = [
     desc: "Receba oportunidades de serviços e conquiste novos clientes.",
     tag: "A partir de R$ 29,90/mês", tagBg:`${O}22`, tagBorder:"transparent", tagColor:O,
   },
-  // Card "Quero crescer minha empresa" (id "empresa", cadastro de empresa
-  // parceira) removido daqui por ora — não vamos trabalhar com esse tipo de
-  // cadastro por enquanto. A tela CadastroEmpresaScreen e a rota
-  // authScreen==="cadastro-empresa" continuam no código (só sem ponto de
-  // entrada na UI); ver ROLE_OPTIONS no histórico do git se precisar
-  // reativar o card.
+  // Card "Quero crescer minha empresa" restaurado 2026-08-18 (removido em
+  // a7de4c4, 2026-08-08 — "não vamos trabalhar com cadastro de empresa
+  // parceira por enquanto"). Volta a existir ponto de entrada pra
+  // CadastroEmpresaScreen aqui e em RegisterScreen (rádio "Tenho uma
+  // empresa").
+  {
+    id: "empresa", icon: Briefcase, accent: "#1a1a2e", accentDeep: "#0A2A6B",
+    title: "Quero crescer minha empresa",
+    hook: "Encontre clientes e profissionais para fazer sua operação acontecer.",
+    desc: "Publique demandas, encontre mão de obra e amplie suas oportunidades.",
+    tag: "Grátis para cadastrar", tagBg:"#1a1a2e14", tagBorder:"transparent", tagColor:"#1a1a2e",
+  },
 ];
 
 function RoleSelectScreen({ onSelect, onLogin, onBack }) {
@@ -9029,6 +9035,16 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
     );
   }
 
+  // Empresa tem cadastro próprio (CNPJ, razão social, tipo_conta — não é só
+  // mais um "role" dentro desse formulário de pessoa física). Escolher essa
+  // opção no rádio abaixo troca a tela inteira pra CadastroEmpresaScreen em
+  // vez de seguir o resto do FAST FORM; "voltar" só desfaz essa escolha,
+  // volta pro rádio, não sai do cadastro inteiro. Reativado 2026-08-18 —
+  // ver ROLE_OPTIONS acima pro card equivalente em RoleSelectScreen.
+  if (tipoUso === "empresa") {
+    return <CadastroEmpresaScreen onBack={() => setTipoUso(initialRole === "professional" ? "profissional" : "cliente")} showToast={showToast} />;
+  }
+
   /* ── FAST FORM ── */
   return (
     <div style={{ minHeight:"100vh", background:"#F8F9FA", display:"flex", flexDirection:"column" }}>
@@ -9055,7 +9071,10 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
             pelas mesmas etapas extras de profissional (plano, categoria,
             termo) logo depois desse formulário — ver step "plano" acima —
             e ainda assim abre a sessão no modo Cliente por padrão (o toggle
-            no topo do app leva pro lado profissional já configurado). */}
+            no topo do app leva pro lado profissional já configurado). Opção
+            "Empresa" desvia pra CadastroEmpresaScreen (ver o if logo acima
+            do return desse componente), nunca chega a renderizar o resto
+            desse formulário. */}
         <div style={{ marginBottom:22 }}>
           <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#6B7280", textTransform:"uppercase", letterSpacing:1.1, marginBottom:7 }}>
             Você quer usar o Multi como cliente, profissional, ou os dois?
@@ -9065,6 +9084,7 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
               { val:"cliente",      icon:"🏠", label:"Só cliente",       sub:"Publico pedidos e contrato profissionais (grátis)" },
               { val:"profissional", icon:"🔧", label:"Só profissional",  sub:"Recebo pedidos e ganho oportunidades (a partir de R$29,90/mês)" },
               { val:"ambos",        icon:"🔁", label:"Os dois!",         sub:"Contrato quando precisar e também presto serviço (a partir de R$29,90/mês)" },
+              { val:"empresa",      icon:"🏢", label:"Tenho uma empresa", sub:"Cadastro próprio — CNPJ, presta serviço e/ou contrata profissionais" },
             ].map((opt, i, arr) => (
               <div key={opt.val} onClick={() => setTipoUso(opt.val)}
                 style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 14px", cursor:"pointer", borderBottom: i < arr.length - 1 ? "1px solid #F0F0F0" : "none", background: tipoUso === opt.val ? "#EBF4FF" : "white", transition:"background .15s" }}>
