@@ -10919,6 +10919,24 @@ export default function App() {
   };
   useEffect(() => { refreshMeusPedidos(); }, [screen, userEmail, role]);
 
+  // Deep link do site institucional (public/site.html, botões "Sou
+  // profissional"/"Quero ser Multi") — ?cadastro=profissional leva direto
+  // pro formulário de cadastro já com a intenção profissional certa, sem
+  // passar pela pergunta "contratar ou trabalhar?" de novo: a intenção já
+  // veio explícita do próprio botão que a pessoa clicou no site (mesmo
+  // tratamento que RoleSelectScreen dá pro card "Quero trabalhar" — ver
+  // multi_cadastro_empresa_home_cliente_bug na memória). Só age pra quem
+  // chega deslogado; se a pessoa já tiver sessão salva, ignora (não faz
+  // sentido reabrir cadastro por cima de uma conta já logada).
+  useEffect(() => {
+    if (isLoggedIn) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("cadastro") !== "profissional") return;
+    setSignupRole("professional");
+    setAuthScreen("register");
+    window.history.replaceState({}, "", window.location.pathname);
+  }, [isLoggedIn]);
+
   // Deep link do lembrete pós-horário (Fase 4): o push "foi realizado?" leva
   // direto pra tela de confirmar conclusão. Não precisa de dado extra na
   // notificação — cada dispositivo já sabe seu próprio papel no pedido.

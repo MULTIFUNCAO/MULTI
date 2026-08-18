@@ -321,7 +321,7 @@
   .app-modal-badges{display:flex; flex-direction:column; gap:10px; margin-top:24px;}
   .store-badge-lg{display:flex; align-items:center; gap:12px; background:#fff; color:var(--navy); padding:13px 18px; border-radius:14px; transition:transform .2s;}
   .store-badge-lg:hover{transform:translateY(-2px);}
-  .store-badge-lg.soon{opacity:.55; pointer-events:none;}
+  .store-badge-lg.soon{opacity:.55; pointer-events:none; cursor:not-allowed;}
   .store-badge-lg .si{font-size:22px;}
   .store-badge-lg small{display:block; font-size:9.5px; color:var(--muted); font-family:var(--mono);}
   .store-badge-lg strong{font-size:15px; font-family:var(--font);}
@@ -371,7 +371,7 @@
     <p class="hero-desc">Casa, manutenção, beleza, automotivo, empresas e muito mais.</p>
     <div class="hero-actions">
       <a href="#categorias" class="btn btn-orange cta-download-app">Pedir um serviço</a>
-      <a href="#profissionais" class="btn btn-outline-navy cta-download-app" data-context="pro">Sou profissional</a>
+      <a href="https://multifuncao.com.br/?cadastro=profissional" class="btn btn-outline-navy">Sou profissional</a>
     </div>
 
     <div class="hero-scale">
@@ -476,7 +476,7 @@
     <span class="eyebrow light">Você faz</span>
     <h3>A Multi encontra quem precisa.</h3>
     <p>Mostre o que você sabe fazer e encontre novas oportunidades.</p>
-    <a href="#" class="btn btn-outline-white cta-download-app" data-context="pro">Quero ser Multi</a>
+    <a href="https://multifuncao.com.br/?cadastro=profissional" class="btn btn-outline-white">Quero ser Multi</a>
   </div>
 </section>
 
@@ -596,7 +596,7 @@
     <p class="sub">Você pede. Alguém resolve.</p>
     <div class="cta-actions">
       <a href="#categorias" class="btn btn-white cta-download-app">Pedir um serviço</a>
-      <a href="#profissionais" class="btn btn-outline-white cta-download-app" data-context="pro">Sou profissional</a>
+      <a href="https://multifuncao.com.br/?cadastro=profissional" class="btn btn-outline-white">Sou profissional</a>
     </div>
   </div>
 </section>
@@ -635,7 +635,7 @@
       <span class="si">▶</span>
       <span><small>Em breve no</small><strong>Google Play</strong></span>
     </a>
-    <a href="#" target="_blank" rel="noopener" class="store-badge-lg soon">
+    <a role="link" aria-disabled="true" tabindex="-1" class="store-badge-lg soon">
       <span class="si">🍎</span>
       <span><small>Em breve na</small><strong>App Store</strong></span>
     </a>
