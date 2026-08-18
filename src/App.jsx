@@ -11131,6 +11131,53 @@ export default function App() {
   };
 
   const handleLoginComplete = (name = "", email = "", isNewAccount = false, location = "", registeredRole = "", whatsapp = "", dbRole = null, isHybrid = false) => {
+    // Preserva o token/refreshToken já salvo por LoginScreen ou pelo
+    // cadastro (ver /api/auth/login, /api/auth/cadastro).
+    let tokenPrevio = {};
+    try {
+      const prev = JSON.parse(localStorage.getItem("multiSession") || "{}") || {};
+      if (prev.token) tokenPrevio = { token: prev.token, refreshToken: prev.refreshToken };
+    } catch {}
+
+    // CRÍTICO (achado 2026-08-12, ver multi_login_hang_critico na
+    // memória): setSession() e qualquer supabase.from(...) (inclusive a
+    // releitura de role logo abaixo e o upsert dentro de finishLogin)
+    // disputam o MESMO lock interno do GoTrueClient (setSession/getSession
+    // serializam por storageKey, lockAcquireTimeout = 5s antes de "roubar"
+    // o lock — ver node_modules/@supabase/auth-js/dist/.../lib/locks.js).
+    // Virar isLoggedIn/userEmail/role ANTES de setSession() terminar
+    // dispara na mesma hora uma cascata de efeitos ([userEmail,role] →
+    // carregarPlano, propostas, notificações, meusPedidos...), cada um
+    // chamando getSession() por baixo dos panos pra montar o header de
+    // auth — todos competindo pelo lock ao mesmo tempo que setSession()
+    // ainda está em voo. Num cliente Supabase "frio" (primeira chamada de
+    // auth desta aba — exatamente o caso de login puro numa sessão nova,
+    // sem cache) isso empilha vários ciclos de timeout+"roubo de lock",
+    // travando a aba por dezenas de segundos (reproduzido ao vivo: 40s+ até
+    // destravar sozinho). Fix: espera setSession() terminar ANTES de virar
+    // o estado que dispara a cascata — timeout de 3s como rede de segurança
+    // pra não trocar "às vezes trava" por "sempre espera pra sempre" se
+    // setSession() genuinamente falhar.
+    //
+    // MOVIDO PRA CÁ, pra ANTES da releitura de role (achado 2026-08-18, ver
+    // multi_cadastro_empresa_home_cliente_bug na memória): esse
+    // setSessionPromise antes só existia dentro de finishLogin, chamado
+    // DEPOIS da query "supabase.from('usuarios').select(...)" logo abaixo
+    // já ter rodado — ou seja, a releitura de role SEMPRE disparava com o
+    // client Supabase ainda anônimo (sem o JWT real aplicado). RLS bloqueia
+    // SELECT anônimo em "usuarios" por completo, então "data" sempre vinha
+    // null e todo login de conta empresa/profissional caía no fallback
+    // "client" — não era uma corrida de sorte, a ordem estava sempre
+    // errada. Agora setSession() é aguardado ANTES da releitura, não só
+    // antes de virar o state.
+    const setSessionPromise = tokenPrevio.token
+      ? Promise.race([
+          supabase.auth.setSession({ access_token: tokenPrevio.token, refresh_token: tokenPrevio.refreshToken })
+            .catch(err => console.error("[auth] setSession falhou:", err.message)),
+          new Promise(resolve => setTimeout(resolve, 3000)),
+        ])
+      : Promise.resolve();
+
     const finishLogin = (resolvedRole, nomeSalvo) => {
       // Nome de exibição: no cadastro, usa o que a pessoa digitou em "Nome
       // Completo" (única fonte confiável). Em logins seguintes, prioriza o
@@ -11142,137 +11189,108 @@ export default function App() {
       const nomeFinal = isNewAccount ? name : (nomeSalvo || name);
       const firstName = (nomeFinal || "").trim().split(/\s+/)[0];
 
-      // Preserva o token/refreshToken já salvo por LoginScreen ou pelo
-      // cadastro (ver /api/auth/login, /api/auth/cadastro).
-      let tokenPrevio = {};
+      // setSessionPromise já foi aguardado antes da releitura de role (ver
+      // comentário acima) — chegou até aqui, então já resolveu; só falta
+      // aplicar o resultado ao state.
+      setIsLoggedIn(true);
+      setAuthScreen(null);
+      if (nomeFinal) setUserName(firstName);
+      if (email)    setUserEmail(email);
+      if (location && location !== "sua região") setUserLocation(location);
+      setUserRole(resolvedRole);
+      setRole(resolvedRole);
+
+      // Save session to localStorage — persists across page reloads
+      let upsertPromise = Promise.resolve();
       try {
-        const prev = JSON.parse(localStorage.getItem("multiSession") || "{}") || {};
-        if (prev.token) tokenPrevio = { token: prev.token, refreshToken: prev.refreshToken };
+        const session = { name: firstName, email, whatsapp, location, role: resolvedRole, ...tokenPrevio };
+        localStorage.setItem("multiSession", JSON.stringify(session));
+        localStorage.setItem("multiUser",    JSON.stringify(session));
+        // "role" só entra nesse upsert na criação da conta (isNewAccount).
+        // Em logins seguintes, gravar role aqui sobrescrevia o valor real do
+        // Supabase com o que estava cacheado na sessão local, revertendo
+        // silenciosamente contas que tinham virado "professional" depois do
+        // cadastro original. Troca de role fora do cadastro só acontece pelo
+        // fluxo explícito (onSwitchRole, "Sou profissional"/"Sou cliente").
+        const upsertPayload = { email: session.email };
+        // Cadastro novo por aqui é sempre client/professional (empresa tem seu próprio
+        // fluxo/upsert em CadastroEmpresaScreen) — zera empresa_id pra não herdar o
+        // vínculo de um teste/conta anterior que usou o mesmo e-mail como empresa,
+        // o que travava esse e-mail pra sempre como "empresa" no login (ver abaixo).
+        // "name" segue o mesmo raciocínio: só grava na criação da conta.
+        // "dbRole" existe pra conta "cliente e profissional" (RegisterScreen,
+        // pergunta "cliente/profissional/os dois"): a sessão abre no modo
+        // Cliente (session.role), mas usuarios.role grava "professional" de
+        // verdade — sem isso a conta não aparece no Banco de Profissionais
+        // mesmo tendo completado categoria/termo/plano no cadastro.
+        if (isNewAccount) { upsertPayload.name = session.name; upsertPayload.role = dbRole || session.role || "client"; upsertPayload.empresa_id = null; if (isHybrid) upsertPayload.is_hybrid = true; }
+        // whatsapp/city só entram no payload quando vêm com valor de verdade
+        // (cadastro novo, via fast-form). Login normal sempre chama isso com
+        // whatsapp="" e location="" (LoginScreen não coleta nenhum dos dois),
+        // e incluir a chave no upsert com "" -> null sobrescrevia o que já
+        // estava salvo em ProfileScreen a cada login — o telefone cadastrado
+        // depois do cadastro original sumia toda vez que a sessão precisava
+        // logar de novo (ex: aba anônima, sessão expirada, outro navegador).
+        if (session.whatsapp) upsertPayload.whatsapp = session.whatsapp;
+        if (session.location) upsertPayload.city = session.location;
+        // Aguarda o upsert terminar antes de ir pra Home — sem isso, ia pra
+        // "home" na hora (setScreen síncrono) enquanto o upsert ainda estava
+        // em voo, e qualquer tela que lê usuarios.role assim que monta (ex:
+        // banner "Vire Profissional" do ClientHome) corria contra esse write
+        // e pegava o valor antigo, mesmo o registro certo ficando garantido
+        // no banco poucos instantes depois (achado testando "ambos" ao vivo).
+        upsertPromise = supabase.from("usuarios").upsert(upsertPayload, { onConflict: "email" }).then(()=>{}).catch(()=>{});
       } catch {}
 
-      // CRÍTICO (achado 2026-08-12, ver multi_login_hang_critico na
-      // memória): setSession() e qualquer supabase.from(...) (inclusive o
-      // upsert logo abaixo) disputam o MESMO lock interno do GoTrueClient
-      // (setSession/getSession serializam por storageKey, lockAcquireTimeout
-      // = 5s antes de "roubar" o lock — ver node_modules/@supabase/auth-js/
-      // dist/.../lib/locks.js). Virar isLoggedIn/userEmail/role ANTES de
-      // setSession() terminar dispara na mesma hora uma cascata de efeitos
-      // ([userEmail,role] → carregarPlano, propostas, notificações,
-      // meusPedidos...), cada um chamando getSession() por baixo dos panos
-      // pra montar o header de auth — todos competindo pelo lock ao mesmo
-      // tempo que setSession() ainda está em voo. Num cliente Supabase
-      // "frio" (primeira chamada de auth desta aba — exatamente o caso de
-      // login puro numa sessão nova, sem cache) isso empilha vários ciclos
-      // de timeout+"roubo de lock", travando a aba por dezenas de segundos
-      // (reproduzido ao vivo: 40s+ até destravar sozinho). No cadastro isso
-      // nunca acontecia porque, até chegar aqui, as telas intermediárias
-      // (plano/completar perfil) já tinham "esquentado" o client Supabase
-      // bem antes, então o lock já estava livre. Fix: espera setSession()
-      // terminar ANTES de virar o estado que dispara a cascata — timeout de
-      // 3s como rede de segurança pra não trocar "às vezes trava" por
-      // "sempre espera pra sempre" se setSession() genuinamente falhar.
-      const setSessionPromise = tokenPrevio.token
-        ? Promise.race([
-            supabase.auth.setSession({ access_token: tokenPrevio.token, refresh_token: tokenPrevio.refreshToken })
-              .catch(err => console.error("[auth] setSession falhou:", err.message)),
-            new Promise(resolve => setTimeout(resolve, 3000)),
-          ])
-        : Promise.resolve();
-
-      setSessionPromise.then(() => {
-        setIsLoggedIn(true);
-        setAuthScreen(null);
-        if (nomeFinal) setUserName(firstName);
-        if (email)    setUserEmail(email);
-        if (location && location !== "sua região") setUserLocation(location);
-        setUserRole(resolvedRole);
-        setRole(resolvedRole);
-
-        // Save session to localStorage — persists across page reloads
-        let upsertPromise = Promise.resolve();
-        try {
-          const session = { name: firstName, email, whatsapp, location, role: resolvedRole, ...tokenPrevio };
-          localStorage.setItem("multiSession", JSON.stringify(session));
-          localStorage.setItem("multiUser",    JSON.stringify(session));
-          // "role" só entra nesse upsert na criação da conta (isNewAccount).
-          // Em logins seguintes, gravar role aqui sobrescrevia o valor real do
-          // Supabase com o que estava cacheado na sessão local, revertendo
-          // silenciosamente contas que tinham virado "professional" depois do
-          // cadastro original. Troca de role fora do cadastro só acontece pelo
-          // fluxo explícito (onSwitchRole, "Sou profissional"/"Sou cliente").
-          const upsertPayload = { email: session.email };
-          // Cadastro novo por aqui é sempre client/professional (empresa tem seu próprio
-          // fluxo/upsert em CadastroEmpresaScreen) — zera empresa_id pra não herdar o
-          // vínculo de um teste/conta anterior que usou o mesmo e-mail como empresa,
-          // o que travava esse e-mail pra sempre como "empresa" no login (ver abaixo).
-          // "name" segue o mesmo raciocínio: só grava na criação da conta.
-          // "dbRole" existe pra conta "cliente e profissional" (RegisterScreen,
-          // pergunta "cliente/profissional/os dois"): a sessão abre no modo
-          // Cliente (session.role), mas usuarios.role grava "professional" de
-          // verdade — sem isso a conta não aparece no Banco de Profissionais
-          // mesmo tendo completado categoria/termo/plano no cadastro.
-          if (isNewAccount) { upsertPayload.name = session.name; upsertPayload.role = dbRole || session.role || "client"; upsertPayload.empresa_id = null; if (isHybrid) upsertPayload.is_hybrid = true; }
-          // whatsapp/city só entram no payload quando vêm com valor de verdade
-          // (cadastro novo, via fast-form). Login normal sempre chama isso com
-          // whatsapp="" e location="" (LoginScreen não coleta nenhum dos dois),
-          // e incluir a chave no upsert com "" -> null sobrescrevia o que já
-          // estava salvo em ProfileScreen a cada login — o telefone cadastrado
-          // depois do cadastro original sumia toda vez que a sessão precisava
-          // logar de novo (ex: aba anônima, sessão expirada, outro navegador).
-          if (session.whatsapp) upsertPayload.whatsapp = session.whatsapp;
-          if (session.location) upsertPayload.city = session.location;
-          // Aguarda o upsert terminar antes de ir pra Home — sem isso, ia pra
-          // "home" na hora (setScreen síncrono) enquanto o upsert ainda estava
-          // em voo, e qualquer tela que lê usuarios.role assim que monta (ex:
-          // banner "Vire Profissional" do ClientHome) corria contra esse write
-          // e pegava o valor antigo, mesmo o registro certo ficando garantido
-          // no banco poucos instantes depois (achado testando "ambos" ao vivo).
-          upsertPromise = supabase.from("usuarios").upsert(upsertPayload, { onConflict: "email" }).then(()=>{}).catch(()=>{});
-        } catch {}
-
-        upsertPromise.then(() => {
-          setScreen("home");
-          // Plano real (assinaturas) é carregado pelo efeito de [userEmail, role]
-          // logo abaixo — dispara tanto aqui (login) quanto na restauração de
-          // sessão do localStorage num reload de página.
-          if (isNewAccount) {
-            setTimeout(() => sendWelcomeEmail({ name: nomeFinal, email, role: resolvedRole }), 400);
-          }
-          if (pendingIntent?.fn) {
-            const fn = pendingIntent.fn;
-            setPendingIntent(null);
-            setTimeout(fn, 80);
-          }
-        });
+      upsertPromise.then(() => {
+        setScreen("home");
+        // Plano real (assinaturas) é carregado pelo efeito de [userEmail, role]
+        // logo abaixo — dispara tanto aqui (login) quanto na restauração de
+        // sessão do localStorage num reload de página.
+        if (isNewAccount) {
+          setTimeout(() => sendWelcomeEmail({ name: nomeFinal, email, role: resolvedRole }), 400);
+        }
+        if (pendingIntent?.fn) {
+          const fn = pendingIntent.fn;
+          setPendingIntent(null);
+          setTimeout(fn, 80);
+        }
       });
     };
 
     const fallbackRole = registeredRole || userRole;
-    if (!email) { finishLogin(fallbackRole); return; }
 
-    // Uma conta com empresa_id vinculado é sempre "empresa", mesmo que o role
-    // devolvido pelo login/cadastro diga outra coisa — evita que login/registro
-    // regrave "client"/"professional" por cima de uma conta de empresa parceira.
-    // "name" vem junto pelo mesmo motivo do comentário em finishLogin.
-    //
-    // "role" também vem junto pelo mesmo motivo (achado 2026-08-15): o backend
-    // de login (/api/auth/login em MULTI-BACKEND/server.js) lê o perfil de
-    // "users" — tabela morta, 0 linhas, mesma raiz do bug já documentado em
-    // multi_admin_dashboard_endpoint_mismatch — então "registeredRole" que
-    // chega aqui via LoginScreen é sempre "client", nunca o role real da
-    // conta. Sem essa releitura, todo profissional (não-híbrido) caía na home
-    // de Cliente a cada login e precisava alternar manualmente toda vez em
-    // Perfil → "Alternar para Profissional". Só aplica em login de conta
-    // JÁ EXISTENTE (!isNewAccount) — cadastro novo continua decidido por
-    // dbRole/fallbackRole como antes, a linha do upsert logo abaixo.
-    supabase.from("usuarios").select("empresa_id,name,role").eq("email", email).maybeSingle()
-      .then(({ data }) => {
-        const resolvedRole = data?.empresa_id
-          ? "empresa"
-          : (!isNewAccount && data?.role) ? data.role : fallbackRole;
-        finishLogin(resolvedRole, data?.name);
-      })
-      .catch(() => finishLogin(fallbackRole));
+    // A releitura de role (e o setSession acima) só fazem sentido depois
+    // que setSessionPromise resolveu — ver o comentário grande lá em cima
+    // (achado 2026-08-18) sobre por que isso não podia mais rodar solto,
+    // fora do .then().
+    setSessionPromise.then(() => {
+      if (!email) { finishLogin(fallbackRole); return; }
+
+      // Uma conta com empresa_id vinculado é sempre "empresa", mesmo que o role
+      // devolvido pelo login/cadastro diga outra coisa — evita que login/registro
+      // regrave "client"/"professional" por cima de uma conta de empresa parceira.
+      // "name" vem junto pelo mesmo motivo do comentário em finishLogin.
+      //
+      // "role" também vem junto pelo mesmo motivo (achado 2026-08-15): o backend
+      // de login (/api/auth/login em MULTI-BACKEND/server.js) lê o perfil de
+      // "users" — tabela morta, 0 linhas, mesma raiz do bug já documentado em
+      // multi_admin_dashboard_endpoint_mismatch — então "registeredRole" que
+      // chega aqui via LoginScreen é sempre "client", nunca o role real da
+      // conta. Sem essa releitura, todo profissional (não-híbrido) caía na home
+      // de Cliente a cada login e precisava alternar manualmente toda vez em
+      // Perfil → "Alternar para Profissional". Só aplica em login de conta
+      // JÁ EXISTENTE (!isNewAccount) — cadastro novo continua decidido por
+      // dbRole/fallbackRole como antes, a linha do upsert logo abaixo.
+      supabase.from("usuarios").select("empresa_id,name,role").eq("email", email).maybeSingle()
+        .then(({ data }) => {
+          const resolvedRole = data?.empresa_id
+            ? "empresa"
+            : (!isNewAccount && data?.role) ? data.role : fallbackRole;
+          finishLogin(resolvedRole, data?.name);
+        })
+        .catch(() => finishLogin(fallbackRole));
+    });
   };
 
   // ── SERVICE HANDLERS (Fase 1: fluxo único real, nada aqui é mock) ───────────
