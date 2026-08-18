@@ -4308,7 +4308,7 @@ function limitesTexto(planoId) {
     `Valor máximo R$${l.valorMaxServico.toLocaleString("pt-BR")}/serviço`,
   ];
 }
-function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, onDone, showToast, onSkip, onGoToComprarMoedas }) {
+function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, onDone, showToast, onSkip, onGoToComprarMoedas, permiteComprarMoedas = true }) {
   // Planos pagos de empresa deixaram de existir — titularTipo é sempre
   // "usuario" a partir de agora (nenhum call site restante manda "empresa").
   // isEmpresa fica hardcoded pra não precisar reescrever cada ternário de
@@ -4393,8 +4393,18 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
             aparece PRIMEIRO, antes dos planos pagos: alternativa pra quem
             não quer assinar, paga em moeda só quando responde a uma
             oportunidade (Fase 2 da monetização por moeda, ver o gate no
-            botão "Tenho Interesse" em ProfessionalHome). */}
-        <SemPlanoMoedaCard onGoToComprarMoedas={onGoToComprarMoedas} />
+            botão "Tenho Interesse" em ProfessionalHome).
+            permiteComprarMoedas (default true) — bug real achado 2026-08-18:
+            essa tela também é o destino do botão "Escolher plano" no Profile
+            de conta CLIENTE comum (onUpgrade, screen "upgrade" em App()), que
+            nunca checava role nenhum. Um cliente puro conseguia chegar até
+            aqui e comprar moeda de verdade (PIX Asaas) — feature que não
+            serve pra nada pra quem não é profissional (moeda só paga
+            resposta a oportunidade). Só esse único call site (screen
+            "upgrade") passa permiteComprarMoedas=false pra quem não é
+            profissional; os outros (cadastro de profissional, "Vire
+            Profissional") continuam mostrando normalmente. */}
+        {permiteComprarMoedas && <SemPlanoMoedaCard onGoToComprarMoedas={onGoToComprarMoedas} />}
 
         {planos.map(p => {
           const isPro = !!p.badge;
@@ -9042,7 +9052,7 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
   // volta pro rádio, não sai do cadastro inteiro. Reativado 2026-08-18 —
   // ver ROLE_OPTIONS acima pro card equivalente em RoleSelectScreen.
   if (tipoUso === "empresa") {
-    return <CadastroEmpresaScreen onBack={() => setTipoUso(initialRole === "professional" ? "profissional" : "cliente")} showToast={showToast} />;
+    return <CadastroEmpresaScreen onBack={() => setTipoUso(initialRole === "professional" ? "profissional" : "cliente")} onComplete={onComplete} showToast={showToast} />;
   }
 
   /* ── FAST FORM ── */
@@ -9202,7 +9212,7 @@ function isValidCnpj(value) {
 }
 
 /* ───────────────────────── AUTH: CADASTRO EMPRESA PARCEIRA ────────────────────── */
-function CadastroEmpresaScreen({ onBack, showToast }) {
+function CadastroEmpresaScreen({ onBack, onComplete, showToast }) {
   const [step, setStep] = useState("form"); // form | success
   const [cnpj, setCnpj] = useState("");
   const [razaoSocial, setRazaoSocial] = useState("");
@@ -9266,6 +9276,20 @@ function CadastroEmpresaScreen({ onBack, showToast }) {
       if (!r.ok) throw new Error(d.error || "Erro ao criar conta");
       const userId = d.user?.id || null;
 
+      // Guarda o token de sessão já aqui, mesmo padrão do cadastro de
+      // cliente/profissional (RegisterScreen) — sem isso, quando onComplete
+      // chamar finishLogin() mais abaixo não existe token pra setSession(),
+      // e a conta fica "logada" só no estado local do React sem sessão real
+      // no client Supabase (mesma classe de bug já documentada em
+      // multi_rls_fase1_hardening: sem JWT real, leituras/escritas via RLS
+      // simplesmente não retornam nada, sem erro nenhum).
+      if (d.token) {
+        try {
+          const prev = JSON.parse(localStorage.getItem("multiSession") || "{}") || {};
+          localStorage.setItem("multiSession", JSON.stringify({ ...prev, token: d.token, refreshToken: d.refresh_token }));
+        } catch {}
+      }
+
       // 3. Cria a empresa
       const { data: empresaRow, error: empresaErr } = await supabase.from("empresas").insert({
         nome: nomeFantasia.trim(),
@@ -9312,7 +9336,26 @@ function CadastroEmpresaScreen({ onBack, showToast }) {
         <p style={{ fontSize:14, color:"#6B7280", lineHeight:1.7, margin:"0 0 28px" }}>
           <strong style={{ color:"#1a1a2e" }}>{nomeFantasia}</strong> já está ativa e vai aparecer nas buscas de clientes da categoria selecionada.
         </p>
-        <button onClick={onBack} style={{ width:"100%", padding:"16px 0", borderRadius:18, border:"none", color:"white", fontWeight:900, fontSize:15, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:10, boxShadow:`0 6px 24px ${B}44`, background:`linear-gradient(135deg,${B},#0055d4)` }}>
+        <button
+          onClick={() => {
+            // Bug real, achado 2026-08-18: esse botão chamava onBack (só
+            // fechava a tela de cadastro, sem logar ninguém) — a conta e a
+            // linha em "empresas"/"usuarios" já tinham sido criadas de
+            // verdade no passo 3/4 acima, mas o front nunca aplicava a
+            // sessão, então caía de volta no Home de convidado (Cliente).
+            // onComplete === handleLoginComplete (mesma função que
+            // RegisterScreen usa) — isNewAccount:false de propósito aqui:
+            // esse componente já fez seu próprio upsert em "usuarios" com
+            // empresa_id preenchido (passo 4 acima); com isNewAccount:true,
+            // o upsert interno de handleLoginComplete zeraria empresa_id de
+            // novo (regra existente pra cadastro de cliente/profissional,
+            // que não tem empresa_id pra preservar). O role "empresa" é
+            // resolvido do mesmo jeito que no login normal, relendo
+            // usuarios.empresa_id — não depende do 7º argumento (dbRole).
+            if (onComplete) onComplete(nomeFantasia.trim(), email.trim(), false, cidade.trim(), "empresa", phone.replace(/\D/g, ""), null, false);
+            else onBack?.();
+          }}
+          style={{ width:"100%", padding:"16px 0", borderRadius:18, border:"none", color:"white", fontWeight:900, fontSize:15, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:10, boxShadow:`0 6px 24px ${B}44`, background:`linear-gradient(135deg,${B},#0055d4)` }}>
           <Home size={17} /> Voltar ao início
         </button>
       </div>
@@ -11802,7 +11845,13 @@ const renderContent = () => {
     }
 
     // Professional screens
-  if (screen === "upgrade") return <EscolherPlanoScreen titularTipo="usuario" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("home")} showToast={showToast} onDone={() => { carregarPlano("usuario", userEmail); setScreen("home"); }} onGoToComprarMoedas={() => setScreen("comprarmoedas")} />;
+  // permiteComprarMoedas: só profissional de verdade (role já "professional"
+  // no banco) — essa tela também é aberta pelo botão "Escolher plano" do
+  // Profile de CLIENTE comum (achado 2026-08-18: cliente conseguia comprar
+  // moeda de verdade sem nunca virar profissional, feature sem nenhum uso
+  // pra quem não responde oportunidade — ver comentário em
+  // EscolherPlanoScreen/SemPlanoMoedaCard).
+  if (screen === "upgrade") return <EscolherPlanoScreen titularTipo="usuario" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("home")} showToast={showToast} onDone={() => { carregarPlano("usuario", userEmail); setScreen("home"); }} onGoToComprarMoedas={() => setScreen("comprarmoedas")} permiteComprarMoedas={role === "professional"} />;
     if (screen === "wallet") return <WalletScreen onBack={() => setScreen("profile")} pedidos={meusGanhos} />;
     if (screen === "comprarmoedas") return <ComprarMoedasScreen userEmail={userEmail} userName={userName} onBack={() => setScreen("profile")} showToast={showToast} onSuccess={() => carregarSaldoMoedas(userEmail)} />;
     if (screen === "profile") {
@@ -11906,7 +11955,7 @@ const renderContent = () => {
 
   if (authScreen === "cadastro-empresa") {
     return wrapper(
-      <CadastroEmpresaScreen onBack={() => setAuthScreen("role-select")} showToast={showToast} />
+      <CadastroEmpresaScreen onBack={() => setAuthScreen("role-select")} onComplete={handleLoginComplete} showToast={showToast} />
     );
   }
   if (authScreen === "reset-password") {
