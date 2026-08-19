@@ -8052,14 +8052,21 @@ function RoleSelectScreen({ onSelect, onLogin, onBack }) {
         <div style={{ position:"absolute", top:-50, right:-50, width:220, height:220, borderRadius:"50%", background:"rgba(255,255,255,.06)" }} />
         <div style={{ position:"absolute", top:"40%", left:-60, width:170, height:170, borderRadius:"50%", background:"rgba(255,255,255,.045)" }} />
         {/* Agora é uma etapa de contexto disparada de dentro da Home (não mais
-            o gate de entrada do app), então precisa de como voltar sem cadastrar. */}
+            o gate de entrada do app), então precisa de como voltar sem cadastrar.
+            Achado 2026-08-19: esse botão (top:18,left:18) ficava embaixo/atrás
+            do bloco "M Multi" (que começava em top:28,left:509 — quase a
+            mesma posição), então mesmo com zIndex maior a seta branca caía
+            em cima do quadrado branco do logo — branco sobre branco, sem
+            contraste nenhum, praticamente invisível mesmo estando ali e
+            clicável. Empurrei a linha do logo pra baixo (margin-top 6→44)
+            pra abrir espaço e a seta aparecer de verdade contra o azul. */}
         {onBack && (
           <button onClick={onBack} style={{ position:"absolute", top:18, left:18, zIndex:2, background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:34, height:34, display:"flex", alignItems:"center", justifyContent:"center" }}>
             <ArrowLeft size={16} color="white" />
           </button>
         )}
 
-        <div style={{ display:"flex", alignItems:"center", gap:9, margin:"6px 0 30px", position:"relative", zIndex:1 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:9, margin: onBack ? "44px 0 30px" : "6px 0 30px", position:"relative", zIndex:1 }}>
           <div style={{ width:32, height:32, borderRadius:10, background:"white", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900, fontSize:15, color:B, flexShrink:0 }}>M</div>
           <span style={{ fontSize:15, fontWeight:900, color:"white", letterSpacing:-.3 }}>Multi</span>
         </div>
