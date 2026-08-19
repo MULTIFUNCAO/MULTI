@@ -5,7 +5,7 @@ import {
   Wallet, CreditCard, HeartHandshake, KeyRound, BellRing,
   BadgeCheck, Banknote, ShieldCheck, Mail, TrendingUp,
   Clock, MapPin, Phone, Star, XCircle, ChevronDown, ChevronUp,
-  Search, Filter, Download, RefreshCw, Tag, Plus
+  Search, Filter, Download, RefreshCw, Tag, Plus, Building2
 } from "lucide-react";
 
 const COLORS = {
@@ -531,19 +531,27 @@ function SectionClientes({ adminKey }) {
       .catch(() => { setClients([]); setLoading(false); });
   }, []);
 
+  // "completed_count" (pedidos com status 'concluido'), não "services_count"
+  // (total de pedidos em qualquer status) — achado 2026-08-18: o backend
+  // nunca calculava nenhum dos dois antes, então services_count vinha
+  // sempre undefined e TODO cliente caía em "Não Fecharam", mesmo quem
+  // tinha fechado serviço de verdade (ver Erika/Rafael/Fabio na memória).
+  // Corrigido no endpoint (/api/admin/clientes, MULTI-BACKEND); aqui só
+  // troca pra olhar o campo certo — "fechou" precisa ser conclusão de
+  // verdade, não só ter um pedido aberto que nunca andou.
   const filtered = clients.filter(c => {
     const q = search.toLowerCase();
     const matchSearch = !q || (c.name || "").toLowerCase().includes(q) || (c.email || "").toLowerCase().includes(q);
     if (!matchSearch) return false;
-    if (subTab === "sem_fechar") return (c.services_count || 0) === 0;
-    if (subTab === "com_servico") return (c.services_count || 0) > 0;
+    if (subTab === "sem_fechar") return (c.completed_count || 0) === 0;
+    if (subTab === "com_servico") return (c.completed_count || 0) > 0;
     return true;
   });
 
   const subTabs = [
     { id: "todos", label: "Todos", count: clients.length },
-    { id: "com_servico", label: "Com Serviço", count: clients.filter(c => (c.services_count || 0) > 0).length },
-    { id: "sem_fechar", label: "Não Fecharam", count: clients.filter(c => (c.services_count || 0) === 0).length },
+    { id: "com_servico", label: "Com Serviço", count: clients.filter(c => (c.completed_count || 0) > 0).length },
+    { id: "sem_fechar", label: "Não Fecharam", count: clients.filter(c => (c.completed_count || 0) === 0).length },
   ];
 
   return (
@@ -578,9 +586,9 @@ function SectionClientes({ adminKey }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 14 }}>{c.name || "Sem nome"}</span>
-                    {(c.services_count || 0) === 0
+                    {(c.completed_count || 0) === 0
                       ? <Badge color="orange">Não fechou</Badge>
-                      : <Badge color="green">{c.services_count} serviço(s)</Badge>
+                      : <Badge color="green">{c.completed_count} fechado(s)</Badge>
                     }
                   </div>
                   <div style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 2 }}>
@@ -604,8 +612,9 @@ function SectionClientes({ adminKey }) {
                       { label: "WhatsApp", value: c.whatsapp || "—" },
                       { label: "CEP", value: c.cep || "—" },
                       { label: "Cidade", value: c.city || c.location || "—" },
-                      { label: "Total serviços", value: c.services_count || 0 },
-                      { label: "Gasto total", value: c.total_spent ? "R$ " + c.total_spent : "R$ 0" },
+                      { label: "Total de pedidos", value: c.services_count || 0 },
+                      { label: "Serviços fechados", value: c.completed_count || 0 },
+                      { label: "Gasto total", value: "R$ " + (Number(c.valor_movimentado || 0).toFixed(2)) },
                       { label: "Último serviço", value: c.last_service ? new Date(c.last_service).toLocaleDateString("pt-BR") : "—" },
                       { label: "Cadastro", value: c.created_at ? new Date(c.created_at).toLocaleDateString("pt-BR") : "—" },
                       { label: "Último acesso", value: c.last_seen ? new Date(c.last_seen).toLocaleDateString("pt-BR") : "—" },
@@ -707,6 +716,121 @@ function SectionServicos({ adminKey }) {
                   </div>
                 </div>
               </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Seção: Empresas ─────────────────────────────────────────────
+// Fase 1 do plano de CRM (ver memória multi_admin_crm_plano) — primeira aba
+// nova do Admin, dados 100% já existentes na tabela "empresas" +
+// "pedidos" (demanda de empresa entra em "pedidos" com cliente_id = email
+// da empresa, ver NovaDemandaFuncionarioScreen em App.jsx). Sem plano/
+// assinatura de empresa pra mostrar — deixou de existir (cadastro é
+// grátis agora, ver multi_reforma_modelo_comercial).
+function SectionEmpresas({ adminKey }) {
+  const [empresas, setEmpresas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [subTab, setSubTab] = useState("todas");
+  const [expanded, setExpanded] = useState(null);
+
+  useEffect(() => {
+    fetch(API + "/api/admin/empresas", { headers: { "x-admin-key": adminKey } })
+      .then(r => r.json())
+      .then(d => { setEmpresas(d.empresas || []); setLoading(false); })
+      .catch(() => { setEmpresas([]); setLoading(false); });
+  }, []);
+
+  const tipoLabel = (t) => ({ basica: "Presta serviço", contratante: "Só contrata", pro: "Presta e contrata" }[t] || t || "—");
+
+  const filtered = empresas.filter(e => {
+    const q = search.toLowerCase();
+    const matchSearch = !q || (e.nome || "").toLowerCase().includes(q) || (e.email || "").toLowerCase().includes(q) || (e.cnpj || "").includes(q);
+    if (!matchSearch) return false;
+    if (subTab === "contratam") return e.tipo_conta === "contratante" || e.tipo_conta === "pro";
+    if (subTab === "sem_demanda") return (e.demandas_recebidas || 0) === 0;
+    return true;
+  });
+
+  const subTabs = [
+    { id: "todas", label: "Todas", count: empresas.length },
+    { id: "contratam", label: "Contratam", count: empresas.filter(e => e.tipo_conta === "contratante" || e.tipo_conta === "pro").length },
+    { id: "sem_demanda", label: "Sem Demanda", count: empresas.filter(e => (e.demandas_recebidas || 0) === 0).length },
+  ];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <SearchBar value={search} onChange={setSearch} placeholder="Buscar empresa (nome, email, CNPJ)..." />
+        </div>
+        <TabBar tabs={subTabs} active={subTab} onChange={setSubTab} />
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted }}>Carregando...</div>
+      ) : filtered.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted }}>Nenhuma empresa encontrada</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {filtered.map(e => (
+            <Card key={e.id} style={{ padding: 0, overflow: "hidden" }}>
+              <div
+                onClick={() => setExpanded(expanded === e.id ? null : e.id)}
+                style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", cursor: "pointer" }}
+              >
+                <div style={{
+                  width: 40, height: 40, borderRadius: "50%",
+                  background: COLORS.blue + "33",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: COLORS.blue, fontWeight: 800, fontSize: 16, flexShrink: 0,
+                }}>
+                  {(e.nome || "?")[0].toUpperCase()}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 14 }}>{e.nome || "Sem nome"}</span>
+                    <Badge color="blue">{tipoLabel(e.tipo_conta)}</Badge>
+                    {!e.ativo && <Badge color="red">Inativa</Badge>}
+                  </div>
+                  <div style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 2 }}>
+                    {e.email || "—"} • {e.telefone_contato || "—"} • {e.cidade || "—"}
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ color: COLORS.textMuted, fontSize: 12 }}>
+                    {(e.demandas_recebidas || 0) === 0 ? "Sem demanda" : `${e.demandas_recebidas} demanda(s)`}
+                  </span>
+                  {expanded === e.id ? <ChevronUp size={16} color={COLORS.textMuted} /> : <ChevronDown size={16} color={COLORS.textMuted} />}
+                </div>
+              </div>
+
+              {expanded === e.id && (
+                <div style={{ borderTop: "1px solid " + COLORS.border, padding: "14px 16px", background: COLORS.bg }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
+                    {[
+                      { label: "CNPJ", value: e.cnpj || "—" },
+                      { label: "Categorias", value: (e.categoria_servico || []).join(", ") || "—" },
+                      { label: "Vinculados (empresa_id)", value: e.qtd_vinculados || 0 },
+                      { label: "Demandas recebidas", value: e.demandas_recebidas || 0 },
+                      { label: "Demandas aceitas", value: e.demandas_aceitas || 0 },
+                      { label: "Demandas concluídas", value: e.demandas_concluidas || 0 },
+                      { label: "Taxa de conversão", value: (e.taxa_conversao || 0) + "%" },
+                      { label: "Valor movimentado", value: "R$ " + Number(e.valor_movimentado || 0).toFixed(2) },
+                      { label: "Cadastro", value: e.criado_em ? new Date(e.criado_em).toLocaleDateString("pt-BR") : "—" },
+                    ].map((f, i) => (
+                      <div key={i}>
+                        <div style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>{f.label}</div>
+                        <div style={{ color: COLORS.textPrimary, fontSize: 13, marginTop: 2, wordBreak: "break-all" }}>{String(f.value)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </Card>
           ))}
         </div>
@@ -1432,6 +1556,7 @@ function AdminDashboard({ onExit }) {
     { id: "metrics", label: "Visão Geral", icon: Activity },
     { id: "pros", label: "Profissionais", icon: ShieldCheck, count: metrics.pendingApproval || undefined },
     { id: "clients", label: "Clientes", icon: Users },
+    { id: "empresas", label: "Empresas", icon: Building2 },
     { id: "services", label: "Serviços", icon: FileText },
     { id: "financial", label: "Financeiro", icon: DollarSign },
     { id: "cupons", label: "Cupons", icon: Tag },
@@ -1470,6 +1595,7 @@ function AdminDashboard({ onExit }) {
         {tab === "metrics" && <SectionMetrics data={metrics} />}
         {tab === "pros" && <SectionProfissionais adminKey={token} />}
         {tab === "clients" && <SectionClientes adminKey={token} />}
+        {tab === "empresas" && <SectionEmpresas adminKey={token} />}
         {tab === "services" && <SectionServicos adminKey={token} />}
         {tab === "financial" && <SectionFinanceiro adminKey={token} />}
         {tab === "cupons" && <SectionCupons adminKey={token} />}
