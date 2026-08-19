@@ -154,8 +154,77 @@ function SearchBar({ value, onChange, placeholder }) {
   );
 }
 
+// ─── Central de Alertas ──────────────────────────────────────────
+// Fase 2 do plano de CRM (multi_admin_crm_plano na memória) — versão
+// "de negócio", narrada, não técnica, ficando bem em cima na Visão Geral
+// (é a primeira coisa que o admin vê ao entrar, como os dois documentos
+// pediam). Reaproveita /api/admin/oportunidades (Fase 1) — sem endpoint
+// novo, só uma camada de apresentação por cima do que já existia.
+function CentralAlertas({ adminKey, pendingApproval, onNavigate }) {
+  const [oport, setOport] = useState(null);
+
+  useEffect(() => {
+    fetch(API + "/api/admin/oportunidades", { headers: { "x-admin-key": adminKey } })
+      .then(r => r.json())
+      .then(setOport)
+      .catch(() => setOport(null));
+  }, []);
+
+  const r = oport?.resumo;
+  if (!r) return null;
+
+  const alertas = [
+    r.sem_proposta?.count > 0 && {
+      cor: "red", tab: "oportunidades",
+      texto: `🔴 ${r.sem_proposta.count} cliente(s) com pedido aberto sem nenhuma proposta ainda`,
+    },
+    r.proposta_sem_resposta?.count > 0 && {
+      cor: "orange", tab: "oportunidades",
+      texto: `🟠 ${r.proposta_sem_resposta.count} cliente(s) receberam proposta e ainda não decidiram`,
+    },
+    r.parado_pos_aceite?.count > 0 && {
+      cor: "orange", tab: "oportunidades",
+      texto: `🟡 ${r.parado_pos_aceite.count} serviço(s) aceito(s) que nunca chegaram a concluir`,
+    },
+    pendingApproval > 0 && {
+      cor: "blue", tab: "pros",
+      texto: `🔵 ${pendingApproval} profissional(is) aguardando aprovação de documentos`,
+    },
+    r.clientes_reativaveis?.count > 0 && {
+      cor: "purple", tab: "oportunidades",
+      texto: `🟣 ${r.clientes_reativaveis.count} cliente(s) que já fecharam antes e sumiram há 30+ dias`,
+    },
+    r.dinheiro_na_mesa > 0 && {
+      cor: "green", tab: "oportunidades",
+      texto: `💰 R$ ${Number(r.dinheiro_na_mesa).toFixed(2)} em oportunidades abertas agora`,
+    },
+  ].filter(Boolean);
+
+  if (alertas.length === 0) return null;
+
+  return (
+    <Card style={{ marginBottom: 4 }}>
+      <div style={{ color: COLORS.textPrimary, fontWeight: 700, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
+        <BellRing size={16} color={COLORS.orange} /> Central de Alertas
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {alertas.map((a, i) => (
+          <div key={i} onClick={() => onNavigate?.(a.tab)} style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+            padding: "10px 12px", borderRadius: 8, background: COLORS.bg,
+            border: "1px solid " + COLORS.border, cursor: onNavigate ? "pointer" : "default", fontSize: 13.5,
+          }}>
+            <span style={{ color: COLORS.textPrimary }}>{a.texto}</span>
+            {onNavigate && <ChevronDown size={14} color={COLORS.textMuted} style={{ transform: "rotate(-90deg)", flexShrink: 0 }} />}
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 // ─── Seção: Métricas ────────────────────────────────────────────
-function SectionMetrics({ data }) {
+function SectionMetrics({ data, adminKey, onNavigate }) {
   const metrics = [
     { icon: Users, label: "Total Usuários", value: data.totalUsers || 0, sub: "clientes + profissionais", color: COLORS.blue },
     { icon: HeartHandshake, label: "Clientes", value: data.totalClients || 0, sub: "clientes cadastrados", color: COLORS.purple },
@@ -168,8 +237,11 @@ function SectionMetrics({ data }) {
   ];
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
-      {metrics.map((m, i) => <MetricCard key={i} {...m} />)}
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <CentralAlertas adminKey={adminKey} pendingApproval={data.pendingApproval || 0} onNavigate={onNavigate} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
+        {metrics.map((m, i) => <MetricCard key={i} {...m} />)}
+      </div>
     </div>
   );
 }
@@ -1940,7 +2012,7 @@ function AdminDashboard({ onExit }) {
 
       {/* Content */}
       <div style={{ padding: 20, maxWidth: 1200, margin: "0 auto" }}>
-        {tab === "metrics" && <SectionMetrics data={metrics} />}
+        {tab === "metrics" && <SectionMetrics data={metrics} adminKey={token} onNavigate={setTab} />}
         {tab === "pros" && <SectionProfissionais adminKey={token} />}
         {tab === "clients" && <SectionClientes adminKey={token} />}
         {tab === "empresas" && <SectionEmpresas adminKey={token} />}
