@@ -907,6 +907,134 @@ function SectionCategorias({ adminKey }) {
   );
 }
 
+// ─── Seção: Oportunidades ────────────────────────────────────────
+// Fase 1 do plano de CRM — "central de oportunidades perdidas" +
+// "dinheiro na mesa" (doc2, o item de maior valor de negócio dos dois
+// documentos), calculado com o que já existe hoje (ver
+// /api/admin/oportunidades). Não cobre "pagamento abandonado" — não
+// existe estado de pagamento parcial por pedido pra detectar isso ainda.
+const OPORTUNIDADE_INFO = {
+  sem_proposta: { label: "Sem proposta", color: "red", desc: "Pedido aberto, nenhum profissional se candidatou ainda" },
+  proposta_sem_resposta: { label: "Proposta sem resposta", color: "orange", desc: "Cliente recebeu proposta e ainda não escolheu" },
+  parado_pos_aceite: { label: "Parado pós-aceite", color: "orange", desc: "Profissional aceito, mas o serviço nunca foi concluído" },
+};
+
+function waLink(whatsapp) {
+  if (!whatsapp) return null;
+  const digits = whatsapp.replace(/\D/g, "");
+  if (!digits) return null;
+  const withCountry = digits.startsWith("55") ? digits : "55" + digits;
+  return "https://wa.me/" + withCountry;
+}
+
+function tempoParadoLabel(horas) {
+  if (horas == null) return "—";
+  if (horas < 1) return "menos de 1h";
+  if (horas < 24) return horas + "h";
+  return Math.round(horas / 24) + "d";
+}
+
+function SectionOportunidades({ adminKey }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [subTab, setSubTab] = useState("sem_proposta");
+
+  useEffect(() => {
+    fetch(API + "/api/admin/oportunidades", { headers: { "x-admin-key": adminKey } })
+      .then(r => r.json())
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => { setData({ resumo: {}, itens: [], reativaveis: [] }); setLoading(false); });
+  }, []);
+
+  if (loading || !data) {
+    return <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted }}>Carregando...</div>;
+  }
+
+  const { resumo = {}, itens = [], reativaveis = [] } = data;
+
+  const subTabs = [
+    { id: "sem_proposta", label: "Sem Proposta", count: resumo.sem_proposta?.count || 0 },
+    { id: "proposta_sem_resposta", label: "Proposta Sem Resposta", count: resumo.proposta_sem_resposta?.count || 0 },
+    { id: "parado_pos_aceite", label: "Parado Pós-Aceite", count: resumo.parado_pos_aceite?.count || 0 },
+    { id: "reativaveis", label: "Pra Reativar", count: resumo.clientes_reativaveis?.count || 0 },
+  ];
+
+  const itensFiltrados = itens.filter(i => i.tipo === subTab).sort((a, b) => (b.horas_parado || 0) - (a.horas_parado || 0));
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Dinheiro na mesa */}
+      <Card style={{ background: "linear-gradient(135deg, " + COLORS.card + ", " + COLORS.cardHover + ")" }}>
+        <div style={{ color: COLORS.textMuted, fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>💰 Dinheiro na mesa</div>
+        <div style={{ color: COLORS.green, fontSize: 32, fontWeight: 900, marginTop: 4 }}>
+          R$ {Number(resumo.dinheiro_na_mesa || 0).toFixed(2)}
+        </div>
+        <div style={{ color: COLORS.textSecondary, fontSize: 12.5, marginTop: 4 }}>
+          Soma do valor de pedidos parados nas 3 categorias abaixo — não é perda ainda, é o que dá pra recuperar agindo agora.
+        </div>
+      </Card>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+        {Object.entries(OPORTUNIDADE_INFO).map(([tipo, info]) => (
+          <MetricCard key={tipo} icon={AlertCircle} label={info.label} value={resumo[tipo]?.count || 0}
+            sub={"R$ " + Number(resumo[tipo]?.valor || 0).toFixed(2)} color={COLORS[info.color]} />
+        ))}
+        <MetricCard icon={RefreshCw} label="Pra Reativar" value={resumo.clientes_reativaveis?.count || 0}
+          sub="30+ dias sem pedir de novo" color={COLORS.purple} />
+      </div>
+
+      <TabBar tabs={subTabs} active={subTab} onChange={setSubTab} />
+
+      {subTab === "reativaveis" ? (
+        reativaveis.length === 0 ? (
+          <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted }}>Nenhum cliente pra reativar agora</div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {reativaveis.sort((a, b) => b.dias_parado - a.dias_parado).map(r => (
+              <Card key={r.cliente_email} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                <div>
+                  <div style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 14 }}>{r.cliente_nome}</div>
+                  <div style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 2 }}>{r.cliente_email} • há {r.dias_parado} dias sem pedir</div>
+                </div>
+                {waLink(r.cliente_whatsapp) && (
+                  <a href={waLink(r.cliente_whatsapp)} target="_blank" rel="noopener noreferrer" style={{
+                    background: COLORS.green + "22", color: COLORS.green, border: "1px solid " + COLORS.green + "44",
+                    borderRadius: 8, padding: "8px 14px", fontSize: 12.5, fontWeight: 700, textDecoration: "none",
+                  }}>Enviar mensagem</a>
+                )}
+              </Card>
+            ))}
+          </div>
+        )
+      ) : itensFiltrados.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted }}>Nada parado nessa categoria agora 🎉</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {itensFiltrados.map(i => (
+            <Card key={i.pedido_id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 14 }}>{i.cliente_nome}</span>
+                  <Badge color={OPORTUNIDADE_INFO[i.tipo]?.color}>parado há {tempoParadoLabel(i.horas_parado)}</Badge>
+                </div>
+                <div style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 2 }}>
+                  {i.categoria} • {i.cliente_email} {i.valor ? "• R$ " + i.valor.toFixed(2) : ""}
+                </div>
+              </div>
+              {waLink(i.cliente_whatsapp) && (
+                <a href={waLink(i.cliente_whatsapp)} target="_blank" rel="noopener noreferrer" style={{
+                  background: COLORS.green + "22", color: COLORS.green, border: "1px solid " + COLORS.green + "44",
+                  borderRadius: 8, padding: "8px 14px", fontSize: 12.5, fontWeight: 700, textDecoration: "none", flexShrink: 0,
+                }}>Enviar mensagem</a>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Sugestões de categoria — texto livre por trás (ver supabase_despesas_migration.sql,
 // "categorias de despesa mudam mais rápido do que valeria travar num enum"),
 // isso aqui é só datalist pra digitar mais rápido, não trava nada.
@@ -1627,6 +1755,7 @@ function AdminDashboard({ onExit }) {
     { id: "empresas", label: "Empresas", icon: Building2 },
     { id: "services", label: "Serviços", icon: FileText },
     { id: "categorias", label: "Categorias", icon: Filter },
+    { id: "oportunidades", label: "Oportunidades", icon: AlertCircle },
     { id: "financial", label: "Financeiro", icon: DollarSign },
     { id: "cupons", label: "Cupons", icon: Tag },
     { id: "email", label: "Email", icon: Mail },
@@ -1667,6 +1796,7 @@ function AdminDashboard({ onExit }) {
         {tab === "empresas" && <SectionEmpresas adminKey={token} />}
         {tab === "services" && <SectionServicos adminKey={token} />}
         {tab === "categorias" && <SectionCategorias adminKey={token} />}
+        {tab === "oportunidades" && <SectionOportunidades adminKey={token} />}
         {tab === "financial" && <SectionFinanceiro adminKey={token} />}
         {tab === "cupons" && <SectionCupons adminKey={token} />}
         {tab === "email" && <SectionEmail adminKey={token} />}
