@@ -4245,6 +4245,48 @@ const PLANOS_USUARIO = [
     ctaLabel: "Quero o Multi Premium",
   },
 ];
+// Planos pagos de empresa parceira — reintroduzidos 2026-08-19 a pedido
+// explícito do usuário (tinham sido descontinuados na reforma comercial de
+// 2026-08-18, ver comentário em CadastroEmpresaScreen/EscolherPlanoScreen).
+// Independentes de empresas.tipo_conta (o que a empresa faz — prestadora/
+// contratante/os dois, sempre grátis) — aqui é só a monetização da própria
+// presença/captação na plataforma. Mesmo formato de item de PLANOS_USUARIO
+// (id/label/price/beneficios/...) pra reaproveitar o card e o fluxo de
+// pagamento (EscolherPlanoScreen → PagamentoPlanoScreen → Asaas) sem
+// duplicar nenhum dos dois. ids batem com o CHECK de assinaturas.plano no
+// banco ('empresa','empresa_plus' — confirmado ainda presente na constraint
+// ao vivo antes de reativar isso, projeto tem histórico de constraint
+// revertendo sozinha).
+const PLANOS_EMPRESA = [
+  {
+    id: "empresa", icon: Building2, label: "Multi Empresa", price: "149,90", perDay: "menos de R$5 por dia",
+    hook: "Coloque sua empresa na frente de quem já está procurando.",
+    intro: "Sua empresa ganha um perfil verificado na plataforma, aparece nas buscas de clientes da sua categoria e pode publicar demandas pra encontrar profissionais — tudo num só lugar.",
+    beneficios: [
+      { icon: Eye,       text: "Apareça nas buscas de clientes que procuram fornecedores como você" },
+      { icon: Briefcase, text: "Publique demandas e encontre profissionais pra sua operação" },
+      { icon: BadgeCheck,text: "Perfil com selo de empresa parceira verificada" },
+      { icon: BarChart2, text: "Acompanhe seus pedidos num painel dedicado" },
+    ],
+    idealLead: "Ideal para quem quer:",
+    ideal: "Presença de verdade na plataforma e um canal direto de captação de clientes, sem depender só de indicação.",
+    ctaLabel: "Quero captar clientes",
+  },
+  {
+    id: "empresa_plus", icon: Crown, label: "Multi Empresa Plus", price: "299,90", perDay: "menos de R$10 por dia", badge: "Mais completo",
+    hook: "Tudo pra sua empresa liderar a categoria.",
+    intro: "Além de captar clientes, o Multi Empresa Plus dá acesso ao banco de profissionais da plataforma e prioridade nas oportunidades — pra empresas que querem crescer mais rápido.",
+    beneficios: [
+      { icon: CheckCircle2, text: "Tudo do Multi Empresa", lead: true },
+      { icon: Users,        text: "Acesso ao banco de profissionais da plataforma" },
+      { icon: TrendingUp,   text: "Prioridade nas oportunidades compatíveis com sua empresa" },
+      { icon: BarChart2,    text: "Dashboard completo de desempenho e pedidos" },
+    ],
+    idealLead: "Ideal para quem já vive disso.",
+    ideal: "Sua empresa não quer só aparecer — quer liderar. O Multi Empresa Plus existe pra quem já sabe que vai continuar crescendo.",
+    ctaLabel: "Quero o Multi Empresa Plus",
+  },
+];
 // Limites de negócio (categoria/valor/quantidade) por plano do profissional.
 // Espelha PLANO_LIMITES_USUARIO em MULTI-BACKEND/server.js — repos separados,
 // sem pacote compartilhado, então qualquer mudança aqui precisa ser
@@ -4313,12 +4355,10 @@ function limitesTexto(planoId) {
   ];
 }
 function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, onDone, showToast, onSkip, onGoToComprarMoedas, permiteComprarMoedas = true }) {
-  // Planos pagos de empresa deixaram de existir — titularTipo é sempre
-  // "usuario" a partir de agora (nenhum call site restante manda "empresa").
-  // isEmpresa fica hardcoded pra não precisar reescrever cada ternário de
-  // estilo/cópia abaixo que ainda referencia essa flag.
-  const isEmpresa = false;
-  const planos = PLANOS_USUARIO;
+  // Reativado 2026-08-19 (planos pagos de empresa voltaram — ver PLANOS_EMPRESA)
+  // — isEmpresa volta a vir de titularTipo de verdade, não mais hardcoded.
+  const isEmpresa = titularTipo === "empresa";
+  const planos = isEmpresa ? PLANOS_EMPRESA : PLANOS_USUARIO;
   // Antes disso, escolher um plano pago criava um "trial" de 7 dias direto no
   // Supabase (assinaturas.status="trial"), sem cobrar nada nem pedir cartão —
   // dava pra usar o app inteiro de graça. Agora escolher o plano só abre a
@@ -4485,23 +4525,30 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
               {/* Limites do plano — resumo objetivo (categoria/quantidade/valor)
                   abaixo do texto de venda, antes do fechamento "Ideal para
                   quem..." e do CTA. Vem de limitesTexto(p.id), que lê direto
-                  de PLANO_LIMITES_USUARIO (mesma fonte usada no resto do app). */}
-              <div style={{ marginTop:18, paddingTop:16, borderTop:`1px solid ${isPremium ? "#E4D6FA" : isPro ? O+"33" : "#EDEEF6"}`, display:"flex", flexDirection:"column", gap:9 }}>
-                <p style={{ fontSize:10, fontWeight:800, color:"#9A9DBE", textTransform:"uppercase", letterSpacing:1, margin:"0 0 2px" }}>Limites do plano</p>
-                {limitesTexto(p.id).map((texto, i) => (
-                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8 }}>
-                    <div style={{
-                      width:20, height:20, borderRadius:"50%", flexShrink:0,
-                      display:"flex", alignItems:"center", justifyContent:"center",
-                      background: isPremium ? "#7C3AED22" : isPro ? `${O}22` : "#EBEFFE",
-                      color: isPremium ? "#7C3AED" : isPro ? O : B,
-                    }}>
-                      <Check size={12} strokeWidth={3} />
+                  de PLANO_LIMITES_USUARIO (mesma fonte usada no resto do app).
+                  Conceito é 100% de profissional (categoria/serviços aceitos/
+                  valor por serviço) — não existe PLANO_LIMITES_USUARIO pra
+                  empresa nem faz sentido pra esse modelo, então pula pra
+                  isEmpresa (mostrar isso pra empresa cairia no fallback
+                  genérico "ilimitado" de limitesTexto(), que é enganoso). */}
+              {!isEmpresa && (
+                <div style={{ marginTop:18, paddingTop:16, borderTop:`1px solid ${isPremium ? "#E4D6FA" : isPro ? O+"33" : "#EDEEF6"}`, display:"flex", flexDirection:"column", gap:9 }}>
+                  <p style={{ fontSize:10, fontWeight:800, color:"#9A9DBE", textTransform:"uppercase", letterSpacing:1, margin:"0 0 2px" }}>Limites do plano</p>
+                  {limitesTexto(p.id).map((texto, i) => (
+                    <div key={i} style={{ display:"flex", alignItems:"center", gap:8 }}>
+                      <div style={{
+                        width:20, height:20, borderRadius:"50%", flexShrink:0,
+                        display:"flex", alignItems:"center", justifyContent:"center",
+                        background: isPremium ? "#7C3AED22" : isPro ? `${O}22` : "#EBEFFE",
+                        color: isPremium ? "#7C3AED" : isPro ? O : B,
+                      }}>
+                        <Check size={12} strokeWidth={3} />
+                      </div>
+                      <span style={{ fontSize:13, color:"#42436A", fontWeight:600 }}>{texto}</span>
                     </div>
-                    <span style={{ fontSize:13, color:"#42436A", fontWeight:600 }}>{texto}</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
               {p.ideal && (
                 <p style={{ marginTop:18, paddingTop:14, borderTop:`1px dashed ${isPremium ? "#7C3AED4D" : isPro ? O+"4D" : "#E2E4F1"}`, fontSize:11.5, lineHeight:1.5, color:"#6C6F94" }}>
@@ -8124,6 +8171,114 @@ function RoleSelectScreen({ onSelect, onLogin, onBack }) {
   );
 }
 
+/* ───────────────────────── AUTH: EMPRESA PITCH SCREEN ────────────────────────── */
+// Apresentação atraente pro fluxo "Empresa" do toggle de convidado (Cliente/
+// Profissional/Empresa) — mesmo padrão visual do WelcomeScreen (hero azul +
+// botão de voltar + benefícios + CTA único), sem preço nenhum aqui (proposta
+// de valor só; plano pago vem depois do cadastro, na EscolherPlanoScreen com
+// titularTipo="empresa"). onContinue leva pro CadastroEmpresaScreen (CNPJ,
+// razão social etc.) que já existe.
+const EMPRESA_PITCH_BENEFICIOS = [
+  { Icon: Eye,      text: "Apareça pra clientes que já estão procurando fornecedores como você" },
+  { Icon: Briefcase,text: "Publique demandas e encontre profissionais pra sua operação" },
+  { Icon: BarChart2,text: "Acompanhe pedidos e desempenho num painel dedicado" },
+  { Icon: Crown,    text: "No Plus, prioridade nas oportunidades e acesso ao banco de profissionais" },
+];
+function EmpresaPitchScreen({ onBack, onContinue, onLogin }) {
+  return (
+    <div style={{ minHeight:"100vh", background:"#F8F9FA", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"space-between", padding:"0 0 48px" }}>
+
+      {/* top wave — mesmo padrão do WelcomeScreen */}
+      <div style={{ width:"100%", height:260, background:`linear-gradient(160deg,${B} 0%,#0055d4 100%)`, borderRadius:"0 0 48px 48px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" }}>
+        {onBack && (
+          <button onClick={onBack} style={{ position:"absolute", top:14, left:16, background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:34, height:34, display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <ArrowLeft size={16} color="white" />
+          </button>
+        )}
+        <div style={{ position:"absolute", top:-40, right:-40, width:200, height:200, borderRadius:"50%", background:"rgba(255,255,255,.07)" }} />
+        <div style={{ position:"absolute", bottom:-60, left:-30, width:160, height:160, borderRadius:"50%", background:"rgba(255,255,255,.05)" }} />
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:10, position:"relative", zIndex:1 }}>
+          <div style={{ width:72, height:72, borderRadius:22, background:"white", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 8px 28px rgba(0,0,0,.18)" }}>
+            <Building2 size={38} color={B} />
+          </div>
+          <div style={{ textAlign:"center" }}>
+            <p style={{ fontSize:26, fontWeight:900, color:"white", letterSpacing:-.6, lineHeight:1.15, margin:0 }}>Sua empresa<br/>também cresce no Multi.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* middle content */}
+      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"32px 28px 0", width:"100%", maxWidth:400 }}>
+        <p style={{ fontSize:14, color:"#9CA3AF", textAlign:"center", lineHeight:1.6, margin:"0 0 24px" }}>
+          Presença na plataforma, captação de clientes e acesso a profissionais — tudo num só lugar.
+        </p>
+
+        <div style={{ display:"flex", flexDirection:"column", gap:16, width:"100%", marginBottom:24 }}>
+          {EMPRESA_PITCH_BENEFICIOS.map(({ Icon, text }, i) => (
+            <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
+              <div style={{ width:34, height:34, borderRadius:11, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:"#EBF4FF", color:B }}>
+                <Icon size={17} />
+              </div>
+              <span style={{ fontSize:13.5, lineHeight:1.5, color:"#42436A", fontWeight:600, paddingTop:6 }}>{text}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Cards compactos de preço — mostram os dois planos pagos já aqui na
+            apresentação (pedido explícito do usuário 2026-08-19, revertendo
+            a decisão anterior de deixar sem preço). Lêem direto de
+            PLANOS_EMPRESA pra nunca dessincronizar do que aparece de fato na
+            EscolherPlanoScreen mais adiante. Só o essencial (nome, preço,
+            "por dia") pra não virar tabela comparativa — os benefícios de
+            cada plano já estão detalhados na lista acima e na tela seguinte. */}
+        <div style={{ display:"flex", gap:10, width:"100%", marginBottom:20 }}>
+          {PLANOS_EMPRESA.map((p) => (
+            <div key={p.id} style={{
+              flex:1, position:"relative", background:"white",
+              border: p.badge ? `2px solid ${B}` : "1px solid #E2E4F1",
+              borderRadius:16, padding:"18px 12px 14px",
+              display:"flex", flexDirection:"column", alignItems:"center", textAlign:"center", gap:3,
+            }}>
+              {p.badge && (
+                <span style={{ position:"absolute", top:-10, left:"50%", transform:"translateX(-50%)", background:B, color:"white", fontSize:9, fontWeight:800, padding:"3px 10px", borderRadius:20, whiteSpace:"nowrap" }}>{p.badge}</span>
+              )}
+              <p.icon size={18} color={B} />
+              <p style={{ fontSize:11.5, fontWeight:800, color:"#42436A", margin:"4px 0 0" }}>{p.label}</p>
+              <p style={{ fontSize:19, fontWeight:900, color:B, margin:0 }}>R${p.price}<span style={{ fontSize:10.5, fontWeight:700, color:"#9CA3AF" }}>/mês</span></p>
+              <p style={{ fontSize:10, color:"#9CA3AF", margin:0 }}>{p.perDay}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* selo — cadastro em si não custa nada mesmo com os planos exibidos
+            acima; escolher um plano fica pra depois, na tela seguinte, e é
+            opcional (dá pra pular). */}
+        <div style={{ display:"flex", alignItems:"center", gap:7, background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:12, padding:"8px 16px", marginBottom:28 }}>
+          <span style={{ fontSize:16 }}>✨</span>
+          <p style={{ fontSize:13, fontWeight:800, color:"#166534", margin:0 }}>Cadastro sem custo pra começar</p>
+        </div>
+
+        <button onClick={onContinue} style={{
+          width:"100%", padding:"15px 0", borderRadius:16,
+          background:`linear-gradient(135deg,${B},#0055d4)`,
+          border:"none", color:"white",
+          display:"flex", alignItems:"center", justifyContent:"center", gap:10,
+          fontWeight:900, fontSize:14, cursor:"pointer",
+          boxShadow:`0 6px 20px ${B}44`,
+        }}>
+          <Building2 size={17} /> Cadastrar minha empresa
+        </button>
+
+        {onLogin && (
+          <p style={{ fontSize:12, color:"#9CA3AF", marginTop:20, textAlign:"center" }}>
+            Já tem conta? <button onClick={onLogin} style={{ color:B, fontWeight:800, background:"none", border:"none", cursor:"pointer", fontSize:12 }}>Entrar</button>
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ───────────────────────── AUTH: WELCOME SCREEN ──────────────────────────────── */
 function WelcomeScreen({ onEmail, onLogin, onBack }) {
   return (
@@ -9256,7 +9411,7 @@ function isValidCnpj(value) {
 
 /* ───────────────────────── AUTH: CADASTRO EMPRESA PARCEIRA ────────────────────── */
 function CadastroEmpresaScreen({ onBack, onComplete, showToast }) {
-  const [step, setStep] = useState("form"); // form | success
+  const [step, setStep] = useState("form"); // form | success | plano
   const [cnpj, setCnpj] = useState("");
   const [razaoSocial, setRazaoSocial] = useState("");
   const [nomeFantasia, setNomeFantasia] = useState("");
@@ -9357,17 +9512,42 @@ function CadastroEmpresaScreen({ onBack, onComplete, showToast }) {
       }, { onConflict: "email" });
 
       setLoading(false);
-      // Cadastro de empresa é sempre gratuito agora — os planos pagos de
-      // empresa (Multi Empresa/Empresa Plus) deixaram de existir, então não
-      // existe mais etapa de escolha/pagamento de plano aqui (ver tipo_conta
-      // já gravado no insert acima, direto a partir do que foi escolhido
-      // no formulário).
+      // O cadastro em si (CNPJ, razão social, tipo_conta) continua sempre
+      // gratuito — isso não mudou. O que voltou (2026-08-19, a pedido
+      // explícito do usuário) é uma etapa SEPARADA e independente de
+      // escolha de plano pago (Multi Empresa/Empresa Plus), depois do
+      // "sucesso" do cadastro — ver step "plano" abaixo. tipo_conta e
+      // plano pago não se misturam: uma empresa "contratante" grátis
+      // continua existindo normalmente sem nunca passar por ali.
       setStep("success");
     } catch (e) {
       setLoading(false);
       alert(e.message || "Erro ao cadastrar empresa");
     }
   };
+
+  // Só entra de fato no app (aplica a sessão) depois da etapa de plano —
+  // seja escolhendo um plano pago, seja pulando ("Continuar sem plano por
+  // enquanto"). Mesma chamada de onComplete que já existia antes dessa
+  // etapa ser inserida, só que agora dois call sites diferentes (skip e
+  // sucesso do pagamento) precisam dela, não só o botão da tela de sucesso.
+  const entrarNoApp = () => {
+    if (onComplete) onComplete(nomeFantasia.trim(), email.trim(), false, cidade.trim(), "empresa", phone.replace(/\D/g, ""), null, false);
+    else onBack?.();
+  };
+
+  if (step === "plano") {
+    return (
+      <EscolherPlanoScreen
+        titularTipo="empresa" titularEmail={email.trim()} titularNome={nomeFantasia.trim()}
+        onBack={() => setStep("success")}
+        onSkip={entrarNoApp}
+        onDone={entrarNoApp}
+        showToast={showToast}
+        permiteComprarMoedas={false}
+      />
+    );
+  }
 
   if (step === "success") {
     return (
@@ -9380,26 +9560,17 @@ function CadastroEmpresaScreen({ onBack, onComplete, showToast }) {
           <strong style={{ color:"#1a1a2e" }}>{nomeFantasia}</strong> já está ativa e vai aparecer nas buscas de clientes da categoria selecionada.
         </p>
         <button
-          onClick={() => {
-            // Bug real, achado 2026-08-18: esse botão chamava onBack (só
-            // fechava a tela de cadastro, sem logar ninguém) — a conta e a
-            // linha em "empresas"/"usuarios" já tinham sido criadas de
-            // verdade no passo 3/4 acima, mas o front nunca aplicava a
-            // sessão, então caía de volta no Home de convidado (Cliente).
-            // onComplete === handleLoginComplete (mesma função que
-            // RegisterScreen usa) — isNewAccount:false de propósito aqui:
-            // esse componente já fez seu próprio upsert em "usuarios" com
-            // empresa_id preenchido (passo 4 acima); com isNewAccount:true,
-            // o upsert interno de handleLoginComplete zeraria empresa_id de
-            // novo (regra existente pra cadastro de cliente/profissional,
-            // que não tem empresa_id pra preservar). O role "empresa" é
-            // resolvido do mesmo jeito que no login normal, relendo
-            // usuarios.empresa_id — não depende do 7º argumento (dbRole).
-            if (onComplete) onComplete(nomeFantasia.trim(), email.trim(), false, cidade.trim(), "empresa", phone.replace(/\D/g, ""), null, false);
-            else onBack?.();
-          }}
+          // Bug real, achado 2026-08-18: esse botão chamava onBack (só
+          // fechava a tela de cadastro, sem logar ninguém) — a conta e a
+          // linha em "empresas"/"usuarios" já tinham sido criadas de
+          // verdade no passo 3/4 acima, mas o front nunca aplicava a
+          // sessão, então caía de volta no Home de convidado (Cliente).
+          // Corrigido então indo direto pra entrarNoApp(); agora (2026-08-19)
+          // passa primeiro pela escolha de plano (step "plano" acima) —
+          // entrarNoApp() só roda depois, de lá.
+          onClick={() => setStep("plano")}
           style={{ width:"100%", padding:"16px 0", borderRadius:18, border:"none", color:"white", fontWeight:900, fontSize:15, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:10, boxShadow:`0 6px 24px ${B}44`, background:`linear-gradient(135deg,${B},#0055d4)` }}>
-          <Home size={17} /> Voltar ao início
+          Ver planos <ChevronRight size={17} />
         </button>
       </div>
     );
@@ -12026,8 +12197,22 @@ const renderContent = () => {
           // errado. Ver multi_cadastro_empresa_home_cliente_bug na memória.
           if (roleId === "cliente") { setSignupRole("client"); setAuthScreen("welcome"); return; }
           if (roleId === "profissional") { setSignupRole("professional"); setAuthScreen("register"); return; }
-          if (roleId === "empresa") { setAuthScreen("cadastro-empresa"); return; }
+          // Passa pela apresentação (EmpresaPitchScreen) antes do formulário
+          // agora — mesmo passo que o toggle Cliente/Profissional/Empresa do
+          // Header usa, unifica as duas portas de entrada pro cadastro de
+          // empresa (2026-08-19).
+          if (roleId === "empresa") { setAuthScreen("empresa-pitch"); return; }
         }}
+      />
+    );
+  }
+
+  if (authScreen === "empresa-pitch") {
+    return wrapper(
+      <EmpresaPitchScreen
+        onBack={() => setAuthScreen(null)}
+        onLogin={() => setAuthScreen("login")}
+        onContinue={() => setAuthScreen("cadastro-empresa")}
       />
     );
   }
@@ -12054,7 +12239,7 @@ const renderContent = () => {
 
   if (authScreen === "cadastro-empresa") {
     return wrapper(
-      <CadastroEmpresaScreen onBack={() => setAuthScreen("role-select")} onComplete={handleLoginComplete} showToast={showToast} />
+      <CadastroEmpresaScreen onBack={() => setAuthScreen("empresa-pitch")} onComplete={handleLoginComplete} showToast={showToast} />
     );
   }
   if (authScreen === "reset-password") {
@@ -12092,7 +12277,7 @@ const renderContent = () => {
           empresa usa o sino de notificação nem o avatar daqui (grep
           confirmou), então pular o Header inteiro não tira função nenhuma. */}
       {!(isLoggedIn && userRole === "empresa") && (
-        <Header isPro={isPro} notifCount={notifCount} isLoggedIn={isLoggedIn} userRole={userRole} onAlerts={() => setScreen("alerts")} userLocation={localStorage.getItem("multiLocation") || userLocation} onToggleRole={setGuestRole} activeRole={guestRole} onSelectEmpresa={() => setAuthScreen("cadastro-empresa")} />
+        <Header isPro={isPro} notifCount={notifCount} isLoggedIn={isLoggedIn} userRole={userRole} onAlerts={() => setScreen("alerts")} userLocation={localStorage.getItem("multiLocation") || userLocation} onToggleRole={setGuestRole} activeRole={guestRole} onSelectEmpresa={() => setAuthScreen("empresa-pitch")} />
       )}
 
       {/* paddingBottom cobre a altura do bottom nav (~55px de conteúdo/padding
