@@ -1035,6 +1035,154 @@ function SectionOportunidades({ adminKey }) {
   );
 }
 
+// ─── Seção: Funil ────────────────────────────────────────────────
+// Fase 1 do plano de CRM. Funil com os status reais de "pedidos" desse
+// projeto — não o funil idealizado da spec original (solicitado→
+// aguardando profissional→proposta recebida→...→avaliação), que exigiria
+// mudar o fluxo do app inteiro. Ver comentário grande em
+// /api/admin/funil (MULTI-BACKEND).
+function SectionFunil({ adminKey }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(API + "/api/admin/funil", { headers: { "x-admin-key": adminKey } })
+      .then(r => r.json())
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => { setData({ funil: [], tempos_medios_horas: {} }); setLoading(false); });
+  }, []);
+
+  if (loading || !data) {
+    return <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted }}>Carregando...</div>;
+  }
+
+  const { funil = [], tempos_medios_horas = {} } = data;
+  const max = Math.max(1, ...funil.map(f => f.count));
+  const statusColor = { aberto: "blue", confirmado: "purple", em_andamento: "orange", executando: "orange", concluido: "green", cancelado: "red", em_disputa: "red" };
+  const fmtHoras = (h) => h == null ? "sem dado suficiente" : h < 24 ? h + "h" : (h / 24).toFixed(1) + " dias";
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+        <MetricCard icon={Clock} label="Criado → Aceite" value={fmtHoras(tempos_medios_horas.criado_ate_aceite)} sub="tempo médio até os dois lados confirmarem" color={COLORS.blue} />
+        <MetricCard icon={Clock} label="Aceite → Concluído" value={fmtHoras(tempos_medios_horas.aceite_ate_concluido)} sub="tempo médio de execução" color={COLORS.orange} />
+        <MetricCard icon={Clock} label="Criado → Concluído" value={fmtHoras(tempos_medios_horas.criado_ate_concluido)} sub="tempo médio ponta a ponta" color={COLORS.green} />
+      </div>
+
+      <Card>
+        <div style={{ color: COLORS.textPrimary, fontWeight: 700, marginBottom: 16 }}>Pedidos por status</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {funil.map(f => (
+            <div key={f.status}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+                <span style={{ color: COLORS.textPrimary, fontWeight: 600 }}>{f.label}</span>
+                <span style={{ color: COLORS.textMuted }}>{f.count}</span>
+              </div>
+              <div style={{ background: COLORS.bg, borderRadius: 6, height: 8, overflow: "hidden" }}>
+                <div style={{
+                  width: (f.count / max * 100) + "%", height: "100%",
+                  background: COLORS[statusColor[f.status]] || COLORS.blue, borderRadius: 6, transition: "width .3s",
+                }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Seção: Relatórios ───────────────────────────────────────────
+// Fase 1 do plano de CRM. Período comparado com o período imediatamente
+// anterior de mesmo tamanho (ver /api/admin/relatorio) — dá uma noção de
+// crescimento sem precisar de mais infra.
+function SectionRelatorios({ adminKey }) {
+  const [dias, setDias] = useState(30);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(API + "/api/admin/relatorio?dias=" + dias, { headers: { "x-admin-key": adminKey } })
+      .then(r => r.json())
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => { setData(null); setLoading(false); });
+  }, [dias]);
+
+  const variacao = (atual, anterior) => {
+    if (!anterior) return null;
+    return Math.round(((atual - anterior) / anterior) * 100);
+  };
+
+  const VarBadge = ({ atual, anterior }) => {
+    const v = variacao(atual, anterior);
+    if (v == null) return null;
+    return <Badge color={v >= 0 ? "green" : "red"}>{v >= 0 ? "+" : ""}{v}% vs. período anterior</Badge>;
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "flex", gap: 4, background: COLORS.bg, borderRadius: 10, padding: 4, width: "fit-content" }}>
+        {[7, 30, 90].map(d => (
+          <button key={d} onClick={() => setDias(d)} style={{
+            padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer",
+            background: dias === d ? COLORS.blue : "transparent", color: dias === d ? "#fff" : COLORS.textSecondary,
+            fontWeight: 700, fontSize: 13,
+          }}>{d} dias</button>
+        ))}
+      </div>
+
+      {loading || !data ? (
+        <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted }}>Carregando...</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <Card>
+            <div style={{ color: COLORS.textPrimary, fontWeight: 700, marginBottom: 12 }}>Crescimento</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
+              {[
+                { label: "Novos clientes", atual: data.atual.usuarios.clientes, anterior: data.anterior.usuarios.clientes },
+                { label: "Novos profissionais", atual: data.atual.usuarios.profissionais, anterior: data.anterior.usuarios.profissionais },
+                { label: "Novas empresas", atual: data.atual.usuarios.empresas, anterior: data.anterior.usuarios.empresas },
+              ].map(m => (
+                <div key={m.label}>
+                  <div style={{ color: COLORS.textMuted, fontSize: 12, fontWeight: 600, textTransform: "uppercase" }}>{m.label}</div>
+                  <div style={{ color: COLORS.textPrimary, fontSize: 24, fontWeight: 800, marginTop: 2 }}>{m.atual}</div>
+                  <div style={{ marginTop: 4 }}><VarBadge atual={m.atual} anterior={m.anterior} /></div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card>
+            <div style={{ color: COLORS.textPrimary, fontWeight: 700, marginBottom: 12 }}>Solicitações e conversão</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
+              {[
+                { label: "Solicitações", atual: data.atual.pedidos.solicitacoes, anterior: data.anterior.pedidos.solicitacoes },
+                { label: "Concluídos", atual: data.atual.pedidos.concluidos, anterior: data.anterior.pedidos.concluidos },
+                { label: "Cancelados", atual: data.atual.pedidos.cancelados, anterior: data.anterior.pedidos.cancelados },
+              ].map(m => (
+                <div key={m.label}>
+                  <div style={{ color: COLORS.textMuted, fontSize: 12, fontWeight: 600, textTransform: "uppercase" }}>{m.label}</div>
+                  <div style={{ color: COLORS.textPrimary, fontSize: 24, fontWeight: 800, marginTop: 2 }}>{m.atual}</div>
+                  <div style={{ marginTop: 4 }}><VarBadge atual={m.atual} anterior={m.anterior} /></div>
+                </div>
+              ))}
+              <div>
+                <div style={{ color: COLORS.textMuted, fontSize: 12, fontWeight: 600, textTransform: "uppercase" }}>Taxa de conversão</div>
+                <div style={{ color: COLORS.textPrimary, fontSize: 24, fontWeight: 800, marginTop: 2 }}>{data.atual.pedidos.taxa_conversao}%</div>
+              </div>
+              <div>
+                <div style={{ color: COLORS.textMuted, fontSize: 12, fontWeight: 600, textTransform: "uppercase" }}>Valor movimentado</div>
+                <div style={{ color: COLORS.green, fontSize: 24, fontWeight: 800, marginTop: 2 }}>R$ {Number(data.atual.pedidos.valor_movimentado || 0).toFixed(2)}</div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Sugestões de categoria — texto livre por trás (ver supabase_despesas_migration.sql,
 // "categorias de despesa mudam mais rápido do que valeria travar num enum"),
 // isso aqui é só datalist pra digitar mais rápido, não trava nada.
@@ -1756,6 +1904,8 @@ function AdminDashboard({ onExit }) {
     { id: "services", label: "Serviços", icon: FileText },
     { id: "categorias", label: "Categorias", icon: Filter },
     { id: "oportunidades", label: "Oportunidades", icon: AlertCircle },
+    { id: "funil", label: "Funil", icon: TrendingUp },
+    { id: "relatorios", label: "Relatórios", icon: Download },
     { id: "financial", label: "Financeiro", icon: DollarSign },
     { id: "cupons", label: "Cupons", icon: Tag },
     { id: "email", label: "Email", icon: Mail },
@@ -1797,6 +1947,8 @@ function AdminDashboard({ onExit }) {
         {tab === "services" && <SectionServicos adminKey={token} />}
         {tab === "categorias" && <SectionCategorias adminKey={token} />}
         {tab === "oportunidades" && <SectionOportunidades adminKey={token} />}
+        {tab === "funil" && <SectionFunil adminKey={token} />}
+        {tab === "relatorios" && <SectionRelatorios adminKey={token} />}
         {tab === "financial" && <SectionFinanceiro adminKey={token} />}
         {tab === "cupons" && <SectionCupons adminKey={token} />}
         {tab === "email" && <SectionEmail adminKey={token} />}
