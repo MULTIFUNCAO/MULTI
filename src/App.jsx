@@ -6374,7 +6374,18 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
   // Elegibilidade pra trocar categoria: primeira escolha (nunca teve nenhuma
   // categoria salva) é sempre livre; depois disso, só com trocas sobrando E
   // um ciclo novo (assinaturas.inicio mais recente que a última troca).
-  const categoriaEhPrimeiraEscolha = categoriaServico.length === 0;
+  // Bug real achado 2026-08-19 (reportado pelo Fábio via WhatsApp): isso
+  // lia categoriaServico AO VIVO — o mesmo state que handleSaveCategoria
+  // já atualiza a cada toque no seletor. Assim que o profissional escolhia
+  // a 1ª categoria, categoriaServico.length virava 1 NO MESMO clique,
+  // categoriaEhPrimeiraEscolha virava false, e (sem plano/trial ativo,
+  // planoInicio null) categoriaElegivel colapsava com ele — a UI do
+  // seletor sumia sozinha (linha ~6750 troca pro resumo estático) e o
+  // Salvar descartava a categoria em silêncio (linha ~6556), sem erro
+  // nenhum. Fix: durante a edição, usa o snapshot capturado no instante em
+  // que editMode abriu (estável, não muda a cada toque); fora da edição,
+  // continua lendo o state ao vivo (reflete o que veio do banco).
+  const categoriaEhPrimeiraEscolha = (editMode ? categoriaSnapshotRef.current : categoriaServico).length === 0;
   const categoriaTrocasEsgotadas = trocasCategoriaUsadas >= 2;
   const categoriaCicloNovo = !!planoInicio && (!trocasCategoriaUltimoCiclo || new Date(planoInicio) > new Date(trocasCategoriaUltimoCiclo));
   const categoriaElegivel = categoriaEhPrimeiraEscolha || (!categoriaTrocasEsgotadas && categoriaCicloNovo);
