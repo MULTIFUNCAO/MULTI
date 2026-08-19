@@ -36,7 +36,7 @@ import {
   Hammer, Wrench, Paintbrush, Scissors, Zap, Square,
   Home, ClipboardList, MessageCircle, User, Settings,
   ArrowLeft, Check, Camera, Send,
-  Briefcase, Crown, Shield, TrendingUp, X, Clock,
+  Briefcase, Crown, Shield, TrendingUp, X, Clock, Building2,
   Lock, Navigation, Image, Flag, DollarSign, CheckCircle2,
   AlertCircle, FileText, Pencil, Wallet, LogOut,
   CreditCard, HeartHandshake, HelpCircle, KeyRound,
@@ -703,7 +703,7 @@ function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua
   );
 }
 
-function GuestHeader({ onToggleRole, activeRole = "client" }) {
+function GuestHeader({ onToggleRole, activeRole = "client", onSelectEmpresa }) {
   return (
     <div style={{ position:"sticky", top:0, zIndex:50, background:`linear-gradient(180deg,${B} 0%,#0057d4 100%)`, boxShadow:"0 4px 20px rgba(0,112,255,.28)", borderRadius:"0 0 20px 20px", paddingTop:"env(safe-area-inset-top)" }}>
       {/* row 1 */}
@@ -725,18 +725,22 @@ function GuestHeader({ onToggleRole, activeRole = "client" }) {
           <p style={{ fontSize:9, color:"rgba(255,255,255,.5)", margin:0, lineHeight:1.2 }}>serviços em um toque</p>
         </div>
       </div>
-      {/* row 3: toggle — now drives App role state */}
+      {/* row 3: toggle — Cliente/Profissional drivem o preview de convidado
+          (App role state); Empresa não tem preview de convidado (não faz
+          sentido "navegar como empresa" sem conta), então o clique já leva
+          direto pro cadastro/login de empresa (mesma tela que o card "Quero
+          crescer minha empresa" da RoleSelectScreen usa). */}
       <div style={{ display:"flex", margin:"0 16px 14px", background:"rgba(255,255,255,.15)", borderRadius:14, padding:3 }}>
-        {[{ id:"client", label:"Cliente", Icon:User }, { id:"professional", label:"Profissional", Icon:Briefcase }].map(({ id, label, Icon }) => (
-          <button key={id} onClick={() => onToggleRole?.(id)} style={{
-            flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6,
-            padding:"9px 0", borderRadius:12, fontSize:12, fontWeight:800,
-            border:"none", cursor:"pointer", transition:"all .18s",
+        {[{ id:"client", label:"Cliente", Icon:User }, { id:"professional", label:"Profissional", Icon:Briefcase }, { id:"empresa", label:"Empresa", Icon:Building2 }].map(({ id, label, Icon }) => (
+          <button key={id} onClick={() => id === "empresa" ? onSelectEmpresa?.() : onToggleRole?.(id)} style={{
+            flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:4,
+            padding:"9px 0", borderRadius:12, fontSize:11, fontWeight:800,
+            border:"none", cursor:"pointer", transition:"all .18s", whiteSpace:"nowrap",
             background: activeRole === id ? "white" : "transparent",
             color:      activeRole === id ? "#1a1a2e" : "rgba(255,255,255,.75)",
             boxShadow:  activeRole === id ? "0 2px 8px rgba(0,0,0,.12)" : "none",
           }}>
-            <Icon size={13} />{label}
+            <Icon size={12} />{label}
           </button>
         ))}
       </div>
@@ -745,11 +749,11 @@ function GuestHeader({ onToggleRole, activeRole = "client" }) {
 }
 
 /* Public façade — picks the right header, nothing shared between them */
-function Header({ isPro, notifCount, isLoggedIn, userRole, onAlerts, userLocation, onToggleRole, activeRole }) {
+function Header({ isPro, notifCount, isLoggedIn, userRole, onAlerts, userLocation, onToggleRole, activeRole, onSelectEmpresa }) {
   if (isLoggedIn) {
     return <AuthHeader isPro={isPro} notifCount={notifCount} userRole={userRole} onToggleRole={onToggleRole} onAlerts={onAlerts} userLocation={localStorage.getItem("multiLocation") || userLocation} />;
   }
-  return <GuestHeader onToggleRole={onToggleRole} activeRole={activeRole} />;
+  return <GuestHeader onToggleRole={onToggleRole} activeRole={activeRole} onSelectEmpresa={onSelectEmpresa} />;
 }
 
 /* ───────────────────────── BOTTOM NAV ─────────────────────────────────────── */
@@ -12081,7 +12085,7 @@ const renderContent = () => {
           empresa usa o sino de notificação nem o avatar daqui (grep
           confirmou), então pular o Header inteiro não tira função nenhuma. */}
       {!(isLoggedIn && userRole === "empresa") && (
-        <Header isPro={isPro} notifCount={notifCount} isLoggedIn={isLoggedIn} userRole={userRole} onAlerts={() => setScreen("alerts")} userLocation={localStorage.getItem("multiLocation") || userLocation} onToggleRole={setGuestRole} activeRole={guestRole} />
+        <Header isPro={isPro} notifCount={notifCount} isLoggedIn={isLoggedIn} userRole={userRole} onAlerts={() => setScreen("alerts")} userLocation={localStorage.getItem("multiLocation") || userLocation} onToggleRole={setGuestRole} activeRole={guestRole} onSelectEmpresa={() => setAuthScreen("cadastro-empresa")} />
       )}
 
       {/* paddingBottom cobre a altura do bottom nav (~55px de conteúdo/padding
