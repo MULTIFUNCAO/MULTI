@@ -839,6 +839,74 @@ function SectionEmpresas({ adminKey }) {
   );
 }
 
+// ─── Seção: Categorias ───────────────────────────────────────────
+// Fase 1 do plano de CRM. Sem coluna "Buscas" (spec original pedia) —
+// não existe tracking de busca/visita ainda, isso é Fase 3. O resto
+// (solicitações/propostas/fechamentos/conversão) já dá pra calcular com
+// o que existe hoje (ver /api/admin/categorias, MULTI-BACKEND).
+function SectionCategorias({ adminKey }) {
+  const [categorias, setCategorias] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    fetch(API + "/api/admin/categorias", { headers: { "x-admin-key": adminKey } })
+      .then(r => r.json())
+      .then(d => { setCategorias(d.categorias || []); setLoading(false); })
+      .catch(() => { setCategorias([]); setLoading(false); });
+  }, []);
+
+  const filtered = categorias.filter(c => !search || c.categoria.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ flex: 1, minWidth: 200, maxWidth: 360 }}>
+        <SearchBar value={search} onChange={setSearch} placeholder="Buscar categoria..." />
+      </div>
+
+      <div style={{
+        color: COLORS.textMuted, fontSize: 12, background: COLORS.card,
+        border: "1px solid " + COLORS.border, borderRadius: 10, padding: "10px 14px",
+      }}>
+        ℹ️ "Buscas" ainda não é rastreado (precisa de instrumentação nova, fora do escopo desta fase) — os números abaixo partem de solicitações publicadas de verdade.
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted }}>Carregando...</div>
+      ) : filtered.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted }}>Nenhuma categoria encontrada</div>
+      ) : (
+        <Card style={{ padding: 0, overflow: "hidden" }}>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid " + COLORS.border }}>
+                  {["Categoria", "Solicitações", "Propostas", "Fechamentos", "Conversão"].map(h => (
+                    <th key={h} style={{ textAlign: h === "Categoria" ? "left" : "right", padding: "12px 16px", color: COLORS.textMuted, fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5, whiteSpace: "nowrap" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((c, i) => (
+                  <tr key={c.categoria} style={{ borderBottom: i < filtered.length - 1 ? "1px solid " + COLORS.border : "none" }}>
+                    <td style={{ padding: "12px 16px", color: COLORS.textPrimary, fontWeight: 700 }}>{c.categoria}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: COLORS.textPrimary }}>{c.solicitacoes}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: COLORS.textPrimary }}>{c.propostas}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: COLORS.textPrimary }}>{c.fechamentos}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                      <Badge color={c.conversao >= 50 ? "green" : c.conversao >= 25 ? "orange" : "red"}>{c.conversao}%</Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // Sugestões de categoria — texto livre por trás (ver supabase_despesas_migration.sql,
 // "categorias de despesa mudam mais rápido do que valeria travar num enum"),
 // isso aqui é só datalist pra digitar mais rápido, não trava nada.
@@ -1558,6 +1626,7 @@ function AdminDashboard({ onExit }) {
     { id: "clients", label: "Clientes", icon: Users },
     { id: "empresas", label: "Empresas", icon: Building2 },
     { id: "services", label: "Serviços", icon: FileText },
+    { id: "categorias", label: "Categorias", icon: Filter },
     { id: "financial", label: "Financeiro", icon: DollarSign },
     { id: "cupons", label: "Cupons", icon: Tag },
     { id: "email", label: "Email", icon: Mail },
@@ -1597,6 +1666,7 @@ function AdminDashboard({ onExit }) {
         {tab === "clients" && <SectionClientes adminKey={token} />}
         {tab === "empresas" && <SectionEmpresas adminKey={token} />}
         {tab === "services" && <SectionServicos adminKey={token} />}
+        {tab === "categorias" && <SectionCategorias adminKey={token} />}
         {tab === "financial" && <SectionFinanceiro adminKey={token} />}
         {tab === "cupons" && <SectionCupons adminKey={token} />}
         {tab === "email" && <SectionEmail adminKey={token} />}
