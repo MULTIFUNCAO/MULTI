@@ -1,0 +1,38 @@
+Subject: Update — new incident, entire CREATE TABLE + multiple ALTER TABLE ADD COLUMN silently not persisting (project nlpfjkxqypveontunrxj)
+
+Hi,
+
+Following up again on the open ticket (Severity: High, Database/JavaScript client, project ref nlpfjkxqypveontunrxj, opened 2026-08-10, previously updated 2026-08-15 re: column/constraint reverting on public.usuarios) with a new, more severe incident.
+
+This time it's not a column reverting after being confirmed applied days earlier — it's DDL that appears to never have persisted at all, checked within roughly 90 seconds of being run.
+
+Timeline (2026-08-21):
+
+- Ran a migration script in the SQL Editor consisting of: `alter table usuarios add column if not exists modelo_cobranca text not null default 'mensalidade'` (+ a CHECK constraint), `alter table usuarios add column if not exists pix_key text`, `alter table usuarios add column if not exists pix_key_tipo text` (+ CHECK), a `create or replace function` + `create trigger` on `usuarios`, ~10 `alter table pedidos add column if not exists ...` statements (all nullable, no defaults required), another `create or replace function` + `create trigger` on `pedidos`, and a `create table if not exists repasses_log (...)` with its own index, RLS enable, and a SELECT policy. The script ends with several confirmation SELECTs (`information_schema.columns`, `to_regclass`, `pg_trigger`).
+
+- User ran the script in the SQL Editor and reported it ran clean, no visible error.
+
+- We (the assistant, via the project's own tooling, not a human) verified independently ~1-2 minutes later using the PostgREST REST API with the project's anon/publishable key:
+  - `GET /rest/v1/usuarios?select=modelo_cobranca&limit=1` → `{"code":"42703","message":"column usuarios.modelo_cobranca does not exist"}` — this is a raw Postgres error code (undefined_column), not a PostgREST schema-cache-miss error, so it's not just a cache lag issue: the column does not exist in the actual table as far as PostgREST's live connection can see.
+  - `GET /rest/v1/pedidos?select=modelo_pagamento,valor_comissao,...&limit=1` → same `42703 does not exist` for all 10 new columns.
+  - `GET /rest/v1/repasses_log?select=id&limit=1` → `PGRST205 Could not find the table 'public.repasses_log' in the schema cache` — consistent with the table never having been created (or having been created and then dropped) at the Postgres level, not just a PostgREST cache issue, since the columns check above already ruled out "it's just cache lag."
+  - Re-checked `usuarios.modelo_cobranca` again ~60 seconds later — same `42703` error, no change.
+
+- We have NOT re-run the migration a second time, per the pattern already established in this project's history with your team (re-running the same statement doesn't fix a revert and just adds noise to the investigation).
+
+This is a stronger signal than the previous incident (2026-08-15 update) because:
+1. It affects a brand-new `CREATE TABLE`, not just columns/constraints on a pre-existing table — a table that should not exist at all until our script runs.
+2. The gap between "ran clean" and "confirmed missing via a second, independent client (PostgREST/anon key, not the SQL Editor session)" was on the order of 1-2 minutes, not hours/days like the previous incidents. If this is being caused by some kind of replica lag, restore, or config sync process, it appears to be happening much faster than previously observed, or possibly is a different failure mode than the earlier column/constraint reverts.
+
+Could you help us understand:
+1. Whether project logs on your end show the DDL (CREATE TABLE repasses_log, ALTER TABLE usuarios/pedidos ADD COLUMN) actually executing and committing at the time the user ran it in the SQL Editor.
+2. If it did commit, what could cause it to disappear within ~1-2 minutes, checked via a completely separate connection (PostgREST/anon key)?
+3. Whether this project is on a setup (branching, read replica routing, point-in-time-recovery test, etc.) where the SQL Editor session and the REST API could be hitting different underlying database instances that haven't converged yet — and if so, what's the expected convergence time and how should we structure migrations to be safe against it.
+
+Project ref: nlpfjkxqypveontunrxj
+Tables affected: public.usuarios (columns modelo_cobranca, pix_key, pix_key_tipo, + trigger trg_lock_modelo_cobranca), public.pedidos (10 new columns, + trigger trg_lock_campos_repasse), public.repasses_log (entire table, including its RLS policy)
+
+Happy to provide exact timestamps, the full migration script, or grant temporary access if that helps investigate.
+
+Thanks,
+Multifuncao team
