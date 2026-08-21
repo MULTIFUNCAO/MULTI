@@ -9927,6 +9927,25 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   const podeVerEmpresarial = plano === "pro" || plano === "premium";
   useEffect(()=>{ supabase.from("pedidos").select("*").eq("status","aberto").in("publico_alvo", podeVerEmpresarial ? ["geral","pro"] : ["geral"]).in("tipo_atendimento", podeVerEmpresarial ? ["residencial","empresarial"] : ["residencial"]).order("created_at",{ascending:false}).limit(50).then(({data})=>{ if(data&&data.length>0) setRealPedidos(data.map(p=>({id:p.id,cliente_id:p.cliente_id,cat:p.categoria||"servico",title:(p.descricao||p.categoria||"Serviço").slice(0,40),desc:p.descricao||"",value:p.valor,tipoValor:p.tipo_valor,loc:p.cidade||"sua região",time:new Date(p.created_at).toLocaleDateString("pt-BR"),client:p.cliente_nome||"Cliente",rating:4.5,urgent:false,emoji:"🔧",bg:"#FFF8E1",photo:null,photos:p.fotos,publicoAlvo:p.publico_alvo,tipoAtendimento:p.tipo_atendimento,prazo:p.prazo,custoMoedas:p.custo_moedas}))); }).catch(()=>{}); },[podeVerEmpresarial]);
 
+  // Contagem de candidatos por pedido — pra mostrar "Vagas esgotadas (6/6)"
+  // no mural quando a oportunidade já bateu o limite de 6 respostas (ver
+  // supabase_limite_candidatos_oportunidade_migration.sql, que é quem de
+  // fato bloqueia no banco; isso aqui só evita o clique/viagem de rede
+  // quando já dá pra saber que vai falhar, mesmo padrão de allDocsVerified).
+  const LIMITE_CANDIDATOS_OPORTUNIDADE = 6;
+  const [candidatosPorPedido, setCandidatosPorPedido] = useState({});
+  useEffect(() => {
+    const ids = realPedidos.map(p => p.id).filter(Boolean);
+    if (ids.length === 0) { setCandidatosPorPedido({}); return; }
+    supabase.from("propostas").select("pedido_id").in("pedido_id", ids)
+      .then(({ data }) => {
+        const counts = {};
+        (data || []).forEach(r => { counts[r.pedido_id] = (counts[r.pedido_id] || 0) + 1; });
+        setCandidatosPorPedido(counts);
+      })
+      .catch(() => {});
+  }, [realPedidos]);
+
   // Carrega categoria + status persistidos, mesmo padrão do handleToggleOnline da empresa.
   // userToggledRef evita que essa carga inicial (assíncrona) sobrescreva um clique em
   // "Ficar Online" que já tenha acontecido antes dela terminar — sem isso, um clique
@@ -10344,26 +10363,44 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                     {/* Action button — triggers doc-block popup if docs not verified,
                         ou o gate de moeda se não tem plano pago ativo (ver radar/mural
                         continua liberado sem plano; só demonstrar interesse é bloqueado
-                        até pagar em moeda ou assinar) */}
+                        até pagar em moeda ou assinar). vagasEsgotadas checa o limite de
+                        6 candidatos por oportunidade — quem bloqueia de verdade é o
+                        trigger trg_limite_candidatos_propostas no Postgres (ver
+                        supabase_limite_candidatos_oportunidade_migration.sql); isso aqui
+                        só evita a viagem de rede quando já dá pra saber que vai falhar. */}
+                    {(() => {
+                      const vagasEsgotadas = (candidatosPorPedido[s.id] || 0) >= LIMITE_CANDIDATOS_OPORTUNIDADE;
+                      return (
                     <button
+                      disabled={vagasEsgotadas}
                       onClick={e => {
                         e.stopPropagation();
+                        if (vagasEsgotadas) return;
                         if (!allDocsVerified) { setShowDocBlock(true); return; }
                         const proUser=safeGetUser();
                         const candidatarSe = () => {
-                          supabase.from("propostas").upsert({pedido_id:s.id,profissional_id:proUser.email||proUser.whatsapp,profissional_nome:proUser.name||"Profissional",profissional_email:proUser.email||proUser.whatsapp,valor:s.value,mensagem:"Tenho interesse neste serviço!",status:"pendente",cliente_email:s.cliente_id||""},{onConflict:"pedido_id,profissional_id"}).then(()=>{}).catch(()=>{});
-                          onViewService({ _notify:{ serviceId:s.id, serviceTitle:s.title, value:s.value, proName:proUser.name||"Profissional" } });
+                          supabase.from("propostas").upsert({pedido_id:s.id,profissional_id:proUser.email||proUser.whatsapp,profissional_nome:proUser.name||"Profissional",profissional_email:proUser.email||proUser.whatsapp,valor:s.value,mensagem:"Tenho interesse neste serviço!",status:"pendente",cliente_email:s.cliente_id||""},{onConflict:"pedido_id,profissional_id"})
+                            .then(({ error }) => {
+                              if (error) {
+                                showToast?.("❌ " + (error.message || "Não foi possível se candidatar a esse pedido."), "#DC2626");
+                                return;
+                              }
+                              onViewService({ _notify:{ serviceId:s.id, serviceTitle:s.title, value:s.value, proName:proUser.name||"Profissional" } });
+                            })
+                            .catch(() => showToast?.("❌ Não foi possível se candidatar a esse pedido.", "#DC2626"));
                         };
                         if (!isPro) { abrirGate(s.id, s.custoMoedas, candidatarSe); return; }
                         if (isLocked) { onUpgrade(); return; }
                         candidatarSe();
                       }}
-                      style={{ padding:"11px 0", borderRadius:12, border:"none", cursor:"pointer", fontWeight:900, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:7,
-                        background: !allDocsVerified ? "#F5F6FA" : !isPro ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : isLocked ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : `linear-gradient(135deg,${O},#E64A19)`,
-                        color:      !allDocsVerified ? "#9CA3AF" : "white",
-                        boxShadow:  !allDocsVerified ? "none" : !isPro ? "0 3px 10px rgba(124,58,237,.28)" : isLocked ? "0 3px 10px rgba(124,58,237,.28)" : "0 3px 10px rgba(255,87,34,.28)",
+                      style={{ padding:"11px 0", borderRadius:12, border:"none", cursor: vagasEsgotadas ? "not-allowed" : "pointer", fontWeight:900, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:7,
+                        background: vagasEsgotadas ? "#F5F6FA" : !allDocsVerified ? "#F5F6FA" : !isPro ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : isLocked ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : `linear-gradient(135deg,${O},#E64A19)`,
+                        color:      vagasEsgotadas ? "#9CA3AF" : !allDocsVerified ? "#9CA3AF" : "white",
+                        boxShadow:  vagasEsgotadas ? "none" : !allDocsVerified ? "none" : !isPro ? "0 3px 10px rgba(124,58,237,.28)" : isLocked ? "0 3px 10px rgba(124,58,237,.28)" : "0 3px 10px rgba(255,87,34,.28)",
                       }}>
-                      {!allDocsVerified
+                      {vagasEsgotadas
+                        ? "Vagas esgotadas (6/6)"
+                        : !allDocsVerified
                         ? <><Lock size={13} /> Candidatar-me</>
                         : !isPro
                           ? <>🪙 Responder{s.custoMoedas ? ` (${s.custoMoedas} moedas)` : ""}</>
@@ -10371,6 +10408,8 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                             ? <><Crown size={13} /> Assinar PRO</>
                             : "Tenho Interesse"}
                     </button>
+                      );
+                    })()}
                   </>
                 )}
               </div>
