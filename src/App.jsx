@@ -9497,6 +9497,23 @@ function CadastroEmpresaScreen({ onBack, onComplete, showToast }) {
           const prev = JSON.parse(localStorage.getItem("multiSession") || "{}") || {};
           localStorage.setItem("multiSession", JSON.stringify({ ...prev, token: d.token, refreshToken: d.refresh_token }));
         } catch {}
+        // CRÍTICO (achado 2026-08-26, investigando o bug de login de empresa
+        // caindo na Home de Cliente): sem isso, o client Supabase segue
+        // anônimo até o upsert de "usuarios" logo abaixo — e como é um
+        // upsert (ON CONFLICT DO UPDATE), o Postgres exige a policy de
+        // UPDATE além da de INSERT, mesmo quando não existe conflito de
+        // verdade. A policy de UPDATE de "usuarios" exige auth.jwt() com o
+        // e-mail batendo (role authenticated) — sem setSession() aqui isso
+        // falha SEMPRE (não é o bug de durabilidade do Supabase, é
+        // determinístico), deixando a empresa sem linha em "usuarios" toda
+        // vez. RegisterScreen (cliente/profissional) não tem esse problema
+        // porque o upsert equivalente dele roda depois, dentro de
+        // finishLogin(), que já aguarda setSession() antes.
+        try {
+          await supabase.auth.setSession({ access_token: d.token, refresh_token: d.refresh_token });
+        } catch (e) {
+          console.warn("[cadastro-empresa] setSession falhou:", e.message);
+        }
       }
 
       // 3. Cria a empresa
