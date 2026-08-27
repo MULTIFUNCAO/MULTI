@@ -4457,7 +4457,7 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
             </div>
             <p style={{ fontWeight:900, fontSize:30, color:"#1a1a2e", margin:"0 0 4px" }}>R$ {PLANO_ACESSO_INFO.price}<span style={{ fontSize:14, fontWeight:700, color:"#9CA3AF" }}>/mês</span></p>
             <p style={{ fontSize:13, color:"#6C6F94", lineHeight:1.58, margin:"0 0 18px" }}>
-              Mantém seu perfil visível no mural pra clientes e empresas da sua região. Sem mensalidade de plano além dessa taxa — você só paga comissão quando fechar um serviço.
+              Mantém seu perfil visível no mural pra clientes e empresas da sua região. Essa é a única cobrança recorrente da plataforma — você só paga comissão adicional quando fechar um serviço.
             </p>
             <button onClick={() => setPlanoEscolhido("acesso")} style={{ width:"100%", padding:"15px 0", borderRadius:16, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${O},#E64A19)`, color:"white", fontWeight:900, fontSize:14, boxShadow:`0 8px 22px ${O}59` }}>
               Continuar
@@ -4999,11 +4999,18 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
 
       {/* Toggle Cartão / Pix — livre com ou sem cupom (ver comentário no topo
           do componente: 2026-08-15, a trava em "cartao" foi removida).
-          Exceção: taxa de acesso (planoId "acesso", Promoção de Inauguração
-          2026-08-26) — decisão explícita de lançar só com cartão por
-          enquanto, sem Pix. Toggle nem aparece nesse caso (metodo já nasce
-          "cartao" e nunca muda, não precisa de guarda extra em pagar()). */}
-      {planoId !== "acesso" && (
+          Taxa de acesso (planoId "acesso") tinha ficado de fora dessa lista
+          por decisão explícita de lançamento (Promoção de Inauguração,
+          2026-08-26: só cartão por enquanto) — revertido em 2026-08-27 depois
+          que /api/assinatura/gerar-pix + /api/assinatura/confirmar-pix (que
+          este mesmo componente já chama genericamente via `plano: planoId`)
+          foram confirmados funcionando para "acesso" também, incluindo a
+          rotina de lembrete de vencimento por Pix (ver PLANOS_ASSINATURA.acesso
+          e o cron "taxa_acesso_pix" no backend). Nenhuma outra mudança de
+          código foi necessária — o fluxo Pix completo (QR code, polling,
+          confirmação) já era genérico o bastante pra cobrir esse plano.
+          Testado ao vivo no preview 2026-08-27: toggle aparece, gera QR code
+          real via Asaas sandbox, sem erros. */}
       <div style={{ maxWidth:420, margin:"0 auto 18px", display:"flex", gap:8, padding:6, background:"#EFF1F6", borderRadius:14 }}>
         {[{ id:"cartao", label:"💳 Cartão de crédito" }, { id:"pix", label:"⚡ Pix" }].map(m => (
           <button key={m.id} onClick={() => setMetodo(m.id)} style={{
@@ -5017,7 +5024,6 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
           </button>
         ))}
       </div>
-      )}
 
       {metodo === "cartao" ? (
         <div style={{ maxWidth:420, margin:"0 auto", display:"flex", flexDirection:"column", gap:14 }}>
