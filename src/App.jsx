@@ -4446,7 +4446,7 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
           Só mais um passo pra <span style={{ color:O }}>ficar visível no Multi</span>
         </h2>
         <p style={{ textAlign:"center", color:"#666", fontSize:14, lineHeight:1.5, margin:"0 auto 26px", maxWidth:340 }}>
-          Toda conta profissional nova passa por uma taxa de acesso mensal recorrente — cobrança no cartão, ativa na hora, renovada todo mês.
+          Toda conta profissional nova passa por uma taxa de acesso mensal recorrente — no cartão ou Pix, ativa na hora.
         </p>
 
         <div style={{ maxWidth:420, margin:"0 auto" }}>
@@ -10002,7 +10002,17 @@ function GuestMural({ onSignup, allDocsVerified }) {
 }
 
 /* ───────────────────────── PROFESSIONAL HOME ────────────────────────────────── */
-function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro, plano, planoInicio, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet, onAcceptOrder, meusGanhos, saldoMoedas, onGoToComprarMoedas, onSaldoMoedasChange }) {
+function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro, plano, planoInicio, planoStatus, planoExpiraEm, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet, onAcceptOrder, meusGanhos, saldoMoedas, onGoToComprarMoedas, onSaldoMoedasChange }) {
+  // Renovação da Taxa de Acesso via Pix (2026-08-27) — cartão renova
+  // sozinho, mas Pix não, e o cron (server.js, /api/cron/lembretes) marca
+  // "inadimplente" no vencimento sem aviso nenhum na tela até aqui. Banner
+  // cobre os dois casos: já venceu (inadimplente — isPro já virou false
+  // nesse ponto, ver carregarPlano em App.jsx) ou vence nos próximos 3 dias
+  // (ainda "ativa", só um aviso preventivo, mesma janela usada pelo cron
+  // pra mandar o e-mail).
+  const acessoVencido = plano === "acesso" && planoStatus === "inadimplente";
+  const acessoPrestesAVencer = plano === "acesso" && planoStatus === "ativa" && planoExpiraEm
+    && (new Date(planoExpiraEm).getTime() - Date.now()) <= 3 * 24 * 60 * 60 * 1000;
   const [online,       setOnline]       = useState(false);
   const [categoriaServico, setCategoriaServico] = useState([]);
   const [userCity, setUserCity] = useState("");
@@ -10279,6 +10289,29 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
         .pulse-online  { animation: radar-pulse     1.8s ease-out infinite; }
         .pulse-offline { animation: radar-pulse-off 2.4s ease-out infinite; }
       `}</style>
+
+      {/* ── BANNER RENOVAÇÃO TAXA DE ACESSO (Pix, 2026-08-27) ── */}
+      {(acessoVencido || acessoPrestesAVencer) && (
+        <div onClick={onUpgrade} style={{
+          margin:"14px 16px 0", padding:"14px 16px", borderRadius:16, cursor:"pointer",
+          display:"flex", alignItems:"center", gap:12,
+          background: acessoVencido ? "#FEF2F2" : "#FFF7ED",
+          border: `1.5px solid ${acessoVencido ? "#FCA5A5" : "#FDBA74"}`,
+        }}>
+          <span style={{ fontSize:22 }}>{acessoVencido ? "🚫" : "⏰"}</span>
+          <div style={{ flex:1 }}>
+            <p style={{ fontWeight:800, fontSize:13.5, color:"#1a1a2e", margin:0 }}>
+              {acessoVencido ? "Sua Taxa de Acesso venceu — perfil fora do mural" : "Sua Taxa de Acesso vence em breve"}
+            </p>
+            <p style={{ fontSize:12, color:"#6C6F94", margin:"2px 0 0" }}>
+              {acessoVencido
+                ? "Pagamento via Pix não renova sozinho. Gere um novo Pix pra voltar a aparecer."
+                : `Vence em ${planoExpiraEm ? new Date(planoExpiraEm).toLocaleDateString("pt-BR") : "breve"} — se pagou por Pix, renove antes pra não sair do mural.`}
+            </p>
+          </div>
+          <span style={{ fontWeight:800, fontSize:12.5, color: acessoVencido ? "#DC2626" : "#EA580C", whiteSpace:"nowrap" }}>Renovar →</span>
+        </div>
+      )}
 
       {/* ── BUSINESS CARD BANNER ── */}
       <div style={{ margin:"18px 16px 0", borderRadius:24, overflow:"hidden", position:"relative", boxShadow:"0 10px 32px rgba(0,0,0,.22)" }}>
@@ -12292,7 +12325,13 @@ const renderContent = () => {
   // card legado "Sem plano / pague com moeda" não faz mais sentido (moeda
   // era a alternativa a assinar um dos PLANOS_USUARIO antigos, que esse
   // profissional nunca chega a ver).
-  if (screen === "upgrade") return <EscolherPlanoScreen titularTipo="usuario" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("home")} showToast={showToast} onDone={() => { carregarPlano("usuario", userEmail); setScreen("home"); }} onGoToComprarMoedas={() => setScreen("comprarmoedas")} permiteComprarMoedas={role === "professional" && plano !== "acesso"} />;
+  if (screen === "upgrade") return <EscolherPlanoScreen titularTipo="usuario" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("home")} showToast={showToast} onDone={() => { carregarPlano("usuario", userEmail); setScreen("home"); }} onGoToComprarMoedas={() => setScreen("comprarmoedas")} permiteComprarMoedas={role === "professional" && plano !== "acesso"}
+    // Renovação da Taxa de Acesso (Pix, 2026-08-27): quem já está no plano
+    // "acesso" vindo do banner de renovação (ver ProfessionalHome) não deve
+    // ver a lista normal de planos — mesmo comportamento do cadastro,
+    // direto pro card único/PagamentoPlanoScreen.
+    taxaAcessoObrigatoria={plano === "acesso"}
+  />;
     if (screen === "wallet") return <WalletScreen onBack={() => setScreen("profile")} pedidos={meusGanhos} />;
     if (screen === "comprarmoedas") return <ComprarMoedasScreen userEmail={userEmail} userName={userName} onBack={() => setScreen("profile")} showToast={showToast} onSuccess={() => carregarSaldoMoedas(userEmail)} />;
     if (screen === "profile") {
@@ -12316,6 +12355,8 @@ const renderContent = () => {
         isPro={isPro}
         plano={plano}
         planoInicio={planoInicio}
+        planoStatus={planoStatus}
+        planoExpiraEm={planoExpiraEm}
         meusGanhos={meusGanhos}
         onViewService={handleProFeedAction}
         onUpgrade={() => setScreen("upgrade")}
