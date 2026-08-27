@@ -11681,7 +11681,32 @@ export default function App() {
         // banner "Vire Profissional" do ClientHome) corria contra esse write
         // e pegava o valor antigo, mesmo o registro certo ficando garantido
         // no banco poucos instantes depois (achado testando "ambos" ao vivo).
-        upsertPromise = supabase.from("usuarios").upsert(upsertPayload, { onConflict: "email" }).then(()=>{}).catch(()=>{});
+        //
+        // CRÍTICO (achado 2026-08-27, investigando "tela mostra sucesso mas
+        // 'usuarios' fica sem a linha"): isso tinha .catch(()=>{}) — qualquer
+        // falha no upsert (RLS, rede, o que for) era engolida em silêncio,
+        // sem log e sem avisar a pessoa, e o fluxo seguia pra Home como se
+        // tivesse dado certo. Reproduzido ao vivo: cadastro de profissional
+        // com auth.users criado mas usuarios NUNCA gravado, zero rastro nos
+        // logs. Agora loga o erro e avisa via toast — sem bloquear a ida pra
+        // Home (mesmo comportamento de antes), só parando de esconder a
+        // falha.
+        upsertPromise = supabase.from("usuarios").upsert(upsertPayload, { onConflict: "email" })
+          .then(({ error }) => {
+            if (error) {
+              console.error("[handleLoginComplete] upsert usuarios falhou:", error.message, { email: session.email, isNewAccount });
+              showToast(
+                isNewAccount
+                  ? "⚠️ Conta criada, mas houve um problema ao salvar seu perfil. Complete seu perfil novamente em instantes."
+                  : "⚠️ Não foi possível salvar as últimas alterações do seu perfil. Tente novamente.",
+                "#EF4444"
+              );
+            }
+          })
+          .catch(err => {
+            console.error("[handleLoginComplete] upsert usuarios falhou (exceção):", err?.message || err, { email: session.email, isNewAccount });
+            showToast("⚠️ Não foi possível salvar seu perfil. Verifique sua conexão e tente novamente.", "#EF4444");
+          });
       } catch {}
 
       upsertPromise.then(() => {
