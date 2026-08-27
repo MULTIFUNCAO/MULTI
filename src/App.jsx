@@ -42,7 +42,7 @@ import {
   CreditCard, HeartHandshake, HelpCircle, KeyRound,
   BellRing, BadgeCheck, Users, ShieldCheck,
   Activity, BarChart2, Package, ChevronUp, Eye, EyeOff,
-  Paperclip, Download, ArrowLeftRight, Gem, Coins,
+  Paperclip, Download, ArrowLeftRight, Gem, Coins, Phone,
 } from "lucide-react";
 
 /* ───────────────────────── DESIGN TOKENS ──────────────────────────────────── */
@@ -4760,6 +4760,13 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
   const [expiry,     setExpiry]     = useState(""); // MM/AA
   const [cvv,        setCvv]        = useState("");
   const [cpf,        setCpf]        = useState("");
+  // Telefone do titular do cartão — achado 2026-08-27 testando a Taxa de
+  // Acesso pela primeira vez de verdade: a Asaas rejeita toda cobrança de
+  // cartão sem creditCardHolderInfo.phone ("Informe o número de contato com
+  // DDD do titular do cartão", código invalid_creditCard) e esse campo nunca
+  // existiu nesse formulário — nenhum pagamento por cartão neste endpoint
+  // tinha funcionado nos últimos 7 dias (só Pix, que não passa por aqui).
+  const [phone,      setPhone]      = useState("");
   const [errors,     setErrors]     = useState({});
   const [loading,    setLoading]    = useState(false);
 
@@ -4783,6 +4790,7 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
     if (!/^\d{2}\/\d{2}$/.test(expiry)) e.expiry = "Use o formato MM/AA";
     if (cvv.replace(/\D/g,"").length < 3) e.cvv = "CVV inválido";
     if (cpf.replace(/\D/g,"").length !== 11) e.cpf = "CPF inválido";
+    if (phone.replace(/\D/g,"").length < 10) e.phone = "Telefone inválido (com DDD)";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -4800,6 +4808,7 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
           cardNumber: cardNumber.replace(/\D/g,""), cardHolder: cardHolder.trim(),
           expiryMonth, expiryYear: `20${expiryYearShort}`,
           cvv: cvv.replace(/\D/g,""), cpf: cpf.replace(/\D/g,""),
+          phone: phone.replace(/\D/g,""),
         }),
       });
       const d = await r.json();
@@ -5022,6 +5031,13 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
             <input inputMode="numeric" placeholder="000.000.000-00" value={cpf}
               onChange={e => { setCpf(maskCpf(e.target.value)); if (errors.cpf) setErrors(p => ({ ...p, cpf:undefined })); }}
               style={{ ...REG_INPUT, borderColor: errors.cpf ? "#E53935" : undefined }} />
+          </FormField>
+          {/* Telefone do titular — a Asaas exige esse dado pra aprovar cartão
+              (creditCardHolderInfo.phone), ver comentário no state acima. */}
+          <FormField IconComp={Phone} label="Telefone do titular (com DDD)" error={errors.phone}>
+            <input inputMode="numeric" autoComplete="tel" placeholder="(00) 00000-0000" value={phone}
+              onChange={e => { setPhone(maskPhone(e.target.value)); if (errors.phone) setErrors(p => ({ ...p, phone:undefined })); }}
+              style={{ ...REG_INPUT, borderColor: errors.phone ? "#E53935" : undefined }} />
           </FormField>
 
           <button onClick={pagar} disabled={loading} style={{
@@ -11110,6 +11126,21 @@ export default function App() {
             forceReauth();
             return;
           }
+          // setSession() rotaciona o refresh token (uso único no Supabase Auth)
+          // — sem regravar o par novo aqui, o localStorage fica com o token
+          // antigo já consumido. Qualquer outra aba/reload que restaure a
+          // sessão em seguida lê esse token velho e recebe "400 Invalid
+          // Refresh Token: Already Used" (corrida entre abas na mesma conta,
+          // achado 2026-08-27 durante teste de pagamento). Persistindo o par
+          // rotacionado de volta, a próxima restauração (nesta aba ou em
+          // qualquer outra que ainda não tenha rodado) usa o token válido.
+          try {
+            const novoToken = { token: data.session.access_token, refreshToken: data.session.refresh_token };
+            const prevSession = JSON.parse(localStorage.getItem("multiSession") || "{}") || {};
+            localStorage.setItem("multiSession", JSON.stringify({ ...prevSession, ...novoToken }));
+            const prevUser = JSON.parse(localStorage.getItem("multiUser") || "{}") || {};
+            localStorage.setItem("multiUser", JSON.stringify({ ...prevUser, ...novoToken }));
+          } catch (e) { console.warn("[auth] falha ao regravar token rotacionado:", e.message); }
           setIsLoggedIn(true);
           setUserEmail(savedSession.email || "");
           setUserRole(savedSession.role || "client");
