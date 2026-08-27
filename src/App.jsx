@@ -1712,7 +1712,7 @@ function MinhasDemandasScreen({ userEmail, userName, onBack, onVerPropostas, onO
                     {nCandidatos} candidato{nCandidatos === 1 ? "" : "s"} · publicada {formatTimeAgo(d.created_at)}
                   </p>
                 </div>
-                <span style={{ fontSize:13, fontWeight:900, color:B, flexShrink:0 }}>R$ {d.valor}</span>
+                <span style={{ fontSize:13, fontWeight:900, color: d.valor != null ? B : "#9CA3AF", flexShrink:0 }}>{d.valor != null ? `R$ ${d.valor}` : "A combinar"}</span>
                 <ChevronRight size={15} color="#aaa" style={{ flexShrink:0 }} />
               </div>
             );
@@ -1726,7 +1726,7 @@ function MinhasDemandasScreen({ userEmail, userName, onBack, onVerPropostas, onO
                   <p style={{ fontSize:14, fontWeight:800, color:"#1a1a2e", margin:0 }}>{cat?.label || d.categoria}</p>
                   <p style={{ fontSize:11, color:"#888", margin:0 }}>{statusLabel(d.status)}</p>
                 </div>
-                <span style={{ fontSize:14, fontWeight:900, color:B }}>R$ {d.valor}</span>
+                <span style={{ fontSize:14, fontWeight:900, color: d.valor != null ? B : "#9CA3AF" }}>{d.valor != null ? `R$ ${d.valor}` : "A combinar"}</span>
               </div>
               <p style={{ fontSize:12.5, color:"#555", margin:"0 0 8px", lineHeight:1.5 }}>{d.descricao}</p>
               {prazo && <p style={{ fontSize:11, color:"#888", fontWeight:700, margin:"0 0 8px" }}>{prazo.emoji} {prazo.label}</p>}
