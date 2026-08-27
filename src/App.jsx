@@ -2726,7 +2726,7 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName, 
             <span style={{ fontSize:32, flexShrink:0 }}>🔧</span>
             <div style={{ flex:1, minWidth:0 }}>
               <p style={{ fontSize:14.5, fontWeight:900, color:"white", margin:"0 0 3px" }}>Quer também prestar serviços?</p>
-              <p style={{ fontSize:11.5, color:"rgba(255,255,255,.85)", margin:"0 0 10px", lineHeight:1.4 }}>Receba oportunidades perto de você — a partir de R$ 29,90/mês.</p>
+              <p style={{ fontSize:11.5, color:"rgba(255,255,255,.85)", margin:"0 0 10px", lineHeight:1.4 }}>Receba oportunidades perto de você — taxa de acesso R$ 9,90/mês.</p>
               <button onClick={onSwitchPro} style={{ padding:"8px 16px", borderRadius:99, border:"none", background:"white", color:O, fontWeight:900, fontSize:12.5, cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
                 Vire Profissional <ChevronRight size={13} />
               </button>
@@ -4446,7 +4446,7 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
           Só mais um passo pra <span style={{ color:O }}>ficar visível no Multi</span>
         </h2>
         <p style={{ textAlign:"center", color:"#666", fontSize:14, lineHeight:1.5, margin:"0 auto 26px", maxWidth:340 }}>
-          Toda conta profissional nova passa por uma taxa de acesso única — cobrança no cartão, ativa na hora.
+          Toda conta profissional nova passa por uma taxa de acesso mensal recorrente — cobrança no cartão, ativa na hora, renovada todo mês.
         </p>
 
         <div style={{ maxWidth:420, margin:"0 auto" }}>
@@ -8155,7 +8155,7 @@ const ROLE_OPTIONS = [
     title: "Quero trabalhar",
     hook: "Encontre quem precisa do que você faz.",
     desc: "Receba oportunidades de serviços e conquiste novos clientes.",
-    tag: "A partir de R$ 29,90/mês", tagBg:`${O}22`, tagBorder:"transparent", tagColor:O,
+    tag: "Taxa de acesso R$ 9,90/mês", tagBg:`${O}22`, tagBorder:"transparent", tagColor:O,
   },
   // Card "Quero crescer minha empresa" restaurado 2026-08-18 (removido em
   // a7de4c4, 2026-08-08 — "não vamos trabalhar com cadastro de empresa
@@ -9289,8 +9289,8 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
             imediata (ver PagamentoPlanoScreen). */}
         {isProfessional && (
           <div style={{ background:"linear-gradient(135deg,#7C3AED,#4F46E5)", borderRadius:16, padding:"14px 20px", marginBottom:20, width:"100%" }}>
-            <p style={{ fontSize:14, fontWeight:900, color:"white", margin:"0 0 4px" }}>🔧 Falta só escolher seu plano!</p>
-            <p style={{ fontSize:12, color:"rgba(255,255,255,.75)", margin:0 }}>A partir de R$ 29,90/mês · Contatos desbloqueados · Chat ilimitado</p>
+            <p style={{ fontSize:14, fontWeight:900, color:"white", margin:"0 0 4px" }}>🔧 Falta só pagar a taxa de acesso!</p>
+            <p style={{ fontSize:12, color:"rgba(255,255,255,.75)", margin:0 }}>R$ 9,90/mês · Contatos desbloqueados · Chat ilimitado</p>
           </div>
         )}
 
@@ -9370,8 +9370,8 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {[
               { val:"cliente",      icon:"🏠", label:"Só cliente",        sub:"Publico pedidos e contrato profissionais (grátis)", accent:B },
-              { val:"profissional", icon:"🔧", label:"Só profissional",   sub:"Recebo pedidos e ganho oportunidades (a partir de R$29,90/mês)", accent:O },
-              { val:"ambos",        icon:"🔁", label:"Os dois!",          sub:"Contrato quando precisar e também presto serviço (a partir de R$29,90/mês)", accent:"#7C3AED" },
+              { val:"profissional", icon:"🔧", label:"Só profissional",   sub:"Recebo pedidos e ganho oportunidades (taxa de acesso R$9,90/mês)", accent:O },
+              { val:"ambos",        icon:"🔁", label:"Os dois!",          sub:"Contrato quando precisar e também presto serviço (taxa de acesso R$9,90/mês)", accent:"#7C3AED" },
               { val:"empresa",      icon:"🏢", label:"Tenho uma empresa", sub:"Cadastro próprio — CNPJ, presta serviço e/ou contrata profissionais", accent:"#1a1a2e" },
             ].map((opt) => {
               const selecionado = tipoUso === opt.val;
@@ -9403,7 +9403,7 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
         <div style={{ display:"flex", alignItems:"center", gap:8, background: isProfessional ? "#F5F3FF" : "#F0FDF4", border:`1px solid ${isProfessional ? "#DDD6FE" : "#BBF7D0"}`, borderRadius:14, padding:"10px 16px", marginBottom:22 }}>
           <span style={{ fontSize:18 }}>{isProfessional ? "💳" : "✨"}</span>
           <p style={{ fontSize:13, fontWeight:800, color: isProfessional ? "#5B21B6" : "#166534", margin:0 }}>
-            {isProfessional ? "A partir de R$ 29,90/mês — pagamento no próximo passo" : "Cadastro 100% gratuito para clientes"}
+            {isProfessional ? "Taxa de acesso R$ 9,90/mês — pagamento no próximo passo" : "Cadastro 100% gratuito para clientes"}
           </p>
         </div>
 
@@ -9975,7 +9975,7 @@ function GuestMural({ onSignup, allDocsVerified }) {
         <Crown size={28} color="#FDE68A" style={{ display:"block", margin:"0 auto 10px" }} />
         <p style={{ fontSize:15, fontWeight:900, color:"white", margin:"0 0 5px" }}>Seja um Profissional Multi</p>
         <p style={{ fontSize:12, color:"rgba(255,255,255,.7)", margin:"0 0 16px", lineHeight:1.6 }}>
-          A partir de R$ 29,90/mês · Acesso imediato ao mural completo
+          Taxa de acesso R$ 9,90/mês · Acesso imediato ao mural completo
         </p>
         <button onClick={onSignup} style={{ padding:"13px 32px", borderRadius:14, border:"none", background:"white", color:B, fontWeight:900, fontSize:14, cursor:"pointer" }}>
           Criar conta e acessar →
@@ -12256,7 +12256,12 @@ const renderContent = () => {
   // moeda de verdade sem nunca virar profissional, feature sem nenhum uso
   // pra quem não responde oportunidade — ver comentário em
   // EscolherPlanoScreen/SemPlanoMoedaCard).
-  if (screen === "upgrade") return <EscolherPlanoScreen titularTipo="usuario" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("home")} showToast={showToast} onDone={() => { carregarPlano("usuario", userEmail); setScreen("home"); }} onGoToComprarMoedas={() => setScreen("comprarmoedas")} permiteComprarMoedas={role === "professional"} />;
+  // plano==="acesso" identifica profissional já no modelo de comissão
+  // (Promoção de Inauguração, taxa de acesso obrigatória) — pra esse, o
+  // card legado "Sem plano / pague com moeda" não faz mais sentido (moeda
+  // era a alternativa a assinar um dos PLANOS_USUARIO antigos, que esse
+  // profissional nunca chega a ver).
+  if (screen === "upgrade") return <EscolherPlanoScreen titularTipo="usuario" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("home")} showToast={showToast} onDone={() => { carregarPlano("usuario", userEmail); setScreen("home"); }} onGoToComprarMoedas={() => setScreen("comprarmoedas")} permiteComprarMoedas={role === "professional" && plano !== "acesso"} />;
     if (screen === "wallet") return <WalletScreen onBack={() => setScreen("profile")} pedidos={meusGanhos} />;
     if (screen === "comprarmoedas") return <ComprarMoedasScreen userEmail={userEmail} userName={userName} onBack={() => setScreen("profile")} showToast={showToast} onSuccess={() => carregarSaldoMoedas(userEmail)} />;
     if (screen === "profile") {
