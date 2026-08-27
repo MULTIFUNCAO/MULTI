@@ -4310,6 +4310,10 @@ const PLANO_LIMITES_USUARIO = {
   autonomo: { maxCategorias: 1, maxServicosMes: 3,  valorMaxServico: 5000 },
   pro:      { maxCategorias: 3, maxServicosMes: 10, valorMaxServico: 5000 },
   premium:  { maxCategorias: null, maxServicosMes: null, valorMaxServico: null },
+  // Mesmos limites do Autônomo por enquanto — placeholder até o modelo de
+  // comissão (Fase 3+) definir limites próprios pra quem paga só a taxa de
+  // acesso (ver PLANOS_ASSINATURA.acesso no backend). Espelha server.js.
+  acesso:   { maxCategorias: 1, maxServicosMes: 3,  valorMaxServico: 5000 },
 };
 // Busca os limites reais de "configuracoes_planos" (Supabase) e sobrescreve os
 // valores acima NO MESMO OBJETO (mutação, não reatribuição) — assim os
@@ -4354,7 +4358,14 @@ function limitesTexto(planoId) {
     `Valor máximo R$${l.valorMaxServico.toLocaleString("pt-BR")}/serviço`,
   ];
 }
-function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, onDone, showToast, onSkip, onGoToComprarMoedas, permiteComprarMoedas = true }) {
+// "Promoção de Inauguração" (2026-08-26) — taxa de acesso obrigatória do
+// profissional novo, modelo de comissão. Não vive em PLANOS_USUARIO de
+// propósito: não é um plano escolhível na tela normal de "Escolher
+// plano"/upgrade, só existe no card único e obrigatório que
+// EscolherPlanoScreen mostra quando taxaAcessoObrigatoria=true (ver abaixo).
+// id "acesso" tem que bater com PLANOS_ASSINATURA.acesso no backend.
+const PLANO_ACESSO_INFO = { id: "acesso", label: "Multi — Taxa de Acesso", price: "9,90" };
+function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, onDone, showToast, onSkip, onGoToComprarMoedas, permiteComprarMoedas = true, taxaAcessoObrigatoria = false }) {
   // Reativado 2026-08-19 (planos pagos de empresa voltaram — ver PLANOS_EMPRESA)
   // — isEmpresa volta a vir de titularTipo de verdade, não mais hardcoded.
   const isEmpresa = titularTipo === "empresa";
@@ -4400,7 +4411,11 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
   };
 
   if (planoEscolhido) {
-    const info = planos.find(p => p.id === planoEscolhido);
+    // "acesso" não vem de PLANOS_USUARIO/PLANOS_EMPRESA (ver PLANO_ACESSO_INFO
+    // acima) — sem esse caso especial, info ficaria undefined e a tela de
+    // pagamento mostraria "R$ 0,00" (o valor cobrado de verdade vem do
+    // backend de qualquer forma, mas a UI ficaria errada).
+    const info = planoEscolhido === "acesso" ? PLANO_ACESSO_INFO : planos.find(p => p.id === planoEscolhido);
     // Cupom só viaja pra tela de pagamento se o plano escolhido for mesmo o
     // Autônomo e a última validação tiver dado "valido" — escolher outro
     // plano com um cupom digitado (mas não aplicado) não deve ativar nada.
@@ -4414,6 +4429,42 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
         showToast={showToast}
         onSuccess={() => onDone?.(planoEscolhido)}
       />
+    );
+  }
+
+  // "Promoção de Inauguração" — profissional novo (modelo de comissão, não
+  // grandfathered) não escolhe entre planos nem pode pular: card único,
+  // obrigatório, direto pro PagamentoPlanoScreen igual aos planos pagos
+  // normais (reaproveita 100% do mesmo componente/fluxo/endpoint acima, só
+  // não passa pela lista de PLANOS_USUARIO nem pelo SemPlanoMoedaCard/onSkip).
+  if (taxaAcessoObrigatoria) {
+    return (
+      <div style={{ minHeight:"100vh", background:"linear-gradient(180deg,#F2F3FB,#E7E9F5)", padding:"20px 16px 48px", fontFamily:"'Nunito', -apple-system, sans-serif" }}>
+        {onBack && <button onClick={onBack} style={{ background:"none", border:"none", fontSize:24, cursor:"pointer", marginBottom:8 }}>←</button>}
+
+        <h2 style={{ textAlign:"center", fontWeight:900, fontSize:23, color:"#1a1a2e", margin:"0 0 8px", letterSpacing:-.3, lineHeight:1.3 }}>
+          Só mais um passo pra <span style={{ color:O }}>ficar visível no Multi</span>
+        </h2>
+        <p style={{ textAlign:"center", color:"#666", fontSize:14, lineHeight:1.5, margin:"0 auto 26px", maxWidth:340 }}>
+          Toda conta profissional nova passa por uma taxa de acesso única — cobrança no cartão, ativa na hora.
+        </p>
+
+        <div style={{ maxWidth:420, margin:"0 auto" }}>
+          <div style={{ background:"white", borderRadius:22, padding:"22px 20px", border:`1.5px solid ${O}33`, boxShadow:`0 20px 40px -16px ${O}33` }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
+              <div style={{ width:38, height:38, borderRadius:12, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:O+"18" }}><Briefcase size={18} color={O} /></div>
+              <p style={{ fontWeight:800, fontSize:16.5, color:"#14152A", margin:0, letterSpacing:-.1 }}>{PLANO_ACESSO_INFO.label}</p>
+            </div>
+            <p style={{ fontWeight:900, fontSize:30, color:"#1a1a2e", margin:"0 0 4px" }}>R$ {PLANO_ACESSO_INFO.price}<span style={{ fontSize:14, fontWeight:700, color:"#9CA3AF" }}>/mês</span></p>
+            <p style={{ fontSize:13, color:"#6C6F94", lineHeight:1.58, margin:"0 0 18px" }}>
+              Mantém seu perfil visível no mural pra clientes e empresas da sua região. Sem mensalidade de plano além dessa taxa — você só paga comissão quando fechar um serviço.
+            </p>
+            <button onClick={() => setPlanoEscolhido("acesso")} style={{ width:"100%", padding:"15px 0", borderRadius:16, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${O},#E64A19)`, color:"white", fontWeight:900, fontSize:14, boxShadow:`0 8px 22px ${O}59` }}>
+              Continuar
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -4914,7 +4965,12 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
       </div>
 
       {/* Toggle Cartão / Pix — livre com ou sem cupom (ver comentário no topo
-          do componente: 2026-08-15, a trava em "cartao" foi removida). */}
+          do componente: 2026-08-15, a trava em "cartao" foi removida).
+          Exceção: taxa de acesso (planoId "acesso", Promoção de Inauguração
+          2026-08-26) — decisão explícita de lançar só com cartão por
+          enquanto, sem Pix. Toggle nem aparece nesse caso (metodo já nasce
+          "cartao" e nunca muda, não precisa de guarda extra em pagar()). */}
+      {planoId !== "acesso" && (
       <div style={{ maxWidth:420, margin:"0 auto 18px", display:"flex", gap:8, padding:6, background:"#EFF1F6", borderRadius:14 }}>
         {[{ id:"cartao", label:"💳 Cartão de crédito" }, { id:"pix", label:"⚡ Pix" }].map(m => (
           <button key={m.id} onClick={() => setMetodo(m.id)} style={{
@@ -4928,6 +4984,7 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
           </button>
         ))}
       </div>
+      )}
 
       {metodo === "cartao" ? (
         <div style={{ maxWidth:420, margin:"0 auto", display:"flex", flexDirection:"column", gap:14 }}>
@@ -6801,17 +6858,29 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
           {/* Autonomy term */}
           <SectionLabel label="Termo de Autonomia" />
           <AutonomyTermCard showToast={showToast} userEmail={userEmail} aceitaEm={autonomiaAceitaEm} onAceito={setAutonomiaAceitaEm} />
+          {/* Rótulo/preço do plano ativo — antes era um ternário binário
+              plano==="pro"?Pro:Autônomo que mostrava "MULTI AUTÔNOMO ATIVO —
+              R$29,90" pra QUALQUER plano que não fosse "pro" (Premium já
+              caía errado aqui antes; achado ao adicionar a taxa de acesso —
+              ver PLANO_ACESSO_INFO — que também cairia nesse mesmo bug).
+              Busca em PLANOS_USUARIO (mesma fonte dos cards de
+              EscolherPlanoScreen) em vez de duplicar label/preço num mapa novo. */}
+          {(() => {
+            const infoPlanoAtivo = plano === "acesso" ? PLANO_ACESSO_INFO : PLANOS_USUARIO.find(p => p.id === plano);
+            const labelPlanoAtivo = infoPlanoAtivo?.label || "Multi Autônomo";
+            const precoPlanoAtivo = infoPlanoAtivo?.price || "29,90";
+            return (
           <div style={{ background:"white" }}>
             <div style={{ padding:"14px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:"1px solid #F8F8F8" }}>
               <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                 <span style={{ width:36, height:36, borderRadius:11, background:O+"18", display:"flex", alignItems:"center", justifyContent:"center" }}><Crown size={17} color={O} /></span>
                 <div>
-                  <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e" }}>{isPro && plano === "pro" ? "Multi Pro" : "Multi Autônomo"}</p>
+                  <p style={{ fontSize:13, fontWeight:800, color:"#1a1a2e" }}>{isPro ? labelPlanoAtivo : "Multi Autônomo"}</p>
                   <p style={{ fontSize:11, color: isPro ? G : "#bbb", lineHeight:1.5 }}>
                     {planoStatus === "trial"
                       ? <>🎁 <strong>TESTE GRATUITO</strong>{planoExpiraEm ? ` — termina em ${new Date(planoExpiraEm).toLocaleDateString("pt-BR")}` : ""}</>
                       : isPro
-                        ? <>✅ <strong>{plano === "pro" ? "MULTIPRO ATIVO" : "MULTI AUTÔNOMO ATIVO"}</strong> — R$ {plano === "pro" ? "59,90" : "29,90"}/mês{planoExpiraEm ? ` · próx. cobrança ${new Date(planoExpiraEm).toLocaleDateString("pt-BR")}` : ""}</>
+                        ? <>✅ <strong>{labelPlanoAtivo.toUpperCase()} ATIVO</strong> — R$ {precoPlanoAtivo}/mês{planoExpiraEm ? ` · próx. cobrança ${new Date(planoExpiraEm).toLocaleDateString("pt-BR")}` : ""}</>
                         : "❌ Nenhum plano ativo"}
                   </p>
                 </div>
@@ -6821,6 +6890,8 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
                 : <button onClick={onUpgrade} style={{ background:`linear-gradient(135deg,${O},#E64A19)`, color:"white", fontWeight:800, fontSize:11, padding:"6px 12px", borderRadius:99, border:"none", cursor:"pointer" }}>Escolher plano</button>}
             </div>
           </div>
+            );
+          })()}
 
           {/* Bio — mesmo texto pedido em CompletarPerfilScreen no cadastro, editável depois */}
           <div style={{ padding:"14px 16px 0" }}>
@@ -9035,7 +9106,11 @@ function VirarProfissionalScreen({ userEmail, userName, showToast, onBack, onDon
         onBack={onBack}
         showToast={showToast}
         onDone={() => setStep("completar-perfil")}
-        onSkip={() => setStep("completar-perfil")}
+        // "Promoção de Inauguração" (2026-08-26): virar profissional agora
+        // também é "profissional novo" pra fins da taxa de acesso — sem
+        // onSkip, sem lista de planos, card único obrigatório (ver
+        // taxaAcessoObrigatoria em EscolherPlanoScreen).
+        taxaAcessoObrigatoria
       />
     );
   }
@@ -9162,7 +9237,11 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
         onBack={() => setStep("success")}
         showToast={showToast}
         onDone={() => setStep("completar-perfil")}
-        onSkip={() => setStep("completar-perfil")}
+        // "Promoção de Inauguração" (2026-08-26): profissional novo cadastrado
+        // a partir de agora paga a taxa de acesso obrigatória antes de
+        // completar o cadastro — sem onSkip, sem lista de planos (ver
+        // taxaAcessoObrigatoria em EscolherPlanoScreen).
+        taxaAcessoObrigatoria
       />
     );
   }
