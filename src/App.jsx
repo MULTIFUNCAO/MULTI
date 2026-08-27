@@ -4783,6 +4783,13 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
   const hoje = new Date();
   const proximaCobranca = new Date(hoje.getTime() + 30 * 24 * 60 * 60 * 1000);
 
+  // Rótulo curto de cada campo pro resumo do toast abaixo — precisa bater
+  // com os labels visíveis do form (ver FormField mais adiante).
+  const CAMPO_LABEL_PAGAMENTO = {
+    cardNumber: "número do cartão", cardHolder: "nome no cartão", expiry: "validade",
+    cvv: "CVV", cpf: "CPF do titular", phone: "telefone do titular",
+  };
+
   const validate = () => {
     const e = {};
     if (cardNumber.replace(/\D/g,"").length < 16) e.cardNumber = "Número do cartão incompleto";
@@ -4792,6 +4799,19 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
     if (cpf.replace(/\D/g,"").length !== 11) e.cpf = "CPF inválido";
     if (phone.replace(/\D/g,"").length < 10) e.phone = "Telefone inválido (com DDD)";
     setErrors(e);
+    // CRÍTICO (achado 2026-08-27, testando a Taxa de Acesso ao vivo): sem
+    // isso, um campo obrigatório vazio abaixo da dobra (CPF/telefone do
+    // titular, os dois mais recentes) faz o clique em "Pagar" não fazer
+    // NADA visível — sem toast, sem log no backend (o fetch nem chega a
+    // rodar), só um texto vermelho pequeno num campo que a pessoa pode nem
+    // estar vendo na tela. Reproduzido ao vivo: usuária testou, "tela ficou
+    // igual", achou que travou — na real só esqueceu de rolar até CPF/
+    // telefone. Toast garante que sempre existe algum feedback visível,
+    // não importa em qual campo o erro está.
+    if (Object.keys(e).length) {
+      const faltando = Object.keys(e).map(k => CAMPO_LABEL_PAGAMENTO[k] || k).join(", ");
+      showToast?.(`❌ Confira: ${faltando}.`, "#DC2626");
+    }
     return Object.keys(e).length === 0;
   };
 
@@ -4835,7 +4855,11 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
   // ativada — trata isso como sucesso imediato, igual ao fluxo de cartão com
   // cupom, em vez de cair na tela de "aguardando pagamento".
   const gerarPix = async () => {
-    if (pixCpf.replace(/\D/g,"").length !== 11) { setErrorPixCpf("CPF inválido"); return; }
+    if (pixCpf.replace(/\D/g,"").length !== 11) {
+      setErrorPixCpf("CPF inválido");
+      showToast?.("❌ Confira: CPF do titular.", "#DC2626"); // mesmo motivo do card cartão acima
+      return;
+    }
     setErrorPixCpf("");
     setGerandoPix(true);
     setPixExpirado(false);
