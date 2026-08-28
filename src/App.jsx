@@ -4379,6 +4379,24 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
   // estavam em trial antes dessa mudança continuam valendo até expirar.
   const [planoEscolhido, setPlanoEscolhido] = useState(null);
 
+  // Achado 2026-08-28 (ver multi_taxa_acesso_bypass_nova_aba na memória):
+  // antes desta chamada, o "obrigatório" da Taxa de Acesso vivia só na ordem
+  // das telas dentro desta aba (planoEscolhido/step, tudo em memória) — nada
+  // gravava no banco que esta conta devia a taxa. Como o token de sessão já
+  // é salvo no localStorage no cadastro, antes de qualquer pagamento (ver
+  // RegisterScreen.handleSubmit), uma segunda aba/reload não tinha como
+  // saber disso e caía direto na Home, liberando o app inteiro de graça.
+  // Marca "pendente" em "assinaturas" assim que esta tela monta — o gate
+  // real (App(), lendo plano/planoStatus do banco) passa a valer em
+  // qualquer aba a partir daqui, sem depender de chegar até o pagamento.
+  useEffect(() => {
+    if (!taxaAcessoObrigatoria || !titularEmail) return;
+    fetch(`${API_BASE}/api/assinatura/marcar-pendente`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ titularTipo, titularEmail, plano: "acesso" }),
+    }).catch(() => {}); // best-effort — se falhar, o gate simplesmente não trava ainda (fecha na próxima tentativa/reload)
+  }, [taxaAcessoObrigatoria, titularTipo, titularEmail]);
+
   // Cupom de parceria/divulgação — só vale pro Multi Autônomo (regra de
   // negócio), por isso o campo só aparece no card desse plano abaixo. A
   // validação aqui é só feedback visual instantâneo (chama
@@ -12365,6 +12383,34 @@ const renderContent = () => {
             <Plus size={18} /> Novo Pedido
           </button>
         </div>
+      );
+    }
+
+    // TAXA DE ACESSO PENDENTE — achado 2026-08-28 (bypass em nova aba, ver
+    // multi_taxa_acesso_bypass_nova_aba na memória): antes, nada aqui checava
+    // se a Taxa de Acesso (plano "acesso") tinha sido paga de verdade — só a
+    // ordem das telas no cadastro (RegisterScreen/EscolherPlanoScreen), em
+    // memória, numa única aba. Como o token de sessão já é salvo no
+    // localStorage antes do pagamento (ver RegisterScreen.handleSubmit), uma
+    // segunda aba/reload caía direto aqui embaixo sem nenhuma checagem.
+    // Bloqueia só o CONTEXTO profissional — este bloco só roda depois que os
+    // dois "if (role === ...)" acima (client/empresa) já retornaram, então
+    // uma conta híbrida em role==="client" nunca passa por aqui (carregarPlano
+    // nem busca "acesso" nesse modo — ver efeito [userEmail, role]) e continua
+    // livre pra pedir serviço sem pagar nada, mesmo com a Taxa de Acesso
+    // pendente do lado profissional da mesma conta.
+    // "upgrade" (a própria tela de pagamento) e "profile" (pra dar logout ou
+    // voltar pro modo Cliente pelo toggle do header) continuam acessíveis
+    // mesmo pendente — sem isso a pessoa ficaria numa tela sem saída.
+    const taxaAcessoPendente = plano === "acesso" && planoStatus && planoStatus !== "ativa" && planoStatus !== "trial";
+    if (taxaAcessoPendente && screen !== "upgrade" && screen !== "profile") {
+      return (
+        <EscolherPlanoScreen
+          titularTipo="usuario" titularEmail={userEmail} titularNome={userName}
+          showToast={showToast}
+          onDone={() => { carregarPlano("usuario", userEmail); setScreen("home"); }}
+          taxaAcessoObrigatoria
+        />
       );
     }
 
