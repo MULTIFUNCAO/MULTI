@@ -4702,10 +4702,10 @@ function SemPlanoMoedaCard({ onGoToComprarMoedas }) {
       </div>
       <p style={{ fontWeight:700, fontSize:15, color:"#14152A", margin:"0 0 8px", lineHeight:1.35 }}>Pague só quando responder</p>
       <p style={{ fontSize:13, color:"#6C6F94", lineHeight:1.58, margin:"0 0 18px" }}>
-        Não quer assinar agora? Compre moedas e use quando quiser demonstrar interesse num serviço — sem mensalidade, sem compromisso.
+        Prefere não usar comissão? Compre moedas e use quando quiser demonstrar interesse num serviço — pague só quando responder a uma oportunidade, sem taxa por serviço fechado.
       </p>
       <div style={{ display:"flex", flexDirection:"column", gap:9, marginBottom:20 }}>
-        {["Sem mensalidade", "A partir de 2 moedas por oportunidade respondida", "Compre moedas quando precisar"].map((texto, i) => (
+        {["Sem comissão por serviço", "A partir de 2 moedas por oportunidade respondida", "Compre moedas quando precisar"].map((texto, i) => (
           <div key={i} style={{ display:"flex", alignItems:"center", gap:8 }}>
             <div style={{ width:20, height:20, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:"#FEF3C7", color:"#D97706" }}>
               <Check size={12} strokeWidth={3} />
