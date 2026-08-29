@@ -439,6 +439,37 @@ function mapPedidoParaCard(p) {
   };
 }
 
+// Faixa de chips com scroll horizontal navegável por setas ◀ ▶ (em vez de só
+// arrastar, difícil de perceber/usar no touch — pedido do usuário
+// 2026-08-29 pro Mural de Serviços). O arraste continua funcionando também,
+// as setas só chamam scrollBy no mesmo container.
+function HScrollArrows({ children }) {
+  const trackRef = useRef(null);
+  const scrollByPage = (dir) => {
+    const el = trackRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * Math.round(el.clientWidth * 0.7), behavior: "smooth" });
+  };
+  const arrowBtn = {
+    flexShrink: 0, width: 28, height: 28, borderRadius: "50%", border: "none",
+    background: "white", boxShadow: "0 1px 4px rgba(0,0,0,.15)", color: "#555",
+    display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+  };
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <button type="button" onClick={() => scrollByPage(-1)} aria-label="Ver anteriores" style={arrowBtn}>
+        <ChevronLeft size={16} />
+      </button>
+      <div ref={trackRef} style={{ display: "flex", gap: 8, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 4, scrollBehavior: "smooth" }}>
+        {children}
+      </div>
+      <button type="button" onClick={() => scrollByPage(1)} aria-label="Ver próximos" style={arrowBtn}>
+        <ChevronRight size={16} />
+      </button>
+    </div>
+  );
+}
+
 /* ───────────────────────── MICRO COMPONENTS ──────────────────────────────── */
 function MiniStars({ v, size = 10 }) {
   return (
@@ -10543,7 +10574,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
           <h3 style={{ fontSize:16, fontWeight:900, color:"#1a1a2e", margin:0 }}>Mural de Serviços</h3>
           <span style={{ fontSize:12, color:"#888" }}>{filtered.length} disponíveis</span>
         </div>
-        <div style={{ display:"flex", gap:8, overflowX:"auto", scrollbarWidth:"none", paddingBottom:4 }}>
+        <HScrollArrows>
           {filters.map(f => (
             <button key={f.id} onClick={() => setActiveFilter(f.id)} style={{
               flexShrink:0, display:"flex", alignItems:"center", gap:5,
@@ -10556,7 +10587,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
               <span style={{ fontSize:14 }}>{f.emoji}</span> {f.label}
             </button>
           ))}
-        </div>
+        </HScrollArrows>
       </div>
 
       {/* ── FEED WITH PRO LOCK OVERLAY ── */}
