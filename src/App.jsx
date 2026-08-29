@@ -10050,7 +10050,7 @@ function GuestMural({ onSignup, allDocsVerified }) {
 }
 
 /* ───────────────────────── PROFESSIONAL HOME ────────────────────────────────── */
-function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro, plano, planoInicio, planoStatus, planoExpiraEm, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet, onAcceptOrder, meusGanhos, saldoMoedas, onGoToComprarMoedas, onSaldoMoedasChange }) {
+function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro, plano, planoInicio, planoStatus, planoExpiraEm, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet, onAcceptOrder, meusGanhos, saldoMoedas, onGoToComprarMoedas, onSaldoMoedasChange, taxaAcessoPendente = false }) {
   // Renovação da Taxa de Acesso via Pix (2026-08-27) — cartão renova
   // sozinho, mas Pix não, e o cron (server.js, /api/cron/lembretes) marca
   // "inadimplente" no vencimento sem aviso nenhum na tela até aqui. Banner
@@ -10451,13 +10451,21 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
       }} onReject={()=>{stopNewOrderSound();setNewOrder(null);}} />}
 
       {/* ── UPGRADE BANNER (free users, sem plano ativo — some sozinho pra
-          quem já é PRO, ver !isPro acima) ── */}
+          quem já é PRO, ver !isPro acima). taxaAcessoPendente troca a
+          mensagem: "Vire Multi PRO — R$59,90/mês" está errada pra quem só
+          deve os R$9,90 da Taxa de Acesso (achado 2026-08-28, ao liberar o
+          mural como vitrine pra esse grupo — antes ele nunca chegava a ver
+          esse banner, o gate bloqueava a tela inteira). ── */}
       {!isPro && (
-        <div onClick={onUpgrade} style={{ margin:"14px 16px 0", borderRadius:16, padding:"13px 16px", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", display:"flex", alignItems:"center", gap:12, cursor:"pointer", boxShadow:"0 4px 16px rgba(124,58,237,.35)" }}>
-          <Crown size={20} color="#FDE68A" style={{ flexShrink:0 }} />
+        <div onClick={onUpgrade} style={{ margin:"14px 16px 0", borderRadius:16, padding:"13px 16px", background: taxaAcessoPendente ? `linear-gradient(135deg,${O},#E64A19)` : "linear-gradient(135deg,#7C3AED,#4F46E5)", display:"flex", alignItems:"center", gap:12, cursor:"pointer", boxShadow: taxaAcessoPendente ? "0 4px 16px rgba(255,87,34,.35)" : "0 4px 16px rgba(124,58,237,.35)" }}>
+          {taxaAcessoPendente ? <Briefcase size={20} color="#FDE68A" style={{ flexShrink:0 }} /> : <Crown size={20} color="#FDE68A" style={{ flexShrink:0 }} />}
           <div style={{ flex:1 }}>
-            <p style={{ fontSize:13, fontWeight:900, color:"white", margin:0 }}>👑 Vire Multi PRO — R$ 59,90/mês</p>
-            <p style={{ fontSize:11, color:"rgba(255,255,255,.7)", margin:0 }}>Libere contatos, chat e acesso total.</p>
+            <p style={{ fontSize:13, fontWeight:900, color:"white", margin:0 }}>
+              {taxaAcessoPendente ? "🔓 Ative sua Taxa de Acesso — R$ 9,90/mês" : "👑 Vire Multi PRO — R$ 59,90/mês"}
+            </p>
+            <p style={{ fontSize:11, color:"rgba(255,255,255,.7)", margin:0 }}>
+              {taxaAcessoPendente ? "Confirme o pagamento pra poder se candidatar às oportunidades." : "Libere contatos, chat e acesso total."}
+            </p>
           </div>
           <ChevronRight size={18} color="rgba(255,255,255,.7)" />
         </div>
@@ -10547,9 +10555,12 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                   <>
                     <div style={{ borderTop:"1px solid #F4F4F6", paddingTop:10, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                       <span style={{ fontSize:22, fontWeight:900, color: s.value != null ? B : "#9CA3AF" }}>{s.value != null ? `R$ ${s.value}` : "A combinar"}</span>
-                      {/* client name — hidden for non-PRO */}
+                      {/* client name — hidden for non-PRO e pra quem tem a
+                          Taxa de Acesso pendente (mural agora é vitrine
+                          pra esse grupo, mas o contato do cliente só
+                          aparece depois de confirmar o pagamento). */}
                       <span style={{ fontSize:12, color:"#aaa", filter: isLocked ? "blur(4px)" : "none" }}>
-                        👤 {isLocked ? "Cliente PRO" : (s.client || "Cliente")}
+                        👤 {isLocked ? "Cliente PRO" : taxaAcessoPendente ? "Disponível após ativar" : (s.client || "Cliente")}
                       </span>
                     </div>
 
@@ -10570,6 +10581,16 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                         e.stopPropagation();
                         if (vagasEsgotadas) return;
                         if (!allDocsVerified) { setShowDocBlock(true); return; }
+                        // Taxa de Acesso pendente (2026-08-28): antes desse
+                        // check, isso cairia no "!isPro" logo abaixo e abriria
+                        // o gate de MOEDA (abrirGate) — modelo errado pra
+                        // quem está no plano "acesso" (comissão), que nunca
+                        // deveria ver a alternativa de moeda (ver comentário
+                        // em EscolherPlanoScreen/SemPlanoMoedaCard). Mural
+                        // continua livre pra navegar (ver taxaAcessoPendente
+                        // em renderContent); só demonstrar interesse é
+                        // bloqueado até o pagamento confirmar.
+                        if (taxaAcessoPendente) { onUpgrade(); return; }
                         const proUser=safeGetUser();
                         const candidatarSe = () => {
                           supabase.from("propostas").upsert({pedido_id:s.id,profissional_id:proUser.email||proUser.whatsapp,profissional_nome:proUser.name||"Profissional",profissional_email:proUser.email||proUser.whatsapp,valor:s.value,mensagem:"Tenho interesse neste serviço!",status:"pendente",cliente_email:s.cliente_id||""},{onConflict:"pedido_id,profissional_id"})
@@ -10587,19 +10608,27 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                         candidatarSe();
                       }}
                       style={{ padding:"11px 0", borderRadius:12, border:"none", cursor: vagasEsgotadas ? "not-allowed" : "pointer", fontWeight:900, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:7,
-                        background: vagasEsgotadas ? "#F5F6FA" : !allDocsVerified ? "#F5F6FA" : !isPro ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : isLocked ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : `linear-gradient(135deg,${O},#E64A19)`,
+                        // taxaAcessoPendente entra ANTES do "!isPro" de
+                        // propósito — visualmente é o mesmo botão laranja de
+                        // quem já pagou (só o onClick acima redireciona pro
+                        // pagamento em vez de candidatar), nunca o roxo de
+                        // "pagar em moeda"/"assinar PRO" (modelo errado pra
+                        // quem está no plano "acesso").
+                        background: vagasEsgotadas ? "#F5F6FA" : !allDocsVerified ? "#F5F6FA" : taxaAcessoPendente ? `linear-gradient(135deg,${O},#E64A19)` : !isPro ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : isLocked ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : `linear-gradient(135deg,${O},#E64A19)`,
                         color:      vagasEsgotadas ? "#9CA3AF" : !allDocsVerified ? "#9CA3AF" : "white",
-                        boxShadow:  vagasEsgotadas ? "none" : !allDocsVerified ? "none" : !isPro ? "0 3px 10px rgba(124,58,237,.28)" : isLocked ? "0 3px 10px rgba(124,58,237,.28)" : "0 3px 10px rgba(255,87,34,.28)",
+                        boxShadow:  vagasEsgotadas ? "none" : !allDocsVerified ? "none" : taxaAcessoPendente ? "0 3px 10px rgba(255,87,34,.28)" : !isPro ? "0 3px 10px rgba(124,58,237,.28)" : isLocked ? "0 3px 10px rgba(124,58,237,.28)" : "0 3px 10px rgba(255,87,34,.28)",
                       }}>
                       {vagasEsgotadas
                         ? "Vagas esgotadas (6/6)"
                         : !allDocsVerified
                         ? <><Lock size={13} /> Candidatar-me</>
-                        : !isPro
-                          ? <>🪙 Responder{s.custoMoedas ? ` (${s.custoMoedas} moedas)` : ""}</>
-                          : isLocked
-                            ? <><Crown size={13} /> Assinar PRO</>
-                            : "Tenho Interesse"}
+                        : taxaAcessoPendente
+                          ? "Tenho Interesse"
+                          : !isPro
+                            ? <>🪙 Responder{s.custoMoedas ? ` (${s.custoMoedas} moedas)` : ""}</>
+                            : isLocked
+                              ? <><Crown size={13} /> Assinar PRO</>
+                              : "Tenho Interesse"}
                     </button>
                       );
                     })()}
@@ -12402,8 +12431,16 @@ const renderContent = () => {
     // "upgrade" (a própria tela de pagamento) e "profile" (pra dar logout ou
     // voltar pro modo Cliente pelo toggle do header) continuam acessíveis
     // mesmo pendente — sem isso a pessoa ficaria numa tela sem saída.
+    //
+    // "home" (Mural) também ficou de fora do bloqueio (2026-08-28, pedido
+    // explícito): pendente agora VÊ o mural como vitrine — categoria, título,
+    // bairro, valor, urgência, tempo, igual sempre mostrou — só não consegue
+    // AGIR (ver o gate específico no botão "Tenho Interesse" dentro de
+    // ProfessionalHome, via taxaAcessoPendente). As outras telas (orders,
+    // service, wallet...) continuam bloqueadas — não fazem sentido pra quem
+    // nunca conseguiu se candidatar a nada mesmo.
     const taxaAcessoPendente = plano === "acesso" && planoStatus && planoStatus !== "ativa" && planoStatus !== "trial";
-    if (taxaAcessoPendente && screen !== "upgrade" && screen !== "profile") {
+    if (taxaAcessoPendente && !["upgrade", "profile", "home"].includes(screen)) {
       return (
         <EscolherPlanoScreen
           titularTipo="usuario" titularEmail={userEmail} titularNome={userName}
@@ -12465,6 +12502,7 @@ const renderContent = () => {
         allDocsVerified={allDocsVerified}
         docStatus={docStatus}
         onGoToDocs={() => setScreen("profile")} onGoToOrders={() => setScreen("orders")} onGoToWallet={() => setScreen("wallet")} onAcceptOrder={(order) => { handleCandidatarPedidoDireto(order.id, order.cliente_id, order.value); showToast?.("💼 Interesse enviado! Aguarde o cliente escolher.", B); }}
+        taxaAcessoPendente={taxaAcessoPendente}
         saldoMoedas={saldoMoedas}
         onGoToComprarMoedas={() => setScreen("comprarmoedas")}
         onSaldoMoedasChange={() => carregarSaldoMoedas(userEmail)}
