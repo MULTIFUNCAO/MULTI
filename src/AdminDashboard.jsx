@@ -5,7 +5,7 @@ import {
   Wallet, CreditCard, HeartHandshake, KeyRound, BellRing,
   BadgeCheck, Banknote, ShieldCheck, Mail, TrendingUp,
   Clock, MapPin, Phone, Star, XCircle, ChevronDown, ChevronUp,
-  Search, Filter, Download, RefreshCw, Tag, Plus, Building2
+  Search, Filter, Download, RefreshCw, Tag, Plus, Building2, FlaskConical
 } from "lucide-react";
 
 const COLORS = {
@@ -707,6 +707,24 @@ function SectionClientes({ adminKey }) {
   );
 }
 
+// ─── Badge "FICT" — pedido/serviço fictício em QUALQUER lista do Admin ────
+// Não só na aba dedicada "Fictícios": pedido do usuário 2026-08-27 foi
+// explicitamente ver isso em qualquer tela onde pedidos reais e fictícios
+// aparecem misturados (ex.: aba "Serviços"), sem precisar abrir cada um pra
+// conferir. Ver plano em multi_dados_ficticios_plano na memória.
+function FictBadge() {
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 3,
+      background: COLORS.purple + "33", color: COLORS.purple,
+      border: "1px solid " + COLORS.purple + "66",
+      borderRadius: 6, padding: "2px 6px", fontSize: 10, fontWeight: 800, letterSpacing: 0.5,
+    }}>
+      🧪 FICT
+    </span>
+  );
+}
+
 // ─── Seção: Serviços ─────────────────────────────────────────────
 function SectionServicos({ adminKey }) {
   const [services, setServices] = useState([]);
@@ -768,6 +786,7 @@ function SectionServicos({ adminKey }) {
               <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 200 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    {s.origem === "demo" && <FictBadge />}
                     <Badge color={statusColor(s.status)}>{statusLabel(s.status)}</Badge>
                     <span style={{ color: COLORS.textMuted, fontSize: 11 }}>{s.protocol || "—"}</span>
                   </div>
@@ -785,6 +804,212 @@ function SectionServicos({ adminKey }) {
                   </div>
                   <div style={{ color: COLORS.textMuted, fontSize: 11 }}>
                     {s.payment_released ? "Pago" : "Pendente"}
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Seção: Dados Fictícios ──────────────────────────────────────────────
+// Pedidos "demo" (origem='demo' em pedidos) pra preencher o mural do
+// profissional em cidade/categoria nova sem demanda real ainda — plano
+// aprovado 2026-08-27 (ver memória multi_dados_ficticios_plano). CRUD
+// completo exceto DELETE: "Pausar" (demo_ativo=false) em vez de apagar,
+// mesmo padrão adotado depois do histórico de bug de durabilidade em
+// DELETE nesse projeto Supabase (ver supabase_multifuncao_project).
+function SectionFicticios({ adminKey }) {
+  const [pedidos, setPedidos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [filtroCidade, setFiltroCidade] = useState("");
+  const [filtroCategoria, setFiltroCategoria] = useState("");
+  const [filtroStatus, setFiltroStatus] = useState("todos"); // todos | ativo | pausado
+  const [editandoId, setEditandoId] = useState(null); // null = criando novo
+  const [form, setForm] = useState({ categoria: "", descricao: "", valor: "", cidade: "", cliente_nome: "" });
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  const carregar = () => {
+    setLoading(true);
+    fetch(API + "/api/admin/pedidos-ficticios", { headers: { "x-admin-key": adminKey } })
+      .then(r => r.json())
+      .then(d => { setPedidos(d.pedidos || []); setLoading(false); })
+      .catch(() => { setPedidos([]); setLoading(false); });
+  };
+  useEffect(carregar, []);
+
+  const limparForm = () => { setForm({ categoria: "", descricao: "", valor: "", cidade: "", cliente_nome: "" }); setEditandoId(null); setErro(""); };
+
+  const iniciarEdicao = (p) => {
+    setEditandoId(p.id);
+    setForm({ categoria: p.categoria || "", descricao: p.descricao || "", valor: p.valor ?? "", cidade: p.cidade || "", cliente_nome: p.cliente_nome || "" });
+    setErro("");
+  };
+
+  const salvar = async () => {
+    if (!form.categoria.trim()) { setErro("Categoria é obrigatória"); return; }
+    setSalvando(true); setErro("");
+    try {
+      const body = {
+        categoria: form.categoria.trim(),
+        descricao: form.descricao.trim() || null,
+        valor: form.valor === "" ? null : Number(form.valor),
+        cidade: form.cidade.trim() || null,
+        cliente_nome: form.cliente_nome.trim() || null,
+      };
+      const url = editandoId ? API + "/api/admin/pedidos-ficticios/" + editandoId : API + "/api/admin/pedidos-ficticios";
+      const r = await fetch(url, {
+        method: editandoId ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      if (!r.ok) { setErro(d.error || "Erro ao salvar"); return; }
+      limparForm();
+      carregar();
+    } catch {
+      setErro("Erro de conexão");
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const alternarAtivo = async (p) => {
+    await fetch(API + "/api/admin/pedidos-ficticios/" + p.id + "/toggle", { method: "POST", headers: { "x-admin-key": adminKey } });
+    carregar();
+  };
+
+  const duplicar = async (p) => {
+    await fetch(API + "/api/admin/pedidos-ficticios/" + p.id + "/duplicate", { method: "POST", headers: { "x-admin-key": adminKey } });
+    carregar();
+  };
+
+  const cidades = [...new Set(pedidos.map(p => p.cidade).filter(Boolean))].sort();
+  const categorias = [...new Set(pedidos.map(p => p.categoria).filter(Boolean))].sort();
+
+  const filtered = pedidos.filter(p => {
+    const q = search.toLowerCase();
+    const matchSearch = !q || (p.descricao || "").toLowerCase().includes(q) || (p.categoria || "").toLowerCase().includes(q) || (p.cliente_nome || "").toLowerCase().includes(q);
+    if (!matchSearch) return false;
+    if (filtroCidade && p.cidade !== filtroCidade) return false;
+    if (filtroCategoria && p.categoria !== filtroCategoria) return false;
+    if (filtroStatus === "ativo" && !p.demo_ativo) return false;
+    if (filtroStatus === "pausado" && p.demo_ativo) return false;
+    return true;
+  });
+
+  const inputStyle = {
+    background: COLORS.bg, border: "1px solid " + COLORS.border, borderRadius: 8,
+    padding: "10px 14px", color: COLORS.textPrimary, fontSize: 13,
+    outline: "none", fontFamily: "inherit", width: "100%",
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <Card>
+        <div style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 16, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+          <FlaskConical size={17} /> {editandoId ? "Editar pedido fictício" : "Novo pedido fictício"}
+        </div>
+        <div style={{ color: COLORS.textMuted, fontSize: 12, marginBottom: 14 }}>
+          Só aparece no mural do profissional (com a etiqueta "🧪 FICT", nunca disfarçado de real) quando a categoria tem menos de 3 pedidos reais em aberto pra esse profissional. Nunca pode ser respondido — quem tenta se candidatar recebe um aviso, não vira proposta de verdade.
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10, marginBottom: 12 }}>
+          <div>
+            <label style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 600, display: "block", marginBottom: 6 }}>CATEGORIA (id exato, ex: eletricista)</label>
+            <input value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} placeholder="encanador" style={inputStyle} />
+          </div>
+          <div>
+            <label style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 600, display: "block", marginBottom: 6 }}>CIDADE</label>
+            <input value={form.cidade} onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))} placeholder="Sorocaba, SP" style={inputStyle} />
+          </div>
+          <div>
+            <label style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 600, display: "block", marginBottom: 6 }}>VALOR (R$)</label>
+            <input type="number" value={form.valor} onChange={e => setForm(f => ({ ...f, valor: e.target.value }))} placeholder="150" style={inputStyle} />
+          </div>
+          <div>
+            <label style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 600, display: "block", marginBottom: 6 }}>NOME DO CLIENTE (fictício)</label>
+            <input value={form.cliente_nome} onChange={e => setForm(f => ({ ...f, cliente_nome: e.target.value }))} placeholder="Ana S." style={inputStyle} />
+          </div>
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 600, display: "block", marginBottom: 6 }}>DESCRIÇÃO</label>
+          <input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} placeholder="Vazamento na cozinha, cano embaixo da pia" style={inputStyle} />
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={salvar} disabled={salvando || !form.categoria.trim()} style={{
+            background: salvando || !form.categoria.trim() ? COLORS.border : COLORS.purple,
+            color: "#fff", border: "none", borderRadius: 8, padding: "10px 18px",
+            fontSize: 13, fontWeight: 700, cursor: salvando || !form.categoria.trim() ? "not-allowed" : "pointer",
+            display: "flex", alignItems: "center", gap: 6, height: 38,
+          }}>
+            <Plus size={15} /> {salvando ? "Salvando..." : editandoId ? "Salvar edição" : "Criar pedido fictício"}
+          </button>
+          {editandoId && (
+            <button onClick={limparForm} style={{
+              background: "none", color: COLORS.textMuted, border: "1px solid " + COLORS.border,
+              borderRadius: 8, padding: "10px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer", height: 38,
+            }}>
+              Cancelar edição
+            </button>
+          )}
+        </div>
+        {erro && <div style={{ color: COLORS.red, fontSize: 12, marginTop: 10, fontWeight: 600 }}>{erro}</div>}
+      </Card>
+
+      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <SearchBar value={search} onChange={setSearch} placeholder="Buscar por descrição, categoria ou cliente..." />
+        </div>
+        <select value={filtroCidade} onChange={e => setFiltroCidade(e.target.value)} style={{ ...inputStyle, width: 160 }}>
+          <option value="">Todas as cidades</option>
+          {cidades.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)} style={{ ...inputStyle, width: 160 }}>
+          <option value="">Todas as categorias</option>
+          {categorias.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <TabBar tabs={[
+          { id: "todos", label: "Todos", count: pedidos.length },
+          { id: "ativo", label: "Ativos", count: pedidos.filter(p => p.demo_ativo).length },
+          { id: "pausado", label: "Pausados", count: pedidos.filter(p => !p.demo_ativo).length },
+        ]} active={filtroStatus} onChange={setFiltroStatus} />
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted }}>Carregando...</div>
+      ) : filtered.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted }}>Nenhum pedido fictício encontrado</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {filtered.map(p => (
+            <Card key={p.id} style={{ padding: "14px 16px" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <FictBadge />
+                    <Badge color={p.demo_ativo ? "green" : "orange"}>{p.demo_ativo ? "Ativo" : "Pausado"}</Badge>
+                    <span style={{ color: COLORS.textMuted, fontSize: 11 }}>{p.categoria}</span>
+                  </div>
+                  <div style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 14 }}>{p.descricao || "Sem descrição"}</div>
+                  <div style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 4 }}>
+                    Cliente: {p.cliente_nome || "—"} • {p.cidade || "—"} • {p.created_at ? new Date(p.created_at).toLocaleDateString("pt-BR") : "—"}
+                  </div>
+                </div>
+                <div style={{ textAlign: "right", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+                  <div style={{ color: COLORS.green, fontWeight: 800, fontSize: 16 }}>
+                    {p.valor ? "R$ " + p.valor : "A combinar"}
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button onClick={() => iniciarEdicao(p)} style={{ background: "none", border: "1px solid " + COLORS.border, color: COLORS.textSecondary, borderRadius: 6, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Editar</button>
+                    <button onClick={() => duplicar(p)} style={{ background: "none", border: "1px solid " + COLORS.border, color: COLORS.textSecondary, borderRadius: 6, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Duplicar</button>
+                    <button onClick={() => alternarAtivo(p)} style={{ background: "none", border: "1px solid " + (p.demo_ativo ? COLORS.orange : COLORS.green), color: p.demo_ativo ? COLORS.orange : COLORS.green, borderRadius: 6, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                      {p.demo_ativo ? "Pausar" : "Ativar"}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1868,6 +2093,10 @@ function AdminDashboard({ onExit }) {
       ]).then(([stats, prosData, servicesData]) => {
         const pros = prosData.professionals || [];
         const services = servicesData.services || [];
+        // origem "demo" (pedido fictício) fora da contagem da Visão Geral —
+        // senão infla totalServices artificialmente (activeServices já ficava
+        // naturalmente de fora, pedido fictício nunca sai de "aberto").
+        const servicesReais = services.filter(s => s.origem !== "demo");
         setMetrics({
           totalUsers: stats.totalUsers,
           totalClients: stats.totalClients,
@@ -1875,8 +2104,8 @@ function AdminDashboard({ onExit }) {
           totalPro: stats.proAtivos,
           totalRevenue: stats.receitaEstimada,
           pendingApproval: pros.filter(p => !p.approved).length,
-          totalServices: services.length,
-          activeServices: services.filter(s => s.status === "executando" || s.status === "em_andamento").length,
+          totalServices: servicesReais.length,
+          activeServices: servicesReais.filter(s => s.status === "executando" || s.status === "em_andamento").length,
         });
       });
     }
@@ -1974,6 +2203,7 @@ function AdminDashboard({ onExit }) {
     { id: "clients", label: "Clientes", icon: Users },
     { id: "empresas", label: "Empresas", icon: Building2 },
     { id: "services", label: "Serviços", icon: FileText },
+    { id: "ficticios", label: "Fictícios", icon: FlaskConical },
     { id: "categorias", label: "Categorias", icon: Filter },
     { id: "oportunidades", label: "Oportunidades", icon: AlertCircle },
     { id: "funil", label: "Funil", icon: TrendingUp },
@@ -2017,6 +2247,7 @@ function AdminDashboard({ onExit }) {
         {tab === "clients" && <SectionClientes adminKey={token} />}
         {tab === "empresas" && <SectionEmpresas adminKey={token} />}
         {tab === "services" && <SectionServicos adminKey={token} />}
+        {tab === "ficticios" && <SectionFicticios adminKey={token} />}
         {tab === "categorias" && <SectionCategorias adminKey={token} />}
         {tab === "oportunidades" && <SectionOportunidades adminKey={token} />}
         {tab === "funil" && <SectionFunil adminKey={token} />}
