@@ -10271,6 +10271,14 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
 
   const limitePlano = PLANO_LIMITES_USUARIO[plano] || PLANO_LIMITES_USUARIO.autonomo;
 
+  // Normaliza nome de cidade pra comparar apesar do formato inconsistente
+  // entre "Cidade" (perfil do profissional, ex.: userCity="Sao Paulo") e
+  // "Cidade, UF" (fictício cadastrado como texto livre no Admin, ex.:
+  // "Sorocaba, SP") — remove acento, baixa a caixa e corta na vírgula.
+  const normalizaCidade = c => (c || "")
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .toLowerCase().split(",")[0].trim();
+
   const matchCategoriaECidade = s => {
     // Categoria incompatível = filtro, não bloqueio: o profissional simplesmente
     // não recebe a oportunidade (nunca aparece no mural). Antes só as demandas
@@ -10284,6 +10292,16 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
     if (s.publicoAlvo === "pro") {
       const cityOk = !!userCity && !!s.loc && s.loc.toLowerCase() === userCity.toLowerCase();
       if (!cityOk) return false;
+    }
+    // Fictício (origem="demo") só entra se a cidade bater com a do
+    // profissional — achado 2026-08-29: sem essa checagem, um fictício
+    // cadastrado pra qualquer cidade aparecia pra qualquer profissional da
+    // categoria, igual pedido real "geral" (que continua nacional de
+    // propósito — decisão de produto, não mexida aqui). Fail-closed: sem
+    // cidade cadastrada de nenhum dos dois lados, o fictício não aparece.
+    if (s.origem === "demo") {
+      const uc = normalizaCidade(userCity), sc = normalizaCidade(s.loc);
+      if (!uc || !sc || uc !== sc) return false;
     }
     return true;
   };
