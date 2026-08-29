@@ -10293,20 +10293,22 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
       const cityOk = !!userCity && !!s.loc && s.loc.toLowerCase() === userCity.toLowerCase();
       if (!cityOk) return false;
     }
-    // Fictício (origem="demo") só entra se a cidade bater com a do
-    // profissional — achado 2026-08-29: sem essa checagem, um fictício
-    // cadastrado pra qualquer cidade aparecia pra qualquer profissional da
-    // categoria, igual pedido real "geral" (que continua nacional de
-    // propósito — decisão de produto, não mexida aqui). Fail-closed: sem
-    // cidade cadastrada de nenhum dos dois lados, o fictício não aparece.
-    if (s.origem === "demo") {
-      const uc = normalizaCidade(userCity), sc = normalizaCidade(s.loc);
-      if (!uc || !sc || uc !== sc) return false;
-    }
     return true;
   };
   const realMatch = realPedidos.filter(matchCategoriaECidade);
-  const demoMatch = demoPedidos.filter(matchCategoriaECidade);
+  // Fictício: prioriza cidade batendo com a do profissional, mas nunca
+  // deixa o mural sem nenhum fictício só por causa de cobertura de cidade
+  // (decisão do usuário 2026-08-29 — cobrir toda cidade do Brasil não é
+  // viável, então mantém um conjunto padrão nas categorias mais comuns numa
+  // cidade "modelo" e cai pra ele quando não existe fictício específico da
+  // cidade do profissional). Cidade batendo continua tendo prioridade
+  // quando existe — isso só é fallback, não substitui o match por cidade.
+  const demoCategoriaMatch = demoPedidos.filter(matchCategoriaECidade);
+  const demoCidadeMatch = demoCategoriaMatch.filter(s => {
+    const uc = normalizaCidade(userCity), sc = normalizaCidade(s.loc);
+    return !!uc && !!sc && uc === sc;
+  });
+  const demoMatch = demoCidadeMatch.length > 0 ? demoCidadeMatch : demoCategoriaMatch;
   // Pedido fictício só entra pra completar o mural quando a demanda real da
   // categoria do profissional está baixa (threshold N=3, plano aprovado
   // 2026-08-27) — nunca substitui demanda real, só preenche o vazio, e
