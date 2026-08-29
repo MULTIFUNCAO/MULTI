@@ -413,19 +413,31 @@ const NEARBY = [
   { id:"n4", title:"Instalação elétrica",   cat:"eletricista",rating:4.7, price:310, dist:"2,3 km", emoji:"⚡", bg:"#FFFCE8" },
 ];
 
-const SEED_FEED = [
-  { id:101, cat:"encanador",    title:"Vazamento na cozinha",      desc:"Cano embaixo da pia vazando há 2 dias.", value:150,  loc:"Vila Madalena, SP",  time:"Há 30min", client:"Ana S.",      rating:4.8, urgent:true  },
-  { id:102, cat:"pedreiro",     title:"Reforma do banheiro",        desc:"Trocar azulejos e rebocar uma parede.",  value:800,  loc:"Pinheiros, SP",      time:"Há 1h",    client:"Carlos M.",   rating:4.5, urgent:false },
-  { id:103, cat:"pintor",       title:"Pintura sala e quartos",     desc:"Apartamento 70m². Tinta por conta.",     value:1200, loc:"Moema, SP",           time:"Há 2h",    client:"Fernanda L.", rating:5.0, urgent:false },
-  { id:104, cat:"jardineiro",   title:"Poda e limpeza jardim",      desc:"Jardim 200m², árvores e grama.",         value:250,  loc:"Alto Pinheiros, SP",  time:"Há 3h",    client:"Roberto K.",  rating:4.2, urgent:false },
-  { id:105, cat:"chaveiro",     title:"Porta travada urgente",      desc:"Fui trancado do lado de fora de casa.",  value:180,  loc:"Santana, SP",         time:"Há 15min", client:"Paula R.",    rating:4.9, urgent:true  },
-  { id:106, cat:"desentupidor", title:"Ralo do banheiro entupido",  desc:"Água acumulando no box há 3 dias.",      value:120,  loc:"Tatuapé, SP",         time:"Há 45min", client:"Marcos T.",   rating:4.6, urgent:true  },
-  { id:107, cat:"redes",        title:"Rede de proteção varanda",   desc:"Varanda 8m², apartamento 4º andar.",     value:450,  loc:"Mooca, SP",           time:"Há 2h",    client:"Silvia B.",   rating:4.7, urgent:false },
-  { id:108, cat:"lavanderia",   title:"Máquina de lavar com defeito",desc:"Não centrifuga e faz barulho estranho.", value:200,  loc:"Ipiranga, SP",        time:"Há 3h",    client:"Jorge F.",    rating:4.4, urgent:false },
-  { id:109, cat:"tv",           title:"Instalar TV 65\" na parede", desc:"TV nova, precisa de suporte articulado.", value:160,  loc:"Vila Olímpia, SP",    time:"Há 1h",    client:"Daniela M.",  rating:4.8, urgent:false },
-  { id:110, cat:"montador",     title:"Montar guarda-roupas 6 portas",desc:"Comprei na Tok&Stok, preciso montar.", value:220,  loc:"Lapa, SP",            time:"Há 4h",    client:"André C.",    rating:4.5, urgent:false },
-  { id:111, cat:"estofados",    title:"Higienizar sofá e poltrona", desc:"Sofá 3 lugares + 1 poltrona, tecido.",   value:350,  loc:"Perdizes, SP",        time:"Há 5h",    client:"Beatriz N.",  rating:4.9, urgent:false },
-];
+// SEED_FEED (11 pedidos fake hardcoded, sem etiqueta nenhuma) foi removido
+// em 2026-08-27 — substituído pelo sistema de "pedidos fictícios" de
+// verdade (origem='demo' na tabela pedidos, controlado pelo Admin, sempre
+// com badge "Exemplo" visível pro profissional). Ver mapPedidoParaCard e o
+// fetch de demoPedidos em ProfessionalHome, e o plano completo na memória
+// multi_dados_ficticios_plano.
+//
+// Converte uma linha crua de "pedidos" (banco) pro formato que os cards do
+// mural do profissional esperam. Extraído do que antes era um único
+// .map(p=>({...})) inline dentro do fetch de ProfessionalHome, agora
+// reusado tanto pro fetch de pedidos reais quanto pro de fictícios.
+function mapPedidoParaCard(p) {
+  return {
+    id: p.id, cliente_id: p.cliente_id, cat: p.categoria || "servico",
+    title: (p.descricao || p.categoria || "Serviço").slice(0, 40),
+    desc: p.descricao || "", value: p.valor, tipoValor: p.tipo_valor,
+    loc: p.cidade || "sua região",
+    time: new Date(p.created_at).toLocaleDateString("pt-BR"),
+    client: p.cliente_nome || "Cliente", rating: 4.5, urgent: false,
+    emoji: "🔧", bg: "#FFF8E1", photo: null, photos: p.fotos,
+    publicoAlvo: p.publico_alvo, tipoAtendimento: p.tipo_atendimento,
+    prazo: p.prazo, custoMoedas: p.custo_moedas,
+    origem: p.origem === "demo" ? "demo" : "real",
+  };
+}
 
 /* ───────────────────────── MICRO COMPONENTS ──────────────────────────────── */
 function MiniStars({ v, size = 10 }) {
@@ -10071,7 +10083,14 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   const pedidosVistosRef = useRef(new Set());
   const pedidosChannelRef = useRef(null);
   const [activeFilter, setActiveFilter] = useState("all");
-  const [realPedidos, setRealPedidos] = useState(SEED_FEED);
+  const [realPedidos, setRealPedidos] = useState([]);
+  // Pedidos fictícios (origem='demo', criados só pelo Admin) — preenchem o
+  // mural quando a demanda real da categoria do profissional está baixa.
+  // Ver threshold em `filtered` abaixo e o plano completo na memória
+  // multi_dados_ficticios_plano. Efeito de busca fica logo abaixo de
+  // podeVerEmpresarial (precisa dele pro mesmo filtro publico_alvo/
+  // tipo_atendimento do fetch de reais — ver comentário lá).
+  const [demoPedidos, setDemoPedidos] = useState([]);
   // Mesma reputação real (avaliacoes) já usada em ProfileScreen/ReputacaoBadge
   // — antes o card de estatísticas do Home era hardcoded (R$1.240/47/4.8)
   // igual pra todo mundo.
@@ -10095,7 +10114,24 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   // só considerava plano==="pro" (Premium ficava de fora por uma lacuna
   // pré-existente, corrigida junto aqui em 2026-08-10).
   const podeVerEmpresarial = plano === "pro" || plano === "premium";
-  useEffect(()=>{ supabase.from("pedidos").select("*").eq("status","aberto").in("publico_alvo", podeVerEmpresarial ? ["geral","pro"] : ["geral"]).in("tipo_atendimento", podeVerEmpresarial ? ["residencial","empresarial"] : ["residencial"]).order("created_at",{ascending:false}).limit(50).then(({data})=>{ if(data&&data.length>0) setRealPedidos(data.map(p=>({id:p.id,cliente_id:p.cliente_id,cat:p.categoria||"servico",title:(p.descricao||p.categoria||"Serviço").slice(0,40),desc:p.descricao||"",value:p.valor,tipoValor:p.tipo_valor,loc:p.cidade||"sua região",time:new Date(p.created_at).toLocaleDateString("pt-BR"),client:p.cliente_nome||"Cliente",rating:4.5,urgent:false,emoji:"🔧",bg:"#FFF8E1",photo:null,photos:p.fotos,publicoAlvo:p.publico_alvo,tipoAtendimento:p.tipo_atendimento,prazo:p.prazo,custoMoedas:p.custo_moedas}))); }).catch(()=>{}); },[podeVerEmpresarial]);
+  useEffect(()=>{ supabase.from("pedidos").select("*").eq("status","aberto").neq("origem","demo").in("publico_alvo", podeVerEmpresarial ? ["geral","pro"] : ["geral"]).in("tipo_atendimento", podeVerEmpresarial ? ["residencial","empresarial"] : ["residencial"]).order("created_at",{ascending:false}).limit(50).then(({data})=>{ setRealPedidos((data||[]).map(mapPedidoParaCard)); }).catch(()=>{}); },[podeVerEmpresarial]);
+  // Achado 2026-08-28 (revisão da feature antes de commitar): faltava aqui o
+  // MESMO filtro publico_alvo/tipo_atendimento do fetch de reais logo acima
+  // — sem isso, um fictício marcado publico_alvo:"pro" (demanda de empresa)
+  // vazava pro mural de QUALQUER profissional, inclusive quem não é Multi
+  // Pro/Premium e nunca deveria ver esse tipo de demanda (mesma regra de
+  // negócio de podeVerEmpresarial, comentário acima). Fictício criado pelo
+  // Admin sem preencher esses dois campos cai no default do banco (geral/
+  // residencial, confirmado por amostragem — todo pedido real existente
+  // tem esses valores), que já passa no filtro pros dois grupos.
+  useEffect(() => {
+    supabase.from("pedidos").select("*").eq("status", "aberto").eq("origem", "demo").eq("demo_ativo", true)
+      .in("publico_alvo", podeVerEmpresarial ? ["geral","pro"] : ["geral"])
+      .in("tipo_atendimento", podeVerEmpresarial ? ["residencial","empresarial"] : ["residencial"])
+      .order("created_at", { ascending: false }).limit(30)
+      .then(({ data }) => setDemoPedidos((data || []).map(mapPedidoParaCard)))
+      .catch(() => {});
+  }, [podeVerEmpresarial]);
 
   // Contagem de candidatos por pedido — pra mostrar "Vagas esgotadas (6/6)"
   // no mural quando a oportunidade já bateu o limite de 6 respostas (ver
@@ -10204,7 +10240,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
 
   const limitePlano = PLANO_LIMITES_USUARIO[plano] || PLANO_LIMITES_USUARIO.autonomo;
 
-  const filtered = realPedidos.filter(s => {
+  const matchCategoriaECidade = s => {
     // Categoria incompatível = filtro, não bloqueio: o profissional simplesmente
     // não recebe a oportunidade (nunca aparece no mural). Antes só as demandas
     // de empresa (publico_alvo:"pro") eram filtradas por categoria — pedido
@@ -10218,6 +10254,17 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
       const cityOk = !!userCity && !!s.loc && s.loc.toLowerCase() === userCity.toLowerCase();
       if (!cityOk) return false;
     }
+    return true;
+  };
+  const realMatch = realPedidos.filter(matchCategoriaECidade);
+  const demoMatch = demoPedidos.filter(matchCategoriaECidade);
+  // Pedido fictício só entra pra completar o mural quando a demanda real da
+  // categoria do profissional está baixa (threshold N=3, plano aprovado
+  // 2026-08-27) — nunca substitui demanda real, só preenche o vazio, e
+  // nunca mais que 8 no total pra não parecer mercado saturado. Ver
+  // multi_dados_ficticios_plano na memória.
+  const feedBase = realMatch.length < 3 ? [...realMatch, ...demoMatch.slice(0, 8 - realMatch.length)] : realMatch;
+  const filtered = feedBase.filter(s => {
     if (activeFilter === "urgent") return s.urgent;
     if (activeFilter === "topPay") return s.value >= 400;
     return true;
@@ -10302,7 +10349,10 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   // EmpresaHomeScreen já aplicava corretamente no seu próprio radar
   // (.in("categoria", categorias) + check no listener realtime) — só
   // faltava espelhar aqui.
-  supabase.from("pedidos").select("*").eq("status","aberto").eq("publico_alvo","geral").order("created_at",{ascending:false}).limit(20).then(({data})=>{
+  // .neq("origem","demo") — pedido fictício nunca deve disparar o popup
+  // "Novo Pedido!" (só aparece passivamente navegando o mural, com badge).
+  // Ver multi_dados_ficticios_plano na memória.
+  supabase.from("pedidos").select("*").eq("status","aberto").eq("publico_alvo","geral").neq("origem","demo").order("created_at",{ascending:false}).limit(20).then(({data})=>{
     const proximo = (data || []).find(p => !pedidosVistosRef.current.has(p.id) && categoriaServico.includes(p.categoria));
     if(proximo){ pedidosVistosRef.current.add(proximo.id); setNewOrder(mapPedidoParaNewOrder(proximo)); }
   });
@@ -10315,6 +10365,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
     .on("postgres_changes",{event:"INSERT",schema:"public",table:"pedidos",filter:"status=eq.aberto"},(payload)=>{
       const p=payload.new;
       if(!p||!p.fotos||p.fotos.length===0||p.publico_alvo==="pro")return;
+      if(p.origem==="demo")return; // fictício nunca vira push "Novo Pedido!"
       if(!categoriaServico.includes(p.categoria))return;
       if(pedidosVistosRef.current.has(p.id))return;
       pedidosVistosRef.current.add(p.id);
@@ -10535,6 +10586,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                     <div style={{ width:40, height:40, borderRadius:11, background:cat?.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>{cat?.emoji}</div>
                     <span style={{ fontWeight:800, fontSize:14, color:"#1a1a2e", lineHeight:1.35 }}>{s.title}</span>
                   </div>
+                  {s.origem === "demo" && <Pill color="#9333EA" sm>🧪 Exemplo</Pill>}
                   {s.publicoAlvo === "pro" && <Pill color="#7C3AED" sm>💼 Demanda de Empresa</Pill>}
                   {s.publicoAlvo === "pro" && s.prazo && (() => {
                     const prazoInfo = PRAZO_OPTIONS.find(p => p.id === s.prazo);
@@ -10579,6 +10631,9 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                       disabled={vagasEsgotadas}
                       onClick={e => {
                         e.stopPropagation();
+                        // Pedido fictício (origem='demo') nunca vira proposta de verdade —
+                        // ver plano em multi_dados_ficticios_plano na memória.
+                        if (s.origem === "demo") { showToast?.("💡 Este é um pedido de exemplo. Pedidos reais da sua região vão aparecer aqui.", "#9333EA"); return; }
                         if (vagasEsgotadas) return;
                         if (!allDocsVerified) { setShowDocBlock(true); return; }
                         // Taxa de Acesso pendente (2026-08-28): antes desse
@@ -10607,18 +10662,20 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                         if (isLocked) { onUpgrade(); return; }
                         candidatarSe();
                       }}
-                      style={{ padding:"11px 0", borderRadius:12, border:"none", cursor: vagasEsgotadas ? "not-allowed" : "pointer", fontWeight:900, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:7,
+                      style={{ padding:"11px 0", borderRadius:12, border:"none", cursor: s.origem === "demo" ? "default" : vagasEsgotadas ? "not-allowed" : "pointer", fontWeight:900, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:7,
                         // taxaAcessoPendente entra ANTES do "!isPro" de
                         // propósito — visualmente é o mesmo botão laranja de
                         // quem já pagou (só o onClick acima redireciona pro
                         // pagamento em vez de candidatar), nunca o roxo de
                         // "pagar em moeda"/"assinar PRO" (modelo errado pra
                         // quem está no plano "acesso").
-                        background: vagasEsgotadas ? "#F5F6FA" : !allDocsVerified ? "#F5F6FA" : taxaAcessoPendente ? `linear-gradient(135deg,${O},#E64A19)` : !isPro ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : isLocked ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : `linear-gradient(135deg,${O},#E64A19)`,
-                        color:      vagasEsgotadas ? "#9CA3AF" : !allDocsVerified ? "#9CA3AF" : "white",
-                        boxShadow:  vagasEsgotadas ? "none" : !allDocsVerified ? "none" : taxaAcessoPendente ? "0 3px 10px rgba(255,87,34,.28)" : !isPro ? "0 3px 10px rgba(124,58,237,.28)" : isLocked ? "0 3px 10px rgba(124,58,237,.28)" : "0 3px 10px rgba(255,87,34,.28)",
+                        background: s.origem === "demo" ? "#F5F6FA" : vagasEsgotadas ? "#F5F6FA" : !allDocsVerified ? "#F5F6FA" : taxaAcessoPendente ? `linear-gradient(135deg,${O},#E64A19)` : !isPro ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : isLocked ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : `linear-gradient(135deg,${O},#E64A19)`,
+                        color:      s.origem === "demo" ? "#9CA3AF" : vagasEsgotadas ? "#9CA3AF" : !allDocsVerified ? "#9CA3AF" : "white",
+                        boxShadow:  s.origem === "demo" ? "none" : vagasEsgotadas ? "none" : !allDocsVerified ? "none" : taxaAcessoPendente ? "0 3px 10px rgba(255,87,34,.28)" : !isPro ? "0 3px 10px rgba(124,58,237,.28)" : isLocked ? "0 3px 10px rgba(124,58,237,.28)" : "0 3px 10px rgba(255,87,34,.28)",
                       }}>
-                      {vagasEsgotadas
+                      {s.origem === "demo"
+                        ? "Pedido de exemplo"
+                        : vagasEsgotadas
                         ? "Vagas esgotadas (6/6)"
                         : !allDocsVerified
                         ? <><Lock size={13} /> Candidatar-me</>
