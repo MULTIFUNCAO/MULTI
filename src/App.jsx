@@ -1253,7 +1253,7 @@ function formatTimeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString("pt-BR");
 }
 
-function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGoToEditar, onAcceptOrder, onVerPropostas, onOpenChat, modo, setModo }) {
+function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGoToEditar, onAcceptOrder, onVerPropostas, onOpenChat, modo, setModo, isPro, onUpgrade }) {
   const [empresa, setEmpresa] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showFullPreview, setShowFullPreview] = useState(false);
@@ -1531,12 +1531,35 @@ function EmpresaHomeScreen({ userEmail, onLogout, showToast, onGoToPedidos, onGo
             onAccept={() => {
               stopNewOrderSound();
               setNewOrder(null);
+              // CRÍTICO (achado 2026-08-30, caso JB Serviço Especializados):
+              // aceitar um pedido aqui não checava plano nenhum — empresa sem
+              // Multi Empresa/Empresa Plus ativo conseguia fechar serviço de
+              // graça. Mesmo gate que ProfessionalHome já faz (isPro antes de
+              // aceitar), só que redirecionando pra assinatura em vez do gate
+              // de moeda (empresa não tem alternativa de pagar por moeda).
+              if (!isPro) { onUpgrade?.(); return; }
               setEmpresa(e => ({ ...e, status: false }));
               pararEscutaPedidos();
               onAcceptOrder && onAcceptOrder({ id: newOrder.id, cliente_id: newOrder.cliente_id, value: newOrder.value, profissionalNome: empresa.nome });
             }}
             onReject={() => { stopNewOrderSound(); setNewOrder(null); }}
           />
+        )}
+
+        {/* ── UPGRADE BANNER (achado 2026-08-30: gate de pagamento do
+            profissional individual nunca foi replicado aqui — empresa via o
+            Mural completo, com valor e contato do cliente, sem nenhum plano
+            ativo). Some sozinho pra quem já tem Multi Empresa/Empresa Plus
+            ativo (isPro). ── */}
+        {!isPro && (
+          <div onClick={onUpgrade} style={{ margin:"0 0 18px", borderRadius:16, padding:"13px 16px", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", display:"flex", alignItems:"center", gap:12, cursor:"pointer", boxShadow:"0 4px 16px rgba(124,58,237,.35)" }}>
+            <Crown size={20} color="#FDE68A" style={{ flexShrink:0 }} />
+            <div style={{ flex:1 }}>
+              <p style={{ fontSize:13, fontWeight:900, color:"white", margin:0 }}>👑 Assine um plano Multi Empresa</p>
+              <p style={{ fontSize:11, color:"rgba(255,255,255,.7)", margin:0 }}>Libere o contato dos clientes e aceite pedidos direto pelo Mural.</p>
+            </div>
+            <ChevronRight size={18} color="rgba(255,255,255,.7)" />
+          </div>
         )}
 
         {/* dados da empresa — visão geral (também editáveis em "Editar Perfil") */}
@@ -2249,7 +2272,7 @@ function EmpresaEditProfileScreen({ userEmail, onLogout, showToast, isPro, plano
 }
 
 /* ───────────────────────── EMPRESA — PEDIDOS RECEBIDOS ─────────────────────── */
-function EmpresaPedidosScreen({ userEmail }) {
+function EmpresaPedidosScreen({ userEmail, isPro, onUpgrade }) {
   const [empresa, setEmpresa] = useState(null);
   const [pedidos, setPedidos] = useState([]);
   const [phones, setPhones] = useState({});
@@ -2369,12 +2392,25 @@ function EmpresaPedidosScreen({ userEmail }) {
               </div>
               <div style={{ borderTop:"1px solid #F4F4F6", paddingTop:10, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                 <span style={{ fontSize:22, fontWeight:900, color: s.value != null ? B : "#9CA3AF" }}>{s.value != null ? `R$ ${s.value}` : "A combinar"}</span>
-                <span style={{ fontSize:12, color:"#aaa" }}>👤 {s.client}</span>
+                {/* Nome/contato do cliente só aparece com plano ativo (achado
+                    2026-08-30, caso JB Serviço Especializados: essa tela
+                    nunca recebeu isPro/onUpgrade — mostrava nome e link direto
+                    de WhatsApp pra qualquer empresa, mesmo sem nenhum plano
+                    ativo. Mesmo tratamento que o Mural do profissional
+                    individual já faz — valor/categoria continuam visíveis
+                    como vitrine, só o contato fica atrás do plano). */}
+                <span style={{ fontSize:12, color:"#aaa", filter: isPro ? "none" : "blur(3px)" }}>👤 {isPro ? s.client : "Cliente"}</span>
               </div>
-              {whatsapp && (
-                <a href={`https://wa.me/55${whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:7, padding:"11px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:900, fontSize:13, textDecoration:"none" }}>
-                  <MessageCircle size={15} /> Chamar no WhatsApp
-                </a>
+              {isPro ? (
+                whatsapp && (
+                  <a href={`https://wa.me/55${whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:7, padding:"11px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:900, fontSize:13, textDecoration:"none" }}>
+                    <MessageCircle size={15} /> Chamar no WhatsApp
+                  </a>
+                )
+              ) : (
+                <button onClick={onUpgrade} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:7, padding:"11px 0", borderRadius:12, border:"none", cursor:"pointer", background:"linear-gradient(135deg,#7C3AED,#4F46E5)", color:"white", fontWeight:900, fontSize:13 }}>
+                  <Lock size={13} /> Assine um plano para contatar
+                </button>
               )}
             </div>
           );
@@ -12525,20 +12561,30 @@ const renderContent = () => {
       );
     }
 
-    // Empresa parceira — home própria + Pedidos + Editar Perfil. Planos pagos
-    // de empresa deixaram de existir: não tem mais tela de "upgrade" nem
-    // features exclusivas de plano (Banco de Profissionais/Minha Rede,
-    // ambos removidos — eram os únicos itens realmente exclusivos do extinto
-    // Empresa Plus, sem caminho gratuito equivalente). "Contratante"
-    // continua igual, já era grátis antes dessa mudança.
+    // Empresa parceira — home própria + Pedidos + Editar Perfil.
+    //
+    // CRÍTICO (achado 2026-08-30, caso JB Serviço Especializados): o
+    // comentário antigo aqui dizia "planos pagos de empresa deixaram de
+    // existir, não tem mais tela de upgrade" — isso ficou desatualizado
+    // quando Multi Empresa/Empresa Plus voltaram em 2026-08-19 (ver
+    // [[multi_planos_pagos_empresa_reintroduzidos]]) e ninguém restaurou o
+    // gate: EmpresaHomeScreen/EmpresaPedidosScreen nunca recebiam
+    // isPro/onUpgrade, então o Mural completo (valor + nome do cliente +
+    // link direto de WhatsApp) ficava liberado pra qualquer empresa, mesmo
+    // sem nenhuma assinatura ativa. isPro/plano/planoStatus já eram
+    // carregados certinho (carregarPlano("empresa", ...) no efeito
+    // [userEmail, role] lá em cima) — só faltava passar adiante e a tela
+    // de "upgrade" (EscolherPlanoScreen) de volta. "Contratante" continua
+    // sem gate de propósito (sempre foi grátis, ver EmpresaHomeScreen).
     if (role === "empresa") {
-      if (screen === "pedidos") return <EmpresaPedidosScreen userEmail={userEmail} />;
-      if (screen === "editar")  return <EmpresaEditProfileScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} isPro={isPro} plano={plano} planoStatus={planoStatus} planoExpiraEm={planoExpiraEm} />;
+      if (screen === "upgrade") return <EscolherPlanoScreen titularTipo="empresa" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("home")} showToast={showToast} onDone={() => { carregarPlano("empresa", userEmail); setScreen("home"); }} permiteComprarMoedas={false} />;
+      if (screen === "pedidos") return <EmpresaPedidosScreen userEmail={userEmail} isPro={isPro} onUpgrade={() => setScreen("upgrade")} />;
+      if (screen === "editar")  return <EmpresaEditProfileScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} isPro={isPro} plano={plano} planoStatus={planoStatus} planoExpiraEm={planoExpiraEm} onUpgrade={() => setScreen("upgrade")} />;
 
       if (screen === "demanda-propostas" && selected) {
         return <PropostasScreen pedido={selected} onBack={() => setScreen("home")} onAceitarProposta={handleAceitarPropostaEmpresa} />;
       }
-      return <EmpresaHomeScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} onGoToPedidos={() => setScreen("pedidos")} onGoToEditar={() => setScreen("editar")} modo={empresaModo} setModo={setEmpresaModo} onVerPropostas={(d) => { setSelected(d); setScreen("demanda-propostas"); }} onOpenChat={openChatFromService} onAcceptOrder={(order) => { handleCandidatarPedidoDireto(order.id, order.cliente_id, order.value, order.profissionalNome); showToast?.("💼 Interesse enviado! Aguarde o cliente escolher.", B); }} />;
+      return <EmpresaHomeScreen userEmail={userEmail} onLogout={handleLogout} showToast={showToast} onGoToPedidos={() => setScreen("pedidos")} onGoToEditar={() => setScreen("editar")} modo={empresaModo} setModo={setEmpresaModo} onVerPropostas={(d) => { setSelected(d); setScreen("demanda-propostas"); }} onOpenChat={openChatFromService} onAcceptOrder={(order) => { handleCandidatarPedidoDireto(order.id, order.cliente_id, order.value, order.profissionalNome); showToast?.("💼 Interesse enviado! Aguarde o cliente escolher.", B); }} isPro={isPro} onUpgrade={() => setScreen("upgrade")} />;
     }
 
     // Route guard: logged-in clients must never see the professional feed.
