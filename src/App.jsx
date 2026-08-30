@@ -10155,14 +10155,26 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   // Admin sem preencher esses dois campos cai no default do banco (geral/
   // residencial, confirmado por amostragem — todo pedido real existente
   // tem esses valores), que já passa no filtro pros dois grupos.
+  // Filtra por categoria no servidor (.in("categoria", categoriaServico)) —
+  // achado 2026-08-29 populando a base pra todas as 161 categorias: o
+  // "limit(30)" sozinho não escala, um fictício antigo (ex.: o de Sorocaba)
+  // saía da janela dos 30 mais recentes assim que outras categorias
+  // acumulavam mais linhas novas, sumindo do mural mesmo com cidade/
+  // categoria batendo. Filtrar por categoria primeiro deixa o limit(30)
+  // como rede de segurança de verdade (nunca deveria ter tantos fictícios
+  // pra 1-2 categorias a ponto de estourar), em vez de ser o gargalo.
+  // Só dispara depois de categoriaServico carregar (evita um fetch inicial
+  // com .in([]) que a lib trata como "nenhum resultado").
   useEffect(() => {
+    if (!categoriaServico.length) { setDemoPedidos([]); return; }
     supabase.from("pedidos").select("*").eq("status", "aberto").eq("origem", "demo").eq("demo_ativo", true)
+      .in("categoria", categoriaServico)
       .in("publico_alvo", podeVerEmpresarial ? ["geral","pro"] : ["geral"])
       .in("tipo_atendimento", podeVerEmpresarial ? ["residencial","empresarial"] : ["residencial"])
       .order("created_at", { ascending: false }).limit(30)
       .then(({ data }) => setDemoPedidos((data || []).map(mapPedidoParaCard)))
       .catch(() => {});
-  }, [podeVerEmpresarial]);
+  }, [podeVerEmpresarial, categoriaServico]);
 
   // Contagem de candidatos por pedido — pra mostrar "Vagas esgotadas (6/6)"
   // no mural quando a oportunidade já bateu o limite de 6 respostas (ver
@@ -12402,17 +12414,43 @@ const renderContent = () => {
             userName={userName}
             showToast={showToast}
             onBack={() => setScreen("home")}
-            onDone={() => {
-              try {
-                const s = JSON.parse(localStorage.getItem("multiSession") || "{}"); s.role = "professional"; localStorage.setItem("multiSession", JSON.stringify(s));
-                const u = JSON.parse(localStorage.getItem("multiUser") || "{}"); u.role = "professional"; localStorage.setItem("multiUser", JSON.stringify(u));
-              } catch {}
+            onDone={async () => {
               // is_hybrid=true: essa conta já era cliente antes de virar
               // profissional agora — usuarios.role vira "professional" (pra
               // aparecer no Banco de Profissionais), mas is_hybrid é o que
               // diferencia de quem sempre foi só profissional (item 8 do
               // prompt Ajustes de Cadastro/Perfil/Fluxos).
-              if (userEmail) supabase.from("usuarios").update({ role: "professional", is_hybrid: true }).eq("email", userEmail).then(()=>{}).catch(()=>{});
+              //
+              // CRÍTICO (achado 2026-08-30, caso Jailson): isso tinha só
+              // .then(()=>{}).catch(()=>{}) — qualquer falha/não-confirmação
+              // do UPDATE era engolida em silêncio, e o código seguia direto
+              // pra "Perfil profissional pronto!" mesmo com usuarios.role
+              // continuando "client" pra sempre no banco (a pessoa conseguia
+              // enviar documentos porque o "professional" só tinha virado no
+              // estado local/localStorage). Mesma família de bug já corrigida
+              // em /api/admin/approve-professional (2026-08-20,
+              // updateComVerificacao) e no upsert de cadastro novo
+              // (2026-08-27, handleLoginComplete) — faltava só aqui. Agora
+              // espera a escrita, confirma pelo retorno (.select()) que a
+              // linha foi realmente afetada e só então libera o modo
+              // profissional; se não confirmar, avisa e mantém a conta como
+              // "client" (consistente com o banco) em vez de fingir sucesso.
+              if (userEmail) {
+                const { data, error } = await supabase.from("usuarios")
+                  .update({ role: "professional", is_hybrid: true })
+                  .eq("email", userEmail)
+                  .select("role");
+                if (error || !data?.length || data[0].role !== "professional") {
+                  console.error("[virar-profissional] update role falhou:", error?.message, { linhasAfetadas: data?.length || 0 });
+                  showToast?.("⚠️ Pagamento confirmado, mas houve um problema ao ativar seu perfil profissional. Tente novamente em instantes ou fale com o suporte.", "#EF4444");
+                  setScreen("home");
+                  return;
+                }
+              }
+              try {
+                const s = JSON.parse(localStorage.getItem("multiSession") || "{}"); s.role = "professional"; localStorage.setItem("multiSession", JSON.stringify(s));
+                const u = JSON.parse(localStorage.getItem("multiUser") || "{}"); u.role = "professional"; localStorage.setItem("multiUser", JSON.stringify(u));
+              } catch {}
               setRole("professional"); setUserRole("professional"); setSelected(null);
               carregarPlano("usuario", userEmail); // senão a assinatura recém-paga em EscolherPlanoScreen só aparece depois de um reload
               showToast?.("🎉 Perfil profissional pronto! Bem-vindo ao mural de serviços.", G);
