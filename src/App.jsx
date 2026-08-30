@@ -10128,6 +10128,97 @@ function GuestMural({ onSignup, allDocsVerified }) {
   );
 }
 
+/* ───────────────────────── PRATICAR CANDIDATURA (pedido fictício) ──────────────
+   Substitui o botão desabilitado "Pedido de exemplo" — o pedido fictício
+   continua com o badge "🧪 Exemplo" no card (não é pra se confundir com um
+   pedido real), mas agora o profissional pode de fato praticar o fluxo de
+   se candidatar/negociar, com um "cliente" simulado. 100% client-side, de
+   propósito: não escreve em "propostas"/"mensagens" nem em nenhuma outra
+   tabela — zero chance de um pedido fictício vazar pra métricas, relatório
+   financeiro, notificação push ou matching com profissional real (só o
+   admin controla origem='demo' no banco; essa tela nem sabe que essa
+   coluna existe). Ver pedido "Ajustar exibição dos pedidos fictícios",
+   2026-08-30.
+   ──────────────────────────────────────────────────────────────────────── */
+const PRATICA_RESPOSTAS_CLIENTE = [
+  "Show, obrigado pela resposta! Vou avaliar e te chamo em breve.",
+  "Perfeito, muito obrigado pela atenção! 🙏",
+  "Entendi, pode ser sim! Vamos combinar os detalhes por aqui mesmo.",
+  "Legal, gostei do seu atendimento. Vou confirmar e te aviso.",
+];
+function PraticaCandidaturaModal({ service, onClose }) {
+  const [mensagens, setMensagens] = useState(() => [
+    { from: "cliente", text: `Oi! Vi que você tem interesse no meu pedido de ${service?.cat ? CATS.find(c => c.id === service.cat)?.label || service.cat : "serviço"}. Pode me contar um pouco de como funcionaria o atendimento?` },
+  ]);
+  const [text, setText] = useState("");
+  const [encerrada, setEncerrada] = useState(false);
+  const endRef = useRef(null);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior:"smooth" }); }, [mensagens]);
+
+  const enviar = () => {
+    const msg = text.trim();
+    if (!msg || encerrada) return;
+    setText("");
+    setMensagens(m => [...m, { from:"eu", text: msg }]);
+    setTimeout(() => {
+      const resposta = PRATICA_RESPOSTAS_CLIENTE[Math.floor(Math.random() * PRATICA_RESPOSTAS_CLIENTE.length)];
+      setMensagens(m => [...m, { from:"cliente", text: resposta }]);
+      setEncerrada(true);
+    }, 900);
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:600, background:"rgba(15,23,42,.7)", display:"flex", alignItems:"flex-end", justifyContent:"center" }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:440, height:"85vh", background:"#F0F2F5", borderRadius:"24px 24px 0 0", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+        <div style={{ background:"linear-gradient(135deg,#9333EA,#7C3AED)", padding:"16px 18px", display:"flex", alignItems:"center", gap:10 }}>
+          <button onClick={onClose} style={{ background:"none", border:"none", cursor:"pointer", padding:0 }}><ArrowLeft size={20} color="white" /></button>
+          <div style={{ flex:1, minWidth:0 }}>
+            <p style={{ margin:0, fontSize:14, fontWeight:900, color:"white" }}>{service?.client || "Cliente"} 🧪</p>
+            <p style={{ margin:0, fontSize:11, color:"rgba(255,255,255,.75)" }}>Modo prática — não é um pedido real</p>
+          </div>
+        </div>
+        <div style={{ background:"#FFF8E7", borderBottom:"1px solid #FDE68A", padding:"8px 16px" }}>
+          <p style={{ margin:0, fontSize:11.5, color:"#92400E", fontWeight:700 }}>
+            🧪 Simulação de treino — essa conversa não vai pra nenhum cliente de verdade e não conta como candidatura.
+          </p>
+        </div>
+        <div style={{ flex:1, overflowY:"auto", padding:"16px", display:"flex", flexDirection:"column", gap:10 }}>
+          {mensagens.map((m, i) => (
+            <div key={i} style={{ alignSelf: m.from === "eu" ? "flex-end" : "flex-start", maxWidth:"78%", background: m.from === "eu" ? "#9333EA" : "white", color: m.from === "eu" ? "white" : "#1a1a2e", padding:"10px 14px", borderRadius:14, fontSize:13.5, lineHeight:1.5, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
+              {m.text}
+            </div>
+          ))}
+          {encerrada && (
+            <div style={{ alignSelf:"center", marginTop:8, background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:12, padding:"10px 14px", textAlign:"center" }}>
+              <p style={{ margin:0, fontSize:12, fontWeight:800, color:"#166534" }}>✅ Fim da simulação — nenhum dado foi enviado a um cliente real.</p>
+            </div>
+          )}
+          <div ref={endRef} />
+        </div>
+        <div style={{ padding:"10px 14px", background:"white", borderTop:"1px solid #E5E7EB", display:"flex", gap:8 }}>
+          <input
+            value={text}
+            disabled={encerrada}
+            onChange={e => setText(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") enviar(); }}
+            placeholder={encerrada ? "Simulação encerrada" : "Digite sua resposta…"}
+            style={{ flex:1, border:"1.5px solid #E5E7EB", borderRadius:99, padding:"10px 16px", fontSize:13.5, outline:"none" }} />
+          <button onClick={enviar} disabled={encerrada || !text.trim()} style={{ width:40, height:40, borderRadius:"50%", border:"none", cursor: encerrada ? "default" : "pointer", background: encerrada ? "#E5E7EB" : "#9333EA", color:"white", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            <Send size={16} />
+          </button>
+        </div>
+        {encerrada && (
+          <div style={{ padding:"0 14px 14px" }}>
+            <button onClick={onClose} style={{ width:"100%", padding:"12px 0", borderRadius:12, border:"none", background:"#1a1a2e", color:"white", fontWeight:800, fontSize:13, cursor:"pointer" }}>
+              Voltar ao Mural
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ───────────────────────── PROFESSIONAL HOME ────────────────────────────────── */
 function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro, plano, planoInicio, planoStatus, planoExpiraEm, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet, onAcceptOrder, meusGanhos, saldoMoedas, onGoToComprarMoedas, onSaldoMoedasChange, taxaAcessoPendente = false }) {
   // Renovação da Taxa de Acesso via Pix (2026-08-27) — cartão renova
@@ -10249,6 +10340,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   }, [userEmail]);
 
   const [showDocBlock, setShowDocBlock] = useState(false); // pop-up modal
+  const [praticaService, setPraticaService] = useState(null); // pedido fictício aberto no modo prática (PraticaCandidaturaModal)
   // Gate de moeda (Fase 2) — profissional sem plano pago ativo (Autônomo/
   // Pro/Premium) tentando demonstrar interesse num serviço. Ver radar/mural
   // continua liberado sem plano; só a ação de se candidatar é bloqueada
@@ -10727,12 +10819,15 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                       const vagasEsgotadas = (candidatosPorPedido[s.id] || 0) >= LIMITE_CANDIDATOS_OPORTUNIDADE;
                       return (
                     <button
-                      disabled={vagasEsgotadas}
+                      disabled={s.origem !== "demo" && vagasEsgotadas}
                       onClick={e => {
                         e.stopPropagation();
                         // Pedido fictício (origem='demo') nunca vira proposta de verdade —
-                        // ver plano em multi_dados_ficticios_plano na memória.
-                        if (s.origem === "demo") { showToast?.("💡 Este é um pedido de exemplo. Pedidos reais da sua região vão aparecer aqui.", "#9333EA"); return; }
+                        // ver plano em multi_dados_ficticios_plano na memória. Botão continua
+                        // funcional (abre PraticaCandidaturaModal, 100% client-side) em vez
+                        // de só desabilitado — troca feita 2026-08-30 (ver comentário na
+                        // definição de PraticaCandidaturaModal acima).
+                        if (s.origem === "demo") { setPraticaService(s); return; }
                         if (vagasEsgotadas) return;
                         if (!allDocsVerified) { setShowDocBlock(true); return; }
                         // Taxa de Acesso pendente (2026-08-28): antes desse
@@ -10761,19 +10856,21 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                         if (isLocked) { onUpgrade(); return; }
                         candidatarSe();
                       }}
-                      style={{ padding:"11px 0", borderRadius:12, border:"none", cursor: s.origem === "demo" ? "default" : vagasEsgotadas ? "not-allowed" : "pointer", fontWeight:900, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:7,
+                      style={{ padding:"11px 0", borderRadius:12, border:"none", cursor: s.origem === "demo" ? "pointer" : vagasEsgotadas ? "not-allowed" : "pointer", fontWeight:900, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:7,
                         // taxaAcessoPendente entra ANTES do "!isPro" de
                         // propósito — visualmente é o mesmo botão laranja de
                         // quem já pagou (só o onClick acima redireciona pro
                         // pagamento em vez de candidatar), nunca o roxo de
                         // "pagar em moeda"/"assinar PRO" (modelo errado pra
-                        // quem está no plano "acesso").
-                        background: s.origem === "demo" ? "#F5F6FA" : vagasEsgotadas ? "#F5F6FA" : !allDocsVerified ? "#F5F6FA" : taxaAcessoPendente ? `linear-gradient(135deg,${O},#E64A19)` : !isPro ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : isLocked ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : `linear-gradient(135deg,${O},#E64A19)`,
-                        color:      s.origem === "demo" ? "#9CA3AF" : vagasEsgotadas ? "#9CA3AF" : !allDocsVerified ? "#9CA3AF" : "white",
-                        boxShadow:  s.origem === "demo" ? "none" : vagasEsgotadas ? "none" : !allDocsVerified ? "none" : taxaAcessoPendente ? "0 3px 10px rgba(255,87,34,.28)" : !isPro ? "0 3px 10px rgba(124,58,237,.28)" : isLocked ? "0 3px 10px rgba(124,58,237,.28)" : "0 3px 10px rgba(255,87,34,.28)",
+                        // quem está no plano "acesso"). Demo usa o mesmo roxo
+                        // do badge "🧪 Exemplo" — funcional, mas visualmente
+                        // marcado como prática, nunca igual ao botão real.
+                        background: s.origem === "demo" ? "linear-gradient(135deg,#9333EA,#7C3AED)" : vagasEsgotadas ? "#F5F6FA" : !allDocsVerified ? "#F5F6FA" : taxaAcessoPendente ? `linear-gradient(135deg,${O},#E64A19)` : !isPro ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : isLocked ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : `linear-gradient(135deg,${O},#E64A19)`,
+                        color:      s.origem === "demo" ? "white" : vagasEsgotadas ? "#9CA3AF" : !allDocsVerified ? "#9CA3AF" : "white",
+                        boxShadow:  s.origem === "demo" ? "0 3px 10px rgba(147,51,234,.28)" : vagasEsgotadas ? "none" : !allDocsVerified ? "none" : taxaAcessoPendente ? "0 3px 10px rgba(255,87,34,.28)" : !isPro ? "0 3px 10px rgba(124,58,237,.28)" : isLocked ? "0 3px 10px rgba(124,58,237,.28)" : "0 3px 10px rgba(255,87,34,.28)",
                       }}>
                       {s.origem === "demo"
-                        ? "Pedido de exemplo"
+                        ? <>🧪 Praticar Candidatura</>
                         : vagasEsgotadas
                         ? "Vagas esgotadas (6/6)"
                         : !allDocsVerified
@@ -10802,6 +10899,11 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
           );
         })}
       </div>
+
+      {/* ══════════════════════ PRATICAR CANDIDATURA (pedido fictício) ══════════════════════ */}
+      {praticaService && (
+        <PraticaCandidaturaModal service={praticaService} onClose={() => setPraticaService(null)} />
+      )}
 
       {/* ══════════════════════ DOC BLOCK POPUP — Premium ══════════════════════ */}
       {showDocBlock && (
