@@ -1271,30 +1271,114 @@ function SectionPixManual({ adminKey }) {
   };
   useEffect(carregar, []);
 
-  const aprovar = async (p) => {
+  // Devolve {ok, error} em vez de só boolean — quem chama (aprovar() e
+  // ativarPorEmail()) precisa do texto do erro na hora, e ler o state `erro`
+  // logo após o await pegaria o valor de ANTES do setErro deste render (state
+  // fica "stale" dentro da própria função até o próximo render).
+  const ativar = async ({ titularTipo, titularEmail, plano, txid, nota }) => {
     setErro("");
-    setAprovando(p.titularEmail);
+    setAprovando(titularEmail);
     try {
       const r = await fetch(API + "/api/admin/ativar-manual", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
-        body: JSON.stringify({
-          titularTipo: p.titularTipo, titularEmail: p.titularEmail, plano: p.plano,
-          txid: p.txid, nota: "aprovado via aba Pix Manual do admin",
-        }),
+        body: JSON.stringify({ titularTipo, titularEmail, plano, txid, nota }),
       });
       const d = await r.json();
-      if (!r.ok) { setErro(d.error || "Erro ao aprovar"); return; }
+      if (!r.ok) { const msg = d.error || "Erro ao aprovar"; setErro(msg); return { ok: false, error: msg }; }
       carregar(); // some da lista sozinho (status vira "ativa")
+      return { ok: true };
     } catch {
       setErro("Erro de conexão");
+      return { ok: false, error: "Erro de conexão" };
     } finally {
       setAprovando(null);
     }
   };
 
+  const aprovar = (p) => ativar({
+    titularTipo: p.titularTipo, titularEmail: p.titularEmail, plano: p.plano,
+    txid: p.txid, nota: "aprovado via aba Pix Manual do admin",
+  });
+
+  // Ativação avulsa por e-mail — não depende da lista acima (que só existe
+  // depois da migration ALTER TABLE ter rodado e só lista quem gerou o Pix
+  // DEPOIS disso). Cobre qualquer pagamento manual anterior à migration ou
+  // que por qualquer motivo não apareceu sozinho na lista — sempre disponível
+  // como via de escape, sem depender de mim ter chave nenhuma.
+  const [manual, setManual] = useState({ titularTipo: "usuario", titularEmail: "", plano: "acesso", txid: "" });
+  const [manualMsg, setManualMsg] = useState(null); // {ok, texto}
+  const ativarPorEmail = async () => {
+    setManualMsg(null);
+    if (!manual.titularEmail.trim()) { setManualMsg({ ok: false, texto: "Informe o e-mail" }); return; }
+    const res = await ativar({
+      titularTipo: manual.titularTipo, titularEmail: manual.titularEmail.trim(),
+      plano: manual.plano, txid: manual.txid.trim() || undefined,
+      nota: "ativação avulsa por e-mail (aba Pix Manual)",
+    });
+    setManualMsg(res.ok
+      ? { ok: true, texto: `✓ ${manual.titularEmail.trim()} ativado` }
+      : { ok: false, texto: res.error || "Erro ao ativar" });
+    if (res.ok) setManual({ titularTipo: "usuario", titularEmail: "", plano: "acesso", txid: "" });
+  };
+
+  const inputStyle = {
+    background: COLORS.bg, border: "1px solid " + COLORS.border, borderRadius: 8,
+    padding: "10px 14px", color: COLORS.textPrimary, fontSize: 13,
+    outline: "none", fontFamily: "inherit", width: "100%",
+  };
+  const labelStyle = { color: COLORS.textMuted, fontSize: 11, fontWeight: 600, display: "block", marginBottom: 6 };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <Card>
+        <div style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 15, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+          <CheckCircle2 size={16} /> Ativar avulso por e-mail
+        </div>
+        <div style={{ color: COLORS.textMuted, fontSize: 12, marginBottom: 12 }}>
+          Pra quando o pagamento não aparece na lista abaixo (ex.: antes da migration, ou qualquer imprevisto) — confira o comprovante antes de ativar.
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10, marginBottom: 12 }}>
+          <div>
+            <label style={labelStyle}>E-MAIL *</label>
+            <input value={manual.titularEmail} onChange={e => setManual(m => ({ ...m, titularEmail: e.target.value }))} placeholder="pessoa@email.com" style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>TIPO</label>
+            <select value={manual.titularTipo} onChange={e => setManual(m => ({ ...m, titularTipo: e.target.value }))} style={inputStyle}>
+              <option value="usuario">Profissional</option>
+              <option value="empresa">Empresa</option>
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>PLANO</label>
+            <select value={manual.plano} onChange={e => setManual(m => ({ ...m, plano: e.target.value }))} style={inputStyle}>
+              <option value="acesso">Taxa de Acesso</option>
+              <option value="autonomo">Multi Autônomo</option>
+              <option value="pro">Multi Pro</option>
+              <option value="premium">Multi Premium</option>
+              <option value="empresa">Multi Empresa</option>
+              <option value="empresa_plus">Multi Empresa Plus</option>
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>TXID (opcional)</label>
+            <input value={manual.txid} onChange={e => setManual(m => ({ ...m, txid: e.target.value }))} placeholder="ACESSO..." style={inputStyle} />
+          </div>
+        </div>
+        <button onClick={ativarPorEmail} disabled={aprovando === manual.titularEmail.trim()} style={{
+          background: COLORS.green, color: "#fff", border: "none", borderRadius: 8, padding: "10px 20px",
+          fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+        }}>
+          <CheckCircle2 size={15} /> {aprovando === manual.titularEmail.trim() ? "Ativando..." : "Ativar"}
+        </button>
+        {manualMsg && (
+          <div style={{ color: manualMsg.ok ? COLORS.green : COLORS.red, fontSize: 12, marginTop: 10, fontWeight: 600 }}>
+            {manualMsg.texto}
+          </div>
+        )}
+      </Card>
+
       <Card>
         <div style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 16, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
           <QrCode size={17} /> Pix Manual — aguardando conciliação
