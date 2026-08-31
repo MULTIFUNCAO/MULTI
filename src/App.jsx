@@ -5008,7 +5008,19 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
       onSuccess?.();
       return true;
     } catch (err) {
-      showToast?.("❌ " + (err.message || "Não foi possível confirmar o pagamento"), "#DC2626");
+      // CRÍTICO (achado 2026-08-31, investigando QR travado em "Aguardando
+      // pagamento" mesmo com o Pix já pago): antes, um erro AQUI (ex.: soluço
+      // transitório da Asaas ao reconferir, ou falha de escrita no Supabase —
+      // ver bug de durabilidade recorrente na memória) não tinha volta: o
+      // polling abaixo já tinha dado clearInterval() ANTES de chamar esta
+      // função, então uma falha aqui deixava o cliente pra sempre preso na
+      // tela, dinheiro já debitado, sem nenhuma nova tentativa automática (só
+      // o webhook, que se também falhasse ou demorasse, deixava o caso
+      // idêntico ao da Rayane/Francielle/Antônio). Só toast em tentativa
+      // manual — nas automáticas (polling a cada 5s) fica silencioso de
+      // propósito pra não alarmar o usuário a cada retry; ver aviso único
+      // depois de várias falhas seguidas, mais abaixo.
+      if (manual) showToast?.("❌ " + (err.message || "Não foi possível confirmar o pagamento"), "#DC2626");
       return false;
     } finally {
       setConfirmandoPix(false);
@@ -5020,9 +5032,21 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
   // 100% automática via webhook da Asaas, sem depender de ação do usuário.
   // Some sozinho se sair da tela (troca de método, volta) ou se o código
   // expirar.
+  //
+  // CRÍTICO: só dá clearInterval() quando confirmarPix() realmente TER
+  // SUCESSO (retorna true). Antes o clearInterval() rodava assim que
+  // isPaid:true chegava, sem esperar confirmarPix() terminar — se essa
+  // chamada falhasse por qualquer motivo transitório, o polling morria ali,
+  // pra sempre, com o pagamento já feito e o plano nunca ativando sozinho
+  // (só o webhook cobria esse caso, e nem sempre a tempo). Agora, se falhar,
+  // o intervalo continua rodando e tenta de novo no próximo tick de 5s —
+  // resiliente ao mesmo tipo de falha transitória que já mordeu este projeto
+  // várias vezes (ver bug de durabilidade do Supabase na memória).
   const verificandoRef = useRef(false);
+  const falhasConfirmacaoRef = useRef(0);
   useEffect(() => {
     if (!pix?.paymentId) return;
+    falhasConfirmacaoRef.current = 0;
 
     const checar = async () => {
       if (verificandoRef.current) return; // evita corrida entre o intervalo e o listener de visibilidade
@@ -5036,8 +5060,19 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
         const r = await fetch(`${API_BASE}/api/status-pagamento/${pix.paymentId}`);
         const d = await r.json();
         if (d.isPaid) {
-          clearInterval(interval);
-          await confirmarPix(pix.paymentId, pix.customerId);
+          const ok = await confirmarPix(pix.paymentId, pix.customerId);
+          if (ok) {
+            clearInterval(interval);
+          } else {
+            falhasConfirmacaoRef.current += 1;
+            // Depois de ~15s de pagamento detectado mas não confirmado,
+            // avisa uma vez só (não repete a cada tentativa) — tranquiliza
+            // sem alarmar; o polling continua tentando sozinho em segundo
+            // plano.
+            if (falhasConfirmacaoRef.current === 3) {
+              showToast?.("✅ Pagamento identificado! Só um instante enquanto confirmamos — não feche esta tela.", G);
+            }
+          }
         }
       } catch (e) {
       } finally {
@@ -5309,7 +5344,7 @@ function ComprarMoedasScreen({ userEmail, userName, onBack, showToast, onSuccess
   // Reconfere o pagamento e credita as moedas — chamado pelo polling
   // automático abaixo. O backend reconfere com a Asaas antes de chamar a RPC
   // creditar_moedas, nunca confia só no que o front detectou.
-  const confirmarPix = async (paymentId) => {
+  const confirmarPix = async (paymentId, manual = false) => {
     setConfirmandoPix(true);
     try {
       const r = await fetch(`${API_BASE}/api/moedas/confirmar-pix`, {
@@ -5325,7 +5360,12 @@ function ComprarMoedasScreen({ userEmail, userName, onBack, showToast, onSuccess
       onSuccess?.(d.saldo);
       return true;
     } catch (err) {
-      showToast?.("❌ " + (err.message || "Não foi possível confirmar o pagamento"), "#DC2626");
+      // Mesmo bug crítico corrigido em PagamentoPlanoScreen (2026-08-31): o
+      // polling abaixo só encerra quando esta função retorna true — uma
+      // falha aqui não pode mais deixar o cliente preso pra sempre com o
+      // Pix já pago e as moedas nunca creditando sozinhas. Silencioso nas
+      // tentativas automáticas de propósito (evita spam de toast a cada 5s).
+      if (manual) showToast?.("❌ " + (err.message || "Não foi possível confirmar o pagamento"), "#DC2626");
       return false;
     } finally {
       setConfirmandoPix(false);
@@ -5335,10 +5375,14 @@ function ComprarMoedasScreen({ userEmail, userName, onBack, showToast, onSuccess
   // Polling: consulta /api/status-pagamento a cada 5s enquanto o Pix estiver
   // pendente — mesmo mecanismo (e mesmos cuidados com visibilitychange/focus,
   // pro caso do app ir pra segundo plano enquanto a pessoa paga no banco) de
-  // PagamentoPlanoScreen.
+  // PagamentoPlanoScreen. CRÍTICO: só clearInterval() quando confirmarPix()
+  // tiver sucesso de verdade — ver comentário completo em PagamentoPlanoScreen
+  // (mesmo bug, mesma correção, 2026-08-31).
   const verificandoRef = useRef(false);
+  const falhasConfirmacaoRef = useRef(0);
   useEffect(() => {
     if (!pix?.paymentId) return;
+    falhasConfirmacaoRef.current = 0;
 
     const checar = async () => {
       if (verificandoRef.current) return;
@@ -5352,8 +5396,15 @@ function ComprarMoedasScreen({ userEmail, userName, onBack, showToast, onSuccess
         const r = await fetch(`${API_BASE}/api/status-pagamento/${pix.paymentId}`);
         const d = await r.json();
         if (d.isPaid) {
-          clearInterval(interval);
-          await confirmarPix(pix.paymentId);
+          const ok = await confirmarPix(pix.paymentId);
+          if (ok) {
+            clearInterval(interval);
+          } else {
+            falhasConfirmacaoRef.current += 1;
+            if (falhasConfirmacaoRef.current === 3) {
+              showToast?.("✅ Pagamento identificado! Só um instante enquanto confirmamos — não feche esta tela.", G);
+            }
+          }
         }
       } catch (e) {
       } finally {
