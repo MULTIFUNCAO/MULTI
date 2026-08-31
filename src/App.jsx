@@ -7013,26 +7013,20 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
             </div>
           </div>
 
-          {/* Saldo de moedas ("Multi Moeda", Fase 1) — carteira separada dos
-              ganhos acima (aquilo é o que o profissional recebeu do cliente;
-              isto é o saldo pra responder oportunidades avulsas). Ninguém
-              desconta daqui ainda (Fase 3), só compra e exibe. */}
-          <div style={{ padding:"14px 16px 0" }}>
-            <div onClick={onOpenComprarMoedas} style={{ background:"white", borderRadius:20, padding:18, boxShadow:"0 4px 20px rgba(0,0,0,.10)", border:"1px solid #F0F0F0", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <div style={{ width:40, height:40, borderRadius:12, background:`linear-gradient(135deg,${B},#0055d4)`, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                  <Coins size={20} color="white" />
-                </div>
-                <div>
-                  <p style={{ fontSize:11, color:"#aaa", fontWeight:700, margin:0 }}>Meu saldo de moedas</p>
-                  <p style={{ fontSize:22, fontWeight:900, color:B, margin:0 }}>{saldoMoedas || 0}</p>
-                </div>
-              </div>
-              <span style={{ fontSize:12, color:B, fontWeight:800, display:"flex", alignItems:"center", gap:4 }}>
-                Comprar <ChevronRight size={15} color={B} />
-              </span>
-            </div>
-          </div>
+          {/* Card "Meu saldo de moedas" / "Comprar" REMOVIDO daqui (2026-08-31)
+              — desde o modelo de comissão (26/08+), profissional novo entra
+              no plano "acesso" e nunca tem acesso a moedas (ver
+              permiteComprarMoedas={role==="professional" && plano!=="acesso"}
+              no gate de EscolherPlanoScreen), mas esse card aparecia pra
+              TODO profissional aqui no perfil, comissão ou não — inclusive
+              quem nunca vai conseguir comprar moeda nenhuma. Removido pra
+              todo mundo, não só condicional a plano=="acesso" (decisão
+              explícita: card genérico demais, mesmo grandfathered já vê o
+              saldo/atalho de compra pela tela de Oportunidades quando faz
+              sentido). saldoMoedas (prop/dado) e a rota "comprarmoedas"
+              continuam intocados — outros pontos do app ainda dependem
+              deles (ex.: "Responder por: X moedas" em ProfessionalHome,
+              SemPlanoMoedaCard em EscolherPlanoScreen). */}
 
           {/* Categorias de serviço — obrigatória pra poder ficar online no Mural.
               Fora do editMode mostra só a lista já escolhida ("Você trabalha
