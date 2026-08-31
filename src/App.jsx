@@ -4838,7 +4838,20 @@ function maskCardNumber(v) { return v.replace(/\D/g, "").slice(0, 16).replace(/(
    Asaas) antes de deixar o plano virar "ativa". Nada aqui grava direto no
    Supabase — só o backend faz isso, com service_role (ver migration
    supabase_pendencias_doc_pagamento_migration.sql). ─────────────────────── */
+// MITIGAÇÃO EMERGENCIAL (2026-08-31): o Pix dinâmico da Asaas está com o
+// campo recebedor.nome corrompido (CNPJ colado no nome truncado) e falha em
+// qualquer banco pagador testado — chamado aberto com a Asaas, sem previsão.
+// Enquanto isso, "acesso" (Taxa de Acesso) usa um Pix ESTÁTICO gerado no
+// nosso próprio backend (chave da conta Nubank PJ, sem passar pela Asaas —
+// ver /api/assinatura/gerar-pix-manual), testado com pagamento real
+// (2026-08-31). Sem confirmação automática (não tem webhook do Nubank aqui)
+// — o cliente manda comprovante por WhatsApp e a ativação é manual via
+// /api/admin/ativar-manual. Reverter pra `false` assim que a Asaas confirmar
+// o campo corrigido (ver texto do chamado nas notas do caso).
+const WHATSAPP_COMPROVANTE = "5511960326911";
+
 function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId, planoLabel, planoPreco, cupomCodigo, onBack, showToast, onSuccess }) {
+  const pixManualFallback = planoId === "acesso";
   // 2026-08-15: cupom já foi tratado como "exige cartão" (travava o toggle em
   // "cartao"), o que excluía quem só usa Pix — justamente quem mais precisa
   // poder testar antes de se comprometer com pagamento. Corrigido: com cupom
@@ -4952,6 +4965,28 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
   // ativada — trata isso como sucesso imediato, igual ao fluxo de cartão com
   // cupom, em vez de cair na tela de "aguardando pagamento".
   const gerarPix = async () => {
+    // Fallback estático (ver comentário no topo do arquivo) — sem CPF (não
+    // precisa criar cliente na Asaas, é só um payload EMV local) e sem
+    // cortesia/cupom (mesma decisão de escopo mínimo: essa via existe só
+    // pra destravar a Taxa de Acesso hoje).
+    if (pixManualFallback) {
+      setGerandoPix(true);
+      setPixExpirado(false);
+      try {
+        const r = await fetch(`${API_BASE}/api/assinatura/gerar-pix-manual`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ titularTipo, titularEmail, titularNome, plano: planoId }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || "Não foi possível gerar o Pix");
+        setPix(d); // {txid, pixCode, qrCodeBase64, valor, manual:true}
+      } catch (err) {
+        showToast?.("❌ " + (err.message || "Não foi possível gerar o Pix"), "#DC2626");
+      } finally {
+        setGerandoPix(false);
+      }
+      return;
+    }
     if (pixCpf.replace(/\D/g,"").length !== 11) {
       setErrorPixCpf("CPF inválido");
       showToast?.("❌ Confira: CPF do titular.", "#DC2626"); // mesmo motivo do card cartão acima
@@ -5218,11 +5253,13 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
         <div style={{ maxWidth:420, margin:"0 auto", display:"flex", flexDirection:"column", gap:14 }}>
           {!pix ? (
             <>
-              <FormField IconComp={User} label="CPF do titular" error={errorPixCpf}>
-                <input inputMode="numeric" placeholder="000.000.000-00" value={pixCpf}
-                  onChange={e => { setPixCpf(maskCpf(e.target.value)); if (errorPixCpf) setErrorPixCpf(""); }}
-                  style={{ ...REG_INPUT, borderColor: errorPixCpf ? "#E53935" : undefined }} />
-              </FormField>
+              {!pixManualFallback && (
+                <FormField IconComp={User} label="CPF do titular" error={errorPixCpf}>
+                  <input inputMode="numeric" placeholder="000.000.000-00" value={pixCpf}
+                    onChange={e => { setPixCpf(maskCpf(e.target.value)); if (errorPixCpf) setErrorPixCpf(""); }}
+                    style={{ ...REG_INPUT, borderColor: errorPixCpf ? "#E53935" : undefined }} />
+                </FormField>
+              )}
               <button onClick={gerarPix} disabled={gerandoPix} style={{
                 width:"100%", padding:"16px 0", borderRadius:16, border:"none",
                 background: gerandoPix ? "#93C5FD" : `linear-gradient(135deg,${B},#0055d4)`,
@@ -5234,7 +5271,9 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
                   : temCupom ? <>🎉 Ativar plano grátis (cupom)</> : <>⚡ Gerar código Pix — R$ {planoPreco}</>}
               </button>
               <p style={{ fontSize:11, color:"#9CA3AF", textAlign:"center", margin:0 }}>
-                {temCupom
+                {pixManualFallback
+                  ? "Após pagar, a liberação é confirmada manualmente pela nossa equipe (não é automática) — normalmente em poucas horas."
+                  : temCupom
                   ? `Grátis hoje. A partir do 2º mês, R$ ${planoPreco} — como Pix não tem débito automático no Brasil, vamos te avisar pra confirmar o pagamento todo mês.`
                   : `Cobrança recorrente mensal de R$ ${planoPreco}. Cancele quando quiser.`}
               </p>
@@ -5253,12 +5292,14 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
                   <img src={`data:image/png;base64,${pix.qrCodeBase64}`} alt="QR Code Pix"
                     style={{ width:200, height:200, borderRadius:12, border:"3px solid #1a1a2e", display:"block", margin:"0 auto" }} />
                 )}
-                <div style={{ display:"inline-flex", alignItems:"center", gap:6, background: confirmandoPix ? "#F0FDF4" : "#FFF9E6", border:`1px solid ${confirmandoPix ? "#BBF7D0" : "#FDE68A"}`, borderRadius:99, padding:"5px 14px", marginTop:12 }}>
-                  <div style={{ width:8, height:8, borderRadius:"50%", background: confirmandoPix ? G : "#F59E0B" }} />
-                  <span style={{ fontSize:11, fontWeight:800, color: confirmandoPix ? "#166534" : "#92400E" }}>
-                    {confirmandoPix ? "Confirmando pagamento..." : "Aguardando pagamento"}
-                  </span>
-                </div>
+                {!pix.manual && (
+                  <div style={{ display:"inline-flex", alignItems:"center", gap:6, background: confirmandoPix ? "#F0FDF4" : "#FFF9E6", border:`1px solid ${confirmandoPix ? "#BBF7D0" : "#FDE68A"}`, borderRadius:99, padding:"5px 14px", marginTop:12 }}>
+                    <div style={{ width:8, height:8, borderRadius:"50%", background: confirmandoPix ? G : "#F59E0B" }} />
+                    <span style={{ fontSize:11, fontWeight:800, color: confirmandoPix ? "#166534" : "#92400E" }}>
+                      {confirmandoPix ? "Confirmando pagamento..." : "Aguardando pagamento"}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div style={{ background:"#F8FAFF", border:"1px solid #DBEAFE", borderRadius:12, padding:"12px 14px", display:"flex", alignItems:"center", gap:10 }}>
@@ -5271,9 +5312,22 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
                 </button>
               </div>
 
-              <p style={{ fontSize:11, color:"#9CA3AF", textAlign:"center", margin:0 }}>
-                Assim que o pagamento cair, o plano ativa automaticamente — não precisa ficar recarregando a tela.
-              </p>
+              {pix.manual ? (
+                <>
+                  <div style={{ background:"#FFF3CD", border:"1px solid #FFE69C", borderRadius:10, padding:"12px 14px", fontSize:12, color:"#7A5C00", lineHeight:1.6 }}>
+                    ⚠️ <strong>Confirmação manual</strong> — depois de pagar, envie o comprovante pelo WhatsApp abaixo junto com este código: <strong style={{ fontFamily:"monospace" }}>{pix.txid}</strong>. A liberação não é automática nesta forma de pagamento.
+                  </div>
+                  <a href={`https://wa.me/${WHATSAPP_COMPROVANTE}?text=${encodeURIComponent(`Oi! Paguei a Taxa de Acesso via Pix. Código: ${pix.txid} — e-mail: ${titularEmail}`)}`}
+                    target="_blank" rel="noreferrer"
+                    style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:"14px", borderRadius:12, border:"none", background:"linear-gradient(135deg,#25D366,#1EBE57)", color:"white", fontWeight:800, fontSize:14, textDecoration:"none", boxSizing:"border-box" }}>
+                    📲 Enviar comprovante pelo WhatsApp
+                  </a>
+                </>
+              ) : (
+                <p style={{ fontSize:11, color:"#9CA3AF", textAlign:"center", margin:0 }}>
+                  Assim que o pagamento cair, o plano ativa automaticamente — não precisa ficar recarregando a tela.
+                </p>
+              )}
             </>
           )}
         </div>
