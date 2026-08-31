@@ -4944,7 +4944,9 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Pagamento não confirmado");
       showToast?.(
-        d.cortesia
+        pixManualFallback
+          ? `🎉 ${planoLabel} ativado! Cobrança única — sem renovação automática.`
+          : d.cortesia
           ? `🎉 ${planoLabel} ativado com cupom — 1º mês grátis! Próxima cobrança em ${proximaCobranca.toLocaleDateString("pt-BR")}.`
           : `🎉 ${planoLabel} ativado! Próxima cobrança em ${proximaCobranca.toLocaleDateString("pt-BR")}.`,
         G
@@ -5156,7 +5158,9 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
         <div>
           <p style={{ margin:"0 0 2px", fontWeight:800, fontSize:14, color:"#1a1a2e" }}>{planoLabel}</p>
           <p style={{ margin:0, fontSize:11.5, color:"#9CA3AF" }}>
-            {temCupom ? "Grátis hoje (cupom)" : "Cobrado hoje"} · {temCupom ? "1ª cobrança" : "renova"} em {proximaCobranca.toLocaleDateString("pt-BR")}
+            {pixManualFallback
+              ? "Cobrado hoje · cobrança única, sem renovação"
+              : `${temCupom ? "Grátis hoje (cupom)" : "Cobrado hoje"} · ${temCupom ? "1ª cobrança" : "renova"} em ${proximaCobranca.toLocaleDateString("pt-BR")}`}
           </p>
         </div>
         <p style={{ margin:0, fontWeight:900, fontSize:20, color: temCupom ? "#16A34A" : "#1a1a2e" }}>
@@ -5246,7 +5250,9 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
             {loading ? "Processando pagamento..." : <><Lock size={16} /> Pagar R$ {planoPreco} e ativar plano</>}
           </button>
           <p style={{ fontSize:11, color:"#9CA3AF", textAlign:"center", margin:0 }}>
-            Cobrança recorrente mensal de R$ {planoPreco}. Cancele quando quiser.
+            {pixManualFallback
+              ? `Cobrança única de R$ ${planoPreco} — sem mensalidade, sem renovação automática.`
+              : `Cobrança recorrente mensal de R$ ${planoPreco}. Cancele quando quiser.`}
           </p>
         </div>
       ) : (
@@ -7122,7 +7128,9 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
                     {planoStatus === "trial"
                       ? <>🎁 <strong>TESTE GRATUITO</strong>{planoExpiraEm ? ` — termina em ${new Date(planoExpiraEm).toLocaleDateString("pt-BR")}` : ""}</>
                       : isPro
-                        ? <>✅ <strong>{labelPlanoAtivo.toUpperCase()} ATIVO</strong> — R$ {precoPlanoAtivo}/mês{planoExpiraEm ? ` · próx. cobrança ${new Date(planoExpiraEm).toLocaleDateString("pt-BR")}` : ""}</>
+                        ? plano === "acesso"
+                          ? <>✅ <strong>{labelPlanoAtivo.toUpperCase()} ATIVO</strong> — R$ {precoPlanoAtivo} (entrada única, sem mensalidade)</>
+                          : <>✅ <strong>{labelPlanoAtivo.toUpperCase()} ATIVO</strong> — R$ {precoPlanoAtivo}/mês{planoExpiraEm ? ` · próx. cobrança ${new Date(planoExpiraEm).toLocaleDateString("pt-BR")}` : ""}</>
                         : "❌ Nenhum plano ativo"}
                   </p>
                 </div>
@@ -10378,6 +10386,15 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   // nesse ponto, ver carregarPlano em App.jsx) ou vence nos próximos 3 dias
   // (ainda "ativa", só um aviso preventivo, mesma janela usada pelo cron
   // pra mandar o e-mail).
+  //
+  // DORMENTE por dado, não por código (31/08/2026): "acesso" virou entrada
+  // única sem vencimento — ativarAssinatura() no backend grava
+  // planoExpiraEm=null pra esse plano (RENOVACAO_ACESSO_ATIVA=false), e o
+  // cron não marca mais ninguém "inadimplente" por vencimento de Pix. Os
+  // dois flags abaixo naturalmente ficam sempre false (acessoPrestesAVencer
+  // exige planoExpiraEm truthy; acessoVencido exige status="inadimplente",
+  // que não acontece mais por esse motivo). Não removido — só volta a
+  // aparecer sozinho se a flag do backend for religada.
   const acessoVencido = plano === "acesso" && planoStatus === "inadimplente";
   const acessoPrestesAVencer = plano === "acesso" && planoStatus === "ativa" && planoExpiraEm
     && (new Date(planoExpiraEm).getTime() - Date.now()) <= 3 * 24 * 60 * 60 * 1000;
