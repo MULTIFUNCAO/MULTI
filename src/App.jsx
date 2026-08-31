@@ -9184,6 +9184,20 @@ function LoginScreen({ onBack, onComplete, onRegister, onForgot }) {
 // mensagem, sem nada que gere confiança); foto e portfólio são opcionais mas
 // incentivados. Sobe pro mesmo bucket "pedidos-fotos" já usado por empresas/pedidos.
 function CompletarPerfilScreen({ userEmail, onDone, showToast }) {
+  // CRÍTICO (achado 2026-08-31): esta era a última etapa do cadastro de
+  // profissional antes do upsert final gravar role="professional" em
+  // "usuarios" (ver handleLoginComplete) — e nunca pedia categoria_servico.
+  // Com a constraint categoria_servico_obrigatoria_para_professional já
+  // ativa no banco, todo cadastro novo de profissional estava batendo
+  // direto no erro cru do Postgres nesse upsert (nenhuma tela chegava a
+  // perguntar categoria antes disso — só existia depois, em ProfileScreen,
+  // pra quem já tinha conta). max=1 porque o cadastro hoje sempre entra pelo
+  // plano "acesso" (Taxa de Acesso obrigatória, sem escolha de plano — ver
+  // taxaAcessoObrigatoria em EscolherPlanoScreen), e PLANO_LIMITES_USUARIO
+  // .acesso.maxCategorias é 1; se um dia o cadastro voltar a oferecer
+  // escolha de plano aqui, isto precisa virar prop dinâmica.
+  const [categoria, setCategoria] = useState([]);
+  const [errorCategoria, setErrorCategoria] = useState("");
   const [bio, setBio] = useState("");
   const [errorBio, setErrorBio] = useState("");
   const [avatarFile, setAvatarFile] = useState(null);
@@ -9219,11 +9233,29 @@ function CompletarPerfilScreen({ userEmail, onDone, showToast }) {
   };
 
   const handleContinuar = async () => {
-    if (!bio.trim()) { setErrorBio("Conta rapidinho sua experiência — esse campo é obrigatório"); return; }
+    // Mesmo padrão do fix de validação de pagamento (commit 8c9b762): toast
+    // garante feedback visível mesmo se o campo com erro estiver fora da
+    // dobra, além do texto vermelho embaixo do campo em si.
+    if (!categoria.length) {
+      setErrorCategoria("Selecione ao menos uma categoria de serviço para continuar.");
+      showToast?.("❌ Selecione ao menos uma categoria de serviço para continuar.", "#DC2626");
+      return;
+    }
+    if (!bio.trim()) {
+      setErrorBio("Conta rapidinho sua experiência — esse campo é obrigatório");
+      showToast?.("❌ Conta rapidinho sua experiência — esse campo é obrigatório.", "#DC2626");
+      return;
+    }
+    setErrorCategoria("");
     setErrorBio("");
     setSaving(true);
     try {
-      const updates = { bio: bio.trim() };
+      // categoria_servico entra aqui, ANTES do upsert final de
+      // handleLoginComplete (que grava role="professional") — essa ordem é
+      // o que garante a linha nunca fica com role="professional" sem
+      // categoria preenchida, satisfazendo a constraint do banco desde a
+      // primeira escrita (ver comentário no topo do componente).
+      const updates = { bio: bio.trim(), categoria_servico: categoria };
       if (avatarFile) updates.foto_perfil_url = await uploadToStorage(avatarFile, "perfil_profissional");
       if (portfolioFiles.length) {
         const urls = [];
@@ -9264,6 +9296,25 @@ function CompletarPerfilScreen({ userEmail, onDone, showToast }) {
       </div>
 
       <div style={{ flex:1, padding:"20px 20px 40px", display:"flex", flexDirection:"column", gap:20 }}>
+
+        {/* CATEGORIA DE SERVIÇO — obrigatória (ver comentário no topo do
+            componente). max=1 porque o cadastro hoje sempre entra pelo plano
+            "acesso" (mesmo teto de PLANO_LIMITES_USUARIO.acesso.maxCategorias) —
+            mesmo componente CategoriaMultiSelect já usado em
+            EmpresaEditProfileScreen/CadastroEmpresaScreen/ProfileScreen. */}
+        <div style={{ marginBottom: errorCategoria ? -6 : 0 }}>
+          <label style={{ display:"block", fontSize:11, fontWeight:800, color: errorCategoria ? "#E53935" : "#6B7280", textTransform:"uppercase", letterSpacing:1.1, marginBottom:7 }}>
+            Categoria de Serviço <span style={{ color:O }}>*</span>
+          </label>
+          <CategoriaMultiSelect
+            value={categoria}
+            onChange={v => { setCategoria(v); if (errorCategoria) setErrorCategoria(""); }}
+            max={1}
+            onLimitReached={() => showToast?.("⚠️ No cadastro, escolha 1 categoria pra começar — dá pra adicionar mais depois, com plano Pro ou Premium.", O)}
+            error={errorCategoria}
+          />
+          {errorCategoria && <p style={{ fontSize:11, color:"#E53935", margin:"5px 0 0", fontWeight:700 }}>{errorCategoria}</p>}
+        </div>
 
         {/* BIO — obrigatória */}
         <div>
