@@ -5,7 +5,7 @@ import {
   Wallet, CreditCard, HeartHandshake, KeyRound, BellRing,
   BadgeCheck, Banknote, ShieldCheck, Mail, TrendingUp,
   Clock, MapPin, Phone, Star, XCircle, ChevronDown, ChevronUp,
-  Search, Filter, Download, RefreshCw, Tag, Plus, Building2, FlaskConical
+  Search, Filter, Download, RefreshCw, Tag, Plus, Building2, FlaskConical, QrCode
 } from "lucide-react";
 
 const COLORS = {
@@ -1247,6 +1247,109 @@ function SectionDemandaSuporte({ adminKey }) {
   );
 }
 
+// ─── Seção: Pix Manual ───────────────────────────────────────────
+// Mitigação emergencial (2026-08-31, ver comentário em PagamentoPlanoScreen
+// no App.jsx) — enquanto o Pix dinâmico da Asaas está com o recebedor.nome
+// corrompido e falhando em qualquer banco pagador, a Taxa de Acesso gera Pix
+// estático (chave Nubank PJ) sem confirmação automática. Esta aba lista quem
+// já gerou um código e está aguardando conciliação manual do extrato — o
+// botão "Aprovar" ativa a assinatura na hora, sem precisar de nenhuma chave
+// (mesmo login por token de todas as outras abas, ver checkAdminKey no
+// backend — não a EMAIL_ADMIN_KEY antiga).
+function SectionPixManual({ adminKey }) {
+  const [pendentes, setPendentes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [aprovando, setAprovando] = useState(null); // titularEmail em andamento
+  const [erro, setErro] = useState("");
+
+  const carregar = () => {
+    setLoading(true);
+    fetch(API + "/api/admin/pix-manual-pendentes", { headers: { "x-admin-key": adminKey } })
+      .then(r => r.json())
+      .then(d => { setPendentes(d.pendentes || []); setLoading(false); })
+      .catch(() => { setPendentes([]); setLoading(false); });
+  };
+  useEffect(carregar, []);
+
+  const aprovar = async (p) => {
+    setErro("");
+    setAprovando(p.titularEmail);
+    try {
+      const r = await fetch(API + "/api/admin/ativar-manual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({
+          titularTipo: p.titularTipo, titularEmail: p.titularEmail, plano: p.plano,
+          txid: p.txid, nota: "aprovado via aba Pix Manual do admin",
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setErro(d.error || "Erro ao aprovar"); return; }
+      carregar(); // some da lista sozinho (status vira "ativa")
+    } catch {
+      setErro("Erro de conexão");
+    } finally {
+      setAprovando(null);
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <Card>
+        <div style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 16, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+          <QrCode size={17} /> Pix Manual — aguardando conciliação
+        </div>
+        <div style={{ color: COLORS.textMuted, fontSize: 12 }}>
+          Confira o comprovante/extrato do Nubank PJ contra o código (txid) de cada linha antes de aprovar. Some da lista sozinho depois de aprovado.
+        </div>
+      </Card>
+
+      {erro && <div style={{ color: COLORS.red, fontSize: 12, fontWeight: 600 }}>{erro}</div>}
+
+      {loading ? (
+        <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted }}>Carregando...</div>
+      ) : pendentes.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted }}>Nenhum Pix manual aguardando confirmação</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {pendentes.map(p => (
+            <Card key={p.titularEmail} style={{ padding: "14px 16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
+                    <Badge color="orange">{p.plano}</Badge>
+                    <span style={{ color: COLORS.textMuted, fontSize: 11, fontFamily: "monospace" }}>{p.txid}</span>
+                  </div>
+                  <div style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 14 }}>{p.nome || p.titularEmail}</div>
+                  <div style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 2 }}>
+                    {p.titularEmail}{p.whatsapp ? " • " + p.whatsapp : ""}
+                  </div>
+                  <div style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>
+                    Gerado em {p.geradoEm ? new Date(p.geradoEm).toLocaleString("pt-BR") : "—"}
+                  </div>
+                </div>
+                <div style={{ textAlign: "right", flexShrink: 0, display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ color: COLORS.green, fontWeight: 800, fontSize: 16 }}>
+                    {p.valor != null ? "R$ " + Number(p.valor).toFixed(2).replace(".", ",") : "—"}
+                  </div>
+                  <button onClick={() => aprovar(p)} disabled={aprovando === p.titularEmail} style={{
+                    background: aprovando === p.titularEmail ? COLORS.border : COLORS.green,
+                    color: "#fff", border: "none", borderRadius: 8, padding: "10px 18px",
+                    fontSize: 13, fontWeight: 700, cursor: aprovando === p.titularEmail ? "not-allowed" : "pointer",
+                    display: "flex", alignItems: "center", gap: 6,
+                  }}>
+                    <CheckCircle2 size={15} /> {aprovando === p.titularEmail ? "Aprovando..." : "Aprovar"}
+                  </button>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Seção: Empresas ─────────────────────────────────────────────
 // Fase 1 do plano de CRM (ver memória multi_admin_crm_plano) — primeira aba
 // nova do Admin, dados 100% já existentes na tabela "empresas" +
@@ -2430,6 +2533,7 @@ function AdminDashboard({ onExit }) {
     { id: "empresas", label: "Empresas", icon: Building2 },
     { id: "services", label: "Serviços", icon: FileText },
     { id: "ficticios", label: "Fictícios", icon: FlaskConical },
+    { id: "pixmanual", label: "Pix Manual", icon: QrCode },
     { id: "suporte", label: "Demandas Suporte", icon: Phone },
     { id: "categorias", label: "Categorias", icon: Filter },
     { id: "oportunidades", label: "Oportunidades", icon: AlertCircle },
@@ -2475,6 +2579,7 @@ function AdminDashboard({ onExit }) {
         {tab === "empresas" && <SectionEmpresas adminKey={token} />}
         {tab === "services" && <SectionServicos adminKey={token} />}
         {tab === "ficticios" && <SectionFicticios adminKey={token} />}
+        {tab === "pixmanual" && <SectionPixManual adminKey={token} />}
         {tab === "suporte" && <SectionDemandaSuporte adminKey={token} />}
         {tab === "categorias" && <SectionCategorias adminKey={token} />}
         {tab === "oportunidades" && <SectionOportunidades adminKey={token} />}
