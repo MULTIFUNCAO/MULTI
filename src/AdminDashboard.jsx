@@ -1806,10 +1806,93 @@ function SectionFunil({ adminKey }) {
 // Fase 1 do plano de CRM. Período comparado com o período imediatamente
 // anterior de mesmo tamanho (ver /api/admin/relatorio) — dá uma noção de
 // crescimento sem precisar de mais infra.
+// Agrupa uma lista de linhas {data, categoria, quantidade, valor?} por
+// "só categoria" (soma todas as datas) ou "só data" (soma todas as
+// categorias) — reaproveita a mesma lista crua que o backend já manda
+// agrupada por data×categoria, sem precisar de rota nova pra cada visão
+// (ver /api/admin/relatorio-detalhado no backend).
+function agruparPor(linhas, campo) {
+  const mapa = {};
+  linhas.forEach(l => {
+    const chave = l[campo];
+    if (!mapa[chave]) mapa[chave] = { chave, quantidade: 0, valor: 0 };
+    mapa[chave].quantidade += l.quantidade;
+    mapa[chave].valor += l.valor || 0;
+  });
+  return Object.values(mapa).sort((a, b) => a.chave.localeCompare(b.chave));
+}
+
+// Tabela genérica data×categoria×quantidade (+valor opcional) com 3 modos
+// de visão (detalhado / só categoria / só data) — usada pelos dois
+// relatórios novos (Profissionais Ativados, Serviços Concluídos).
+function TabelaRelatorio({ titulo, linhas, comValor, aviso }) {
+  const [visao, setVisao] = useState("detalhado"); // detalhado | categoria | data
+
+  if (!linhas.length) {
+    return (
+      <Card>
+        <div style={{ color: COLORS.textPrimary, fontWeight: 700, marginBottom: 8 }}>{titulo}</div>
+        <div style={{ color: COLORS.textMuted, fontSize: 13 }}>Nenhum registro no período.</div>
+      </Card>
+    );
+  }
+
+  const linhasVisao = visao === "categoria" ? agruparPor(linhas, "categoria")
+    : visao === "data" ? agruparPor(linhas, "data")
+    : linhas;
+  const totalQuantidade = linhas.reduce((s, l) => s + l.quantidade, 0);
+  const totalValor = linhas.reduce((s, l) => s + (l.valor || 0), 0);
+
+  return (
+    <Card>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4, flexWrap: "wrap", gap: 8 }}>
+        <div style={{ color: COLORS.textPrimary, fontWeight: 700 }}>{titulo}</div>
+        <div style={{ display: "flex", gap: 4, background: COLORS.bg, borderRadius: 8, padding: 3 }}>
+          {[{ id: "detalhado", label: "Data × Categoria" }, { id: "categoria", label: "Só Categoria" }, { id: "data", label: "Só Data" }].map(v => (
+            <button key={v.id} onClick={() => setVisao(v.id)} style={{
+              padding: "5px 10px", borderRadius: 6, border: "none", cursor: "pointer",
+              background: visao === v.id ? COLORS.blue : "transparent", color: visao === v.id ? "#fff" : COLORS.textSecondary,
+              fontWeight: 700, fontSize: 11,
+            }}>{v.label}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{ color: COLORS.textMuted, fontSize: 12, marginBottom: 12 }}>
+        Total: {totalQuantidade} {comValor && <>· R$ {totalValor.toFixed(2)}</>}
+      </div>
+      {aviso && <div style={{ color: COLORS.orange, fontSize: 11, marginBottom: 10, fontStyle: "italic" }}>⚠️ {aviso}</div>}
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
+          <thead>
+            <tr style={{ borderBottom: "1px solid " + COLORS.border }}>
+              {visao !== "categoria" && <th style={{ textAlign: "left", padding: "6px 8px", color: COLORS.textMuted, fontWeight: 700 }}>Data</th>}
+              {visao !== "data" && <th style={{ textAlign: "left", padding: "6px 8px", color: COLORS.textMuted, fontWeight: 700 }}>Categoria</th>}
+              <th style={{ textAlign: "right", padding: "6px 8px", color: COLORS.textMuted, fontWeight: 700 }}>Qtd</th>
+              {comValor && <th style={{ textAlign: "right", padding: "6px 8px", color: COLORS.textMuted, fontWeight: 700 }}>Valor</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {linhasVisao.map((l, i) => (
+              <tr key={i} style={{ borderBottom: "1px solid " + COLORS.bg }}>
+                {visao !== "categoria" && <td style={{ padding: "6px 8px", color: COLORS.textPrimary }}>{visao === "data" ? l.chave : l.data}</td>}
+                {visao !== "data" && <td style={{ padding: "6px 8px", color: COLORS.textPrimary }}>{visao === "categoria" ? l.chave : l.categoria}</td>}
+                <td style={{ padding: "6px 8px", color: COLORS.textPrimary, textAlign: "right", fontWeight: 700 }}>{l.quantidade}</td>
+                {comValor && <td style={{ padding: "6px 8px", color: COLORS.green, textAlign: "right", fontWeight: 700 }}>R$ {(l.valor || 0).toFixed(2)}</td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
+
 function SectionRelatorios({ adminKey }) {
   const [dias, setDias] = useState(30);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [detalhado, setDetalhado] = useState(null);
+  const [loadingDetalhado, setLoadingDetalhado] = useState(true);
 
   useEffect(() => {
     setLoading(true);
@@ -1817,6 +1900,14 @@ function SectionRelatorios({ adminKey }) {
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false); })
       .catch(() => { setData(null); setLoading(false); });
+  }, [dias]);
+
+  useEffect(() => {
+    setLoadingDetalhado(true);
+    fetch(API + "/api/admin/relatorio-detalhado?dias=" + dias, { headers: { "x-admin-key": adminKey } })
+      .then(r => r.json())
+      .then(d => { setDetalhado(d); setLoadingDetalhado(false); })
+      .catch(() => { setDetalhado(null); setLoadingDetalhado(false); });
   }, [dias]);
 
   const variacao = (atual, anterior) => {
@@ -1887,6 +1978,28 @@ function SectionRelatorios({ adminKey }) {
               </div>
             </div>
           </Card>
+
+          {/* Dois relatórios pedidos pelo Thiago (2026-08-31): Profissionais
+              Ativados e Serviços Concluídos, cada um agrupável por data e por
+              categoria — ver /api/admin/relatorio-detalhado no backend pro
+              detalhe de como cada um é calculado (inclusive a limitação de
+              data do relatório 1, sem approved_em na tabela). */}
+          {loadingDetalhado || !detalhado ? (
+            <div style={{ textAlign: "center", padding: 24, color: COLORS.textMuted }}>Carregando relatórios detalhados...</div>
+          ) : (
+            <>
+              <TabelaRelatorio
+                titulo={`Profissionais Ativados${detalhado.profissionais_ativados.sem_categoria ? ` (${detalhado.profissionais_ativados.sem_categoria} sem categoria, não listados)` : ""}`}
+                linhas={detalhado.profissionais_ativados.linhas}
+                aviso={detalhado.profissionais_ativados.limitacao_data}
+              />
+              <TabelaRelatorio
+                titulo="Serviços Concluídos"
+                linhas={detalhado.servicos_concluidos.linhas}
+                comValor
+              />
+            </>
+          )}
         </div>
       )}
     </div>
