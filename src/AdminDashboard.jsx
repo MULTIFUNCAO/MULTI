@@ -785,10 +785,12 @@ function SectionServicos({ adminKey }) {
             <Card key={s.id} style={{ padding: "14px 16px" }}>
               <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 200 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
                     {s.origem === "demo" && <FictBadge />}
+                    {s.origem === "suporte" && <Badge color="blue">SUPORTE</Badge>}
                     <Badge color={statusColor(s.status)}>{statusLabel(s.status)}</Badge>
                     <span style={{ color: COLORS.textMuted, fontSize: 11 }}>{s.protocol || "—"}</span>
+                    {s.codigo_interno && <span style={{ color: COLORS.textMuted, fontSize: 11, fontFamily: "monospace" }}>{s.codigo_interno}</span>}
                   </div>
                   <div style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 14 }}>{s.title || "Sem título"}</div>
                   <div style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 4 }}>
@@ -796,6 +798,7 @@ function SectionServicos({ adminKey }) {
                   </div>
                   <div style={{ color: COLORS.textMuted, fontSize: 12 }}>
                     {s.location || s.city || "—"} • {s.created_at ? new Date(s.created_at).toLocaleDateString("pt-BR") : "—"}
+                    {s.cadastrado_por && ` • cadastrado por ${s.cadastrado_por}`}
                   </div>
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -1011,6 +1014,229 @@ function SectionFicticios({ adminKey }) {
                       {p.demo_ativo ? "Pausar" : "Ativar"}
                     </button>
                   </div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Seção: Demandas de Suporte (MULTI-SUP) ─────────────────────────
+// Substitui os pedidos fictícios (SectionFicticios acima, desativados
+// 2026-08-30) como estratégia de captação — ver multi_sup_captacao_manual
+// na memória. Diferença central: aqui SEMPRE tem um cliente real por trás
+// (pediu ou autorizou por telefone/WhatsApp/e-mail), nunca uma demanda
+// inventada — por isso a demanda entra na distribuição normal do mural,
+// sem badge nenhum pro profissional (origem='suporte' é só rastreio
+// interno). Fase 1 do plano: cadastro único + listagem/busca. Cadastro em
+// lote, filtro dedicado, página de detalhe e log de alteração ficam pra
+// fases seguintes.
+function SectionDemandaSuporte({ adminKey }) {
+  const [demandas, setDemandas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const vazio = { clienteNome: "", clienteEmail: "", telefone: "", tipoAtendimento: "residencial", cidade: "", bairro: "", endereco: "", categoria: "", descricao: "", valor: "", dataDesejada: "", horarioDesejado: "" };
+  const [form, setForm] = useState(vazio);
+  // Nome de quem está cadastrando — não é login de verdade (o admin inteiro
+  // roda numa senha única compartilhada, ver checkAdminKey em server.js),
+  // só rótulo de rastreio (campo "cadastrado_por"). Fica salvo no navegador
+  // pra não digitar de novo a cada demanda.
+  const [meuNome, setMeuNome] = useState(() => localStorage.getItem("multiSupCadastradoPor") || "");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+  const [ultimoCodigo, setUltimoCodigo] = useState(null);
+
+  const carregar = () => {
+    setLoading(true);
+    fetch(API + "/api/admin/demandas-suporte", { headers: { "x-admin-key": adminKey } })
+      .then(r => r.json())
+      .then(d => { setDemandas(d.demandas || []); setLoading(false); })
+      .catch(() => { setDemandas([]); setLoading(false); });
+  };
+  useEffect(carregar, []);
+
+  const salvar = async () => {
+    setErro(""); setUltimoCodigo(null);
+    if (!meuNome.trim()) { setErro("Informe seu nome (campo 'Cadastrado por')"); return; }
+    if (!form.clienteNome.trim() || !form.categoria.trim() || !form.descricao.trim() || !form.cidade.trim()) {
+      setErro("Cliente, categoria, descrição e cidade são obrigatórios");
+      return;
+    }
+    setSalvando(true);
+    try {
+      localStorage.setItem("multiSupCadastradoPor", meuNome.trim());
+      const r = await fetch(API + "/api/admin/demandas-suporte", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({
+          clienteNome: form.clienteNome.trim(),
+          clienteEmail: form.clienteEmail.trim(),
+          telefone: form.telefone.trim(),
+          tipoAtendimento: form.tipoAtendimento,
+          cidade: form.cidade.trim(),
+          bairro: form.bairro.trim(),
+          endereco: form.endereco.trim(),
+          categoria: form.categoria.trim(),
+          descricao: form.descricao.trim(),
+          valor: form.valor,
+          dataDesejada: form.dataDesejada.trim(),
+          horarioDesejado: form.horarioDesejado.trim(),
+          cadastradoPor: meuNome.trim(),
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setErro(d.error || "Erro ao cadastrar"); return; }
+      setUltimoCodigo(d.pedido?.codigo_interno || null);
+      setForm(vazio);
+      carregar();
+    } catch {
+      setErro("Erro de conexão");
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const filtered = demandas.filter(d => {
+    const q = search.toLowerCase();
+    if (!q) return true;
+    return (d.codigo_interno || "").toLowerCase().includes(q)
+      || (d.cliente_nome || "").toLowerCase().includes(q)
+      || (d.categoria || "").toLowerCase().includes(q)
+      || (d.cidade || "").toLowerCase().includes(q)
+      || (d.descricao || "").toLowerCase().includes(q);
+  });
+
+  const inputStyle = {
+    background: COLORS.bg, border: "1px solid " + COLORS.border, borderRadius: 8,
+    padding: "10px 14px", color: COLORS.textPrimary, fontSize: 13,
+    outline: "none", fontFamily: "inherit", width: "100%",
+  };
+  const labelStyle = { color: COLORS.textMuted, fontSize: 11, fontWeight: 600, display: "block", marginBottom: 6 };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <Card>
+        <div style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 16, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+          <Phone size={17} /> Cadastrar demanda para cliente
+        </div>
+        <div style={{ color: COLORS.textMuted, fontSize: 12, marginBottom: 14 }}>
+          Só pra solicitações reais, feitas ou autorizadas pelo cliente (telefone, WhatsApp, e-mail). Entra no mural exatamente como um pedido publicado pelo app — mesmas regras de categoria, localização e distribuição.
+        </div>
+
+        <div style={{ marginBottom: 12, maxWidth: 260 }}>
+          <label style={labelStyle}>CADASTRADO POR (seu nome)</label>
+          <input value={meuNome} onChange={e => setMeuNome(e.target.value)} placeholder="Ana" style={inputStyle} />
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10, marginBottom: 12 }}>
+          <div>
+            <label style={labelStyle}>NOME DO CLIENTE *</label>
+            <input value={form.clienteNome} onChange={e => setForm(f => ({ ...f, clienteNome: e.target.value }))} placeholder="João da Silva" style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>E-MAIL</label>
+            <input value={form.clienteEmail} onChange={e => setForm(f => ({ ...f, clienteEmail: e.target.value }))} placeholder="joao@email.com" style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>TELEFONE</label>
+            <input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} placeholder="(11) 99999-9999" style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>TIPO</label>
+            <select value={form.tipoAtendimento} onChange={e => setForm(f => ({ ...f, tipoAtendimento: e.target.value }))} style={inputStyle}>
+              <option value="residencial">Residencial</option>
+              <option value="empresarial">Empresarial</option>
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>CIDADE *</label>
+            <input value={form.cidade} onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))} placeholder="Guarulhos, SP" style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>BAIRRO</label>
+            <input value={form.bairro} onChange={e => setForm(f => ({ ...f, bairro: e.target.value }))} placeholder="Centro" style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>ENDEREÇO</label>
+            <input value={form.endereco} onChange={e => setForm(f => ({ ...f, endereco: e.target.value }))} placeholder="Rua X, 123 (se necessário)" style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>CATEGORIA (id exato, ex: eletricista) *</label>
+            <input value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} placeholder="encanador" style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>VALOR ESTIMADO (R$)</label>
+            <input type="number" value={form.valor} onChange={e => setForm(f => ({ ...f, valor: e.target.value }))} placeholder="150" style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>DATA DESEJADA</label>
+            <input value={form.dataDesejada} onChange={e => setForm(f => ({ ...f, dataDesejada: e.target.value }))} placeholder="Amanhã, essa semana..." style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>HORÁRIO DESEJADO</label>
+            <input value={form.horarioDesejado} onChange={e => setForm(f => ({ ...f, horarioDesejado: e.target.value }))} placeholder="Manhã, 14h..." style={inputStyle} />
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <label style={labelStyle}>DESCRIÇÃO *</label>
+          <input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} placeholder="Vazamento na cozinha, cano embaixo da pia" style={inputStyle} />
+        </div>
+
+        <button onClick={salvar} disabled={salvando} style={{
+          background: salvando ? COLORS.border : COLORS.blue,
+          color: "#fff", border: "none", borderRadius: 8, padding: "12px 22px",
+          fontSize: 14, fontWeight: 700, cursor: salvando ? "not-allowed" : "pointer",
+          display: "flex", alignItems: "center", gap: 6, height: 42,
+        }}>
+          <Plus size={16} /> {salvando ? "Cadastrando..." : "CADASTRAR DEMANDA"}
+        </button>
+
+        {erro && <div style={{ color: COLORS.red, fontSize: 12, marginTop: 10, fontWeight: 600 }}>{erro}</div>}
+        {ultimoCodigo && (
+          <div style={{ color: COLORS.green, fontSize: 13, marginTop: 10, fontWeight: 700 }}>
+            ✓ Demanda cadastrada — código {ultimoCodigo}
+          </div>
+        )}
+      </Card>
+
+      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <SearchBar value={search} onChange={setSearch} placeholder="Buscar por código, cliente, categoria ou cidade..." />
+        </div>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted }}>Carregando...</div>
+      ) : filtered.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted }}>Nenhuma demanda de suporte encontrada</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {filtered.map(d => (
+            <Card key={d.id} style={{ padding: "14px 16px" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
+                    <Badge color="blue">SUPORTE</Badge>
+                    <span style={{ color: COLORS.textMuted, fontSize: 11, fontFamily: "monospace" }}>{d.codigo_interno || "—"}</span>
+                    <span style={{ color: COLORS.textMuted, fontSize: 11 }}>{d.categoria}</span>
+                  </div>
+                  <div style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 14 }}>{d.descricao || "Sem descrição"}</div>
+                  <div style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 4 }}>
+                    Cliente: {d.cliente_nome || "—"} • {d.telefone_cliente || d.cliente_id || "sem contato"} • {d.cidade || "—"}{d.bairro ? ", " + d.bairro : ""}
+                  </div>
+                  <div style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>
+                    Cadastrado por {d.cadastrado_por || "—"} em {d.created_at ? new Date(d.created_at).toLocaleString("pt-BR") : "—"}
+                  </div>
+                </div>
+                <div style={{ textAlign: "right", flexShrink: 0 }}>
+                  <div style={{ color: COLORS.green, fontWeight: 800, fontSize: 16 }}>
+                    {d.valor ? "R$ " + d.valor : "A combinar"}
+                  </div>
+                  <Badge color={d.status === "aberto" ? "blue" : d.status === "concluido" ? "green" : "orange"}>{d.status}</Badge>
                 </div>
               </div>
             </Card>
@@ -2204,6 +2430,7 @@ function AdminDashboard({ onExit }) {
     { id: "empresas", label: "Empresas", icon: Building2 },
     { id: "services", label: "Serviços", icon: FileText },
     { id: "ficticios", label: "Fictícios", icon: FlaskConical },
+    { id: "suporte", label: "Demandas Suporte", icon: Phone },
     { id: "categorias", label: "Categorias", icon: Filter },
     { id: "oportunidades", label: "Oportunidades", icon: AlertCircle },
     { id: "funil", label: "Funil", icon: TrendingUp },
@@ -2248,6 +2475,7 @@ function AdminDashboard({ onExit }) {
         {tab === "empresas" && <SectionEmpresas adminKey={token} />}
         {tab === "services" && <SectionServicos adminKey={token} />}
         {tab === "ficticios" && <SectionFicticios adminKey={token} />}
+        {tab === "suporte" && <SectionDemandaSuporte adminKey={token} />}
         {tab === "categorias" && <SectionCategorias adminKey={token} />}
         {tab === "oportunidades" && <SectionOportunidades adminKey={token} />}
         {tab === "funil" && <SectionFunil adminKey={token} />}
