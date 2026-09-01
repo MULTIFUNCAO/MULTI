@@ -12068,10 +12068,23 @@ export default function App() {
   };
 
   // ── INTENT-BASED AUTH GATE ──────────────────────────────────────────────────
+  // Mitigação rápida (2026-09-01): abria direto em "welcome" (100% linguagem
+  // de cliente — "Entrar ou Criar Conta"), então quem chegava sem role já
+  // conhecida (ex: tráfego de anúncio querendo ser profissional, sem passar
+  // pelo link especial ?cadastro=profissional) caía sempre no cadastro
+  // padrão de cliente e só descobria depois de já logado que virar
+  // profissional era outra ação. "role-select" já existe pronto (pergunta
+  // "contratar ou trabalhar?", mesma tela que o botão "Vire Profissional"
+  // usa) — só reaproveitando como porta de entrada padrão pra quem ainda não
+  // declarou intenção nenhuma. Não muda nada do resto do fluxo: quem escolhe
+  // "cliente" cai em "welcome" igual antes (ver authScreen==="role-select"
+  // acima), quem escolhe "profissional" vai direto pro RegisterScreen já com
+  // a intenção certa. Ver multi_cadastro_leads_profissional_facebook_ads na
+  // memória.
   const requireAuth = (intent, fn) => {
     if (isLoggedIn) { fn(); return; }
     setPendingIntent({ fn });
-    setAuthScreen("welcome");
+    setAuthScreen("role-select");
   };
 
   const handleLoginComplete = (name = "", email = "", isNewAccount = false, location = "", registeredRole = "", whatsapp = "", dbRole = null, isHybrid = false) => {
@@ -12786,7 +12799,14 @@ const renderContent = () => {
 
       // ── GUEST TOGGLE: show professional mural preview when guest selects "Profissional"
       if (!isLoggedIn && guestRole === "professional") {
-        return <GuestMural onSignup={() => setAuthScreen("welcome")} allDocsVerified={null} />;
+        // Mitigação rápida (2026-09-01): a pessoa já declarou a intenção
+        // "profissional" tocando no toggle do header pra chegar até aqui —
+        // "onSignup" mandava isso pro limbo (welcome/RegisterScreen com
+        // signupRole ainda "client" default), obrigando quem só queria virar
+        // profissional a notar e trocar o rádio "Só cliente" pré-marcado.
+        // Carrega a intenção já conhecida direto pro formulário certo, sem
+        // perguntar de novo (mesmo padrão do link ?cadastro=profissional).
+        return <GuestMural onSignup={() => { setSignupRole("professional"); setAuthScreen("register"); }} allDocsVerified={null} />;
       }
 
       // HOME — always visible, auth gates on action
@@ -13008,7 +13028,12 @@ const renderContent = () => {
   if (authScreen === "role-select") {
     return wrapper(
       <RoleSelectScreen
-        onBack={() => setAuthScreen(null)}
+        // setPendingIntent(null) — mitigação 2026-09-01: agora que
+        // requireAuth abre aqui (não mais direto em "welcome"), tem intent
+        // pendente na maioria das vezes; sem limpar, cancelar aqui e depois
+        // logar por outro caminho (ex: LoginScreen direto) disparava a ação
+        // de guest que ficou presa, igual o onBack do "welcome" já evitava.
+        onBack={() => { setAuthScreen(null); setPendingIntent(null); }}
         onLogin={() => setAuthScreen("login")}
         onSelect={(roleId) => {
           // setSignupRole explícito nos dois ramos (não só "profissional")
