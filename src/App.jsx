@@ -9067,7 +9067,7 @@ function ForgotPasswordScreen({ onBack, onComplete }) {
     <h2 style={{ margin:"0 0 8px", fontSize:22, fontWeight:800 }}>Recuperar Senha</h2>
     <p style={{ color:"#6B7280", fontSize:14, marginBottom:24 }}>Vamos enviar um codigo de 6 digitos para seu e-mail.</p>
     <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase" }}>E-MAIL</label>
-    <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" style={inp} />
+    <input type="email" autoCapitalize="none" autoCorrect="off" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" style={inp} />
     <button disabled={loading} style={btn} onClick={async () => { if (!email) return alert("Digite seu e-mail"); setLoading(true); const r = await fetch(API+"/api/auth/solicitar-codigo", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email}) }); setLoading(false); if (r.ok) setStep(2); else alert("Erro ao enviar"); }}>{loading ? "Enviando..." : "Enviar Codigo"}</button>
   </div></div>;
   return <div style={box}><div style={card}>
@@ -9163,7 +9163,7 @@ function LoginScreen({ onBack, onComplete, onRegister, onForgot }) {
         <p style={{ color:"#6B7280", fontSize:14, marginBottom:24 }}>Bem-vindo de volta!</p>
         <div style={{ marginBottom:16 }}>
           <label style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.05em" }}>E-MAIL</label>
-          <input type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)}
+          <input type="email" autoCapitalize="none" autoCorrect="off" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)}
             style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #E5E7EB", fontSize:15, marginTop:6, boxSizing:"border-box", outline:"none" }} />
         </div>
         <div style={{ marginBottom:24 }}>
@@ -9728,7 +9728,7 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
             <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
           </svg>
         )} label="E-mail" error={errors.email}>
-          <input autoComplete="email" type="email" placeholder="seu@email.com" value={email}
+          <input autoComplete="email" autoCapitalize="none" autoCorrect="off" type="email" placeholder="seu@email.com" value={email}
             onChange={e => { setEmail(e.target.value); if (errors.email) setErrors(p => ({ ...p, email:undefined })); }}
             style={{ ...REG_INPUT, borderColor: errors.email ? "#E53935" : undefined }} />
         </FormField>
@@ -10107,7 +10107,7 @@ function CadastroEmpresaScreen({ onBack, onComplete, showToast }) {
             <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
           </svg>
         )} label="E-mail" error={errors.email}>
-          <input autoComplete="email" type="email" placeholder="contato@empresa.com" value={email}
+          <input autoComplete="email" autoCapitalize="none" autoCorrect="off" type="email" placeholder="contato@empresa.com" value={email}
             onChange={e => { setEmail(e.target.value); if (errors.email) setErrors(p => ({ ...p, email:undefined })); }}
             style={{ ...REG_INPUT, borderColor: errors.email ? "#E53935" : undefined }} />
         </FormField>
@@ -12155,6 +12155,20 @@ export default function App() {
   };
 
   const handleLoginComplete = (name = "", email = "", isNewAccount = false, location = "", registeredRole = "", whatsapp = "", dbRole = null, isHybrid = false) => {
+    // Normaliza pra minúsculo antes de qualquer coisa — achado 2026-09-01
+    // (caso Anderson/karinegatinhadomc): a releitura de "role" logo abaixo
+    // faz .eq("email", email), comparação sensível a maiúscula/minúscula, e
+    // nada nesse fluxo normalizava isso. WebView Android (Capacitor) capitaliza
+    // a primeira letra em campos de texto comuns por padrão mesmo com
+    // type="email" — sem esse toLowerCase(), um e-mail digitado como
+    // "Fulano@gmail.com" contra um banco com "fulano@gmail.com" não batia,
+    // a releitura voltava vazia e o login caía no role antigo em cache
+    // (silenciosamente, sem erro), repetindo o mesmo resultado errado a
+    // cada novo login. Aplicado uma vez aqui porque email flui daqui pra
+    // session/userEmail/upsert/releitura — não precisa repetir em cada
+    // callsite.
+    email = (email || "").trim().toLowerCase();
+
     // Preserva o token/refreshToken já salvo por LoginScreen ou pelo
     // cadastro (ver /api/auth/login, /api/auth/cadastro).
     let tokenPrevio = {};
