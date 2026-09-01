@@ -746,7 +746,7 @@ function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua
   );
 }
 
-function GuestHeader({ onToggleRole, activeRole = "client", onSelectEmpresa }) {
+function GuestHeader({ onToggleRole, activeRole = "client", onSelectEmpresa, locked = false }) {
   return (
     <div style={{ position:"sticky", top:0, zIndex:50, background:`linear-gradient(180deg,${B} 0%,#0057d4 100%)`, boxShadow:"0 4px 20px rgba(0,112,255,.28)", borderRadius:"0 0 20px 20px", paddingTop:"env(safe-area-inset-top)" }}>
       {/* row 1 */}
@@ -772,31 +772,37 @@ function GuestHeader({ onToggleRole, activeRole = "client", onSelectEmpresa }) {
           (App role state); Empresa não tem preview de convidado (não faz
           sentido "navegar como empresa" sem conta), então o clique já leva
           direto pro cadastro/login de empresa (mesma tela que o card "Quero
-          crescer minha empresa" da RoleSelectScreen usa). */}
-      <div style={{ display:"flex", margin:"0 16px 14px", background:"rgba(255,255,255,.15)", borderRadius:14, padding:3 }}>
-        {[{ id:"client", label:"Cliente", Icon:User }, { id:"professional", label:"Profissional", Icon:Briefcase }, { id:"empresa", label:"Empresa", Icon:Building2 }].map(({ id, label, Icon }) => (
-          <button key={id} onClick={() => id === "empresa" ? onSelectEmpresa?.() : onToggleRole?.(id)} style={{
-            flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:4,
-            padding:"9px 0", borderRadius:12, fontSize:11, fontWeight:800,
-            border:"none", cursor:"pointer", transition:"all .18s", whiteSpace:"nowrap",
-            background: activeRole === id ? "white" : "transparent",
-            color:      activeRole === id ? "#1a1a2e" : "rgba(255,255,255,.75)",
-            boxShadow:  activeRole === id ? "0 2px 8px rgba(0,0,0,.12)" : "none",
-          }}>
-            <Icon size={12} />{label}
-          </button>
-        ))}
-      </div>
+          crescer minha empresa" da RoleSelectScreen usa).
+          "locked" (2026-09-01, ?cadastro=profissional) some com essa linha
+          inteira — lead pago de anúncio não pode ter opção de escapar pra
+          visão de cliente/empresa no meio do próprio funil que ele veio
+          seguindo. */}
+      {!locked && (
+        <div style={{ display:"flex", margin:"0 16px 14px", background:"rgba(255,255,255,.15)", borderRadius:14, padding:3 }}>
+          {[{ id:"client", label:"Cliente", Icon:User }, { id:"professional", label:"Profissional", Icon:Briefcase }, { id:"empresa", label:"Empresa", Icon:Building2 }].map(({ id, label, Icon }) => (
+            <button key={id} onClick={() => id === "empresa" ? onSelectEmpresa?.() : onToggleRole?.(id)} style={{
+              flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:4,
+              padding:"9px 0", borderRadius:12, fontSize:11, fontWeight:800,
+              border:"none", cursor:"pointer", transition:"all .18s", whiteSpace:"nowrap",
+              background: activeRole === id ? "white" : "transparent",
+              color:      activeRole === id ? "#1a1a2e" : "rgba(255,255,255,.75)",
+              boxShadow:  activeRole === id ? "0 2px 8px rgba(0,0,0,.12)" : "none",
+            }}>
+              <Icon size={12} />{label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 /* Public façade — picks the right header, nothing shared between them */
-function Header({ isPro, notifCount, isLoggedIn, userRole, onAlerts, userLocation, onToggleRole, activeRole, onSelectEmpresa }) {
+function Header({ isPro, notifCount, isLoggedIn, userRole, onAlerts, userLocation, onToggleRole, activeRole, onSelectEmpresa, guestLocked }) {
   if (isLoggedIn) {
     return <AuthHeader isPro={isPro} notifCount={notifCount} userRole={userRole} onToggleRole={onToggleRole} onAlerts={onAlerts} userLocation={localStorage.getItem("multiLocation") || userLocation} />;
   }
-  return <GuestHeader onToggleRole={onToggleRole} activeRole={activeRole} onSelectEmpresa={onSelectEmpresa} />;
+  return <GuestHeader onToggleRole={onToggleRole} activeRole={activeRole} onSelectEmpresa={onSelectEmpresa} locked={guestLocked} />;
 }
 
 /* ───────────────────────── BOTTOM NAV ─────────────────────────────────────── */
@@ -11545,6 +11551,12 @@ export default function App() {
     catch { return "client"; }
   });
   const [guestRole, setGuestRole] = useState("client"); // drives the header toggle for guests
+  // Trava o toggle Cliente/Profissional/Empresa do GuestHeader — usado por
+  // ?cadastro=profissional (ver useEffect abaixo): quem chega de um anúncio
+  // já pagando por lead de profissional não pode ter uma saída fácil pra
+  // "virar" cliente/empresa sem querer, então o guest fica preso no mural
+  // profissional até completar cadastro/documento/pagamento.
+  const [guestLocked, setGuestLocked] = useState(false);
   const [screen,    setScreen]    = useState("home");
   const [selected,  setSelected]  = useState(null);
   const [avaliacaoSvc, setAvaliacaoSvc] = useState(null);
@@ -11821,12 +11833,19 @@ export default function App() {
   };
   useEffect(() => { refreshMeusPedidos(); }, [screen, userEmail, role]);
 
-  // Deep link do site institucional (public/site.html, botões "Sou
-  // profissional"/"Quero ser Multi") — ?cadastro=profissional leva direto
-  // pro formulário de cadastro já com a intenção profissional certa, sem
-  // passar pela pergunta "contratar ou trabalhar?" de novo: a intenção já
-  // veio explícita do próprio botão que a pessoa clicou no site (mesmo
-  // tratamento que RoleSelectScreen dá pro card "Quero trabalhar" — ver
+  // Deep link do anúncio (Facebook Ads → template de saudação do WhatsApp,
+  // e também public/site.html, botões "Sou profissional"/"Quero ser Multi")
+  // — ?cadastro=profissional. Mudou 2026-09-01: antes pulava direto pro
+  // formulário de cadastro; agora cai no Mural de Serviços com oportunidades
+  // reais (mesma tela que o toggle "Profissional" do header mostra pro
+  // convidado — ver GuestMural/guestRole==="professional" no render), porque
+  // é isso que convence a pessoa a completar o cadastro, não um formulário
+  // em branco. "guestLocked" tira o toggle Cliente/Profissional/Empresa do
+  // header pra quem entra por aqui — não pode ter escape pra outro papel no
+  // meio de um lead pago, fica preso em profissional até completar
+  // cadastro/documento/pagamento (ver GuestHeader). Intenção já veio
+  // explícita do próprio clique no anúncio/botão (mesmo tratamento que
+  // RoleSelectScreen dá pro card "Quero trabalhar" — ver
   // multi_cadastro_empresa_home_cliente_bug na memória). Só age pra quem
   // chega deslogado; se a pessoa já tiver sessão salva, ignora (não faz
   // sentido reabrir cadastro por cima de uma conta já logada).
@@ -11834,8 +11853,8 @@ export default function App() {
     if (isLoggedIn) return;
     const params = new URLSearchParams(window.location.search);
     if (params.get("cadastro") !== "profissional") return;
-    setSignupRole("professional");
-    setAuthScreen("register");
+    setGuestRole("professional");
+    setGuestLocked(true);
     window.history.replaceState({}, "", window.location.pathname);
   }, [isLoggedIn]);
 
@@ -13125,7 +13144,7 @@ const renderContent = () => {
           empresa usa o sino de notificação nem o avatar daqui (grep
           confirmou), então pular o Header inteiro não tira função nenhuma. */}
       {!(isLoggedIn && userRole === "empresa") && (
-        <Header isPro={isPro} notifCount={notifCount} isLoggedIn={isLoggedIn} userRole={userRole} onAlerts={() => setScreen("alerts")} userLocation={localStorage.getItem("multiLocation") || userLocation} onToggleRole={setGuestRole} activeRole={guestRole} onSelectEmpresa={() => setAuthScreen("empresa-pitch")} />
+        <Header isPro={isPro} notifCount={notifCount} isLoggedIn={isLoggedIn} userRole={userRole} onAlerts={() => setScreen("alerts")} userLocation={localStorage.getItem("multiLocation") || userLocation} onToggleRole={setGuestRole} activeRole={guestRole} onSelectEmpresa={() => setAuthScreen("empresa-pitch")} guestLocked={guestLocked} />
       )}
 
       {/* paddingBottom cobre a altura do bottom nav (~55px de conteúdo/padding
