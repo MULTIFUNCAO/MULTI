@@ -10152,6 +10152,27 @@ function CadastroEmpresaScreen({ onBack, onComplete, showToast }) {
 /* ───────────────────────── GUEST MURAL (professional preview) ───────────────── */
 function GuestMural({ onSignup, allDocsVerified }) {
   const [filter, setFilter] = useState("all");
+  // Setas de rolagem da lista de categorias (2026-09-01, achado testando no
+  // celular): a lista corta no meio da última categoria visível sem
+  // nenhuma pista de que dá pra rolar mais — quem chega pelo mural travado
+  // do anúncio (guestLocked) nem cogita arrastar. "canScrollRight" começa
+  // true otimisticamente (a maioria dos aparelhos corta a lista mesmo com
+  // poucas categorias) e o próprio onScroll/medição no mount corrige assim
+  // que o layout real é conhecido.
+  const catsScrollRef = useRef(null);
+  const [catsScroll, setCatsScroll] = useState({ left: false, right: true });
+  const updateCatsScroll = () => {
+    const el = catsScrollRef.current;
+    if (!el) return;
+    setCatsScroll({
+      left: el.scrollLeft > 4,
+      right: el.scrollLeft < el.scrollWidth - el.clientWidth - 4,
+    });
+  };
+  useEffect(() => { updateCatsScroll(); }, []);
+  const scrollCats = (dir) => {
+    catsScrollRef.current?.scrollBy({ left: dir * 160, behavior: "smooth" });
+  };
 
   const MURAL_SEED = [
     { id:"g1", cat:"encanador",   emoji:"🔧", title:"Vazamento na cozinha",    bairro:"Vila Madalena, SP", value:150, urgent:true,  time:"Há 12min" },
@@ -10205,17 +10226,44 @@ function GuestMural({ onSignup, allDocsVerified }) {
           </div>
         </div>
 
-        {/* filters */}
-        <div style={{ display:"flex", gap:8, overflowX:"auto", scrollbarWidth:"none", paddingBottom:12 }}>
-          {CATS_FILTER.map(c => (
-            <button key={c.id} onClick={() => setFilter(c.id)} style={{
-              flexShrink:0, padding:"7px 16px", borderRadius:99, fontSize:12, fontWeight:800,
-              border:"none", cursor:"pointer", transition:"all .15s",
-              background: filter === c.id ? "#1a1a2e" : "white",
-              color:       filter === c.id ? "white"   : "#666",
-              boxShadow:   filter === c.id ? "0 3px 10px rgba(0,0,0,.18)" : "0 1px 4px rgba(0,0,0,.08)",
-            }}>{c.label}</button>
-          ))}
+        {/* filters — position:relative pras setas de rolagem ficarem
+            ancoradas nas bordas da lista, não da tela inteira. */}
+        <div style={{ position:"relative" }}>
+          <div ref={catsScrollRef} onScroll={updateCatsScroll} style={{ display:"flex", gap:8, overflowX:"auto", scrollbarWidth:"none", paddingBottom:12 }}>
+            {CATS_FILTER.map(c => (
+              <button key={c.id} onClick={() => setFilter(c.id)} style={{
+                flexShrink:0, padding:"7px 16px", borderRadius:99, fontSize:12, fontWeight:800,
+                border:"none", cursor:"pointer", transition:"all .15s",
+                background: filter === c.id ? "#1a1a2e" : "white",
+                color:       filter === c.id ? "white"   : "#666",
+                boxShadow:   filter === c.id ? "0 3px 10px rgba(0,0,0,.18)" : "0 1px 4px rgba(0,0,0,.08)",
+              }}>{c.label}</button>
+            ))}
+          </div>
+          {catsScroll.right && (
+            <button onClick={() => scrollCats(1)} aria-label="Ver mais categorias" style={{
+              position:"absolute", top:0, bottom:12, right:0, width:32,
+              display:"flex", alignItems:"center", justifyContent:"center",
+              border:"none", cursor:"pointer", padding:0,
+              background:`linear-gradient(90deg, transparent, ${BG} 55%)`,
+            }}>
+              <span style={{ width:24, height:24, borderRadius:"50%", background:"white", boxShadow:"0 2px 8px rgba(0,0,0,.18)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <ChevronRight size={15} color="#1a1a2e" />
+              </span>
+            </button>
+          )}
+          {catsScroll.left && (
+            <button onClick={() => scrollCats(-1)} aria-label="Ver categorias anteriores" style={{
+              position:"absolute", top:0, bottom:12, left:0, width:32,
+              display:"flex", alignItems:"center", justifyContent:"center",
+              border:"none", cursor:"pointer", padding:0,
+              background:`linear-gradient(270deg, transparent, ${BG} 55%)`,
+            }}>
+              <span style={{ width:24, height:24, borderRadius:"50%", background:"white", boxShadow:"0 2px 8px rgba(0,0,0,.18)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <ChevronRight size={15} color="#1a1a2e" style={{ transform:"rotate(180deg)" }} />
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
