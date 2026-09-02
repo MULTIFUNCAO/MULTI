@@ -12905,7 +12905,24 @@ const renderContent = () => {
     // ProfessionalHome, via taxaAcessoPendente). As outras telas (orders,
     // service, wallet...) continuam bloqueadas — não fazem sentido pra quem
     // nunca conseguiu se candidatar a nada mesmo.
-    const taxaAcessoPendente = plano === "acesso" && planoStatus && planoStatus !== "ativa" && planoStatus !== "trial";
+    //
+    // semAssinaturaNenhuma — achado 2026-09-02: profissional que nunca teve
+    // NENHUMA linha em "assinaturas" (plano null) caía direto no branch de
+    // moeda (!isPro em ProfessionalHome, "🪙 Responder X moedas"/"Comprar
+    // moedas") em vez de "ative sua Taxa de Acesso" — moeda é só pro modelo
+    // antigo (comissão, config_monetizacao.comissao_ativa hoje desligado,
+    // ver server.js), reservado pra quem é grandfathered de verdade (plano
+    // autonomo/pro/premium antigo, ainda que vencido/cancelado — esse sim
+    // tem plano != null). Profissional cadastrado no modelo atual sempre
+    // deveria ter uma linha "acesso" (marcada como "pendente" já no mount de
+    // EscolherPlanoScreen, ver marcar-pendente) — plano null só acontece se
+    // essa marcação falhou (rede) e o cadastro completou mesmo assim, ou se
+    // a conta foi aprovada manualmente pelo Admin sem esse passo (mesmo
+    // padrão dos casos Fábio/Junior/Adilson documentados na memória). Tratar
+    // como taxa pendente (não moeda) é o comportamento correto pro modelo
+    // atual — nunca deveria oferecer moeda pra quem nunca teve plano nenhum.
+    const semAssinaturaNenhuma = !plano;
+    const taxaAcessoPendente = semAssinaturaNenhuma || (plano === "acesso" && planoStatus && planoStatus !== "ativa" && planoStatus !== "trial");
     if (taxaAcessoPendente && !["upgrade", "profile", "home"].includes(screen)) {
       return (
         <EscolherPlanoScreen
@@ -12929,12 +12946,20 @@ const renderContent = () => {
   // card legado "Sem plano / pague com moeda" não faz mais sentido (moeda
   // era a alternativa a assinar um dos PLANOS_USUARIO antigos, que esse
   // profissional nunca chega a ver).
-  if (screen === "upgrade") return <EscolherPlanoScreen titularTipo="usuario" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("home")} showToast={showToast} onDone={() => { carregarPlano("usuario", userEmail); setScreen("home"); }} onGoToComprarMoedas={() => setScreen("comprarmoedas")} permiteComprarMoedas={role === "professional" && plano !== "acesso"}
+  if (screen === "upgrade") return <EscolherPlanoScreen titularTipo="usuario" titularEmail={userEmail} titularNome={userName} onBack={() => setScreen("home")} showToast={showToast} onDone={() => { carregarPlano("usuario", userEmail); setScreen("home"); }} onGoToComprarMoedas={() => setScreen("comprarmoedas")}
+    // plano===null (nunca teve NENHUMA assinatura, nem antiga) não é
+    // grandfathered — achado 2026-09-02 (ver taxaAcessoPendente/
+    // semAssinaturaNenhuma acima): `plano !== "acesso"` sozinho também é
+    // true pra null, então SemPlanoMoedaCard vazava "🪙 Comprar moedas" pra
+    // profissional novo sem plano nenhum. Moeda só faz sentido pra quem tem
+    // um plano antigo de verdade (autonomo/pro/premium), mesmo que vencido.
+    permiteComprarMoedas={role === "professional" && !!plano && plano !== "acesso"}
     // Renovação da Taxa de Acesso (Pix, 2026-08-27): quem já está no plano
     // "acesso" vindo do banner de renovação (ver ProfessionalHome) não deve
     // ver a lista normal de planos — mesmo comportamento do cadastro,
-    // direto pro card único/PagamentoPlanoScreen.
-    taxaAcessoObrigatoria={plano === "acesso"}
+    // direto pro card único/PagamentoPlanoScreen. Mesmo tratamento pra
+    // plano===null, pelo motivo acima.
+    taxaAcessoObrigatoria={plano === "acesso" || !plano}
   />;
     if (screen === "wallet") return <WalletScreen onBack={() => setScreen("profile")} pedidos={meusGanhos} />;
     if (screen === "comprarmoedas") return <ComprarMoedasScreen userEmail={userEmail} userName={userName} onBack={() => setScreen("profile")} showToast={showToast} onSuccess={() => carregarSaldoMoedas(userEmail)} />;
