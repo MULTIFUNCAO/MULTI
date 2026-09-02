@@ -228,12 +228,12 @@ function mapPedidoParaCard(p) {
     prazo: p.prazo, custoMoedas: p.custo_moedas,
     // "suporte" preservado à parte de "real" (não colapsado mais) — demanda
     // MULTI-SUP não tem cliente com conta no app por trás (ver
-    // multi_sup_captacao_manual na memória), então o mural precisa saber
-    // diferenciar pra oferecer contato direto por telefone em vez do fluxo
-    // normal de proposta/chat in-app (que ficaria parado pra sempre
-    // esperando um cliente que nunca vai abrir o app).
+    // multi_sup_captacao_manual na memória): "Tenho Interesse" grava a
+    // proposta mas não tenta abrir chat/WhatsApp (não teria pra onde ir).
+    // telefone_cliente NUNCA é lido pro card — decisão explícita 2026-09-02
+    // de não expor telefone do cliente nenhum no app do profissional;
+    // intermediação é manual (Admin → "Interesses MULTI-SUP").
     origem: p.origem === "demo" ? "demo" : p.origem === "suporte" ? "suporte" : "real",
-    telefoneCliente: p.telefone_cliente || null,
   };
 }
 
@@ -547,15 +547,25 @@ function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua
 function GuestHeader({ onToggleRole, activeRole = "client", onSelectEmpresa, locked = false }) {
   return (
     <div style={{ position:"sticky", top:0, zIndex:50, background:`linear-gradient(180deg,${B} 0%,#0057d4 100%)`, boxShadow:"0 4px 20px rgba(0,112,255,.28)", borderRadius:"0 0 20px 20px", paddingTop:"env(safe-area-inset-top)" }}>
-      {/* row 1 */}
+      {/* row 1 — location escondida quando "locked" (2026-09-02, pedido
+          explícito): lead de anúncio pago não pode ver NENHUM nome de cidade
+          fixo na tela isca, nem o detectado por geolocalização/localStorage
+          de sessão anterior no mesmo navegador — dá a impressão de que o
+          app só atende aquela cidade. Cards de demanda individual continuam
+          mostrando a cidade de cada serviço normalmente (isso é informação
+          relevante, não é o que incomoda); só esse bloco de identidade fixa
+          no topo some. Div vazia no lugar mantém o avatar alinhado à
+          direita (justify-content:space-between precisa dos dois lados). */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 18px 6px" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-          <MapPin size={13} color="rgba(255,255,255,.7)" />
-          <div>
-            <p style={{ fontSize:9, color:"rgba(255,255,255,.5)", fontWeight:700, margin:0 }}>Sua Localização</p>
-                <p style={{ fontSize:12, color:"white", fontWeight:800, margin:0 }}>{localStorage.getItem("multiLocation") || "Sua localização"}</p>
+        {locked ? <div /> : (
+          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+            <MapPin size={13} color="rgba(255,255,255,.7)" />
+            <div>
+              <p style={{ fontSize:9, color:"rgba(255,255,255,.5)", fontWeight:700, margin:0 }}>Sua Localização</p>
+                  <p style={{ fontSize:12, color:"white", fontWeight:800, margin:0 }}>{localStorage.getItem("multiLocation") || "Sua localização"}</p>
+            </div>
           </div>
-        </div>
+        )}
         <div style={{ width:34, height:34, borderRadius:"50%", background:"rgba(255,255,255,.2)", border:"2px solid rgba(255,255,255,.4)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:17 }}>👤</div>
       </div>
       {/* row 2: logo */}
@@ -2116,10 +2126,10 @@ function EmpresaPedidosScreen({ userEmail, isPro, onUpgrade }) {
             // ProfessionalHome/mapPedidoParaCard (badge "🔥 Urgente" nunca
             // acendia pra pedido real nenhum). Corrigido pra ler de verdade.
             urgent: p.urgencia === "urgente" || p.urgencia === "muito_urgente",
-            // Demanda MULTI-SUP (origem='suporte') não tem cliente com conta
-            // no app — telefone vem de pedidos.telefone_cliente, não de
-            // usuarios.whatsapp (ver fallback no whatsapp resolvido abaixo).
-            telefoneCliente: p.telefone_cliente || null,
+            // telefone_cliente de demanda MULTI-SUP NUNCA é lido aqui —
+            // decisão explícita 2026-09-02 de não expor telefone do cliente
+            // pro lado profissional/empresa do app (intermediação manual
+            // pelo Admin, ver "Interesses MULTI-SUP").
           }));
           setPedidos(mapped);
           const emails = [...new Set(mapped.map(p => p.cliente_id).filter(Boolean))];
@@ -2194,7 +2204,7 @@ function EmpresaPedidosScreen({ userEmail, isPro, onUpgrade }) {
           </div>
         ) : filtered.map(s => {
           const scat = CATS.find(c => c.id === s.cat?.toLowerCase());
-          const whatsapp = phones[s.cliente_id] || s.telefoneCliente;
+          const whatsapp = phones[s.cliente_id];
           return (
             <div key={s.id} style={{ borderRadius:20, overflow:"hidden", boxShadow:"0 3px 14px rgba(0,0,0,.09)", background:"white", padding:"16px", display:"flex", flexDirection:"column", gap:10 }}>
               <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:8 }}>
@@ -10918,12 +10928,20 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                       // "proposta" esperando ele entrar no app pra aceitar
                       // deixaria o profissional parado pra sempre ("aguarde o
                       // cliente escolher" que nunca chega). Achado 2026-09-02:
-                      // decisão foi pular propostas/chat in-app pra esse caso
-                      // e abrir o WhatsApp direto com o telefone já cadastrado
-                      // (pedidos.telefone_cliente) — mesmo padrão "fechamento
-                      // 100% pelo WhatsApp" que EmpresaPedidosScreen já usa.
-                      const isSuporteWhats = s.origem === "suporte" && !!s.telefoneCliente;
-                      const vagasEsgotadas = !isSuporteWhats && (candidatosPorPedido[s.id] || 0) >= LIMITE_CANDIDATOS_OPORTUNIDADE;
+                      // primeira tentativa foi abrir WhatsApp direto com o
+                      // telefone do cliente — **revertido no mesmo dia**,
+                      // decisão explícita: não expor telefone do cliente nas
+                      // demandas MULTI-SUP nenhuma. Fluxo final é
+                      // intermediação manual — clicar "Tenho Interesse" grava
+                      // a proposta normal (mesma tabela, pra ficar visível
+                      // pro Admin em "Interesses MULTI-SUP", ver
+                      // AdminDashboard) mas SEM tentar abrir chat/WhatsApp
+                      // nenhum (não teria pra onde ir, cliente não tem conta)
+                      // — só avisa que a equipe vai ligar. isSuporteRegistro
+                      // controla esse desvio; visualmente o botão continua
+                      // idêntico ao "Tenho Interesse" normal.
+                      const isSuporteRegistro = s.origem === "suporte";
+                      const vagasEsgotadas = !isSuporteRegistro && (candidatosPorPedido[s.id] || 0) >= LIMITE_CANDIDATOS_OPORTUNIDADE;
                       return (
                     <button
                       disabled={s.origem !== "demo" && vagasEsgotadas}
@@ -10949,18 +10967,19 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                         if (taxaAcessoPendente) { onUpgrade(); return; }
                         const proUser=safeGetUser();
                         const candidatarSe = () => {
-                          // Demanda MULTI-SUP com telefone: sem proposta, sem
-                          // chat — abre o WhatsApp do cliente direto (mesmos
-                          // gates de acima já passaram: docs ok, taxa em dia,
-                          // moeda/plano ok — só o destino final muda).
-                          if (isSuporteWhats) {
-                            window.open(`https://wa.me/55${s.telefoneCliente.replace(/\D/g, "")}`, "_blank");
-                            return;
-                          }
                           supabase.from("propostas").upsert({pedido_id:s.id,profissional_id:proUser.email||proUser.whatsapp,profissional_nome:proUser.name||"Profissional",profissional_email:proUser.email||proUser.whatsapp,valor:s.value,mensagem:"Tenho interesse neste serviço!",status:"pendente",cliente_email:s.cliente_id||""},{onConflict:"pedido_id,profissional_id"})
                             .then(({ error }) => {
                               if (error) {
                                 showToast?.("❌ " + (error.message || "Não foi possível se candidatar a esse pedido."), "#DC2626");
+                                return;
+                              }
+                              // Demanda MULTI-SUP: não tem cliente com conta
+                              // no app pra abrir chat — só avisa que ficou
+                              // registrado, equipe (Thiago/Ana) liga por
+                              // fora do app usando a lista em
+                              // "Interesses MULTI-SUP" no Admin.
+                              if (isSuporteRegistro) {
+                                showToast?.("✅ Interesse registrado! Nossa equipe vai entrar em contato em breve.", G);
                                 return;
                               }
                               onViewService({ _notify:{ serviceId:s.id, serviceTitle:s.title, value:s.value, proName:proUser.name||"Profissional" } });
@@ -10980,12 +10999,9 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                         // quem está no plano "acesso"). Demo usa o mesmo roxo
                         // do badge "🧪 Exemplo" — funcional, mas visualmente
                         // marcado como prática, nunca igual ao botão real.
-                        // isSuporteWhats usa o mesmo verde do WhatsApp (só
-                        // depois que os gates acima já liberaram — antes
-                        // disso continua caindo nos estados normais).
-                        background: s.origem === "demo" ? "linear-gradient(135deg,#9333EA,#7C3AED)" : vagasEsgotadas ? "#F5F6FA" : !allDocsVerified ? "#F5F6FA" : taxaAcessoPendente ? `linear-gradient(135deg,${O},#E64A19)` : !isPro ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : isLocked ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : isSuporteWhats ? "linear-gradient(135deg,#25D366,#1EBE57)" : `linear-gradient(135deg,${O},#E64A19)`,
+                        background: s.origem === "demo" ? "linear-gradient(135deg,#9333EA,#7C3AED)" : vagasEsgotadas ? "#F5F6FA" : !allDocsVerified ? "#F5F6FA" : taxaAcessoPendente ? `linear-gradient(135deg,${O},#E64A19)` : !isPro ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : isLocked ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : `linear-gradient(135deg,${O},#E64A19)`,
                         color:      s.origem === "demo" ? "white" : vagasEsgotadas ? "#9CA3AF" : !allDocsVerified ? "#9CA3AF" : "white",
-                        boxShadow:  s.origem === "demo" ? "0 3px 10px rgba(147,51,234,.28)" : vagasEsgotadas ? "none" : !allDocsVerified ? "none" : taxaAcessoPendente ? "0 3px 10px rgba(255,87,34,.28)" : !isPro ? "0 3px 10px rgba(124,58,237,.28)" : isLocked ? "0 3px 10px rgba(124,58,237,.28)" : isSuporteWhats ? "0 3px 10px rgba(37,211,102,.3)" : "0 3px 10px rgba(255,87,34,.28)",
+                        boxShadow:  s.origem === "demo" ? "0 3px 10px rgba(147,51,234,.28)" : vagasEsgotadas ? "none" : !allDocsVerified ? "none" : taxaAcessoPendente ? "0 3px 10px rgba(255,87,34,.28)" : !isPro ? "0 3px 10px rgba(124,58,237,.28)" : isLocked ? "0 3px 10px rgba(124,58,237,.28)" : "0 3px 10px rgba(255,87,34,.28)",
                       }}>
                       {s.origem === "demo"
                         ? <>🧪 Praticar Candidatura</>
@@ -10999,9 +11015,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                             ? <>🪙 Responder{s.custoMoedas ? ` (${s.custoMoedas} moedas)` : ""}</>
                             : isLocked
                               ? <><Crown size={13} /> Assinar PRO</>
-                              : isSuporteWhats
-                                ? <><MessageCircle size={14} /> Chamar no WhatsApp</>
-                                : "Tenho Interesse"}
+                              : "Tenho Interesse"}
                     </button>
                       );
                     })()}

@@ -1332,6 +1332,129 @@ function SectionDemandaSuporte({ adminKey }) {
   );
 }
 
+// ─── Seção: Interesses MULTI-SUP (intermediação manual) ──────────────
+// Decisão 2026-09-02: demanda MULTI-SUP nunca expõe telefone do cliente
+// pro profissional, e "Tenho Interesse" nunca tenta abrir chat/WhatsApp
+// (cliente não tem conta no app) — só grava uma "proposta" normal e avisa
+// que a equipe vai ligar. Esta tela é essa equipe (Thiago/Ana): lista quem
+// demonstrou interesse em qual demanda, com o telefone do PROFISSIONAL
+// (nunca do cliente) pra ligar de volta, e um botão pra marcar depois de
+// ligar/conectar.
+function SectionInteressesMultiSup({ adminKey }) {
+  const [interesses, setInteresses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filtro, setFiltro] = useState("pendente"); // pendente | todos
+  const [atualizando, setAtualizando] = useState(null); // id em andamento
+
+  const carregar = () => {
+    setLoading(true);
+    fetch(API + "/api/admin/interesses-multi-sup", { headers: { "x-admin-key": adminKey } })
+      .then(r => r.json())
+      .then(d => { setInteresses(d.interesses || []); setLoading(false); })
+      .catch(() => { setInteresses([]); setLoading(false); });
+  };
+  useEffect(carregar, []);
+
+  const marcarStatus = async (id, status) => {
+    setAtualizando(id);
+    try {
+      const r = await fetch(API + `/api/admin/interesses-multi-sup/${id}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({ status }),
+      });
+      if (r.ok) carregar();
+    } finally {
+      setAtualizando(null);
+    }
+  };
+
+  const filtered = filtro === "pendente" ? interesses.filter(i => i.status === "pendente") : interesses;
+  const catInfo = id => CATS.find(c => c.id === id);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <Card>
+        <div style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 16, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+          <BellRing size={17} /> Interesses MULTI-SUP
+        </div>
+        <div style={{ color: COLORS.textMuted, fontSize: 12 }}>
+          Profissional clicou "Tenho Interesse" numa demanda MULTI-SUP — sem chat/WhatsApp automático (cliente não tem conta no app). Ligue pro profissional pelo telefone abaixo, feche o contato com o cliente por fora, e marque o resultado.
+        </div>
+      </Card>
+
+      <div style={{ display: "flex", gap: 8 }}>
+        {[{ id: "pendente", label: "Pendentes" }, { id: "todos", label: "Todos" }].map(f => (
+          <button key={f.id} onClick={() => setFiltro(f.id)} style={{
+            background: filtro === f.id ? COLORS.blue : COLORS.card,
+            color: filtro === f.id ? "#fff" : COLORS.textMuted,
+            border: "1px solid " + (filtro === f.id ? COLORS.blue : COLORS.border),
+            borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer",
+          }}>{f.label}</button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted }}>Carregando...</div>
+      ) : filtered.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted }}>Nenhum interesse {filtro === "pendente" ? "pendente" : ""} encontrado</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {filtered.map(i => {
+            const cat = catInfo(i.categoria);
+            return (
+              <Card key={i.id} style={{ padding: "14px 16px" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                  <div style={{ flex: 1, minWidth: 220 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
+                      <Badge color={i.status === "pendente" ? "orange" : i.status === "aceita" ? "green" : "red"}>{i.status}</Badge>
+                      <span style={{ color: COLORS.textMuted, fontSize: 11, fontFamily: "monospace" }}>{i.codigoInterno || "—"}</span>
+                      <span style={{ color: COLORS.textMuted, fontSize: 11 }}>{cat ? `${cat.emoji} ${cat.label}` : i.categoria}</span>
+                    </div>
+                    <div style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 14 }}>{i.descricao || "Sem descrição"}</div>
+                    <div style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 4 }}>
+                      {i.cidade || "—"} {i.valor ? `• R$ ${i.valor}` : ""}
+                    </div>
+                    <div style={{ color: COLORS.textPrimary, fontSize: 13, marginTop: 8, fontWeight: 700 }}>
+                      👷 {i.profissionalNome || i.profissionalEmail}
+                    </div>
+                    <div style={{ color: COLORS.textMuted, fontSize: 12 }}>
+                      {i.profissionalEmail} {i.profissionalWhatsapp ? `• ${i.profissionalWhatsapp}` : "• sem telefone cadastrado"}
+                    </div>
+                    <div style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>
+                      Interesse em {i.criadoEm ? new Date(i.criadoEm).toLocaleString("pt-BR") : "—"}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+                    {i.profissionalWhatsapp && (
+                      <a href={`https://wa.me/55${i.profissionalWhatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" style={{
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 6, textDecoration: "none",
+                        background: "#25D366", color: "#fff", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 700,
+                      }}><Phone size={13} /> Chamar profissional</a>
+                    )}
+                    {i.status === "pendente" && (
+                      <>
+                        <button disabled={atualizando === i.id} onClick={() => marcarStatus(i.id, "aceita")} style={{
+                          background: COLORS.green, color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px",
+                          fontSize: 12, fontWeight: 700, cursor: atualizando === i.id ? "default" : "pointer",
+                        }}>✓ Conectei os dois</button>
+                        <button disabled={atualizando === i.id} onClick={() => marcarStatus(i.id, "recusada")} style={{
+                          background: "transparent", color: COLORS.red, border: "1px solid " + COLORS.red, borderRadius: 8, padding: "8px 14px",
+                          fontSize: 12, fontWeight: 700, cursor: atualizando === i.id ? "default" : "pointer",
+                        }}>Não deu certo</button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Seção: Pix Manual ───────────────────────────────────────────
 // Mitigação emergencial (2026-08-31, ver comentário em PagamentoPlanoScreen
 // no App.jsx) — enquanto o Pix dinâmico da Asaas está com o recebedor.nome
@@ -2817,6 +2940,7 @@ function AdminDashboard({ onExit }) {
     { id: "ficticios", label: "Fictícios", icon: FlaskConical },
     { id: "pixmanual", label: "Pix Manual", icon: QrCode },
     { id: "suporte", label: "Demandas Suporte", icon: Phone },
+    { id: "interesses", label: "Interesses MULTI-SUP", icon: BellRing },
     { id: "categorias", label: "Categorias", icon: Filter },
     { id: "oportunidades", label: "Oportunidades", icon: AlertCircle },
     { id: "funil", label: "Funil", icon: TrendingUp },
@@ -2863,6 +2987,7 @@ function AdminDashboard({ onExit }) {
         {tab === "ficticios" && <SectionFicticios adminKey={token} />}
         {tab === "pixmanual" && <SectionPixManual adminKey={token} />}
         {tab === "suporte" && <SectionDemandaSuporte adminKey={token} />}
+        {tab === "interesses" && <SectionInteressesMultiSup adminKey={token} />}
         {tab === "categorias" && <SectionCategorias adminKey={token} />}
         {tab === "oportunidades" && <SectionOportunidades adminKey={token} />}
         {tab === "funil" && <SectionFunil adminKey={token} />}
