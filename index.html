@@ -16,6 +16,29 @@
       gtag("js", new Date());
       gtag("config", "G-QQ3B8N35V5");
     </script>
+    <!-- Meta Pixel Code — instalado 2026-09-02, Pixel ID 1662590805426271.
+         Base padrão do próprio Meta (boilerplate, sem alteração) + PageView
+         automático — cobre o site inteiro (SPA de rota única, incluindo
+         /seja-profissional) igual o GA4 acima. Eventos de conversão (Lead
+         no "Tenho Interesse", Subscribe no cadastro pagante) já estavam
+         prontos via trackPixel() em App.jsx, só esperando essa tag base
+         existir pra window.fbq passar a responder de verdade. -->
+    <script>
+      !function(f,b,e,v,n,t,s)
+      {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+      n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+      n.queue=[];t=b.createElement(e);t.async=!0;
+      t.src=v;s=b.getElementsByTagName(e)[0];
+      s.parentNode.insertBefore(t,s)}(window, document,'script',
+      'https://connect.facebook.net/en_US/fbevents.js');
+      fbq('init', '1662590805426271');
+      fbq('track', 'PageView');
+    </script>
+    <noscript><img height="1" width="1" style="display:none"
+      src="https://www.facebook.com/tr?id=1662590805426271&ev=PageView&noscript=1"
+    /></noscript>
+    <!-- End Meta Pixel Code -->
     <title>Multi Funcao</title>
     <link rel="icon" type="image/png" href="/logo/multi_logo_32x32.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
