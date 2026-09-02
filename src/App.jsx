@@ -10051,8 +10051,22 @@ function GuestMural({ onSignup, allDocsVerified }) {
   const [loadingGuest, setLoadingGuest] = useState(true);
   useEffect(() => {
     let cancelado = false;
+    // catsById: representante (emoji/label do PRIMEIRO grupo) só pra
+    // ilustrar o card visualmente. gruposById: TODOS os grupos que aquele
+    // id pertence — 8 ids do CATS são cross-listados em 2 grupos de
+    // propósito (ex.: fotografo/videomaker em "Festas e Eventos" E
+    // "Fotografia e Vídeo", ver comentário na definição de CATS). Achado
+    // 2026-09-02: usar só o primeiro grupo pro filtro fazia esses ids
+    // nunca aparecerem no segundo grupo — carrossel mostrava "vazio" mesmo
+    // tendo demanda real cadastrada (fotografo aparecia em Festas e
+    // Eventos, mas Fotografia e Vídeo ficava sem nada). Card agora sabe
+    // responder aos dois chips.
     const catsById = {};
-    CATS.forEach(c => { if (!catsById[c.id]) catsById[c.id] = c; });
+    const gruposById = {};
+    CATS.forEach(c => {
+      if (!catsById[c.id]) catsById[c.id] = c;
+      (gruposById[c.id] = gruposById[c.id] || []).push(c.grupo);
+    });
     supabase.from("pedidos")
       .select("id,categoria,cidade,descricao,valor,urgencia,created_at")
       .eq("status", "aberto")
@@ -10069,7 +10083,7 @@ function GuestMural({ onSignup, allDocsVerified }) {
           .map(p => {
             const cat = catsById[p.categoria];
             return {
-              id: p.id, cat: p.categoria, grupo: cat.grupo, emoji: cat.emoji,
+              id: p.id, cat: p.categoria, grupos: gruposById[p.categoria], emoji: cat.emoji,
               title: (p.descricao || cat.label || "Serviço").slice(0, 60),
               bairro: p.cidade || "sua região",
               value: p.valor,
@@ -10096,7 +10110,7 @@ function GuestMural({ onSignup, allDocsVerified }) {
   // veio de um card específico (ver onSignup abaixo).
   const filterCat = filter === "all" ? null : CATS.find(c => c.grupo === filter)?.id || null;
 
-  const list = filter === "all" ? pedidosGuest : pedidosGuest.filter(s => s.grupo === filter);
+  const list = filter === "all" ? pedidosGuest : pedidosGuest.filter(s => s.grupos.includes(filter));
 
   // Document block wall (same logic as ProfessionalHome but for guests)
   if (allDocsVerified === false) {
