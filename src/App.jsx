@@ -57,6 +57,26 @@ const G  = "#22c55e";
 // por enquanto, sem diferenciar por categoria.
 const VALOR_MINIMO_PEDIDO = 20;
 
+/* ───────────────────────── ANALYTICS (GA4 + Meta Pixel) ────────────────────
+   2026-09-02: gtag.js (GA4, G-QQ3B8N35V5) já carregado em index.html desde
+   19/08 — pageview automático cobre o site inteiro, incluindo /seja-
+   profissional (SPA de página única, o script roda em qualquer rota).
+   Meta Pixel ainda NÃO instalado (falta o Pixel ID, precisa vir do Meta
+   Events Manager — não é algo que dá pra criar sem a conta de anúncios do
+   usuário). Os dois wrappers abaixo são só disparo de evento — nunca
+   quebram o app se o script correspondente não carregou (bloqueado por
+   adblock, ainda não instalado, etc.), só deixam de mandar o evento nesse
+   caso. GA4 e Meta Pixel usam vocabulário de evento diferente de propósito
+   (GA4 aceita nome customizado; Meta tem "eventos padrão" como Lead/
+   Subscribe que o Ads Manager já sabe interpretar pra otimização) — por
+   isso são duas funções, não uma só disparando o mesmo nome nos dois. */
+function trackGA(eventName, params = {}) {
+  try { if (typeof window !== "undefined" && typeof window.gtag === "function") window.gtag("event", eventName, params); } catch {}
+}
+function trackPixel(eventName, params = {}) {
+  try { if (typeof window !== "undefined" && typeof window.fbq === "function") window.fbq("track", eventName, params); } catch {}
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    EMAIL CONFIG — SendGrid
    ⚠️  NUNCA coloque a chave real aqui. Configure no backend:
@@ -9387,7 +9407,20 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client",
         userEmail={email.trim()}
         showToast={showToast}
         initialCategoria={initialCategoria}
-        onDone={() => onComplete(
+        onDone={() => {
+          // Conversão de fundo de funil (Meta Ads/GA4, handoff 2026-09-02):
+          // só dispara aqui porque chegar nesta etapa (completar-perfil) já
+          // exige ter passado pelo pagamento da Taxa de Acesso com sucesso
+          // (EscolherPlanoScreen com taxaAcessoObrigatoria=true, ver acima) —
+          // é "profissional pagante" de verdade, não só formulário
+          // preenchido. Só roda pra cadastro NOVO (RegisterScreen); renovação
+          // de conta existente (VirarProfissionalScreen) não passa por aqui,
+          // de propósito — não é uma conversão nova pro Ads otimizar em cima.
+          // "Subscribe" é o evento padrão do Meta pra início de assinatura
+          // recorrente (o modelo real da Taxa de Acesso, R$9,90/mês).
+          trackGA("cadastro_profissional_pagante", { value: 9.9, currency: "BRL" });
+          trackPixel("Subscribe", { value: 9.9, currency: "BRL", predicted_ltv: 9.9 });
+          onComplete(
           name, email.trim(), true, cidadeResolvida || "sua região",
           // "ambos": sessão inicial abre no modo Cliente (mais alinhado ao que
           // a pessoa provavelmente vai fazer primeiro), mas usuarios.role
@@ -9395,7 +9428,8 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client",
           // isso a conta some do Banco de Profissionais mesmo tendo feito
           // categoria/termo/plano de verdade.
           tipoUso === "ambos" ? "client" : role, phone, role, tipoUso === "ambos"
-        )}
+          );
+        }}
       />
     );
   }
@@ -12805,7 +12839,16 @@ const renderContent = () => {
         // profissional a notar e trocar o rádio "Só cliente" pré-marcado.
         // Carrega a intenção já conhecida direto pro formulário certo, sem
         // perguntar de novo (mesmo padrão do link ?cadastro=profissional).
-        return <GuestMural onSignup={(cat) => { setSignupRole("professional"); setSignupCategoria(cat ? [cat] : []); setAuthScreen("register"); }} allDocsVerified={null} />;
+        return <GuestMural onSignup={(cat) => {
+          // Conversão de topo de funil (Meta Ads/GA4, handoff 2026-09-02) —
+          // clique em qualquer "Tenho Interesse"/"Criar conta" dentro do
+          // mural de convidado, isca ou não. "Lead" é o evento padrão do
+          // Meta pra demonstração de interesse (o Pixel/Ads Manager já sabe
+          // otimizar campanha em cima dele); GA4 usa nome customizado.
+          trackGA("tenho_interesse_mural", { categoria: cat || "all", isca: guestLocked });
+          trackPixel("Lead", { content_category: cat || undefined, content_name: guestLocked ? "seja_profissional" : "mural_convidado" });
+          setSignupRole("professional"); setSignupCategoria(cat ? [cat] : []); setAuthScreen("register");
+        }} allDocsVerified={null} />;
       }
 
       // HOME — always visible, auth gates on action
