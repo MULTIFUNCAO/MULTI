@@ -10068,7 +10068,7 @@ function GuestMural({ onSignup, allDocsVerified }) {
       (gruposById[c.id] = gruposById[c.id] || []).push(c.grupo);
     });
     supabase.from("pedidos")
-      .select("id,categoria,cidade,descricao,valor,urgencia,created_at")
+      .select("id,categoria,cidade,descricao,valor,urgencia,created_at,origem")
       .eq("status", "aberto")
       .neq("origem", "demo")
       .order("created_at", { ascending: false })
@@ -10089,6 +10089,17 @@ function GuestMural({ onSignup, allDocsVerified }) {
               value: p.valor,
               urgent: p.urgencia === "urgente" || p.urgencia === "muito_urgente",
               time: p.created_at ? new Date(p.created_at).toLocaleDateString("pt-BR") : "",
+              // Demanda MULTI-SUP (origem='suporte') hoje só cobre São
+              // Paulo/Guarulhos (as 36 cadastradas manualmente por Thiago,
+              // 2026-09-02) — repetir as mesmas 2 cidades em dezenas de
+              // cards reforçaria a mesma impressão de "app só atende essa
+              // região" que já foi corrigida no topo da tela (ver
+              // GuestHeader/locked). Pedido real orgânico continua
+              // mostrando cidade normalmente (informação real e útil).
+              // Quando houver demanda MULTI-SUP de outras regiões, isso
+              // deixa de fazer sentido escondido — decisão é só sobre o
+              // estado atual dos dados, não regra permanente.
+              ocultarCidade: p.origem === "suporte",
             };
           });
         setPedidosGuest(mapped);
@@ -10213,10 +10224,12 @@ function GuestMural({ onSignup, allDocsVerified }) {
                     <div style={{ width:42, height:42, borderRadius:12, background:"#F5F6FA", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, flexShrink:0 }}>{s.emoji}</div>
                     <div>
                       <p style={{ fontSize:14, fontWeight:900, color:"#1a1a2e", margin:"0 0 2px" }}>{s.title}</p>
-                      <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-                        <MapPin size={11} color="#aaa" />
-                        <span style={{ fontSize:12, color:"#888" }}>{s.bairro}</span>
-                      </div>
+                      {!s.ocultarCidade && (
+                        <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+                          <MapPin size={11} color="#aaa" />
+                          <span style={{ fontSize:12, color:"#888" }}>{s.bairro}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   {s.urgent && (
