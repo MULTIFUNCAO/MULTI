@@ -17,6 +17,7 @@ import { createClient } from '@supabase/supabase-js';
 // confirmado lendo o dist/index.cjs do pacote instalado.
 import { Capacitor } from '@capacitor/core';
 import OneSignalNative from 'onesignal-cordova-plugin';
+import { CATS } from './cats';
 const supabase=createClient('https://nlpfjkxqypveontunrxj.supabase.co','sb_publishable_xPCSGVYs-yI7TGS1F2EhFg_x7lMm30Q');
 // URL absoluta pras funções serverless de notificação (Vercel, pasta /api).
 // Antes eram fetch("/api/notify-...") relativos — funcionam hoje porque o
@@ -116,226 +117,10 @@ function getOneSignalPlayerId() {
 }
 
 /* ───────────────────────── STATIC DATA ───────────────────────────────────── */
-// Reformulação 2026-08-07: voltamos ao modelo de lista plana e específica
-// (revertendo a ideia de "19 grupos contam pro plano + item é tag de busca"
-// de um dia antes). Cada item de CATS (ex.: "Pedreiro", "Encanador") é a
-// categoria de verdade — é o que o cliente escolhe ao publicar um pedido e o
-// que o profissional escolhe no perfil. O campo `grupo` é só metadado visual
-// (usado pra organizar o modal "Ver todas as categorias" e o seletor em 2
-// passos do perfil/publicação em seções) — não muda a coluna categoria_servico,
-// que continua text[] sem nenhuma migration nova necessária.
-//
-// Nova lista de categorias 2026-08-09: substitui os 19 grupos/265 itens
-// antigos por 23 grupos/157 profissões distintas (165 entradas — 8 profissões
-// aparecem listadas em 2 grupos de propósito, ver abaixo). O limite de plano
-// não é mais um teto flat de itens: agora é grupos×profissões-por-grupo
-// (ver PLANO_LIMITES_USUARIO). Itens que fazem sentido em mais de um grupo
-// (ex.: "Fotógrafo" em Festas e Eventos e em Fotografia e Vídeo) foram
-// mantidos com o MESMO id nos dois — descobrível pelos dois caminhos de
-// navegação, sem contar em dobro no limite do plano, já que é o mesmo id
-// entrando uma única vez em categoria_servico. Lista completa dos 8 ids
-// cross-listados: carpinteiro (Reformas e Construção + Móveis/Marcenaria/
-// Montagem), garcom/barman/churrasqueiro/cozinheiro (Festas e Eventos +
-// Alimentação), fotografo/videomaker (Festas e Eventos + Fotografia e
-// Vídeo), editor_de_video (Marketing e Serviços Digitais + Fotografia e
-// Vídeo). Qualquer componente que faça `CATS.filter(c => value.includes(c.id))`
-// pra montar chips de "selecionados" precisa deduplicar por id — um id
-// cross-listado aparece 2x em CATS e geraria chip duplicado sem isso.
-const CATS = [
-  // ── Reformas e Construção ──
-  { id:"pedreiro", label:"Pedreiro", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"ajudante_de_pedreiro", label:"Ajudante de Pedreiro", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"mestre_de_obras", label:"Mestre de Obras", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"pintor", label:"Pintor", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"gesseiro", label:"Gesseiro", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"serralheiro", label:"Serralheiro", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"soldador", label:"Soldador", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"vidraceiro", label:"Vidraceiro", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"carpinteiro", label:"Carpinteiro", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"telhadista", label:"Telhadista", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"calheiro", label:"Calheiro", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"impermeabilizador", label:"Impermeabilizador", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"marmorista", label:"Marmorista", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"instalador_de_pisos", label:"Instalador de Pisos", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  { id:"instalador_de_drywall", label:"Instalador de Drywall", emoji:"🧱", star:4.7, bg:"#FFF0EE", dot:"#E53935", grupo:"Reformas e Construção" },
-  // ── Elétrica e Automação ──
-  { id:"eletricista", label:"Eletricista", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Automação" },
-  { id:"eletricista_industrial", label:"Eletricista Industrial", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Automação" },
-  { id:"tecnico_em_automacao", label:"Técnico em Automação", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Automação" },
-  { id:"instalador_de_energia_solar", label:"Instalador de Energia Solar", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Automação" },
-  { id:"instalador_de_carregador_para_veiculos_eletricos", label:"Instalador de Carregador para Veículos Elétricos", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Automação" },
-  { id:"tecnico_de_seguranca_eletronica", label:"Técnico de Segurança Eletrônica", emoji:"⚡", star:4.7, bg:"#FFFCE8", dot:"#F9A825", grupo:"Elétrica e Automação" },
-  // ── Hidráulica e Desentupimento ──
-  { id:"encanador", label:"Encanador", emoji:"🔧", star:4.6, bg:"#E8F4FF", dot:"#0070F3", grupo:"Hidráulica e Desentupimento" },
-  { id:"desentupidor", label:"Desentupidor", emoji:"🔧", star:4.6, bg:"#E8F4FF", dot:"#0070F3", grupo:"Hidráulica e Desentupimento" },
-  { id:"tecnico_de_caca_vazamento", label:"Técnico de Caça-Vazamento", emoji:"🔧", star:4.6, bg:"#E8F4FF", dot:"#0070F3", grupo:"Hidráulica e Desentupimento" },
-  { id:"hidrojatista", label:"Hidrojatista", emoji:"🔧", star:4.6, bg:"#E8F4FF", dot:"#0070F3", grupo:"Hidráulica e Desentupimento" },
-  { id:"tecnico_de_bombas", label:"Técnico de Bombas", emoji:"🔧", star:4.6, bg:"#E8F4FF", dot:"#0070F3", grupo:"Hidráulica e Desentupimento" },
-  // ── Gás e Fogão ──
-  { id:"conserto_de_fogao", label:"Conserto de Fogão em Geral", emoji:"🔥", star:4.6, bg:"#FFF3E0", dot:"#EF6C00", grupo:"Gás e Fogão" },
-  { id:"conversao_de_gas", label:"Conversão de Gás GN e GLP", emoji:"🔥", star:4.6, bg:"#FFF3E0", dot:"#EF6C00", grupo:"Gás e Fogão" },
-  { id:"vazamento_de_gas", label:"Vazamento de Gás", emoji:"🔥", star:4.6, bg:"#FFF3E0", dot:"#EF6C00", grupo:"Gás e Fogão" },
-  { id:"manutencao_de_fogoes", label:"Manutenção de Fogões", emoji:"🔥", star:4.6, bg:"#FFF3E0", dot:"#EF6C00", grupo:"Gás e Fogão" },
-  // ── Móveis, Marcenaria e Montagem ──
-  { id:"montador_de_moveis", label:"Montador de Móveis", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Móveis, Marcenaria e Montagem" },
-  { id:"marceneiro", label:"Marceneiro", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Móveis, Marcenaria e Montagem" },
-  { id:"carpinteiro", label:"Carpinteiro", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Móveis, Marcenaria e Montagem" },
-  { id:"restaurador_de_moveis", label:"Restaurador de Móveis", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Móveis, Marcenaria e Montagem" },
-  { id:"projetista_de_moveis", label:"Projetista de Móveis", emoji:"🪛", star:4.6, bg:"#FBE9E7", dot:"#BF360C", grupo:"Móveis, Marcenaria e Montagem" },
-  // ── Limpeza e Higienização ──
-  { id:"diarista", label:"Diarista", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza e Higienização" },
-  { id:"higienizador_de_estofados", label:"Higienizador de Estofados", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza e Higienização" },
-  { id:"limpador_de_vidros", label:"Limpador de Vidros", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza e Higienização" },
-  { id:"limpador_de_fachadas", label:"Limpador de Fachadas", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza e Higienização" },
-  { id:"limpador_de_caixa_d_agua", label:"Limpador de Caixa d'Água", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza e Higienização" },
-  { id:"piscineiro", label:"Piscineiro", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza e Higienização" },
-  { id:"profissional_de_limpeza_pos_obra", label:"Profissional de Limpeza Pós-Obra", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza e Higienização" },
-  { id:"profissional_de_limpeza_comercial", label:"Profissional de Limpeza Comercial", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza e Higienização" },
-  { id:"personal_organizer", label:"Personal Organizer", emoji:"🧹", star:4.7, bg:"#E0F2F1", dot:"#00796B", grupo:"Limpeza e Higienização" },
-  // ── Climatização e Refrigeração ──
-  { id:"tecnico_de_ar_condicionado", label:"Técnico de Ar-Condicionado", emoji:"❄️", star:4.7, bg:"#E1F5FE", dot:"#0277BD", grupo:"Climatização e Refrigeração" },
-  { id:"tecnico_de_refrigeracao", label:"Técnico de Refrigeração", emoji:"❄️", star:4.7, bg:"#E1F5FE", dot:"#0277BD", grupo:"Climatização e Refrigeração" },
-  // ── Técnica e Manutenção ──
-  { id:"tecnico_de_eletrodomesticos", label:"Técnico de Eletrodomésticos", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Técnica e Manutenção" },
-  { id:"tecnico_de_eletronicos", label:"Técnico de Eletrônicos", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Técnica e Manutenção" },
-  { id:"tecnico_de_celulares", label:"Técnico de Celulares", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Técnica e Manutenção" },
-  { id:"tecnico_de_informatica", label:"Técnico de Informática", emoji:"💻", star:4.6, bg:"#E8EAF6", dot:"#303F9F", grupo:"Técnica e Manutenção" },
-  // ── Beleza ──
-  { id:"cabeleireiro", label:"Cabeleireiro(a)", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
-  { id:"barbeiro", label:"Barbeiro", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
-  { id:"trancista", label:"Trancista", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
-  { id:"manicure", label:"Manicure", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
-  { id:"pedicure", label:"Pedicure", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
-  { id:"nail_designer", label:"Nail Designer", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
-  { id:"designer_de_sobrancelhas", label:"Designer de Sobrancelhas", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
-  { id:"lash_designer", label:"Lash Designer", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
-  { id:"maquiador", label:"Maquiador(a)", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
-  { id:"penteadista", label:"Penteadista", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
-  { id:"esteticista", label:"Esteticista", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
-  { id:"massoterapeuta", label:"Massoterapeuta", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
-  { id:"depilador", label:"Depilador(a)", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
-  { id:"micropigmentador", label:"Micropigmentador(a)", emoji:"💇", star:4.7, bg:"#FCE4EC", dot:"#AD1457", grupo:"Beleza" },
-  // ── Instalações e Pequenos Reparos ──
-  { id:"marido_de_aluguel", label:"Marido de Aluguel", emoji:"🔨", star:4.6, bg:"#FDECEA", dot:"#D84315", grupo:"Instalações e Pequenos Reparos" },
-  { id:"instalador", label:"Instalador", emoji:"🔨", star:4.6, bg:"#FDECEA", dot:"#D84315", grupo:"Instalações e Pequenos Reparos" },
-  { id:"instalador_de_tv", label:"Instalador de TV", emoji:"🔨", star:4.6, bg:"#FDECEA", dot:"#D84315", grupo:"Instalações e Pequenos Reparos" },
-  { id:"instalador_de_cortinas_e_persianas", label:"Instalador de Cortinas e Persianas", emoji:"🔨", star:4.6, bg:"#FDECEA", dot:"#D84315", grupo:"Instalações e Pequenos Reparos" },
-  { id:"instalador_de_redes_de_protecao", label:"Instalador de Redes de Proteção", emoji:"🔨", star:4.6, bg:"#FDECEA", dot:"#D84315", grupo:"Instalações e Pequenos Reparos" },
-  { id:"instalador_de_varais", label:"Instalador de Varais", emoji:"🔨", star:4.6, bg:"#FDECEA", dot:"#D84315", grupo:"Instalações e Pequenos Reparos" },
-  { id:"instalador_de_prateleiras_e_suportes", label:"Instalador de Prateleiras e Suportes", emoji:"🔨", star:4.6, bg:"#FDECEA", dot:"#D84315", grupo:"Instalações e Pequenos Reparos" },
-  // ── Chaveiro ──
-  { id:"chaveiro", label:"Chaveiro", emoji:"🔑", star:4.6, bg:"#FFF8E1", dot:"#F9A825", grupo:"Chaveiro" },
-  // ── Jardinagem e Áreas Externas ──
-  { id:"jardineiro", label:"Jardineiro", emoji:"🌿", star:4.8, bg:"#E8F8EE", dot:"#2E7D32", grupo:"Jardinagem e Áreas Externas" },
-  { id:"paisagista", label:"Paisagista", emoji:"🌿", star:4.8, bg:"#E8F8EE", dot:"#2E7D32", grupo:"Jardinagem e Áreas Externas" },
-  { id:"podador", label:"Podador", emoji:"🌿", star:4.8, bg:"#E8F8EE", dot:"#2E7D32", grupo:"Jardinagem e Áreas Externas" },
-  { id:"rocador", label:"Roçador", emoji:"🌿", star:4.8, bg:"#E8F8EE", dot:"#2E7D32", grupo:"Jardinagem e Áreas Externas" },
-  { id:"cortador_de_grama", label:"Cortador de Grama", emoji:"🌿", star:4.8, bg:"#E8F8EE", dot:"#2E7D32", grupo:"Jardinagem e Áreas Externas" },
-  { id:"instalador_de_irrigacao", label:"Instalador de Irrigação", emoji:"🌿", star:4.8, bg:"#E8F8EE", dot:"#2E7D32", grupo:"Jardinagem e Áreas Externas" },
-  // ── Automotivo ──
-  { id:"mecanico", label:"Mecânico", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"eletricista_automotivo", label:"Eletricista Automotivo", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"funileiro", label:"Funileiro", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"pintor_automotivo", label:"Pintor Automotivo", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"martelinho_de_ouro", label:"Martelinho de Ouro", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"polidor", label:"Polidor", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"esteticista_automotivo", label:"Esteticista Automotivo", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"lavador_automotivo", label:"Lavador Automotivo", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"higienizador_automotivo", label:"Higienizador Automotivo", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"instalador_de_acessorios_automotivos", label:"Instalador de Acessórios Automotivos", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"borracheiro", label:"Borracheiro", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"guincheiro", label:"Guincheiro", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  { id:"mecanico_de_motos", label:"Mecânico de Motos", emoji:"🚗", star:4.6, bg:"#ECEFF1", dot:"#37474F", grupo:"Automotivo" },
-  // ── Pets ──
-  { id:"tosador", label:"Tosador", emoji:"🐕", star:4.8, bg:"#FFF3E0", dot:"#E65100", grupo:"Pets" },
-  { id:"banhista", label:"Banhista", emoji:"🐕", star:4.8, bg:"#FFF3E0", dot:"#E65100", grupo:"Pets" },
-  { id:"pet_sitter", label:"Pet Sitter", emoji:"🐕", star:4.8, bg:"#FFF3E0", dot:"#E65100", grupo:"Pets" },
-  { id:"dog_walker", label:"Dog Walker", emoji:"🐕", star:4.8, bg:"#FFF3E0", dot:"#E65100", grupo:"Pets" },
-  { id:"adestrador", label:"Adestrador", emoji:"🐕", star:4.8, bg:"#FFF3E0", dot:"#E65100", grupo:"Pets" },
-  { id:"cuidador_de_pets", label:"Cuidador de Pets", emoji:"🐕", star:4.8, bg:"#FFF3E0", dot:"#E65100", grupo:"Pets" },
-  { id:"pet_taxi", label:"Pet Taxi", emoji:"🐕", star:4.8, bg:"#FFF3E0", dot:"#E65100", grupo:"Pets" },
-  // ── Estofaria, Reparos e Artesanato ──
-  { id:"estofador", label:"Estofador", emoji:"🪡", star:4.5, bg:"#EFEBE9", dot:"#6D4C41", grupo:"Estofaria, Reparos e Artesanato" },
-  { id:"tapeceiro", label:"Tapeceiro", emoji:"🪡", star:4.5, bg:"#EFEBE9", dot:"#6D4C41", grupo:"Estofaria, Reparos e Artesanato" },
-  { id:"sapateiro", label:"Sapateiro", emoji:"🪡", star:4.5, bg:"#EFEBE9", dot:"#6D4C41", grupo:"Estofaria, Reparos e Artesanato" },
-  { id:"restaurador", label:"Restaurador", emoji:"🪡", star:4.5, bg:"#EFEBE9", dot:"#6D4C41", grupo:"Estofaria, Reparos e Artesanato" },
-  { id:"artesao", label:"Artesão", emoji:"🪡", star:4.5, bg:"#EFEBE9", dot:"#6D4C41", grupo:"Estofaria, Reparos e Artesanato" },
-  { id:"customizador", label:"Customizador", emoji:"🪡", star:4.5, bg:"#EFEBE9", dot:"#6D4C41", grupo:"Estofaria, Reparos e Artesanato" },
-  // ── Festas e Eventos ──
-  { id:"decorador", label:"Decorador", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"montador_de_eventos", label:"Montador de Eventos", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"garcom", label:"Garçom", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"barman", label:"Barman", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"churrasqueiro", label:"Churrasqueiro", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"cozinheiro", label:"Cozinheiro(a)", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"dj", label:"DJ", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"fotografo", label:"Fotógrafo", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"videomaker", label:"Videomaker", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"cerimonialista", label:"Cerimonialista", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"recreador", label:"Recreador", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"animador", label:"Animador", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"recepcionista_de_eventos", label:"Recepcionista de Eventos", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  { id:"seguranca_de_eventos", label:"Segurança de Eventos", emoji:"🎉", star:4.7, bg:"#F3E5F5", dot:"#8E24AA", grupo:"Festas e Eventos" },
-  // ── Alimentação ──
-  { id:"cozinheiro", label:"Cozinheiro(a)", emoji:"🍽️", star:4.7, bg:"#FFEBEE", dot:"#C62828", grupo:"Alimentação" },
-  { id:"chef_particular", label:"Chef Particular", emoji:"🍽️", star:4.7, bg:"#FFEBEE", dot:"#C62828", grupo:"Alimentação" },
-  { id:"churrasqueiro", label:"Churrasqueiro", emoji:"🍽️", star:4.7, bg:"#FFEBEE", dot:"#C62828", grupo:"Alimentação" },
-  { id:"confeiteiro", label:"Confeiteiro(a)", emoji:"🍽️", star:4.7, bg:"#FFEBEE", dot:"#C62828", grupo:"Alimentação" },
-  { id:"padeiro", label:"Padeiro", emoji:"🍽️", star:4.7, bg:"#FFEBEE", dot:"#C62828", grupo:"Alimentação" },
-  { id:"salgadeiro", label:"Salgadeiro(a)", emoji:"🍽️", star:4.7, bg:"#FFEBEE", dot:"#C62828", grupo:"Alimentação" },
-  { id:"sushiman", label:"Sushiman", emoji:"🍽️", star:4.7, bg:"#FFEBEE", dot:"#C62828", grupo:"Alimentação" },
-  { id:"garcom", label:"Garçom", emoji:"🍽️", star:4.7, bg:"#FFEBEE", dot:"#C62828", grupo:"Alimentação" },
-  { id:"barman", label:"Barman", emoji:"🍽️", star:4.7, bg:"#FFEBEE", dot:"#C62828", grupo:"Alimentação" },
-  // ── Transporte e Mudanças ──
-  { id:"freteiro", label:"Freteiro", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
-  { id:"motorista_de_mudanca", label:"Motorista de Mudança", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
-  { id:"ajudante_de_mudanca", label:"Ajudante de Mudança", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
-  { id:"carregador", label:"Carregador", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
-  { id:"motoboy", label:"Motoboy", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
-  { id:"entregador", label:"Entregador", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
-  { id:"motorista_particular", label:"Motorista Particular", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
-  { id:"transportador", label:"Transportador", emoji:"📦", star:4.6, bg:"#FFF3E0", dot:"#F57C00", grupo:"Transporte e Mudanças" },
-  // ── Marketing e Serviços Digitais ──
-  { id:"social_media", label:"Social Media", emoji:"🎯", star:4.6, bg:"#EDE7F6", dot:"#5E35B1", grupo:"Marketing e Serviços Digitais" },
-  { id:"designer_grafico", label:"Designer Gráfico", emoji:"🎯", star:4.6, bg:"#EDE7F6", dot:"#5E35B1", grupo:"Marketing e Serviços Digitais" },
-  { id:"gestor_de_trafego", label:"Gestor de Tráfego", emoji:"🎯", star:4.6, bg:"#EDE7F6", dot:"#5E35B1", grupo:"Marketing e Serviços Digitais" },
-  { id:"copywriter", label:"Copywriter", emoji:"🎯", star:4.6, bg:"#EDE7F6", dot:"#5E35B1", grupo:"Marketing e Serviços Digitais" },
-  { id:"editor_de_video", label:"Editor de Vídeo", emoji:"🎯", star:4.6, bg:"#EDE7F6", dot:"#5E35B1", grupo:"Marketing e Serviços Digitais" },
-  { id:"web_designer", label:"Web Designer", emoji:"🎯", star:4.6, bg:"#EDE7F6", dot:"#5E35B1", grupo:"Marketing e Serviços Digitais" },
-  { id:"desenvolvedor", label:"Desenvolvedor", emoji:"🎯", star:4.6, bg:"#EDE7F6", dot:"#5E35B1", grupo:"Marketing e Serviços Digitais" },
-  { id:"criador_de_conteudo", label:"Criador de Conteúdo", emoji:"🎯", star:4.6, bg:"#EDE7F6", dot:"#5E35B1", grupo:"Marketing e Serviços Digitais" },
-  { id:"fotografo_de_produtos", label:"Fotógrafo de Produtos", emoji:"🎯", star:4.6, bg:"#EDE7F6", dot:"#5E35B1", grupo:"Marketing e Serviços Digitais" },
-  // ── Educação e Aulas ──
-  { id:"professor_particular", label:"Professor Particular", emoji:"📚", star:4.7, bg:"#F1F8E9", dot:"#558B2F", grupo:"Educação e Aulas" },
-  { id:"professor_de_idiomas", label:"Professor de Idiomas", emoji:"📚", star:4.7, bg:"#F1F8E9", dot:"#558B2F", grupo:"Educação e Aulas" },
-  { id:"professor_de_musica", label:"Professor de Música", emoji:"📚", star:4.7, bg:"#F1F8E9", dot:"#558B2F", grupo:"Educação e Aulas" },
-  { id:"professor_de_informatica", label:"Professor de Informática", emoji:"📚", star:4.7, bg:"#F1F8E9", dot:"#558B2F", grupo:"Educação e Aulas" },
-  { id:"professor_de_reforco_escolar", label:"Professor de Reforço Escolar", emoji:"📚", star:4.7, bg:"#F1F8E9", dot:"#558B2F", grupo:"Educação e Aulas" },
-  { id:"tutor", label:"Tutor", emoji:"📚", star:4.7, bg:"#F1F8E9", dot:"#558B2F", grupo:"Educação e Aulas" },
-  { id:"instrutor", label:"Instrutor", emoji:"📚", star:4.7, bg:"#F1F8E9", dot:"#558B2F", grupo:"Educação e Aulas" },
-  // ── Fotografia e Vídeo ──
-  { id:"fotografo", label:"Fotógrafo", emoji:"📷", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Fotografia e Vídeo" },
-  { id:"videomaker", label:"Videomaker", emoji:"📷", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Fotografia e Vídeo" },
-  { id:"cinegrafista", label:"Cinegrafista", emoji:"📷", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Fotografia e Vídeo" },
-  { id:"editor_de_video", label:"Editor de Vídeo", emoji:"📷", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Fotografia e Vídeo" },
-  { id:"editor_de_fotos", label:"Editor de Fotos", emoji:"📷", star:4.7, bg:"#E3F2FD", dot:"#1565C0", grupo:"Fotografia e Vídeo" },
-  // ── Engenharia, Projetos e Segurança do Trabalho ──
-  { id:"engenheiro", label:"Engenheiro", emoji:"📐", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Engenharia, Projetos e Segurança do Trabalho" },
-  { id:"arquiteto", label:"Arquiteto", emoji:"📐", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Engenharia, Projetos e Segurança do Trabalho" },
-  { id:"tecnico_em_edificacoes", label:"Técnico em Edificações", emoji:"📐", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Engenharia, Projetos e Segurança do Trabalho" },
-  { id:"projetista", label:"Projetista", emoji:"📐", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Engenharia, Projetos e Segurança do Trabalho" },
-  { id:"topografo", label:"Topógrafo", emoji:"📐", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Engenharia, Projetos e Segurança do Trabalho" },
-  { id:"tecnico_em_seguranca_do_trabalho", label:"Técnico em Segurança do Trabalho", emoji:"📐", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Engenharia, Projetos e Segurança do Trabalho" },
-  { id:"engenheiro_de_seguranca_do_trabalho", label:"Engenheiro de Segurança do Trabalho", emoji:"📐", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Engenharia, Projetos e Segurança do Trabalho" },
-  { id:"consultor_de_seguranca_do_trabalho", label:"Consultor de Segurança do Trabalho", emoji:"📐", star:4.7, bg:"#FFECB3", dot:"#F57F17", grupo:"Engenharia, Projetos e Segurança do Trabalho" },
-  // ── Controle de Pragas ──
-  { id:"controlador_de_pragas", label:"Controlador de Pragas", emoji:"🐜", star:4.5, bg:"#EFEBE9", dot:"#5D4037", grupo:"Controle de Pragas" },
-  // ── Segurança e Controle de Acesso ──
-  { id:"seguranca", label:"Segurança", emoji:"🛡️", star:4.6, bg:"#E8EAF6", dot:"#283593", grupo:"Segurança e Controle de Acesso" },
-  { id:"vigilante", label:"Vigilante", emoji:"🛡️", star:4.6, bg:"#E8EAF6", dot:"#283593", grupo:"Segurança e Controle de Acesso" },
-  { id:"controlador_de_acesso", label:"Controlador de Acesso", emoji:"🛡️", star:4.6, bg:"#E8EAF6", dot:"#283593", grupo:"Segurança e Controle de Acesso" },
-  { id:"porteiro", label:"Porteiro", emoji:"🛡️", star:4.6, bg:"#E8EAF6", dot:"#283593", grupo:"Segurança e Controle de Acesso" },
-];
+// CATS/CAT_GRUPOS movidos pra ./cats.js (2026-09-02) — precisavam ficar
+// importáveis também pelo AdminDashboard.jsx (seletor de categoria do
+// formulário MULTI-SUP) sem criar import circular (App.jsx já importa
+// AdminDashboard). Ver comentário histórico completo em cats.js.
 
 // Ordem de exibição dos grupos no modal "Ver todas as categorias".
 const CAT_GRUPOS = [
@@ -431,11 +216,24 @@ function mapPedidoParaCard(p) {
     desc: p.descricao || "", value: p.valor, tipoValor: p.tipo_valor,
     loc: p.cidade || "sua região",
     time: new Date(p.created_at).toLocaleDateString("pt-BR"),
-    client: p.cliente_nome || "Cliente", rating: 4.5, urgent: false,
+    client: p.cliente_nome || "Cliente", rating: 4.5,
+    // Achado 2026-09-02: isso ficava hardcoded `false` sempre — o badge/
+    // filtro "🔥 Urgente" nunca funcionava pra nenhum pedido real, mesmo
+    // quando o cliente escolhia "Urgente"/"Muito Urgente" ao publicar
+    // (coluna pedidos.urgencia, ver PostServiceScreen). Corrigido pra ler
+    // de verdade.
+    urgent: p.urgencia === "urgente" || p.urgencia === "muito_urgente",
     emoji: "🔧", bg: "#FFF8E1", photo: null, photos: p.fotos,
     publicoAlvo: p.publico_alvo, tipoAtendimento: p.tipo_atendimento,
     prazo: p.prazo, custoMoedas: p.custo_moedas,
-    origem: p.origem === "demo" ? "demo" : "real",
+    // "suporte" preservado à parte de "real" (não colapsado mais) — demanda
+    // MULTI-SUP não tem cliente com conta no app por trás (ver
+    // multi_sup_captacao_manual na memória), então o mural precisa saber
+    // diferenciar pra oferecer contato direto por telefone em vez do fluxo
+    // normal de proposta/chat in-app (que ficaria parado pra sempre
+    // esperando um cliente que nunca vai abrir o app).
+    origem: p.origem === "demo" ? "demo" : p.origem === "suporte" ? "suporte" : "real",
+    telefoneCliente: p.telefone_cliente || null,
   };
 }
 
@@ -2291,9 +2089,17 @@ function EmpresaPedidosScreen({ userEmail, isPro, onUpgrade }) {
       .then(async ({ data: emp }) => {
         setEmpresa(emp || null);
         if (emp?.categoria_servico?.length) {
+          // .neq("origem","demo") — achado 2026-09-02: essa query não
+          // excluía pedido fictício (a exclusão existe no Mural do
+          // profissional individual, ProfessionalHome, mas nunca foi
+          // replicada aqui). Sem ela, um fictício "eletricista" (mesmo
+          // desativado hoje, demo_ativo=false, ver multi_dados_ficticios_plano
+          // na memória) apareceria misturado com demanda real se algum dia
+          // reativado, sem etiqueta nenhuma pra empresa distinguir.
           const { data: peds } = await supabase.from("pedidos").select("*")
             .in("categoria", emp.categoria_servico)
             .eq("status", "aberto")
+            .neq("origem", "demo")
             .order("created_at", { ascending:false });
           const mapped = (peds || []).map(p => ({
             id: p.id,
@@ -2306,7 +2112,14 @@ function EmpresaPedidosScreen({ userEmail, isPro, onUpgrade }) {
             time: p.created_at ? new Date(p.created_at).toLocaleDateString("pt-BR") : "",
             client: p.cliente_nome || "Cliente",
             cliente_id: p.cliente_id,
-            urgent: false,
+            // Antes ficava hardcoded false — mesmo bug do
+            // ProfessionalHome/mapPedidoParaCard (badge "🔥 Urgente" nunca
+            // acendia pra pedido real nenhum). Corrigido pra ler de verdade.
+            urgent: p.urgencia === "urgente" || p.urgencia === "muito_urgente",
+            // Demanda MULTI-SUP (origem='suporte') não tem cliente com conta
+            // no app — telefone vem de pedidos.telefone_cliente, não de
+            // usuarios.whatsapp (ver fallback no whatsapp resolvido abaixo).
+            telefoneCliente: p.telefone_cliente || null,
           }));
           setPedidos(mapped);
           const emails = [...new Set(mapped.map(p => p.cliente_id).filter(Boolean))];
@@ -2381,7 +2194,7 @@ function EmpresaPedidosScreen({ userEmail, isPro, onUpgrade }) {
           </div>
         ) : filtered.map(s => {
           const scat = CATS.find(c => c.id === s.cat?.toLowerCase());
-          const whatsapp = phones[s.cliente_id];
+          const whatsapp = phones[s.cliente_id] || s.telefoneCliente;
           return (
             <div key={s.id} style={{ borderRadius:20, overflow:"hidden", boxShadow:"0 3px 14px rgba(0,0,0,.09)", background:"white", padding:"16px", display:"flex", flexDirection:"column", gap:10 }}>
               <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:8 }}>
@@ -9191,7 +9004,7 @@ function LoginScreen({ onBack, onComplete, onRegister, onForgot }) {
 // Bio é obrigatória (cliente/empresa que recebe proposta hoje só vê nome+valor+
 // mensagem, sem nada que gere confiança); foto e portfólio são opcionais mas
 // incentivados. Sobe pro mesmo bucket "pedidos-fotos" já usado por empresas/pedidos.
-function CompletarPerfilScreen({ userEmail, onDone, showToast }) {
+function CompletarPerfilScreen({ userEmail, onDone, showToast, initialCategoria = [] }) {
   // CRÍTICO (achado 2026-08-31): esta era a última etapa do cadastro de
   // profissional antes do upsert final gravar role="professional" em
   // "usuarios" (ver handleLoginComplete) — e nunca pedia categoria_servico.
@@ -9204,7 +9017,11 @@ function CompletarPerfilScreen({ userEmail, onDone, showToast }) {
   // taxaAcessoObrigatoria em EscolherPlanoScreen), e PLANO_LIMITES_USUARIO
   // .acesso.maxCategorias é 1; se um dia o cadastro voltar a oferecer
   // escolha de plano aqui, isto precisa virar prop dinâmica.
-  const [categoria, setCategoria] = useState([]);
+  // initialCategoria: vem do carrossel/card do GuestMural (guest que já
+  // demonstrou interesse numa categoria específica antes de se cadastrar,
+  // ver handoff 2026-09-02) — pré-marca em vez de perguntar de novo. max=1
+  // então só o primeiro item importa mesmo se vier mais de um.
+  const [categoria, setCategoria] = useState(() => initialCategoria.slice(0, 1));
   const [errorCategoria, setErrorCategoria] = useState("");
   const [bio, setBio] = useState("");
   const [errorBio, setErrorBio] = useState("");
@@ -9424,7 +9241,7 @@ function VirarProfissionalScreen({ userEmail, userName, showToast, onBack, onDon
   return <CompletarPerfilScreen userEmail={userEmail} showToast={showToast} onDone={onDone} />;
 }
 
-function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" }) {
+function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client", initialCategoria = [] }) {
   const [step,    setStep]    = useState("form");
   const [name,    setName]    = useState("");
   const [email,   setEmail]   = useState("");
@@ -9559,6 +9376,7 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client" 
       <CompletarPerfilScreen
         userEmail={email.trim()}
         showToast={showToast}
+        initialCategoria={initialCategoria}
         onDone={() => onComplete(
           name, email.trim(), true, cidadeResolvida || "sua região",
           // "ambos": sessão inicial abre no modo Cliente (mais alinhado ao que
@@ -10151,6 +9969,10 @@ function CadastroEmpresaScreen({ onBack, onComplete, showToast }) {
 
 /* ───────────────────────── GUEST MURAL (professional preview) ───────────────── */
 function GuestMural({ onSignup, allDocsVerified }) {
+  // filter guarda "all" ou o nome de um GRUPO (ex.: "Elétrica e Automação"),
+  // não mais o id de uma profissão específica — o carrossel agora navega
+  // pelos 23 grupos completos (CAT_GRUPOS), não por um punhado de profissões
+  // hardcoded (ver handoff 2026-09-02).
   const [filter, setFilter] = useState("all");
   // Setas de rolagem da lista de categorias (2026-09-01, achado testando no
   // celular): a lista corta no meio da última categoria visível sem
@@ -10174,25 +9996,63 @@ function GuestMural({ onSignup, allDocsVerified }) {
     catsScrollRef.current?.scrollBy({ left: dir * 160, behavior: "smooth" });
   };
 
-  const MURAL_SEED = [
-    { id:"g1", cat:"encanador",   emoji:"🔧", title:"Vazamento na cozinha",    bairro:"Vila Madalena, SP", value:150, urgent:true,  time:"Há 12min" },
-    { id:"g2", cat:"pintor",      emoji:"🖌️", title:"Pintura sala e quartos",  bairro:"Moema, SP",         value:1200,urgent:false, time:"Há 45min" },
-    { id:"g3", cat:"eletricista", emoji:"⚡", title:"Instalação de tomadas",   bairro:"Pinheiros, SP",     value:280, urgent:false, time:"Há 1h"    },
-    { id:"g4", cat:"pedreiro",    emoji:"👷", title:"Reforma do banheiro",      bairro:"Lapa, SP",          value:800, urgent:false, time:"Há 2h"    },
-    { id:"g5", cat:"jardineiro",  emoji:"🌿", title:"Poda e limpeza jardim",   bairro:"Alto Pinheiros, SP",value:250, urgent:false, time:"Há 3h"    },
-    { id:"g6", cat:"encanador",   emoji:"🔧", title:"Entupimento de pia",       bairro:"Santana, SP",       value:120, urgent:true,  time:"Há 4h"    },
-  ];
+  // Demanda REAL (origem 'real', pedido normal do app, OU 'suporte', demanda
+  // MULTI-SUP cadastrada no Admin a partir de contato por WhatsApp — ver
+  // multi_sup_captacao_manual na memória) — nunca mais dado fictício
+  // hardcoded (estratégia de "pedido fictício" abandonada 2026-08-30, ver
+  // multi_dados_ficticios_plano). Guest não está logado: select() só traz
+  // campos sem PII nenhuma (sem cliente_nome/telefone/e-mail) — contato de
+  // verdade só depois do cadastro, igual o resto da tela já faz (blur/CTA).
+  const [pedidosGuest, setPedidosGuest] = useState([]);
+  const [loadingGuest, setLoadingGuest] = useState(true);
+  useEffect(() => {
+    let cancelado = false;
+    const catsById = {};
+    CATS.forEach(c => { if (!catsById[c.id]) catsById[c.id] = c; });
+    supabase.from("pedidos")
+      .select("id,categoria,cidade,descricao,valor,urgencia,created_at")
+      .eq("status", "aberto")
+      .neq("origem", "demo")
+      .order("created_at", { ascending: false })
+      .limit(200)
+      .then(({ data }) => {
+        if (cancelado) return;
+        const mapped = (data || [])
+          // categoria inválida/órfã (ex.: digitada errado no cadastro
+          // MULTI-SUP antes do seletor validado, ver AdminDashboard) não
+          // acha grupo/emoji — descartada aqui em vez de quebrar o card.
+          .filter(p => catsById[p.categoria])
+          .map(p => {
+            const cat = catsById[p.categoria];
+            return {
+              id: p.id, cat: p.categoria, grupo: cat.grupo, emoji: cat.emoji,
+              title: (p.descricao || cat.label || "Serviço").slice(0, 60),
+              bairro: p.cidade || "sua região",
+              value: p.valor,
+              urgent: p.urgencia === "urgente" || p.urgencia === "muito_urgente",
+              time: p.created_at ? new Date(p.created_at).toLocaleDateString("pt-BR") : "",
+            };
+          });
+        setPedidosGuest(mapped);
+        setLoadingGuest(false);
+      })
+      .catch(() => { if (!cancelado) setLoadingGuest(false); });
+    return () => { cancelado = true; };
+  }, []);
 
+  // Chip "Todos" + os 23 grupos completos (CAT_GRUPOS, mesma ordem do
+  // seletor de categoria do perfil/publicação) — cada grupo usa o emoji do
+  // primeiro item de CATS que pertence a ele, só pra ilustrar o chip.
   const CATS_FILTER = [
-    { id:"all",        label:"Todos"      },
-    { id:"encanador",  label:"Encanador"  },
-    { id:"pintor",     label:"Pintor"     },
-    { id:"eletricista",label:"Elétrica"   },
-    { id:"pedreiro",   label:"Pedreiro"   },
-    { id:"jardineiro", label:"Jardineiro" },
+    { id:"all", label:"Todos", emoji:"📋" },
+    ...CAT_GRUPOS.map(g => ({ id: g, label: g, emoji: CATS.find(c => c.grupo === g)?.emoji || "🔧" })),
   ];
+  // cat "representante" do grupo selecionado — pra pré-selecionar categoria
+  // no cadastro quando quem clica em "Tenho Interesse"/"Criar conta" não
+  // veio de um card específico (ver onSignup abaixo).
+  const filterCat = filter === "all" ? null : CATS.find(c => c.grupo === filter)?.id || null;
 
-  const list = filter === "all" ? MURAL_SEED : MURAL_SEED.filter(s => s.cat === filter);
+  const list = filter === "all" ? pedidosGuest : pedidosGuest.filter(s => s.grupo === filter);
 
   // Document block wall (same logic as ProfessionalHome but for guests)
   if (allDocsVerified === false) {
@@ -10203,7 +10063,7 @@ function GuestMural({ onSignup, allDocsVerified }) {
         <p style={{ fontSize:13, color:"#6B7280", lineHeight:1.7, margin:"0 0 20px" }}>
           Verifique seus documentos no Perfil para visualizar serviços disponíveis.
         </p>
-        <button onClick={onSignup} style={{ padding:"13px 28px", borderRadius:14, border:"none", background:`linear-gradient(135deg,${B},#0055d4)`, color:"white", fontWeight:900, fontSize:14, cursor:"pointer" }}>
+        <button onClick={() => onSignup()} style={{ padding:"13px 28px", borderRadius:14, border:"none", background:`linear-gradient(135deg,${B},#0055d4)`, color:"white", fontWeight:900, fontSize:14, cursor:"pointer" }}>
           Ir para Perfil
         </button>
       </div>
@@ -10232,12 +10092,13 @@ function GuestMural({ onSignup, allDocsVerified }) {
           <div ref={catsScrollRef} onScroll={updateCatsScroll} style={{ display:"flex", gap:8, overflowX:"auto", scrollbarWidth:"none", paddingBottom:12 }}>
             {CATS_FILTER.map(c => (
               <button key={c.id} onClick={() => setFilter(c.id)} style={{
-                flexShrink:0, padding:"7px 16px", borderRadius:99, fontSize:12, fontWeight:800,
+                flexShrink:0, display:"flex", alignItems:"center", gap:5,
+                padding:"7px 16px", borderRadius:99, fontSize:12, fontWeight:800,
                 border:"none", cursor:"pointer", transition:"all .15s",
                 background: filter === c.id ? "#1a1a2e" : "white",
                 color:       filter === c.id ? "white"   : "#666",
                 boxShadow:   filter === c.id ? "0 3px 10px rgba(0,0,0,.18)" : "0 1px 4px rgba(0,0,0,.08)",
-              }}>{c.label}</button>
+              }}><span>{c.emoji}</span> {c.label}</button>
             ))}
           </div>
           {catsScroll.right && (
@@ -10269,7 +10130,20 @@ function GuestMural({ onSignup, allDocsVerified }) {
 
       {/* ── SERVICE CARDS ── */}
       <div style={{ padding:"0 16px", display:"flex", flexDirection:"column", gap:14 }}>
-        {list.map((s, idx) => {
+        {loadingGuest ? (
+          <div style={{ textAlign:"center", padding:"40px 24px", color:"#bbb" }}>
+            <p style={{ fontSize:13 }}>Carregando demandas...</p>
+          </div>
+        ) : list.length === 0 ? (
+          // Sem fallback de dado fictício de propósito (estratégia
+          // abandonada 2026-08-30) — categoria nova/pouco povoada mostra
+          // vazio de verdade em vez de inventar demanda. CTA de cadastro
+          // continua abaixo mesmo assim (não depende de ter card nenhum).
+          <div style={{ textAlign:"center", padding:"32px 24px", color:"#bbb" }}>
+            <p style={{ fontSize:15, fontWeight:700 }}>Nenhuma demanda aberta nessa categoria ainda</p>
+            <p style={{ fontSize:12, marginTop:4, lineHeight:1.6 }}>Cadastre-se pra ser avisado assim que aparecer uma demanda de {filter === "all" ? "qualquer categoria" : filter} perto de você.</p>
+          </div>
+        ) : list.map((s, idx) => {
           const isBlurred = idx > 1; // first 2 fully visible, rest blurred to entice signup
           return (
             <div key={s.id} style={{ position:"relative", borderRadius:20, overflow:"hidden", boxShadow:"0 3px 14px rgba(0,0,0,.09)" }}>
@@ -10295,12 +10169,12 @@ function GuestMural({ onSignup, allDocsVerified }) {
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 0 0", borderTop:"1px solid #F5F5F5" }}>
                   <div>
                     <p style={{ fontSize:11, color:"#aaa", margin:"0 0 1px", fontWeight:700 }}>Valor oferecido</p>
-                    <span style={{ fontSize:22, fontWeight:900, color:B }}>R$ {s.value}</span>
+                    <span style={{ fontSize:22, fontWeight:900, color: s.value != null ? B : "#9CA3AF" }}>{s.value != null ? `R$ ${s.value}` : "A combinar"}</span>
                   </div>
                   <div style={{ textAlign:"right" }}>
                     <p style={{ fontSize:10, color:"#aaa", margin:"0 0 8px" }}>{s.time}</p>
                     <button
-                      onClick={onSignup}
+                      onClick={() => onSignup(s.cat)}
                       style={{ padding:"10px 18px", borderRadius:12, border:"none", background:`linear-gradient(135deg,${O},#E64A19)`, color:"white", fontWeight:900, fontSize:13, cursor:"pointer", boxShadow:`0 4px 12px ${O}44`, display:"flex", alignItems:"center", gap:6 }}>
                       <MessageCircle size={14} /> Tenho Interesse
                     </button>
@@ -10315,7 +10189,7 @@ function GuestMural({ onSignup, allDocsVerified }) {
                     <p style={{ fontSize:13, fontWeight:900, color:"white", margin:"0 0 2px" }}>Cadastre-se para ver</p>
                     <p style={{ fontSize:11, color:"rgba(255,255,255,.65)", margin:0 }}>mais serviços disponíveis</p>
                   </div>
-                  <button onClick={onSignup} style={{ padding:"9px 22px", borderRadius:99, border:"none", background:"white", color:"#1a1a2e", fontWeight:900, fontSize:13, cursor:"pointer" }}>
+                  <button onClick={() => onSignup(s.cat)} style={{ padding:"9px 22px", borderRadius:99, border:"none", background:"white", color:"#1a1a2e", fontWeight:900, fontSize:13, cursor:"pointer" }}>
                     Criar conta grátis
                   </button>
                 </div>
@@ -10332,7 +10206,7 @@ function GuestMural({ onSignup, allDocsVerified }) {
         <p style={{ fontSize:12, color:"rgba(255,255,255,.7)", margin:"0 0 16px", lineHeight:1.6 }}>
           Taxa de acesso R$ 9,90/mês · Acesso imediato ao mural completo
         </p>
-        <button onClick={onSignup} style={{ padding:"13px 32px", borderRadius:14, border:"none", background:"white", color:B, fontWeight:900, fontSize:14, cursor:"pointer" }}>
+        <button onClick={() => onSignup(filterCat)} style={{ padding:"13px 32px", borderRadius:14, border:"none", background:"white", color:B, fontWeight:900, fontSize:14, cursor:"pointer" }}>
           Criar conta e acessar →
         </button>
       </div>
@@ -11037,7 +10911,19 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                         supabase_limite_candidatos_oportunidade_migration.sql); isso aqui
                         só evita a viagem de rede quando já dá pra saber que vai falhar. */}
                     {(() => {
-                      const vagasEsgotadas = (candidatosPorPedido[s.id] || 0) >= LIMITE_CANDIDATOS_OPORTUNIDADE;
+                      // Demanda MULTI-SUP (origem='suporte'): o "cliente" por
+                      // trás não tem conta no app (é só o e-mail/telefone que
+                      // o suporte digitou ao cadastrar por WhatsApp, ver
+                      // multi_sup_captacao_manual na memória) — criar uma
+                      // "proposta" esperando ele entrar no app pra aceitar
+                      // deixaria o profissional parado pra sempre ("aguarde o
+                      // cliente escolher" que nunca chega). Achado 2026-09-02:
+                      // decisão foi pular propostas/chat in-app pra esse caso
+                      // e abrir o WhatsApp direto com o telefone já cadastrado
+                      // (pedidos.telefone_cliente) — mesmo padrão "fechamento
+                      // 100% pelo WhatsApp" que EmpresaPedidosScreen já usa.
+                      const isSuporteWhats = s.origem === "suporte" && !!s.telefoneCliente;
+                      const vagasEsgotadas = !isSuporteWhats && (candidatosPorPedido[s.id] || 0) >= LIMITE_CANDIDATOS_OPORTUNIDADE;
                       return (
                     <button
                       disabled={s.origem !== "demo" && vagasEsgotadas}
@@ -11063,6 +10949,14 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                         if (taxaAcessoPendente) { onUpgrade(); return; }
                         const proUser=safeGetUser();
                         const candidatarSe = () => {
+                          // Demanda MULTI-SUP com telefone: sem proposta, sem
+                          // chat — abre o WhatsApp do cliente direto (mesmos
+                          // gates de acima já passaram: docs ok, taxa em dia,
+                          // moeda/plano ok — só o destino final muda).
+                          if (isSuporteWhats) {
+                            window.open(`https://wa.me/55${s.telefoneCliente.replace(/\D/g, "")}`, "_blank");
+                            return;
+                          }
                           supabase.from("propostas").upsert({pedido_id:s.id,profissional_id:proUser.email||proUser.whatsapp,profissional_nome:proUser.name||"Profissional",profissional_email:proUser.email||proUser.whatsapp,valor:s.value,mensagem:"Tenho interesse neste serviço!",status:"pendente",cliente_email:s.cliente_id||""},{onConflict:"pedido_id,profissional_id"})
                             .then(({ error }) => {
                               if (error) {
@@ -11086,9 +10980,12 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                         // quem está no plano "acesso"). Demo usa o mesmo roxo
                         // do badge "🧪 Exemplo" — funcional, mas visualmente
                         // marcado como prática, nunca igual ao botão real.
-                        background: s.origem === "demo" ? "linear-gradient(135deg,#9333EA,#7C3AED)" : vagasEsgotadas ? "#F5F6FA" : !allDocsVerified ? "#F5F6FA" : taxaAcessoPendente ? `linear-gradient(135deg,${O},#E64A19)` : !isPro ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : isLocked ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : `linear-gradient(135deg,${O},#E64A19)`,
+                        // isSuporteWhats usa o mesmo verde do WhatsApp (só
+                        // depois que os gates acima já liberaram — antes
+                        // disso continua caindo nos estados normais).
+                        background: s.origem === "demo" ? "linear-gradient(135deg,#9333EA,#7C3AED)" : vagasEsgotadas ? "#F5F6FA" : !allDocsVerified ? "#F5F6FA" : taxaAcessoPendente ? `linear-gradient(135deg,${O},#E64A19)` : !isPro ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : isLocked ? "linear-gradient(135deg,#7C3AED,#4F46E5)" : isSuporteWhats ? "linear-gradient(135deg,#25D366,#1EBE57)" : `linear-gradient(135deg,${O},#E64A19)`,
                         color:      s.origem === "demo" ? "white" : vagasEsgotadas ? "#9CA3AF" : !allDocsVerified ? "#9CA3AF" : "white",
-                        boxShadow:  s.origem === "demo" ? "0 3px 10px rgba(147,51,234,.28)" : vagasEsgotadas ? "none" : !allDocsVerified ? "none" : taxaAcessoPendente ? "0 3px 10px rgba(255,87,34,.28)" : !isPro ? "0 3px 10px rgba(124,58,237,.28)" : isLocked ? "0 3px 10px rgba(124,58,237,.28)" : "0 3px 10px rgba(255,87,34,.28)",
+                        boxShadow:  s.origem === "demo" ? "0 3px 10px rgba(147,51,234,.28)" : vagasEsgotadas ? "none" : !allDocsVerified ? "none" : taxaAcessoPendente ? "0 3px 10px rgba(255,87,34,.28)" : !isPro ? "0 3px 10px rgba(124,58,237,.28)" : isLocked ? "0 3px 10px rgba(124,58,237,.28)" : isSuporteWhats ? "0 3px 10px rgba(37,211,102,.3)" : "0 3px 10px rgba(255,87,34,.28)",
                       }}>
                       {s.origem === "demo"
                         ? <>🧪 Praticar Candidatura</>
@@ -11102,7 +10999,9 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                             ? <>🪙 Responder{s.custoMoedas ? ` (${s.custoMoedas} moedas)` : ""}</>
                             : isLocked
                               ? <><Crown size={13} /> Assinar PRO</>
-                              : "Tenho Interesse"}
+                              : isSuporteWhats
+                                ? <><MessageCircle size={14} /> Chamar no WhatsApp</>
+                                : "Tenho Interesse"}
                     </button>
                       );
                     })()}
@@ -11762,6 +11661,11 @@ export default function App() {
   // isLoggedIn/savedSession no mount, e agora nem precisa ser.
   const [authScreen,    setAuthScreen]   = useState(null);
   const [signupRole,    setSignupRole]   = useState("client");
+  // Categoria pré-selecionada vinda do carrossel/card do GuestMural (ex.:
+  // clicou em "Elétrica e Automação" ou num card específico de eletricista)
+  // — carrega até o CompletarPerfilScreen pra não perguntar de novo o que a
+  // pessoa já demonstrou querer (ver handoff 2026-09-02).
+  const [signupCategoria, setSignupCategoria] = useState([]);
   // Detect password reset link from email
   useEffect(() => {
     const hash = window.location.hash;
@@ -12887,7 +12791,7 @@ const renderContent = () => {
         // profissional a notar e trocar o rádio "Só cliente" pré-marcado.
         // Carrega a intenção já conhecida direto pro formulário certo, sem
         // perguntar de novo (mesmo padrão do link ?cadastro=profissional).
-        return <GuestMural onSignup={() => { setSignupRole("professional"); setAuthScreen("register"); }} allDocsVerified={null} />;
+        return <GuestMural onSignup={(cat) => { setSignupRole("professional"); setSignupCategoria(cat ? [cat] : []); setAuthScreen("register"); }} allDocsVerified={null} />;
       }
 
       // HOME — always visible, auth gates on action
@@ -13162,7 +13066,7 @@ const renderContent = () => {
 
   if (authScreen === "register") {
     return wrapper(
-      <RegisterScreen onBack={() => setAuthScreen("welcome")} onComplete={handleLoginComplete} showToast={showToast} initialRole={signupRole} />
+      <RegisterScreen onBack={() => setAuthScreen("welcome")} onComplete={handleLoginComplete} showToast={showToast} initialRole={signupRole} initialCategoria={signupCategoria} />
     );
   }
 

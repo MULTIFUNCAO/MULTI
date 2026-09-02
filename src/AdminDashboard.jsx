@@ -7,6 +7,7 @@ import {
   Clock, MapPin, Phone, Star, XCircle, ChevronDown, ChevronUp,
   Search, Filter, Download, RefreshCw, Tag, Plus, Building2, FlaskConical, QrCode
 } from "lucide-react";
+import { CATS } from "./cats";
 
 const COLORS = {
   bg: "#0F172A",
@@ -1024,6 +1025,78 @@ function SectionFicticios({ adminKey }) {
   );
 }
 
+// ─── Seletor de categoria com busca (MULTI-SUP) ─────────────────────
+// Substitui o campo de texto livre "CATEGORIA (id exato, ex: eletricista)"
+// — achado 2026-09-02: demanda real já cadastrada no banco tinha categoria
+// digitada errada (maiúscula, id inexistente, até frase livre tipo
+// "montador de imovel") que nunca bate com o categoria_servico (ids exatos
+// de CATS) de nenhum profissional — a demanda ficava invisível no mural,
+// silenciosamente, sem erro nenhum avisando ninguém. Esse seletor só deixa
+// escolher um id que existe de verdade em CATS (as 157 profissões, 23
+// grupos — ver cats.js), busca por nome, sem digitação livre.
+function CategoriaBuscaAdmin({ value, onChange }) {
+  const [aberto, setAberto] = useState(false);
+  const [busca, setBusca] = useState("");
+  const selecionada = CATS.find(c => c.id === value);
+  const resultados = busca.trim()
+    ? CATS.filter(c => c.label.toLowerCase().includes(busca.trim().toLowerCase()) || c.grupo.toLowerCase().includes(busca.trim().toLowerCase())).slice(0, 30)
+    : CATS;
+
+  if (selecionada && !aberto) {
+    return (
+      <div style={{
+        background: COLORS.bg, border: "1px solid " + COLORS.border, borderRadius: 8,
+        padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+      }}>
+        <span style={{ color: COLORS.textPrimary, fontSize: 13 }}>{selecionada.emoji} {selecionada.label} <span style={{ color: COLORS.textMuted, fontSize: 11 }}>· {selecionada.grupo}</span></span>
+        <button onClick={() => { setAberto(true); setBusca(""); }} style={{ background: "none", border: "none", color: COLORS.blue, fontSize: 12, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>Trocar</button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ position: "relative" }}>
+      <div style={{ position: "relative" }}>
+        <Search size={14} color={COLORS.textMuted} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} />
+        <input
+          autoFocus={aberto}
+          value={busca}
+          onChange={e => setBusca(e.target.value)}
+          onFocus={() => setAberto(true)}
+          placeholder="Buscar profissão (ex: eletricista, montador...)"
+          style={{
+            background: COLORS.bg, border: "1px solid " + COLORS.border, borderRadius: 8,
+            padding: "10px 14px 10px 34px", color: COLORS.textPrimary, fontSize: 13,
+            outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box",
+          }} />
+      </div>
+      {aberto && (
+        <div style={{
+          position: "absolute", zIndex: 20, top: "calc(100% + 4px)", left: 0, right: 0,
+          maxHeight: 260, overflowY: "auto", background: COLORS.card, border: "1px solid " + COLORS.border,
+          borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,.4)",
+        }}>
+          {resultados.length === 0 ? (
+            <div style={{ padding: "12px 14px", color: COLORS.textMuted, fontSize: 12 }}>Nenhuma profissão encontrada</div>
+          ) : resultados.map(c => (
+            <div key={c.id} onClick={() => { onChange(c.id); setAberto(false); setBusca(""); }} style={{
+              padding: "9px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
+              borderBottom: "1px solid " + COLORS.border,
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = COLORS.cardHover}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+            >
+              <span>{c.emoji}</span>
+              <span style={{ color: COLORS.textPrimary, fontSize: 13 }}>{c.label}</span>
+              <span style={{ color: COLORS.textMuted, fontSize: 11, marginLeft: "auto" }}>{c.grupo}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Seção: Demandas de Suporte (MULTI-SUP) ─────────────────────────
 // Substitui os pedidos fictícios (SectionFicticios acima, desativados
 // 2026-08-30) como estratégia de captação — ver multi_sup_captacao_manual
@@ -1038,7 +1111,7 @@ function SectionDemandaSuporte({ adminKey }) {
   const [demandas, setDemandas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const vazio = { clienteNome: "", clienteEmail: "", telefone: "", tipoAtendimento: "residencial", cidade: "", bairro: "", endereco: "", categoria: "", descricao: "", valor: "", dataDesejada: "", horarioDesejado: "" };
+  const vazio = { clienteNome: "", clienteEmail: "", telefone: "", tipoAtendimento: "residencial", cidade: "", bairro: "", endereco: "", categoria: "", descricao: "", valor: "", urgencia: "normal", dataDesejada: "", horarioDesejado: "" };
   const [form, setForm] = useState(vazio);
   // Nome de quem está cadastrando — não é login de verdade (o admin inteiro
   // roda numa senha única compartilhada, ver checkAdminKey em server.js),
@@ -1082,6 +1155,7 @@ function SectionDemandaSuporte({ adminKey }) {
           categoria: form.categoria.trim(),
           descricao: form.descricao.trim(),
           valor: form.valor,
+          urgencia: form.urgencia,
           dataDesejada: form.dataDesejada.trim(),
           horarioDesejado: form.horarioDesejado.trim(),
           cadastradoPor: meuNome.trim(),
@@ -1164,12 +1238,20 @@ function SectionDemandaSuporte({ adminKey }) {
             <input value={form.endereco} onChange={e => setForm(f => ({ ...f, endereco: e.target.value }))} placeholder="Rua X, 123 (se necessário)" style={inputStyle} />
           </div>
           <div>
-            <label style={labelStyle}>CATEGORIA (id exato, ex: eletricista) *</label>
-            <input value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} placeholder="encanador" style={inputStyle} />
+            <label style={labelStyle}>CATEGORIA *</label>
+            <CategoriaBuscaAdmin value={form.categoria} onChange={v => setForm(f => ({ ...f, categoria: v }))} />
           </div>
           <div>
             <label style={labelStyle}>VALOR ESTIMADO (R$)</label>
             <input type="number" value={form.valor} onChange={e => setForm(f => ({ ...f, valor: e.target.value }))} placeholder="150" style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>URGÊNCIA</label>
+            <select value={form.urgencia} onChange={e => setForm(f => ({ ...f, urgencia: e.target.value }))} style={inputStyle}>
+              <option value="normal">🟢 Normal</option>
+              <option value="urgente">🟡 Urgente</option>
+              <option value="muito_urgente">🔴 Muito Urgente</option>
+            </select>
           </div>
           <div>
             <label style={labelStyle}>DATA DESEJADA</label>
@@ -1223,6 +1305,9 @@ function SectionDemandaSuporte({ adminKey }) {
                     <Badge color="blue">SUPORTE</Badge>
                     <span style={{ color: COLORS.textMuted, fontSize: 11, fontFamily: "monospace" }}>{d.codigo_interno || "—"}</span>
                     <span style={{ color: COLORS.textMuted, fontSize: 11 }}>{d.categoria}</span>
+                    {(d.urgencia === "urgente" || d.urgencia === "muito_urgente") && (
+                      <Badge color={d.urgencia === "muito_urgente" ? "red" : "orange"}>{d.urgencia === "muito_urgente" ? "🔴 MUITO URGENTE" : "🟡 URGENTE"}</Badge>
+                    )}
                   </div>
                   <div style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 14 }}>{d.descricao || "Sem descrição"}</div>
                   <div style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 4 }}>
