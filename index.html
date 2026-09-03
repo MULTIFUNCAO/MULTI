@@ -35,10 +35,15 @@
       fbq('init', '1662590805426271');
       fbq('track', 'PageView');
     </script>
-    <noscript><img height="1" width="1" style="display:none"
-      src="https://www.facebook.com/tr?id=1662590805426271&ev=PageView&noscript=1"
-    /></noscript>
-    <!-- End Meta Pixel Code -->
+    <!-- End Meta Pixel Code (base) — noscript fallback fica no <body> logo
+         abaixo: um <noscript> com <img> dentro do <head> é conteúdo
+         desautorizado pela especificação HTML (só link/style/meta são
+         permitidos ali), e o parser HTML do Vite (parse5, estrito) rejeita
+         isso no build — quebrou o deploy de produção em 2026-09-02
+         ("Unable to parse HTML; parse5 error code disallowed-content-in-
+         noscript-in-head"). Browsers reais são tolerantes e teriam
+         renderizado normal, mas o build falhava antes de chegar no
+         navegador. -->
     <title>Multi Funcao</title>
     <link rel="icon" type="image/png" href="/logo/multi_logo_32x32.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -54,6 +59,12 @@
     </script>
   </head>
   <body>
+    <!-- Meta Pixel Code — noscript fallback (ver comentário no <head> sobre
+         por que não pode viver lá). -->
+    <noscript><img height="1" width="1" style="display:none"
+      src="https://www.facebook.com/tr?id=1662590805426271&ev=PageView&noscript=1"
+      alt=""
+    /></noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

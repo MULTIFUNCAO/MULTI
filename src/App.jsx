@@ -6531,24 +6531,16 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
       })
       .catch(() => {});
   }, [role, userEmail]);
-  // Elegibilidade pra trocar categoria: primeira escolha (nunca teve nenhuma
-  // categoria salva) é sempre livre; depois disso, só com trocas sobrando E
-  // um ciclo novo (assinaturas.inicio mais recente que a última troca).
-  // Bug real achado 2026-08-19 (reportado pelo Fábio via WhatsApp): isso
-  // lia categoriaServico AO VIVO — o mesmo state que handleSaveCategoria
-  // já atualiza a cada toque no seletor. Assim que o profissional escolhia
-  // a 1ª categoria, categoriaServico.length virava 1 NO MESMO clique,
-  // categoriaEhPrimeiraEscolha virava false, e (sem plano/trial ativo,
-  // planoInicio null) categoriaElegivel colapsava com ele — a UI do
-  // seletor sumia sozinha (linha ~6750 troca pro resumo estático) e o
-  // Salvar descartava a categoria em silêncio (linha ~6556), sem erro
-  // nenhum. Fix: durante a edição, usa o snapshot capturado no instante em
-  // que editMode abriu (estável, não muda a cada toque); fora da edição,
-  // continua lendo o state ao vivo (reflete o que veio do banco).
-  const categoriaEhPrimeiraEscolha = (editMode ? categoriaSnapshotRef.current : categoriaServico).length === 0;
-  const categoriaTrocasEsgotadas = trocasCategoriaUsadas >= 2;
-  const categoriaCicloNovo = !!planoInicio && (!trocasCategoriaUltimoCiclo || new Date(planoInicio) > new Date(trocasCategoriaUltimoCiclo));
-  const categoriaElegivel = categoriaEhPrimeiraEscolha || (!categoriaTrocasEsgotadas && categoriaCicloNovo);
+  // HANDOFF 2026-09-03: trava de "só troca categoria na renovação/troca de
+  // plano" removida por decisão de negócio — profissional pode editar a
+  // categoria de serviço a qualquer momento. Antes disso existia um limite
+  // de 2 trocas na vida da conta, gateado por um trigger Postgres
+  // (trg_limita_troca_categoria, dropado via supabase_remove_trava_troca_categoria_migration.sql)
+  // e espelhado aqui só pra UX (habilitar "Editar" ou mostrar mensagem de
+  // bloqueio). categoriaElegivel fica true sempre agora; a variável
+  // continua existindo (em vez de remover todo mundo que a lê) só pra não
+  // espalhar essa mudança em cascata pelo arquivo.
+  const categoriaElegivel = true;
 
   // Teto de categorias vem de PLANO_LIMITES_USUARIO (Autônomo:1 grupo×1 profissão /
   // Pro:2 grupos×3 profissões cada / Premium:ilimitado — definido no topo do
@@ -6717,19 +6709,15 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
               const updates = { whatsapp: whatsapp || null, city: cidade.trim() || null };
               if (name.trim()) updates.name = name.trim();
               // Categoria só entra no UPDATE se realmente mudou nessa sessão de
-              // edição (1 sessão = 1 troca) — e só quando elegível, embora o
-              // gate de verdade seja o trigger trg_limita_troca_categoria no
-              // Postgres (ver App.jsx categoriaElegivel acima). Sem plano
-              // ativo/trocas esgotadas, o multi-select nem aparece editável, então
-              // categoriaServico não muda — isso aqui é defesa extra, não o
-              // bloqueio principal.
+              // edição. HANDOFF 2026-09-03: não existe mais trava de trocas —
+              // trg_limita_troca_categoria foi dropado (ver
+              // supabase_remove_trava_troca_categoria_migration.sql), então o
+              // update abaixo não pode mais falhar por esse motivo.
               const categoriaMudou = role === "professional" && JSON.stringify(categoriaServico) !== JSON.stringify(categoriaSnapshotRef.current);
-              if (categoriaMudou && categoriaElegivel) updates.categoria_servico = categoriaServico;
+              if (categoriaMudou) updates.categoria_servico = categoriaServico;
               const { error } = await supabase.from("usuarios").update(updates).eq("email", userEmail);
               if (error) {
                 setSavingPerfil(false);
-                // Mensagem do trigger (limite de trocas / fora do ciclo) chega
-                // aqui como error.message — mesmo texto que o RAISE EXCEPTION.
                 showToast("❌ " + (error.message || "Erro ao salvar perfil."), "#DC2626");
                 return;
               }
@@ -6889,44 +6877,28 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
               mesmo editMode do resto do perfil (topo da tela) em vez de um
               fluxo de edição próprio parecido com o cadastro (item 9 do
               prompt Ajustes de Cadastro/Perfil/Fluxos).
-              Troca de categoria: 2x na vida da conta, só quando a assinatura
-              renova ou o plano muda (categoriaElegivel) — o botão "Editar"
-              local fica travado fora dessa janela mesmo que o editMode geral
-              do perfil esteja aberto por causa de outro campo (nome/telefone).
-              Gate de verdade é o trigger trg_limita_troca_categoria no
-              Postgres; isso aqui só decide o que mostrar. */}
+              HANDOFF 2026-09-03: trava de "só troca na renovação/troca de
+              plano" removida — "Editar" agora fica sempre destravado
+              (categoriaElegivel é sempre true, ver declaração acima). */}
           <div style={{ padding:"14px 16px 0" }}>
             <div style={{ background:"white", borderRadius:16, padding:16, boxShadow:"0 3px 14px rgba(0,0,0,.07)", border: categoriaServico.length ? "1px solid #F0F0F0" : "1.5px solid #FCA5A5" }}>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:3 }}>
                 <p style={{ margin:0, fontSize:11, fontWeight:800, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1.1 }}>Categorias de Serviço</p>
                 {!editMode && (
-                  categoriaElegivel ? (
-                    <button onClick={() => setEditMode(true)} style={{ background:"none", border:"none", cursor:"pointer", padding:0, color:B, fontSize:11.5, fontWeight:800, display:"flex", alignItems:"center", gap:4 }}>
-                      <Pencil size={11} /> Editar
-                    </button>
-                  ) : (
-                    <span style={{ display:"flex", alignItems:"center", gap:4, color:"#B0B4C0", fontSize:11.5, fontWeight:800 }}>
-                      <Lock size={11} /> Editar
-                    </span>
-                  )
+                  <button onClick={() => setEditMode(true)} style={{ background:"none", border:"none", cursor:"pointer", padding:0, color:B, fontSize:11.5, fontWeight:800, display:"flex", alignItems:"center", gap:4 }}>
+                    <Pencil size={11} /> Editar
+                  </button>
                 )}
               </div>
 
-              {(!editMode || !categoriaElegivel) ? (
+              {!editMode ? (
                 <>
                   {categoriaServico.length ? (
                     <p style={{ margin:0, fontSize:13.5, color:"#1a1a2e", lineHeight:1.6 }}>
                       Você trabalha com: <strong>{categoriaServico.map(id => CATS.find(c => c.id === id)?.label || id).join(", ")}</strong>
                     </p>
                   ) : (
-                    <p style={{ margin:0, fontSize:12.5, color:"#E53935", fontWeight:700 }}>Nenhuma categoria selecionada{!editMode ? " — toque em Editar pra escolher." : "."}</p>
-                  )}
-                  {!categoriaElegivel && (
-                    <p style={{ margin:"8px 0 0", fontSize:11.5, color:"#9CA3AF", lineHeight:1.5 }}>
-                      {categoriaTrocasEsgotadas
-                        ? "Você já usou as 2 trocas de categoria disponíveis. Pra corrigir por engano ou em caso excepcional, fale com o suporte."
-                        : "Troca de categoria só é permitida quando sua assinatura renovar ou você mudar de plano."}
-                    </p>
+                    <p style={{ margin:0, fontSize:12.5, color:"#E53935", fontWeight:700 }}>Nenhuma categoria selecionada — toque em Editar pra escolher.</p>
                   )}
                 </>
               ) : (
@@ -6934,7 +6906,6 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
                   <p style={{ margin:"0 0 10px", fontSize:11, color:"#9CA3AF" }}>
                     Necessárias pra ficar online e receber pedidos no Mural.
                     {limiteMaxCategorias != null && ` ${plano === "pro" ? "Multi Pro" : "Multi Autônomo"}: até ${limiteMaxCategorias} categoria${limiteMaxCategorias === 1 ? "" : "s"} de serviço.`}
-                    {!categoriaEhPrimeiraEscolha && ` Você tem ${2 - trocasCategoriaUsadas} troca${2 - trocasCategoriaUsadas === 1 ? "" : "s"} de categoria restante${2 - trocasCategoriaUsadas === 1 ? "" : "s"} — confirme com atenção ao Salvar.`}
                   </p>
                   <CategoriaMultiSelect
                     value={categoriaServico}
@@ -7389,8 +7360,10 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast, plano, planoS
   const [termoChecked, setTermoChecked] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   // Motivo de bloqueio retornado pelo endpoint /api/pedidos/confirmar-servico
-  // (sem_plano_ativo | valor_excede_plano | quota_excedida) — quando setado,
-  // o modal de confirmação mostra a cópia de upgrade em vez do formulário.
+  // (sem_plano_ativo | valor_excede_plano) — quando setado, o modal de
+  // confirmação mostra a cópia de upgrade em vez do formulário. HANDOFF
+  // 2026-09-03: "quota_excedida" (cota de serviços/mês) removido — não
+  // existe mais teto de quantidade, só o de valor máximo por serviço.
   const [blockInfo, setBlockInfo] = useState(null);
   const [showTermoCompleto, setShowTermoCompleto] = useState(false);
   const [confirmandoServico, setConfirmandoServico] = useState(false);
@@ -8129,11 +8102,10 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast, plano, planoS
                   <p style={{ margin:0, fontSize:11.5, color:"#9A3412" }}>Assine o Multi Autônomo, Pro ou Premium pra poder confirmar e fechar serviços.</p>
                 </div>
               ) : (
-                <PlanoUpgradeCTA
-                  tipo={blockInfo.error === "quota_excedida" ? "quantidade" : "valor"}
-                  plano={plano}
-                  onUpgrade={onUpgrade}
-                />
+                // Único motivo de bloqueio restante além de "sem_plano_ativo"
+                // é "valor_excede_plano" — "quota_excedida" foi removido
+                // junto com o backend que a emitia (HANDOFF 2026-09-03).
+                <PlanoUpgradeCTA plano={plano} onUpgrade={onUpgrade} />
               )
             ) : (
               <>
@@ -8814,50 +8786,29 @@ function CategoriaMultiSelect({ value, onChange, max, maxGrupos, maxItensPorGrup
   );
 }
 
-// Ciclo de cobrança rolante de 30 dias a partir de assinaturas.inicio —
-// espelha cicloAtualInicio em MULTI-BACKEND/server.js. Não existe renovação
-// automática/coluna de "última cobrança" ainda, então o ciclo é sempre
-// recalculado a partir da data de início da assinatura. Uso aqui é só de
-// exibição (cota usada); o gate de verdade roda no backend.
-function cicloAtualInicio(inicioISO) {
-  if (!inicioISO) return new Date(0);
-  const inicio = new Date(inicioISO).getTime();
-  const now = Date.now();
-  const CICLO_MS = 30 * 24 * 60 * 60 * 1000;
-  if (now <= inicio) return new Date(inicio);
-  const ciclosPassados = Math.floor((now - inicio) / CICLO_MS);
-  return new Date(inicio + ciclosPassados * CICLO_MS);
-}
-
 // Cópia padrão de bloqueio por limite de plano (valor do serviço acima do
-// teto, ou cota mensal de serviços esgotada) — usada tanto no card bloqueado
-// do mural (ProfessionalHome) quanto no bloqueio pós-tentativa de confirmação
-// (NegociacaoChatScreen). Princípio: sempre dizer o que foi encontrado, por
-// que está bloqueado, o benefício concreto do próximo plano e um CTA claro —
-// nunca só "você não pode". Sem plano ativo trata como Autônomo (teto mais
-// restritivo) pra fins de cópia.
-function PlanoUpgradeCTA({ tipo, plano, onUpgrade }) {
+// teto) — usada tanto no card bloqueado do mural (ProfessionalHome) quanto
+// no bloqueio pós-tentativa de confirmação (NegociacaoChatScreen). Princípio:
+// sempre dizer o que foi encontrado, por que está bloqueado, o benefício
+// concreto do próximo plano e um CTA claro — nunca só "você não pode". Sem
+// plano ativo trata como Autônomo (teto mais restritivo) pra fins de cópia.
+// HANDOFF 2026-09-03: existia um segundo "tipo" aqui pra cota mensal de
+// serviços esgotada (removida) — o prop "tipo" ficou pra trás junto com o
+// branch morto; hoje só existe o bloqueio por valor máximo do serviço.
+function PlanoUpgradeCTA({ plano, onUpgrade }) {
   const planoAtual = PLANO_LIMITES_USUARIO[plano] ? plano : "autonomo";
   const limite = PLANO_LIMITES_USUARIO[planoAtual];
   const ehPro = planoAtual === "pro";
   let titulo, corpo, ctaLabel, detalhe;
-  if (tipo === "valor") {
-    if (ehPro) {
-      titulo = "Essa oportunidade está acima do limite do Multi Pro.";
-      ctaLabel = "CONHECER MULTI PREMIUM";
-      detalhe = "Com o Multi Premium você tem acesso a serviços de qualquer valor, categorias ilimitadas e serviços ilimitados.";
-    } else {
-      titulo = "Oportunidade exclusiva para planos superiores";
-      corpo = `Este serviço está acima do limite de R$${limite.valorMaxServico} do seu plano.`;
-      ctaLabel = "FAZER UPGRADE PARA MULTI PRO";
-      detalhe = `Acesse serviços de até R$${PLANO_LIMITES_USUARIO.pro.valorMaxServico} por apenas R$${PLANOS_USUARIO.find(p => p.id === "pro")?.price}/mês.`;
-    }
+  if (ehPro) {
+    titulo = "Essa oportunidade está acima do limite do Multi Pro.";
+    ctaLabel = "CONHECER MULTI PREMIUM";
+    detalhe = "Com o Multi Premium você tem acesso a serviços de qualquer valor, categorias ilimitadas e serviços ilimitados.";
   } else {
-    titulo = `Você atingiu o limite de ${limite.maxServicosMes} serviços deste mês.`;
-    ctaLabel = "FAZER UPGRADE";
-    detalhe = ehPro
-      ? "Com o Multi Premium você aceita serviços ilimitados por mês e cadastra categorias ilimitadas."
-      : `Com o Multi Pro você pode aceitar até ${PLANO_LIMITES_USUARIO.pro.maxServicosMes} serviços por mês e cadastrar até ${PLANO_LIMITES_USUARIO.pro.maxCategorias} categorias.`;
+    titulo = "Oportunidade exclusiva para planos superiores";
+    corpo = `Este serviço está acima do limite de R$${limite.valorMaxServico} do seu plano.`;
+    ctaLabel = "FAZER UPGRADE PARA MULTI PRO";
+    detalhe = `Acesse serviços de até R$${PLANO_LIMITES_USUARIO.pro.valorMaxServico} por apenas R$${PLANOS_USUARIO.find(p => p.id === "pro")?.price}/mês.`;
   }
   return (
     <div style={{ background:"#FFF7ED", border:"1.5px solid #FDBA74", borderRadius:14, padding:"14px 16px", display:"flex", flexDirection:"column", gap:8 }}>
@@ -10420,18 +10371,19 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
   // igual pra todo mundo.
   const [reputacao, setReputacao] = useState(null);
   useEffect(() => { if (userEmail) fetchReputacao(userEmail).then(setReputacao); }, [userEmail]);
-  // Cota de serviços do ciclo atual — leitura pública só pra exibição (o
-  // bloqueio de verdade acontece no backend, no endpoint de confirmação).
-  const [usadosCiclo, setUsadosCiclo] = useState(0);
+  // HANDOFF 2026-09-03: teto de "serviços/mês por plano" removido — não
+  // existe mais cota, então isso passou de "usados no ciclo atual" (janela
+  // rolante de 30 dias a partir de assinaturas.inicio) pra contagem total
+  // (vida da conta) de serviços aceitos, sem comparação com limite nenhum.
+  const [totalServicosAceitos, setTotalServicosAceitos] = useState(0);
   useEffect(() => {
-    if (!userEmail || !planoInicio) { setUsadosCiclo(0); return; }
+    if (!userEmail) { setTotalServicosAceitos(0); return; }
     supabase.from("pedidos").select("id", { count: "exact", head: true })
       .eq("profissional_aceito", userEmail)
       .not("aceite_formal_profissional_em", "is", null)
-      .gte("aceite_formal_profissional_em", cicloAtualInicio(planoInicio).toISOString())
-      .then(({ count }) => setUsadosCiclo(count || 0))
+      .then(({ count }) => setTotalServicosAceitos(count || 0))
       .catch(() => {});
-  }, [userEmail, planoInicio]);
+  }, [userEmail]);
   // Demandas de empresa (publico_alvo:"pro") e demandas Empresariais
   // (tipo_atendimento:"empresarial") só entram no feed de quem é Multi Pro
   // ou Premium — Autônomo só vê pedido "geral"/residencial. Antes esse gate
@@ -10800,7 +10752,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
               { label:"Total recebido",  val:`R$ ${(meusGanhos || []).reduce((a, p) => a + (p.value || 0), 0).toLocaleString("pt-BR", { minimumFractionDigits:2 })}`, color:"#4ade80" },
               { label:"Servicos feitos", val:String((meusGanhos || []).length), color:"white" },
               { label:"Avaliacao",       val: reputacao?.mediaEstrelas != null ? `${reputacao.mediaEstrelas.toFixed(1)} estrelas` : "—", color:"#F9A825" },
-              { label:"Cota do ciclo",   val: limitePlano.maxServicosMes != null ? `${usadosCiclo}/${limitePlano.maxServicosMes}` : "Ilimitado", color: limitePlano.maxServicosMes != null && usadosCiclo >= limitePlano.maxServicosMes ? "#F87171" : "#93C5FD" },
+              { label:"Serviços aceitos", val: String(totalServicosAceitos), color:"#93C5FD" },
             ].map((s, i) => (
               <div key={i} onClick={i===0 ? onGoToWallet : i===1 ? onGoToOrders : undefined} style={{ flex:1, background:"rgba(255,255,255,.08)", borderRadius:12, padding:"9px 10px", cursor:(i===0||i===1)?"pointer":"default" }}>
                 <p style={{ fontSize:11, color:"rgba(255,255,255,.45)", fontWeight:700, margin:0, lineHeight:1.3 }}>{s.label}</p>
@@ -10959,7 +10911,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
                 </div>
 
                 {valorExcede ? (
-                  <PlanoUpgradeCTA tipo="valor" plano={plano} onUpgrade={onUpgrade} />
+                  <PlanoUpgradeCTA plano={plano} onUpgrade={onUpgrade} />
                 ) : (
                   <>
                     <div style={{ borderTop:"1px solid #F4F4F6", paddingTop:10, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
@@ -11588,9 +11540,10 @@ export default function App() {
   const [plano,          setPlano]          = useState(null);
   const [planoStatus,    setPlanoStatus]    = useState(null);
   const [planoExpiraEm,  setPlanoExpiraEm]  = useState(null);
-  // Início da assinatura atual — usado só pra calcular o ciclo de cobrança
-  // (cicloAtualInicio) na exibição da cota de serviços/mês do profissional.
-  // O gate de verdade (bloqueio) é sempre recalculado no backend.
+  // Início da assinatura atual. HANDOFF 2026-09-03: não é mais usado pra
+  // gate de cota de serviços/mês (removido) nem pra ciclo de troca de
+  // categoria (também removido) — prop mantida por enquanto (outras telas
+  // ainda a recebem) mas sem consumidor de verdade no momento.
   const [planoInicio,    setPlanoInicio]    = useState(null);
   // Modo Prestadora/Contratante da empresa "pro" — vive aqui (não como state
   // local de EmpresaHomeScreen) porque precisa sobreviver a navegações pra
