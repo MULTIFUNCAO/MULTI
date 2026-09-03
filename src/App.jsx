@@ -5019,8 +5019,16 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
         <div>
           <p style={{ margin:"0 0 2px", fontWeight:800, fontSize:14, color:"#1a1a2e" }}>{planoLabel}</p>
           <p style={{ margin:0, fontSize:11.5, color:"#9CA3AF" }}>
+            {/* Corrigido 2026-09-03: dizia "cobrança única, sem renovação" —
+                errado, e não só na exibição: a Taxa de Acesso ("acesso") É
+                mensal (R$9,90/mês) mesmo sem débito automático — o backend
+                (/api/assinatura/cobrar) sempre cobra avulso (subscriptionId:
+                null) tanto por cartão quanto por Pix pra esse plano, então a
+                pessoa precisa voltar e pagar de novo a cada ciclo pra
+                continuar ativa. "Sem renovação" dava a entender que pagava
+                uma vez só e ficava ativo pra sempre, o que nunca foi verdade. */}
             {pixManualFallback
-              ? "Cobrado hoje · cobrança única, sem renovação"
+              ? `Cobrado hoje · renova em ${proximaCobranca.toLocaleDateString("pt-BR")} (sem débito automático — você paga de novo manualmente)`
               : `${temCupom ? "Grátis hoje (cupom)" : "Cobrado hoje"} · ${temCupom ? "1ª cobrança" : "renova"} em ${proximaCobranca.toLocaleDateString("pt-BR")}`}
           </p>
         </div>
@@ -5111,8 +5119,12 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
             {loading ? "Processando pagamento..." : <><Lock size={16} /> Pagar R$ {planoPreco} e ativar plano</>}
           </button>
           <p style={{ fontSize:11, color:"#9CA3AF", textAlign:"center", margin:0 }}>
+            {/* Corrigido 2026-09-03 (mesmo motivo do resumo do plano acima):
+                mesmo pago por cartão, "acesso" nunca vira assinatura Asaas
+                recorrente (server.js: subscriptionId: null) — é R$/mês
+                mesmo assim, só que cobrado manualmente a cada ciclo. */}
             {pixManualFallback
-              ? `Cobrança única de R$ ${planoPreco} — sem mensalidade, sem renovação automática.`
+              ? `R$ ${planoPreco}/mês — sem débito automático, você paga de novo manualmente a cada ciclo pra continuar ativo.`
               : `Cobrança recorrente mensal de R$ ${planoPreco}. Cancele quando quiser.`}
           </p>
         </div>
@@ -6961,7 +6973,16 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
                       ? <>🎁 <strong>TESTE GRATUITO</strong>{planoExpiraEm ? ` — termina em ${new Date(planoExpiraEm).toLocaleDateString("pt-BR")}` : ""}</>
                       : isPro
                         ? plano === "acesso"
-                          ? <>✅ <strong>{labelPlanoAtivo.toUpperCase()} ATIVO</strong> — R$ {precoPlanoAtivo} (entrada única, sem mensalidade)</>
+                          // Corrigido 2026-09-03: dizia "(entrada única, sem
+                          // mensalidade)", o que contradizia o resto do app —
+                          // a Taxa de Acesso É recorrente mensal (Pix manual,
+                          // sem débito automático), com os mesmos banners de
+                          // "vence em breve"/"venceu" de ProfessionalHome
+                          // (acessoVencido/acessoPrestesAVencer, mesma fonte
+                          // planoExpiraEm). Mesmo padrão da outra linha,
+                          // trocando "cobrança" por "renovação" porque não é
+                          // débito automático.
+                          ? <>✅ <strong>{labelPlanoAtivo.toUpperCase()} ATIVA</strong> — R$ {precoPlanoAtivo}/mês{planoExpiraEm ? ` · próx. renovação ${new Date(planoExpiraEm).toLocaleDateString("pt-BR")}` : ""}</>
                           : <>✅ <strong>{labelPlanoAtivo.toUpperCase()} ATIVO</strong> — R$ {precoPlanoAtivo}/mês{planoExpiraEm ? ` · próx. cobrança ${new Date(planoExpiraEm).toLocaleDateString("pt-BR")}` : ""}</>
                         : "❌ Nenhum plano ativo"}
                   </p>
