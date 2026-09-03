@@ -4158,18 +4158,22 @@ const PLANOS_USUARIO = [
     ctaLabel: "Quero crescer com o Multi Pro",
   },
   {
+    // HANDOFF 2026-09-03: "sem teto de serviço"/"sem limite de serviços
+    // fechados por mês" saíram da copy — deixaram de ser diferencial do
+    // Premium quando a cota de serviços/mês foi removida de TODOS os planos
+    // (não só dele). O que ainda diferencia o Premium é categoria/valor
+    // ilimitados + prioridade nas oportunidades.
     id: "premium", icon: Gem, label: "Multi Premium", price: "129,90", perDay: "menos de R$5 por dia", badge: "Sem limites",
-    hook: "Sem teto de categoria, sem teto de valor, sem teto de serviço.",
-    intro: "Você já sabe o que faz e até onde quer chegar. Com o Multi Premium, nenhum limite de plano fica no seu caminho: cadastre quantas categorias precisar, aceite serviços de qualquer valor e feche quantos fechar por mês.",
+    hook: "Sem teto de categoria, sem teto de valor.",
+    intro: "Você já sabe o que faz e até onde quer chegar. Com o Multi Premium, nenhum limite de plano fica no seu caminho: cadastre quantas categorias precisar e aceite serviços de qualquer valor.",
     beneficios: [
       { icon: CheckCircle2, text: "Tudo do Multi Pro", lead: true },
       { icon: ClipboardList, text: "Categorias ilimitadas cadastradas no seu perfil" },
       { icon: DollarSign, text: "Sem teto de valor por serviço" },
-      { icon: TrendingUp, text: "Sem limite de serviços fechados por mês" },
       { icon: Gem, text: "Prioridade nas oportunidades compatíveis com você" },
     ],
     idealLead: "Ideal para quem já vive disso.",
-    ideal: "Categoria, valor e quantidade nunca mais viram motivo pra deixar passar uma oportunidade. O Multi Premium existe pra quem já sabe que vai continuar crescendo.",
+    ideal: "Categoria e valor nunca mais viram motivo pra deixar passar uma oportunidade. O Multi Premium existe pra quem já sabe que vai continuar crescendo.",
     ctaLabel: "Quero o Multi Premium",
   },
 ];
@@ -4215,12 +4219,16 @@ const PLANOS_EMPRESA = [
     ctaLabel: "Quero o Multi Empresa Plus",
   },
 ];
-// Limites de negócio (categoria/valor/quantidade) por plano do profissional.
-// Espelha PLANO_LIMITES_USUARIO em MULTI-BACKEND/server.js — repos separados,
-// sem pacote compartilhado, então qualquer mudança aqui precisa ser
-// replicada manualmente lá (e vice-versa). O backend é o gate real (endpoint
+// Limites de negócio (categoria/valor) por plano do profissional. Espelha
+// PLANO_LIMITES_USUARIO em MULTI-BACKEND/server.js — repos separados, sem
+// pacote compartilhado, então qualquer mudança aqui precisa ser replicada
+// manualmente lá (e vice-versa). O backend é o gate real (endpoint
 // /api/pedidos/confirmar-servico); isto aqui só decide UX/copy (cards de
-// mural, tela de perfil). null = sem limite (Premium).
+// mural, tela de perfil). null = sem limite (Premium). HANDOFF 2026-09-03:
+// maxServicosMes (cota de serviços/mês) parou de ser aplicado E parou de
+// aparecer em qualquer copy — o campo continua existindo no objeto (e em
+// configuracoes_planos) só porque tirar a coluna do banco/schema não fazia
+// parte do pedido, mas nada mais lê ele.
 // 2026-08-09: teto de categoria deixou de ser um número flat de itens e virou
 // duas dimensões — quantos GRUPOS (ex.: "Reformas e Construção") e quantas
 // PROFISSÕES por grupo escolhido (ex.: "Pedreiro", "Gesseiro" dentro do mesmo
@@ -4272,17 +4280,20 @@ carregarPlanoLimitesReais();
 // Lista curta de "Limites do plano" pros cards de EscolherPlanoScreen — deriva
 // de PLANO_LIMITES_USUARIO em vez de duplicar os números soltos num segundo
 // lugar (fonte única: mudou o limite ali, o card já reflete sozinho).
+// HANDOFF 2026-09-03: linha de "Até X serviços aceitos/mês" removida — não
+// existe mais cota de serviços/mês em plano nenhum (nem sequer o "ilimitado"
+// do fallback abaixo fazia sentido como diferencial depois disso, então
+// saiu dos dois branches em vez de só trocar o número).
 function limitesTexto(planoId) {
   const l = PLANO_LIMITES_USUARIO[planoId];
   if (!l || l.maxCategorias == null) {
-    return ["Categorias ilimitadas", "Serviços ilimitados", "Sem limite de valor"];
+    return ["Categorias ilimitadas", "Sem limite de valor"];
   }
   const categoriaTexto = l.maxCategorias === 1
     ? "1 categoria de serviço"
     : `Até ${l.maxCategorias} categorias de serviço`;
   return [
     categoriaTexto,
-    `Até ${l.maxServicosMes} serviços aceitos/mês`,
     `Valor máximo R$${l.valorMaxServico.toLocaleString("pt-BR")}/serviço`,
   ];
 }
@@ -4519,12 +4530,13 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
                 ))}
               </div>
 
-              {/* Limites do plano — resumo objetivo (categoria/quantidade/valor)
-                  abaixo do texto de venda, antes do fechamento "Ideal para
-                  quem..." e do CTA. Vem de limitesTexto(p.id), que lê direto
-                  de PLANO_LIMITES_USUARIO (mesma fonte usada no resto do app).
-                  Conceito é 100% de profissional (categoria/serviços aceitos/
-                  valor por serviço) — não existe PLANO_LIMITES_USUARIO pra
+              {/* Limites do plano — resumo objetivo (categoria/valor) abaixo
+                  do texto de venda, antes do fechamento "Ideal para quem..."
+                  e do CTA. Vem de limitesTexto(p.id), que lê direto de
+                  PLANO_LIMITES_USUARIO (mesma fonte usada no resto do app).
+                  Conceito é 100% de profissional (categoria/valor por
+                  serviço — cota de serviços/mês saiu daqui no HANDOFF
+                  2026-09-03) — não existe PLANO_LIMITES_USUARIO pra
                   empresa nem faz sentido pra esse modelo, então pula pra
                   isEmpresa (mostrar isso pra empresa cairia no fallback
                   genérico "ilimitado" de limitesTexto(), que é enganoso). */}
@@ -7702,8 +7714,9 @@ function NegociacaoChatScreen({ chat, meuEmail, onBack, showToast, plano, planoS
     // Lado profissional: aceite_formal_profissional_em só pode ser gravado
     // pelo backend (o trigger trg_lock_aceite_formal_profissional trava
     // escrita direta via chave anon) — é ali que mora a checagem real de
-    // plano ativo, valor máximo e cota mensal (PLANO_LIMITES_USUARIO). É essa
-    // confirmação que consome 1 do limite de serviços do ciclo.
+    // plano ativo e valor máximo (PLANO_LIMITES_USUARIO). Cota mensal de
+    // serviços removida (HANDOFF 2026-09-03) — essa confirmação não consome
+    // mais limite nenhum.
     const aceitePromise = meuAceite
       ? Promise.resolve({ ok: true })
       : fetch(`${API_BASE}/api/pedidos/confirmar-servico`, {
@@ -8803,7 +8816,7 @@ function PlanoUpgradeCTA({ plano, onUpgrade }) {
   if (ehPro) {
     titulo = "Essa oportunidade está acima do limite do Multi Pro.";
     ctaLabel = "CONHECER MULTI PREMIUM";
-    detalhe = "Com o Multi Premium você tem acesso a serviços de qualquer valor, categorias ilimitadas e serviços ilimitados.";
+    detalhe = "Com o Multi Premium você tem acesso a serviços de qualquer valor e categorias ilimitadas.";
   } else {
     titulo = "Oportunidade exclusiva para planos superiores";
     corpo = `Este serviço está acima do limite de R$${limite.valorMaxServico} do seu plano.`;
