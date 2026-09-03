@@ -11592,7 +11592,22 @@ export default function App() {
         setPlanoStatus(data?.status || null);
         setPlanoExpiraEm(data?.expira_em || null);
         setPlanoInicio(data?.inicio || null);
-        setIsPro(!!data?.plano && (data.status === "trial" || data.status === "ativa"));
+        // HANDOFF 2026-09-03: status:"trial" sozinho não prova nada — não
+        // existe nenhum job/webhook que vira esse status pra "expirada"
+        // quando expira_em passa (só rolou uma correção manual pontual em
+        // 2026-08-15 pra 12 contas, ver memória "trial sem enforcement");
+        // fora isso a coluna fica "trial" pra sempre, mesmo anos depois do
+        // prazo. Resultado real, achado pelo usuário: profissional
+        // cadastrado antes do modelo de Taxa de Acesso (20/08) que ganhou
+        // uma trial grátis de 7 dias na época e nunca pagou nada fica com
+        // isPro=true PRA SEMPRE (acesso completo grátis), sem nunca ver
+        // "Vire PRO" nem a Taxa de Acesso atual — não importa há quanto
+        // tempo o trial realmente expirou. Fix: só conta como trial válida
+        // se expira_em ainda não passou; do contrário trata como se nunca
+        // tivesse tido plano nenhum (mesmo efeito de "expirada", calculado
+        // aqui já que o banco não garante que a coluna reflita isso).
+        const trialValida = data?.status === "trial" && (!data?.expira_em || new Date(data.expira_em).getTime() > Date.now());
+        setIsPro(!!data?.plano && (trialValida || data?.status === "ativa"));
       })
       .catch(() => {});
   };
@@ -12992,7 +13007,26 @@ const renderContent = () => {
     // padrão dos casos Fábio/Junior/Adilson documentados na memória). Tratar
     // como taxa pendente (não moeda) é o comportamento correto pro modelo
     // atual — nunca deveria oferecer moeda pra quem nunca teve plano nenhum.
-    const semAssinaturaNenhuma = !plano;
+    //
+    // HANDOFF 2026-09-03: "plano != null" sozinho NÃO prova que a pessoa é
+    // grandfathered de verdade — achado pelo usuário: profissional
+    // cadastrado antes de 20/08 (quando o modelo antigo dava 7 dias de
+    // trial grátis automático no cadastro) tem uma linha autonomo/pro/
+    // premium com status:"trial" que nunca foi tocada de novo. Como não
+    // existe job que vira isso pra "expirada" quando expira_em passa (ver
+    // mesmo comentário em carregarPlano acima), esse "trial" fica válido
+    // pra sempre segundo essa condição — a pessoa nunca pagou um centavo e
+    // ainda assim é tratada como grandfathered, caindo no modelo antigo
+    // ("Vire Multi PRO R$59,90") em vez da Taxa de Acesso atual (R$9,90),
+    // não importa a data — o critério certo é ter tido pagamento de
+    // verdade, não só uma linha qualquer em "assinaturas". Uma trial
+    // vencida (expira_em no passado) do modelo antigo conta como "nunca
+    // pagou" pros mesmos fins que plano===null — status "ativa"/
+    // "inadimplente"/"cancelada" continuam grandfathered porque só
+    // acontecem depois de pelo menos 1 cobrança real ter passado.
+    const trialLegadaVencida = !!plano && plano !== "acesso" && planoStatus === "trial"
+      && !!planoExpiraEm && new Date(planoExpiraEm).getTime() <= Date.now();
+    const semAssinaturaNenhuma = !plano || trialLegadaVencida;
     const taxaAcessoPendente = semAssinaturaNenhuma || (plano === "acesso" && planoStatus && planoStatus !== "ativa" && planoStatus !== "trial");
     if (taxaAcessoPendente && !["upgrade", "profile", "home"].includes(screen)) {
       return (
@@ -13023,14 +13057,24 @@ const renderContent = () => {
     // semAssinaturaNenhuma acima): `plano !== "acesso"` sozinho também é
     // true pra null, então SemPlanoMoedaCard vazava "🪙 Comprar moedas" pra
     // profissional novo sem plano nenhum. Moeda só faz sentido pra quem tem
-    // um plano antigo de verdade (autonomo/pro/premium), mesmo que vencido.
-    permiteComprarMoedas={role === "professional" && !!plano && plano !== "acesso"}
+    // um plano antigo de verdade (autonomo/pro/premium), mesmo que vencido
+    // (status ativa/inadimplente/cancelada — implica pagamento real em
+    // algum momento). HANDOFF 2026-09-03: trocado `!!plano` por
+    // `!semAssinaturaNenhuma` — esse último também pega o caso de trial
+    // antiga do modelo pré-Taxa de Acesso vencida sem nunca ter convertido
+    // em pagamento (mesmo bug do banner "Vire PRO" vs "Taxa de Acesso" em
+    // ProfessionalHome, mesma variável, ver comentário completo acima).
+    permiteComprarMoedas={role === "professional" && !semAssinaturaNenhuma && plano !== "acesso"}
     // Renovação da Taxa de Acesso (Pix, 2026-08-27): quem já está no plano
     // "acesso" vindo do banner de renovação (ver ProfessionalHome) não deve
     // ver a lista normal de planos — mesmo comportamento do cadastro,
     // direto pro card único/PagamentoPlanoScreen. Mesmo tratamento pra
-    // plano===null, pelo motivo acima.
-    taxaAcessoObrigatoria={plano === "acesso" || !plano}
+    // plano===null, pelo motivo acima. HANDOFF 2026-09-03: `!plano` também
+    // virou `semAssinaturaNenhuma` (mesmo motivo do permiteComprarMoedas
+    // logo acima — trial antiga vencida sem pagamento real também precisa
+    // cair aqui, forçando a Taxa de Acesso em vez da lista de planos
+    // antiga).
+    taxaAcessoObrigatoria={plano === "acesso" || semAssinaturaNenhuma}
   />;
     if (screen === "wallet") return <WalletScreen onBack={() => setScreen("profile")} pedidos={meusGanhos} />;
     if (screen === "comprarmoedas") return <ComprarMoedasScreen userEmail={userEmail} userName={userName} onBack={() => setScreen("profile")} showToast={showToast} onSuccess={() => carregarSaldoMoedas(userEmail)} />;
