@@ -9322,6 +9322,17 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client",
       e.name = "Informe nome e sobrenome";
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
       e.email = "E-mail inválido (ex: nome@email.com)";
+    // Faltava — validate() checava tudo (nome/e-mail/telefone/cep/termos) menos
+    // senha, mesmo já existindo o slot de erro na UI (error={errors.password}
+    // logo abaixo). Sem isso, um campo de senha vazio passava batido pelo
+    // client e só era barrado no backend (server.js "name, email, password e
+    // role são obrigatórios"), com o texto cru do erro vazando pro usuário via
+    // alert(e.message) em handleSubmit — achado 2026-09-03, contas reais que já
+    // tinham logado com sucesso antes viam esse alerta numa tentativa seguinte
+    // com o campo senha em branco. Mesmo check que EmpresaRegisterScreen já
+    // tinha (linha ~9691), só nunca foi replicado aqui.
+    if (!password || password.length < 6)
+      e.password = "Mínimo 6 caracteres";
     if (phone.replace(/\D/g,"").length < 11)
       e.phone = "WhatsApp incompleto";
     if (cep.replace(/\D/g,"").length < 8)
