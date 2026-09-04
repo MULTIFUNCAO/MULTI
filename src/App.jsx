@@ -4996,6 +4996,46 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
     };
   }, [pix?.paymentId]);
 
+  // Polling do Pix ESTÁTICO/MANUAL (pixManualFallback) — achado 2026-09-04
+  // (casos Eduardo Bessa/Paula, ver multi_taxa_acesso_pix_manual_travado_
+  // pos_aprovacao na memória): esse caminho não tem paymentId da Asaas (só
+  // txid), então o polling acima nunca roda pra ele — a tela ficava presa
+  // pra sempre em "aguardando confirmação" mesmo depois do admin aprovar via
+  // /api/admin/ativar-manual, porque nada aqui nunca checava de novo. Sem
+  // webhook possível (não existe webhook do Nubank), a única forma é
+  // perguntar de tempos em tempos se alguém já aprovou manualmente — 15s
+  // (mais espaçado que os 5s do Pix Asaas de propósito: aqui a confirmação
+  // é sempre humana, conferindo extrato, nunca vai ser instantânea).
+  const verificandoManualRef = useRef(false);
+  useEffect(() => {
+    if (!pixManualFallback || !pix?.txid) return;
+    const checar = async () => {
+      if (verificandoManualRef.current) return;
+      verificandoManualRef.current = true;
+      try {
+        const r = await fetch(`${API_BASE}/api/assinatura/status?titularTipo=${encodeURIComponent(titularTipo)}&titularEmail=${encodeURIComponent(titularEmail)}&plano=${encodeURIComponent(planoId)}`);
+        const d = await r.json();
+        if (d.isActive) {
+          clearInterval(interval);
+          showToast?.(`🎉 ${planoLabel} ativado! Próxima cobrança em ${proximaCobranca.toLocaleDateString("pt-BR")}.`, G);
+          onSuccess?.();
+        }
+      } catch (e) {
+      } finally {
+        verificandoManualRef.current = false;
+      }
+    };
+    const interval = setInterval(checar, 15000);
+    const aoVoltarVisivel = () => { if (document.visibilityState === "visible") checar(); };
+    document.addEventListener("visibilitychange", aoVoltarVisivel);
+    window.addEventListener("focus", aoVoltarVisivel);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", aoVoltarVisivel);
+      window.removeEventListener("focus", aoVoltarVisivel);
+    };
+  }, [pixManualFallback, pix?.txid, titularTipo, titularEmail, planoId]);
+
   const copiarPix = () => {
     if (!pix?.pixCode) return;
     navigator.clipboard?.writeText(pix.pixCode);
@@ -5194,7 +5234,7 @@ function PagamentoPlanoScreen({ titularTipo, titularEmail, titularNome, planoId,
               {pix.manual ? (
                 <>
                   <div style={{ background:"#FFF3CD", border:"1px solid #FFE69C", borderRadius:10, padding:"12px 14px", fontSize:12, color:"#7A5C00", lineHeight:1.6 }}>
-                    ⚠️ <strong>Confirmação manual</strong> — depois de pagar, envie o comprovante pelo WhatsApp abaixo junto com este código: <strong style={{ fontFamily:"monospace" }}>{pix.txid}</strong>. A liberação não é automática nesta forma de pagamento.
+                    ⚠️ <strong>Confirmação manual</strong> — depois de pagar, envie o comprovante pelo WhatsApp abaixo junto com este código: <strong style={{ fontFamily:"monospace" }}>{pix.txid}</strong>. A conferência é feita por uma pessoa (não é instantânea) — assim que for aprovada, esta tela avança sozinha, sem precisar recarregar.
                   </div>
                   <a href={`https://wa.me/${WHATSAPP_COMPROVANTE}?text=${encodeURIComponent(`Oi! Paguei a Taxa de Acesso via Pix. Código: ${pix.txid} — e-mail: ${titularEmail}`)}`}
                     target="_blank" rel="noreferrer"
