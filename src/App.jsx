@@ -2582,6 +2582,7 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName, 
   const greeting     = userName ? `Olá, ${userName}! 👋` : "Olá! Seja bem-vindo 👋";
   const subgreeting  = userName ? "O que vamos resolver hoje?" : "Vamos resolver algo hoje?";
   const [showAllCats, setShowAllCats] = useState(false);
+  const taxaAcessoValor = useValorEntradaTaxaAcesso();
 
   // Banner "Vire Profissional" — só pra quem ainda não completou cadastro
   // profissional nenhuma vez (usuarios.role já vira "professional" desde a
@@ -2654,7 +2655,7 @@ function ClientHome({ onPost, onViewService, onSwitchPro, myServices, userName, 
             <span style={{ fontSize:32, flexShrink:0 }}>🔧</span>
             <div style={{ flex:1, minWidth:0 }}>
               <p style={{ fontSize:14.5, fontWeight:900, color:"white", margin:"0 0 3px" }}>Quer também prestar serviços?</p>
-              <p style={{ fontSize:11.5, color:"rgba(255,255,255,.85)", margin:"0 0 10px", lineHeight:1.4 }}>Receba oportunidades perto de você — taxa de acesso R$ 27/mês.</p>
+              <p style={{ fontSize:11.5, color:"rgba(255,255,255,.85)", margin:"0 0 10px", lineHeight:1.4 }}>Receba oportunidades perto de você — taxa de acesso R$ {formatarValorEntrada(taxaAcessoValor) ?? "..."}/mês.</p>
               <button onClick={onSwitchPro} style={{ padding:"8px 16px", borderRadius:99, border:"none", background:"white", color:O, fontWeight:900, fontSize:12.5, cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
                 Vire Profissional <ChevronRight size={13} />
               </button>
@@ -4303,12 +4304,21 @@ function limitesTexto(planoId) {
 // plano"/upgrade, só existe no card único e obrigatório que
 // EscolherPlanoScreen mostra quando taxaAcessoObrigatoria=true (ver abaixo).
 // id "acesso" tem que bater com PLANOS_ASSINATURA.acesso no backend.
-const PLANO_ACESSO_INFO = { id: "acesso", label: "Multi — Taxa de Acesso", price: "27,00" }; // atualizado 2026-09-04 (era 9,90); valor real cobrado vem do backend (config_monetizacao), isto é só a exibição
+// "price" aqui é só o fallback estático (offline/antes do fetch resolver) —
+// o valor real exibido vem de useValorEntradaTaxaAcesso()/config_monetizacao,
+// ver EscolherPlanoScreen abaixo (achado 2026-09-05: esse número hardcoded
+// não acompanhava mudança no banco sem deploy novo).
+const PLANO_ACESSO_INFO = { id: "acesso", label: "Multi — Taxa de Acesso", price: "27,00" };
 function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, onDone, showToast, onSkip, onGoToComprarMoedas, permiteComprarMoedas = true, taxaAcessoObrigatoria = false }) {
   // Reativado 2026-08-19 (planos pagos de empresa voltaram — ver PLANOS_EMPRESA)
   // — isEmpresa volta a vir de titularTipo de verdade, não mais hardcoded.
   const isEmpresa = titularTipo === "empresa";
   const planos = isEmpresa ? PLANOS_EMPRESA : PLANOS_USUARIO;
+  const taxaAcessoValor = useValorEntradaTaxaAcesso();
+  // Objeto "acesso" com o preço já resolvido pro valor vigente de verdade,
+  // preservando o fallback estático (PLANO_ACESSO_INFO.price) só enquanto o
+  // fetch ainda não voltou.
+  const acessoInfo = { ...PLANO_ACESSO_INFO, price: formatarValorEntrada(taxaAcessoValor) ?? PLANO_ACESSO_INFO.price };
   // Antes disso, escolher um plano pago criava um "trial" de 7 dias direto no
   // Supabase (assinaturas.status="trial"), sem cobrar nada nem pedir cartão —
   // dava pra usar o app inteiro de graça. Agora escolher o plano só abre a
@@ -4372,7 +4382,7 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
     // acima) — sem esse caso especial, info ficaria undefined e a tela de
     // pagamento mostraria "R$ 0,00" (o valor cobrado de verdade vem do
     // backend de qualquer forma, mas a UI ficaria errada).
-    const info = planoEscolhido === "acesso" ? PLANO_ACESSO_INFO : planos.find(p => p.id === planoEscolhido);
+    const info = planoEscolhido === "acesso" ? acessoInfo : planos.find(p => p.id === planoEscolhido);
     // Cupom só viaja pra tela de pagamento se o plano escolhido for mesmo o
     // Autônomo e a última validação tiver dado "valido" — escolher outro
     // plano com um cupom digitado (mas não aplicado) não deve ativar nada.
@@ -4412,7 +4422,7 @@ function EscolherPlanoScreen({ titularTipo, titularEmail, titularNome, onBack, o
               <div style={{ width:38, height:38, borderRadius:12, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:O+"18" }}><Briefcase size={18} color={O} /></div>
               <p style={{ fontWeight:800, fontSize:16.5, color:"#14152A", margin:0, letterSpacing:-.1 }}>{PLANO_ACESSO_INFO.label}</p>
             </div>
-            <p style={{ fontWeight:900, fontSize:30, color:"#1a1a2e", margin:"0 0 4px" }}>R$ {PLANO_ACESSO_INFO.price}<span style={{ fontSize:14, fontWeight:700, color:"#9CA3AF" }}>/mês</span></p>
+            <p style={{ fontWeight:900, fontSize:30, color:"#1a1a2e", margin:"0 0 4px" }}>R$ {acessoInfo.price}<span style={{ fontSize:14, fontWeight:700, color:"#9CA3AF" }}>/mês</span></p>
             <p style={{ fontSize:13, color:"#6C6F94", lineHeight:1.58, margin:"0 0 18px" }}>
               Mantém seu perfil visível no mural pra clientes e empresas da sua região. Essa é a única cobrança recorrente da plataforma — você só paga comissão adicional quando fechar um serviço.
             </p>
@@ -6184,6 +6194,50 @@ function AdminAccessTrigger({ onOpenAdmin }) {
 
 /* ───────────────────────── ENDEREÇOS DO CLIENTE ────────────────────────────── */
 const API_BASE = "https://multi-backend-lfwp.onrender.com";
+
+// Valor vigente da Taxa de Acesso (config_monetizacao.valor_entrada no
+// backend) — achado 2026-09-05: o texto "R$ 27/mês" estava hardcoded em ~8
+// lugares diferentes do front (card da Home, tela de cadastro, seleção de
+// papel, mural, ProfessionalHome...), então mudar o valor no banco (via
+// MULTI-CRM → Configurações → Monetização) não refletia no site sem um
+// deploy novo. GET /api/config/precos é público (anon, sem token) porque
+// "config_monetizacao" tem RLS deny-all pro anon key deste app — só o
+// backend (service_role) lê a tabela direto. Cache em módulo (uma leitura
+// só, reaproveitada por todo componente que chamar o hook depois da
+// primeira) + localStorage (pinta o valor certo na hora em visitas
+// seguintes, sem esperar o fetch, e revalida em segundo plano).
+let _taxaAcessoCache = null;
+let _taxaAcessoPromise = null;
+function fetchTaxaAcesso() {
+  if (_taxaAcessoCache != null) return Promise.resolve(_taxaAcessoCache);
+  if (_taxaAcessoPromise) return _taxaAcessoPromise;
+  _taxaAcessoPromise = fetch(`${API_BASE}/api/config/precos`)
+    .then(r => r.json())
+    .then(d => { _taxaAcessoCache = typeof d?.taxaAcesso === "number" ? d.taxaAcesso : null; return _taxaAcessoCache; })
+    .catch(() => null);
+  return _taxaAcessoPromise;
+}
+// Retorna o número (ex: 19.9) ou null enquanto ainda não carregou/sem cache.
+// Formatar com formatarValorEntrada() antes de exibir.
+function useValorEntradaTaxaAcesso() {
+  const [valor, setValor] = useState(() => {
+    if (_taxaAcessoCache != null) return _taxaAcessoCache;
+    try { const c = localStorage.getItem("multiTaxaAcessoCache"); return c ? Number(c) : null; } catch { return null; }
+  });
+  useEffect(() => {
+    let ativo = true;
+    fetchTaxaAcesso().then(v => {
+      if (!ativo || v == null) return;
+      setValor(v);
+      try { localStorage.setItem("multiTaxaAcessoCache", String(v)); } catch {}
+    });
+    return () => { ativo = false; };
+  }, []);
+  return valor;
+}
+function formatarValorEntrada(valor) {
+  return typeof valor === "number" ? valor.toFixed(2).replace(".", ",") : null;
+}
 
 function safeGetUser() {
   try { return JSON.parse(localStorage.getItem("multiUser") || "{}"); } catch { return {}; }
@@ -8300,7 +8354,7 @@ const ROLE_OPTIONS = [
     title: "Quero trabalhar",
     hook: "Encontre quem precisa do que você faz.",
     desc: "Receba oportunidades de serviços e conquiste novos clientes.",
-    tag: "Taxa de acesso R$ 27/mês", tagBg:`${O}22`, tagBorder:"transparent", tagColor:O,
+    tag: null, tagBg:`${O}22`, tagBorder:"transparent", tagColor:O, // tag preenchida em runtime (valor vem de config_monetizacao, ver RoleSelectScreen)
   },
   // Card "Quero crescer minha empresa" restaurado 2026-08-18 (removido em
   // a7de4c4, 2026-08-08 — "não vamos trabalhar com cadastro de empresa
@@ -8317,6 +8371,7 @@ const ROLE_OPTIONS = [
 ];
 
 function RoleSelectScreen({ onSelect, onLogin, onBack }) {
+  const taxaAcessoValor = useValorEntradaTaxaAcesso();
   return (
     <div style={{ minHeight:"100vh", background:"#F8F9FA" }}>
       <div style={{
@@ -8364,6 +8419,7 @@ function RoleSelectScreen({ onSelect, onLogin, onBack }) {
         <div style={{ display:"flex", flexDirection:"column", gap:13 }}>
           {ROLE_OPTIONS.map(opt => {
             const Icon = opt.icon;
+            const tag = opt.id === "profissional" ? `Taxa de acesso R$ ${formatarValorEntrada(taxaAcessoValor) ?? "..."}/mês` : opt.tag;
             return (
               <button key={opt.id} onClick={() => onSelect(opt.id)} style={{
                 position:"relative", display:"flex", alignItems:"flex-start", gap:14,
@@ -8378,7 +8434,7 @@ function RoleSelectScreen({ onSelect, onLogin, onBack }) {
                   <p style={{ fontSize:16, fontWeight:900, color:"#1a1a2e", margin:"0 0 3px", letterSpacing:-.1 }}>{opt.title}</p>
                   <p style={{ fontSize:13, fontWeight:800, color:opt.accent, margin:"0 0 6px" }}>{opt.hook}</p>
                   <p style={{ fontSize:12.5, color:"#9CA3AF", lineHeight:1.48, margin:"0 0 11px" }}>{opt.desc}</p>
-                  <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:10, fontWeight:900, letterSpacing:.5, textTransform:"uppercase", padding:"4px 11px", borderRadius:99, background:opt.tagBg, color:opt.tagColor, border:`1px solid ${opt.tagBorder}` }}>{opt.tag}</span>
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:10, fontWeight:900, letterSpacing:.5, textTransform:"uppercase", padding:"4px 11px", borderRadius:99, background:opt.tagBg, color:opt.tagColor, border:`1px solid ${opt.tagBorder}` }}>{tag}</span>
                 </div>
                 <span style={{ flexShrink:0, marginTop:14, width:26, height:26, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", background:`${opt.accent}1F`, color:opt.accent }}>
                   <ChevronRight size={15} />
@@ -9298,6 +9354,8 @@ function VirarProfissionalScreen({ userEmail, userName, showToast, onBack, onDon
 
 function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client", initialCategoria = [] }) {
   const [step,    setStep]    = useState("form");
+  const taxaAcessoValor = useValorEntradaTaxaAcesso();
+  const taxaAcessoTexto = formatarValorEntrada(taxaAcessoValor) ?? "...";
   const [name,    setName]    = useState("");
   const [email,   setEmail]   = useState("");
   const [phone,   setPhone]   = useState("");
@@ -9311,16 +9369,29 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client",
   // reverse-geocode gratuito, sem chave — como primeira opção quando
   // disponível, já que é mais precisa que o CEP digitado).
   const [cepInfo,      setCepInfo]      = useState(null); // { bairro, cidade, uf }
+  // cepLoading (achado 2026-09-05, CEP 02324050/São Paulo travando o
+  // cadastro): faltava aqui — as outras duas telas com busca de CEP no app
+  // (PostServiceScreen/RadarSearchScreen) já tinham esse estado. Sem ele, um
+  // clique em "Criar conta" logo depois de digitar o 8º dígito rodava
+  // validate() ANTES do fetch da ViaCEP resolver — cidadeResolvida ainda
+  // null, então "Não encontramos esse CEP" aparecia pra um CEP válido de
+  // verdade (a resposta chegava um instante depois, mas nada limpava esse
+  // erro já setado). Botão desabilitado enquanto isLoading resolve fecha a
+  // corrida; o useEffect logo abaixo cobre o caso restante (erro já visível
+  // na tela quando a resposta chega).
+  const [cepLoading,   setCepLoading]   = useState(false);
   const [geoCidade,    setGeoCidade]    = useState(null); // string, só se location permitida
   const [geoStatus,    setGeoStatus]    = useState("idle"); // idle | asking | granted | denied | error
   useEffect(() => {
     const digits = cep.replace(/\D/g, "");
-    if (digits.length !== 8) { setCepInfo(null); return; }
+    if (digits.length !== 8) { setCepInfo(null); setCepLoading(false); return; }
     let cancelado = false;
+    setCepLoading(true);
     fetch(`https://viacep.com.br/ws/${digits}/json/`)
       .then(r => r.json())
       .then(d => { if (!cancelado && !d.erro) setCepInfo({ bairro: d.bairro, cidade: d.localidade, uf: d.uf }); })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => { if (!cancelado) setCepLoading(false); });
     return () => { cancelado = true; };
   }, [cep]);
   const pedirLocalizacao = () => {
@@ -9355,6 +9426,18 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client",
   const role = tipoUso === "cliente" ? "client" : "professional";
   const [errors,  setErrors]  = useState({});
   const [loading, setLoading] = useState(false);
+
+  // Segunda metade do fix de CEP (achado 2026-09-05, ver cepLoading acima):
+  // se o CEP já tinha sido rejeitado (validate() rodou antes da ViaCEP
+  // responder) e a resposta chega DEPOIS confirmando um CEP válido, limpa o
+  // erro sozinho — sem isso "Não encontramos esse CEP" ficava preso na tela
+  // mesmo com o hint de cidade/UF certo aparecendo logo abaixo, contradizendo
+  // a própria UI. Update funcional (não lê "errors" de fora do setter) — só
+  // mexe no objeto se realmente houver um erro de cep pra limpar.
+  useEffect(() => {
+    if (!cidadeResolvida) return;
+    setErrors(er => { if (!er.cep) return er; const { cep, ...resto } = er; return resto; });
+  }, [cidadeResolvida]);
 
   const validate = () => {
     const e = {};
@@ -9453,10 +9536,14 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client",
           // de conta existente (VirarProfissionalScreen) não passa por aqui,
           // de propósito — não é uma conversão nova pro Ads otimizar em cima.
           // "Subscribe" é o evento padrão do Meta pra início de assinatura
-          // recorrente (o modelo real da Taxa de Acesso, R$27/mês desde
-          // 2026-09-04 — era R$9,90).
-          trackGA("cadastro_profissional_pagante", { value: 27, currency: "BRL" });
-          trackPixel("Subscribe", { value: 27, currency: "BRL", predicted_ltv: 27 });
+          // recorrente. Valor lido de config_monetizacao (useValorEntradaTaxaAcesso)
+          // em vez de hardcoded — por essa altura do fluxo (já passou por
+          // EscolherPlanoScreen/pagamento) o fetch já teve tempo de sobra
+          // pra resolver; 27 só entra como último recurso se por algum
+          // motivo ainda não resolveu.
+          const valorConversao = taxaAcessoValor ?? 27;
+          trackGA("cadastro_profissional_pagante", { value: valorConversao, currency: "BRL" });
+          trackPixel("Subscribe", { value: valorConversao, currency: "BRL", predicted_ltv: valorConversao });
           onComplete(
           name, email.trim(), true, cidadeResolvida || "sua região",
           // "ambos": sessão inicial abre no modo Cliente (mais alinhado ao que
@@ -9496,7 +9583,7 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client",
         {isProfessional && (
           <div style={{ background:"linear-gradient(135deg,#7C3AED,#4F46E5)", borderRadius:16, padding:"14px 20px", marginBottom:20, width:"100%" }}>
             <p style={{ fontSize:14, fontWeight:900, color:"white", margin:"0 0 4px" }}>🔧 Falta só pagar a taxa de acesso!</p>
-            <p style={{ fontSize:12, color:"rgba(255,255,255,.75)", margin:0 }}>R$ 27/mês · Contatos desbloqueados · Chat ilimitado</p>
+            <p style={{ fontSize:12, color:"rgba(255,255,255,.75)", margin:0 }}>R$ {taxaAcessoTexto}/mês · Contatos desbloqueados · Chat ilimitado</p>
           </div>
         )}
 
@@ -9576,8 +9663,8 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client",
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {[
               { val:"cliente",      icon:"🏠", label:"Só cliente",        sub:"Publico pedidos e contrato profissionais (grátis)", accent:B },
-              { val:"profissional", icon:"🔧", label:"Só profissional",   sub:"Recebo pedidos e ganho oportunidades (taxa de acesso R$27/mês)", accent:O },
-              { val:"ambos",        icon:"🔁", label:"Os dois!",          sub:"Contrato quando precisar e também presto serviço (taxa de acesso R$27/mês)", accent:"#7C3AED" },
+              { val:"profissional", icon:"🔧", label:"Só profissional",   sub:`Recebo pedidos e ganho oportunidades (taxa de acesso R$${taxaAcessoTexto}/mês)`, accent:O },
+              { val:"ambos",        icon:"🔁", label:"Os dois!",          sub:`Contrato quando precisar e também presto serviço (taxa de acesso R$${taxaAcessoTexto}/mês)`, accent:"#7C3AED" },
               { val:"empresa",      icon:"🏢", label:"Tenho uma empresa", sub:"Cadastro próprio — CNPJ, presta serviço e/ou contrata profissionais", accent:"#1a1a2e" },
             ].map((opt) => {
               const selecionado = tipoUso === opt.val;
@@ -9609,7 +9696,7 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client",
         <div style={{ display:"flex", alignItems:"center", gap:8, background: isProfessional ? "#F5F3FF" : "#F0FDF4", border:`1px solid ${isProfessional ? "#DDD6FE" : "#BBF7D0"}`, borderRadius:14, padding:"10px 16px", marginBottom:22 }}>
           <span style={{ fontSize:18 }}>{isProfessional ? "💳" : "✨"}</span>
           <p style={{ fontSize:13, fontWeight:800, color: isProfessional ? "#5B21B6" : "#166534", margin:0 }}>
-            {isProfessional ? "Taxa de acesso R$ 27/mês — pagamento no próximo passo" : "Cadastro 100% gratuito para clientes"}
+            {isProfessional ? `Taxa de acesso R$ ${taxaAcessoTexto}/mês — pagamento no próximo passo` : "Cadastro 100% gratuito para clientes"}
           </p>
         </div>
 
@@ -9662,18 +9749,23 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client",
         {/* TERMS */}
         <TermsCheckbox errors={errors} setErrors={setErrors} />
 
-        {/* SUBMIT */}
-        <button type="button" onClick={handleSubmit} disabled={loading} style={{
+        {/* SUBMIT — desabilitado também durante cepLoading (achado
+            2026-09-05): sem isso, clicar logo após digitar o 8º dígito do
+            CEP rodava validate() antes da ViaCEP responder e rejeitava um
+            CEP válido de verdade (ver cepLoading/useEffect acima). */}
+        <button type="button" onClick={handleSubmit} disabled={loading || cepLoading} style={{
           width:"100%", padding:"16px 0", borderRadius:18, border:"none",
-          background: loading ? "#93C5FD" : isProfessional ? `linear-gradient(135deg,#7C3AED,#4F46E5)` : `linear-gradient(135deg,${B},#0055d4)`,
+          background: (loading || cepLoading) ? "#93C5FD" : isProfessional ? `linear-gradient(135deg,#7C3AED,#4F46E5)` : `linear-gradient(135deg,${B},#0055d4)`,
           color:"white", fontWeight:900, fontSize:15,
-          cursor: loading ? "default" : "pointer",
+          cursor: (loading || cepLoading) ? "default" : "pointer",
           display:"flex", alignItems:"center", justifyContent:"center", gap:10,
           boxShadow: loading ? "none" : `0 6px 24px ${isProfessional ? "#7C3AED" : B}44`,
           transition:"background .2s",
         }}>
           {loading ? (
             <><span style={{ width:18, height:18, border:"2.5px solid white", borderTopColor:"transparent", borderRadius:"50%", display:"inline-block", animation:"spin .7s linear infinite" }} /> Criando conta…</>
+          ) : cepLoading ? (
+            <><span style={{ width:18, height:18, border:"2.5px solid white", borderTopColor:"transparent", borderRadius:"50%", display:"inline-block", animation:"spin .7s linear infinite" }} /> Verificando CEP…</>
           ) : (
             <><Check size={17} /> {isProfessional ? "Criar conta" : "Finalizar Cadastro"}</>
           )}
@@ -10050,6 +10142,7 @@ function CadastroEmpresaScreen({ onBack, onComplete, showToast }) {
 
 /* ───────────────────────── GUEST MURAL (professional preview) ───────────────── */
 function GuestMural({ onSignup, allDocsVerified }) {
+  const taxaAcessoValor = useValorEntradaTaxaAcesso();
   // filter guarda "all" ou o nome de um GRUPO (ex.: "Elétrica e Automação"),
   // não mais o id de uma profissão específica — o carrossel agora navega
   // pelos 23 grupos completos (CAT_GRUPOS), não por um punhado de profissões
@@ -10312,7 +10405,7 @@ function GuestMural({ onSignup, allDocsVerified }) {
         <Crown size={28} color="#FDE68A" style={{ display:"block", margin:"0 auto 10px" }} />
         <p style={{ fontSize:15, fontWeight:900, color:"white", margin:"0 0 5px" }}>Seja um Profissional Multi</p>
         <p style={{ fontSize:12, color:"rgba(255,255,255,.7)", margin:"0 0 16px", lineHeight:1.6 }}>
-          Taxa de acesso R$ 27/mês · Acesso imediato ao mural completo
+          Taxa de acesso R$ {formatarValorEntrada(taxaAcessoValor) ?? "..."}/mês · Acesso imediato ao mural completo
         </p>
         <button onClick={() => onSignup(filterCat)} style={{ padding:"13px 32px", borderRadius:14, border:"none", background:"white", color:B, fontWeight:900, fontSize:14, cursor:"pointer" }}>
           Criar conta e acessar →
@@ -10415,6 +10508,11 @@ function PraticaCandidaturaModal({ service, onClose }) {
 
 /* ───────────────────────── PROFESSIONAL HOME ────────────────────────────────── */
 function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro, plano, planoInicio, planoStatus, planoExpiraEm, onViewService, onUpgrade, userLocation = "sua região", allDocsVerified, docStatus, onGoToDocs, onGoToOrders, onGoToWallet, onAcceptOrder, meusGanhos, saldoMoedas, onGoToComprarMoedas, onSaldoMoedasChange, taxaAcessoPendente = false }) {
+  // taxaAcessoPendente é sempre alguém que AINDA NÃO iniciou o ciclo (ver
+  // "acesso"/taxa_acesso_entrada_em) — o valor certo a mostrar aqui é
+  // sempre o vigente agora em config_monetizacao, nunca um valor travado
+  // (grandfathering só existe pra quem já é assinante ativo).
+  const taxaAcessoValor = useValorEntradaTaxaAcesso();
   // Renovação da Taxa de Acesso via Pix (2026-08-27) — cartão renova
   // sozinho, mas Pix não, e o cron (server.js, /api/cron/lembretes) marca
   // "inadimplente" no vencimento sem aviso nenhum na tela até aqui. Banner
@@ -10907,7 +11005,7 @@ function ProfessionalHome({ userName, userEmail, showToast, onGoToProfile, isPro
           {taxaAcessoPendente ? <Briefcase size={20} color="#FDE68A" style={{ flexShrink:0 }} /> : <Crown size={20} color="#FDE68A" style={{ flexShrink:0 }} />}
           <div style={{ flex:1 }}>
             <p style={{ fontSize:13, fontWeight:900, color:"white", margin:0 }}>
-              {taxaAcessoPendente ? "🔓 Ative sua Taxa de Acesso — R$ 27/mês" : "👑 Vire Multi PRO — R$ 59,90/mês"}
+              {taxaAcessoPendente ? `🔓 Ative sua Taxa de Acesso — R$ ${formatarValorEntrada(taxaAcessoValor) ?? "..."}/mês` : "👑 Vire Multi PRO — R$ 59,90/mês"}
             </p>
             <p style={{ fontSize:11, color:"rgba(255,255,255,.7)", margin:0 }}>
               {taxaAcessoPendente ? "Confirme o pagamento pra poder se candidatar às oportunidades." : "Libere contatos, chat e acesso total."}
