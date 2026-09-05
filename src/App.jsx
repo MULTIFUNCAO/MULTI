@@ -9380,20 +9380,53 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client",
   // corrida; o useEffect logo abaixo cobre o caso restante (erro já visível
   // na tela quando a resposta chega).
   const [cepLoading,   setCepLoading]   = useState(false);
+  // cepFalhaConsulta (achado 2026-09-06, mesmo relato de CEP travando
+  // voltando "de outra forma" — investigado a fundo: normalização do traço
+  // está correta, testado à exaustão contra o bundle real de produção
+  // digitando com/sem traço, colando e simulando autofill, sempre
+  // funcionou). Causa real encontrada: ViaCEP é pública sem SLA — medido na
+  // prática, a latência variou de <1s a ~4s em 5 chamadas seguidas, sem
+  // padrão. Sem timeout nem retry, uma resposta lenta ou uma falha de rede
+  // pontual ficava indistinguível de "CEP não existe" pro usuário — mesma
+  // mensagem pros dois casos, e sem tentar de novo sozinho.
+  const [cepFalhaConsulta, setCepFalhaConsulta] = useState(false);
+  const [cepRetryTick, setCepRetryTick] = useState(0); // bump manual — reexecuta a busca sem precisar reeditar o CEP
   const [geoCidade,    setGeoCidade]    = useState(null); // string, só se location permitida
   const [geoStatus,    setGeoStatus]    = useState("idle"); // idle | asking | granted | denied | error
   useEffect(() => {
     const digits = cep.replace(/\D/g, "");
-    if (digits.length !== 8) { setCepInfo(null); setCepLoading(false); return; }
+    if (digits.length !== 8) { setCepInfo(null); setCepLoading(false); setCepFalhaConsulta(false); return; }
     let cancelado = false;
     setCepLoading(true);
-    fetch(`https://viacep.com.br/ws/${digits}/json/`)
-      .then(r => r.json())
-      .then(d => { if (!cancelado && !d.erro) setCepInfo({ bairro: d.bairro, cidade: d.localidade, uf: d.uf }); })
-      .catch(() => {})
-      .finally(() => { if (!cancelado) setCepLoading(false); });
+    setCepFalhaConsulta(false);
+    // Timeout de 6s por tentativa (AbortController) + 1 retry automático
+    // antes de desistir — evita travar pra sempre numa conexão ruim e dá
+    // uma segunda chance pra uma falha pontual da ViaCEP sem exigir que o
+    // usuário reedite o CEP.
+    async function buscarComRetry(tentativa) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      try {
+        const r = await fetch(`https://viacep.com.br/ws/${digits}/json/`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        const d = await r.json();
+        if (cancelado) return;
+        if (d.erro) { setCepInfo(null); return; } // resposta válida da ViaCEP dizendo que o CEP não existe — não é falha de consulta
+        setCepInfo({ bairro: d.bairro, cidade: d.localidade, uf: d.uf });
+      } catch {
+        clearTimeout(timeoutId);
+        if (cancelado) return;
+        if (tentativa < 2) {
+          await new Promise(res => setTimeout(res, 800));
+          if (!cancelado) return buscarComRetry(tentativa + 1);
+        } else {
+          setCepFalhaConsulta(true); // esgotou as tentativas — provável instabilidade de rede/ViaCEP, não o CEP em si
+        }
+      }
+    }
+    buscarComRetry(1).finally(() => { if (!cancelado) setCepLoading(false); });
     return () => { cancelado = true; };
-  }, [cep]);
+  }, [cep, cepRetryTick]);
   const pedirLocalizacao = () => {
     if (!navigator.geolocation) { setGeoStatus("error"); return; }
     setGeoStatus("asking");
@@ -9460,6 +9493,12 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client",
       e.phone = "WhatsApp incompleto";
     if (cep.replace(/\D/g,"").length < 8)
       e.cep = "CEP inválido";
+    // cepFalhaConsulta distingue "a ViaCEP travou/deu timeout" de "CEP não
+    // existe" (achado 2026-09-06, ver cepFalhaConsulta acima) — mensagens
+    // diferentes porque o problema E a ação do usuário são diferentes; a
+    // segunda tem um jeito de tentar de novo sem reeditar o CEP.
+    else if (cepFalhaConsulta)
+      e.cep = "Não conseguimos verificar esse CEP agora — toque em \"tentar de novo\" abaixo";
     else if (!cidadeResolvida)
       e.cep = "Não encontramos esse CEP — confira e tente de novo";
     const wrapper = document.getElementById("terms-checkbox-wrapper");
@@ -9737,6 +9776,15 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client",
             onChange={e => { setCep(maskCep(e.target.value)); if (errors.cep) setErrors(p => ({ ...p, cep:undefined })); }}
             style={{ ...REG_INPUT, borderColor: errors.cep ? "#E53935" : cepFound ? G : undefined }} />
         </FormField>
+        {/* "tentar de novo" — só aparece quando a ViaCEP falhou de verdade
+            (timeout/rede, ver cepFalhaConsulta), não quando o CEP é
+            genuinamente inválido. Reexecuta a busca sem o usuário precisar
+            apagar/redigitar o CEP inteiro. */}
+        {cepFalhaConsulta && !cepLoading && (
+          <button type="button" onClick={() => setCepRetryTick(t => t + 1)} style={{ background:"none", border:"none", color:B, fontSize:12, fontWeight:800, cursor:"pointer", padding:"4px 0 0", textDecoration:"underline" }}>
+            🔄 Tentar de novo
+          </button>
+        )}
 
         {/* LOCALIZAÇÃO — opcional, refina/confirma a cidade além do CEP digitado */}
         {geoStatus !== "granted" && (
