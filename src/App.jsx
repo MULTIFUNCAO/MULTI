@@ -9472,6 +9472,19 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client",
     setErrors(er => { if (!er.cep) return er; const { cep, ...resto } = er; return resto; });
   }, [cidadeResolvida]);
 
+  // Normalizado uma vez, usado em TODA chamada de backend/Supabase daqui pra
+  // baixo (achado 2026-09-04, investigando "assinatura ativa mas perfil 100%
+  // vazio"): handleLoginComplete faz email.trim().toLowerCase() antes de
+  // qualquer upsert em "usuarios" (fix do caso Anderson/karinegatinhadomc,
+  // 2026-09-01), mas este componente ainda passava email.trim() cru (sem
+  // lowercase) pro upsert antecipado novo (ver handleSubmit) e pros props de
+  // EscolherPlanoScreen/CompletarPerfilScreen/onComplete. Um e-mail digitado
+  // com alguma maiúscula criaria DUAS linhas diferentes em "usuarios" (uma do
+  // upsert antecipado, outra do upsert final de finishLogin) em vez de uma só
+  // sendo completada aos poucos — exatamente o tipo de bug silencioso que
+  // este fix pretende fechar, não reabrir.
+  const emailNorm = email.trim().toLowerCase();
+
   const validate = () => {
     const e = {};
     if (!name.trim() || name.trim().split(/\s+/).filter(Boolean).length < 2)
@@ -9515,7 +9528,7 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client",
       const API = "https://multi-backend-lfwp.onrender.com";
       const r = await fetch(`${API}/api/auth/cadastro`, {
         method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ name, email: email.trim(), password, role }),
+        body: JSON.stringify({ name, email: emailNorm, password, role }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Erro ao criar conta");
@@ -9527,6 +9540,43 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client",
           const prev = JSON.parse(localStorage.getItem("multiSession") || "{}") || {};
           localStorage.setItem("multiSession", JSON.stringify({ ...prev, token: d.token, refreshToken: d.refresh_token }));
         } catch {}
+      }
+      // CRÍTICO (achado 2026-09-04, investigando "assinatura ativa mas perfil
+      // 100% vazio" — casos marcosajosue@hotmail.com, fernandesclaudinei162@
+      // gmail.com, edson72querubim@gmail.com, ver multi_taxa_acesso_perfil_
+      // vazio_pos_pagamento na memória): antes disso, name/whatsapp só eram
+      // gravados em "usuarios" no ÚLTIMO passo do wizard inteiro (cadastro →
+      // pagar Taxa de Acesso → CompletarPerfilScreen → finishLogin), três
+      // telas depois do pagamento confirmado. Qualquer interrupção nesse meio
+      // (fechar o app, cair a conexão, Android matando o WebView em segundo
+      // plano — comum bem no meio de um Pix, que tira a pessoa pro app do
+      // banco) deixava a assinatura ativa (grava direto no backend,
+      // independente disso) mas a linha em "usuarios" inteira vazia, sem
+      // nenhuma tela que detectasse isso e desse um caminho de volta. Grava
+      // nome/whatsapp/cidade JÁ AQUI, antes de qualquer tela de pagamento —
+      // role fica "client" por enquanto (placeholder: a constraint
+      // categoria_servico_obrigatoria_para_professional do banco bloqueia
+      // role="professional" sem categoria, que só existe depois de
+      // CompletarPerfilScreen) e é promovido pra "professional"/dbRole no fim
+      // do wizard por finishLogin, exatamente como antes — mas agora, mesmo
+      // que a pessoa nunca chegue lá, nome e whatsapp já ficam salvos de
+      // verdade. setSession() primeiro é obrigatório: sem ele o client
+      // Supabase segue anônimo e o upsert falha calado pela RLS (mesmo bug já
+      // documentado no cadastro de empresa, 2026-08-26, linha ~9785 abaixo).
+      // Best-effort de propósito (só loga, não bloqueia setStep("success")) —
+      // se isso falhar, o fluxo segue igual ao de antes e finishLogin ainda
+      // tenta gravar tudo de novo no fim.
+      if (d.token) {
+        try {
+          await supabase.auth.setSession({ access_token: d.token, refresh_token: d.refresh_token });
+          const { error: perfilErr } = await supabase.from("usuarios").upsert({
+            email: emailNorm, name, whatsapp: phone.replace(/\D/g, ""),
+            city: cidadeResolvida || null, role: "client", empresa_id: null,
+          }, { onConflict: "email" });
+          if (perfilErr) console.error("[cadastro] upsert inicial de usuarios falhou:", perfilErr.message);
+        } catch (e) {
+          console.warn("[cadastro] setSession/upsert inicial falhou:", e.message);
+        }
       }
       setLoading(false);
       setStep("success");
@@ -9544,7 +9594,7 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client",
     return (
       <EscolherPlanoScreen
         titularTipo="usuario"
-        titularEmail={email.trim()}
+        titularEmail={emailNorm}
         titularNome={name.trim().split(/\s+/)[0]}
         onBack={() => setStep("success")}
         showToast={showToast}
@@ -9562,7 +9612,7 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client",
   if (step === "completar-perfil") {
     return (
       <CompletarPerfilScreen
-        userEmail={email.trim()}
+        userEmail={emailNorm}
         showToast={showToast}
         initialCategoria={initialCategoria}
         onDone={() => {
@@ -9584,7 +9634,7 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client",
           trackGA("cadastro_profissional_pagante", { value: valorConversao, currency: "BRL" });
           trackPixel("Subscribe", { value: valorConversao, currency: "BRL", predicted_ltv: valorConversao });
           onComplete(
-          name, email.trim(), true, cidadeResolvida || "sua região",
+          name, emailNorm, true, cidadeResolvida || "sua região",
           // "ambos": sessão inicial abre no modo Cliente (mais alinhado ao que
           // a pessoa provavelmente vai fazer primeiro), mas usuarios.role
           // grava "professional" mesmo assim (7º argumento, dbRole) — sem
@@ -9633,7 +9683,7 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client",
         </div>
 
         <button
-          onClick={() => isProfessional ? setStep("plano") : onComplete(name, email.trim(), true, cidadeResolvida || "sua região", role, phone)}
+          onClick={() => isProfessional ? setStep("plano") : onComplete(name, emailNorm, true, cidadeResolvida || "sua região", role, phone)}
           style={{ width:"100%", padding:"16px 0", borderRadius:18, border:"none", color:"white", fontWeight:900, fontSize:15, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:10, boxShadow:`0 6px 24px ${isProfessional ? O : B}44`, background: isProfessional ? `linear-gradient(135deg,${O},#E64A19)` : `linear-gradient(135deg,${B},#0055d4)` }}>
           {isProfessional ? <><Briefcase size={17} /> Escolher plano</> : <><Home size={17} /> Ir para a Tela Inicial</>}
         </button>
@@ -12000,6 +12050,37 @@ export default function App() {
     carregarSaldoMoedas(userEmail);
   }, [userEmail, role]);
 
+  // CRÍTICO (achado 2026-09-04, "assinatura ativa mas perfil 100% vazio" —
+  // ver multi_taxa_acesso_perfil_vazio_pos_pagamento na memória): o efeito
+  // acima só busca "assinaturas" quando role JÁ é "professional" — exatamente
+  // o modo que uma sessão nunca tem quando o wizard de cadastro foi
+  // interrompido entre o pagamento da Taxa de Acesso e CompletarPerfilScreen
+  // (role fica "client", valor default de handleLoginComplete/boot quando o
+  // upsert final nunca rodou). Sem isso, uma conta que pagou de verdade ficava
+  // pra sempre invisível pro gate de Taxa de Acesso (taxaAcessoPendente, só
+  // avaliado dentro do bloco role==="professional" mais abaixo) — a pessoa
+  // reabria o app como "cliente" comum, sem nenhum caminho de volta.
+  // Independente do role atual da sessão: se existe assinatura "acesso"
+  // ativa/trial mas usuarios.role ainda não é "professional" (ou
+  // categoria_servico está vazia — pode ter travado até um passo antes),
+  // marca como pendente pra o gate em renderContent forçar CompletarPerfilScreen
+  // antes de deixar entrar em qualquer outra tela.
+  const [perfilProPendente, setPerfilProPendente] = useState(false);
+  useEffect(() => {
+    if (!userEmail) { setPerfilProPendente(false); return; }
+    let cancelado = false;
+    Promise.all([
+      supabase.from("assinaturas").select("status").eq("titular_tipo", "usuario").eq("titular_email", userEmail).eq("plano", "acesso").maybeSingle(),
+      supabase.from("usuarios").select("role,categoria_servico").eq("email", userEmail).maybeSingle(),
+    ]).then(([{ data: assinatura }, { data: perfil }]) => {
+      if (cancelado) return;
+      const assinaturaAtiva = assinatura && (assinatura.status === "ativa" || assinatura.status === "trial");
+      const perfilIncompleto = !perfil || perfil.role !== "professional" || !(perfil.categoria_servico?.length);
+      setPerfilProPendente(!!assinaturaAtiva && perfilIncompleto);
+    }).catch(() => {});
+    return () => { cancelado = true; };
+  }, [userEmail]);
+
   // Status real de documentação + flag de conta híbrida (cliente+profissional)
   // — antes docStatus nunca saía do estado local (ver histórico em
   // supabase_pendencias_doc_pagamento_migration.sql).
@@ -13006,6 +13087,61 @@ const renderContent = () => {
     // acontecia (o setScreen("alerts") rodava, mas nenhuma rota tratava
     // essa tela fora do papel de cliente).
     if (screen === "alerts") return <AlertsScreen notifications={notificationsFromPropostas} onAccept={handleAceitarPropostaPorId} onOpenChat={handleOpenNotificacao} onOpenPedido={handleOpenNotificacao} />;
+
+    // CRÍTICO (achado 2026-09-04, ver perfilProPendente/multi_taxa_acesso_
+    // perfil_vazio_pos_pagamento na memória): roda ANTES de qualquer branch
+    // por role — a pessoa presa nesse limbo pode estar com role==="client"
+    // (default de sessão quebrada), então um gate só dentro do bloco
+    // role==="professional" (taxaAcessoPendente, mais abaixo) nunca a
+    // alcançaria. "profile" continua livre pra dar logout, igual o gate
+    // equivalente de taxaAcessoPendente já fazia pro pagamento.
+    if (perfilProPendente && screen !== "profile") {
+      return (
+        <CompletarPerfilScreen
+          userEmail={userEmail}
+          showToast={showToast}
+          onDone={() => {
+            // CompletarPerfilScreen só grava bio/categoria_servico/fotos —
+            // quem normalmente promove role="professional" é finishLogin, no
+            // fim do wizard de cadastro, que esta conta nunca chegou a rodar
+            // (por isso ela caiu neste gate). Promove aqui, igual o mesmo
+            // padrão já usado no botão "Vire Profissional" (onDone de
+            // VirarProfissionalScreen, mais abaixo) — sem is_hybrid: não dá
+            // pra saber se a intenção original era "só profissional" ou
+            // "ambos" depois que o wizard se perdeu, e "só profissional" é o
+            // padrão mais seguro (a pessoa sempre pode virar híbrida depois
+            // pelo toggle normal em Perfil).
+            //
+            // CORRIGIDO (revisão 2026-09-06, antes de commitar): faltava
+            // `.select()` de verificação aqui — sem isso, um UPDATE que dá
+            // no-op silencioso (bug de durabilidade do Supabase já
+            // documentado várias vezes na memória) deixaria a pessoa girando
+            // pra sempre neste mesmo gate, sem nenhum sinal de diagnóstico
+            // (CompletarPerfilScreen->onDone rodando de novo, mesma tela).
+            // Mesmo padrão de verificação que VirarProfissionalScreen.onDone
+            // já usa logo abaixo (achado 2026-08-30, caso Jailson).
+            supabase.from("usuarios").update({ role: "professional" }).eq("email", userEmail).select("role")
+              .then(({ data, error }) => {
+                if (error || !data?.length || data[0].role !== "professional") {
+                  console.error("[perfilProPendente] promover role falhou:", error?.message, { linhasAfetadas: data?.length || 0 });
+                  showToast?.("⚠️ Perfil salvo, mas houve um problema ao ativar o modo profissional. Tente de novo em instantes.", "#EF4444");
+                  return;
+                }
+                setPerfilProPendente(false);
+                setRole("professional");
+                setUserRole("professional");
+                try {
+                  const s = JSON.parse(localStorage.getItem("multiSession") || "{}");
+                  s.role = "professional";
+                  localStorage.setItem("multiSession", JSON.stringify(s));
+                } catch {}
+                carregarPlano("usuario", userEmail);
+                setScreen("home");
+              });
+          }}
+        />
+      );
+    }
 
   if (!role && !authScreen) { setAuthScreen("role-select"); return null; }
     if (role === "client") {
