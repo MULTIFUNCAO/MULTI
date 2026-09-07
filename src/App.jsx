@@ -9648,7 +9648,11 @@ function RegisterScreen({ onBack, onComplete, showToast, initialRole = "client",
   // volta pro rádio, não sai do cadastro inteiro. Reativado 2026-08-18 —
   // ver ROLE_OPTIONS acima pro card equivalente em RoleSelectScreen.
   if (tipoUso === "empresa") {
-    return <CadastroEmpresaScreen onBack={() => setTipoUso(initialRole === "professional" ? "profissional" : "cliente")} onComplete={onComplete} showToast={showToast} />;
+    return <CadastroEmpresaScreen
+      onBack={() => setTipoUso(initialRole === "professional" ? "profissional" : "cliente")}
+      onComplete={onComplete} showToast={showToast}
+      onSouAutonomo={() => setTipoUso("profissional")}
+    />;
   }
 
   /* ── FAST FORM ── */
@@ -9846,7 +9850,7 @@ function isValidCnpj(value) {
 }
 
 /* ───────────────────────── AUTH: CADASTRO EMPRESA PARCEIRA ────────────────────── */
-function CadastroEmpresaScreen({ onBack, onComplete, showToast }) {
+function CadastroEmpresaScreen({ onBack, onComplete, showToast, onSouAutonomo }) {
   const [step, setStep] = useState("form"); // form | success | plano
   const [cnpj, setCnpj] = useState("");
   const [razaoSocial, setRazaoSocial] = useState("");
@@ -10047,6 +10051,29 @@ function CadastroEmpresaScreen({ onBack, onComplete, showToast }) {
       </div>
 
       <div style={{ flex:1, padding:"24px 24px 48px", overflowY:"auto" }}>
+
+        {/* AVISO: sem CNPJ, este não é o cadastro certo — relatado
+            2026-09-06 via WhatsApp (cliente davidsilvadionisio@gmail.com):
+            profissional autônomo sem CNPJ entrou aqui achando que era o
+            cadastro normal de profissional, digitou o próprio CPF no campo
+            de CNPJ e travou em "CNPJ inválido" sem entender por quê. O campo
+            abaixo continua exigindo CNPJ de verdade, sem exceção (é pessoa
+            jurídica — impacta cobrança/relatório/obrigação fiscal, diferente
+            de profissional autônomo) — a correção é avisar ANTES de a pessoa
+            bater a cabeça no campo, com uma saída clara pro cadastro certo. */}
+        {onSouAutonomo && (
+          <div style={{ display:"flex", alignItems:"flex-start", gap:10, background:"#EFF6FF", border:"1px solid #BFDBFE", borderRadius:14, padding:"12px 14px", marginBottom:22 }}>
+            <span style={{ fontSize:18, lineHeight:1 }}>💡</span>
+            <div style={{ flex:1 }}>
+              <p style={{ fontSize:12.5, color:"#1E3A8A", lineHeight:1.5, margin:"0 0 6px", fontWeight:700 }}>
+                Este cadastro é só para empresas (exige CNPJ). Não tem CNPJ? Se você é profissional autônomo (pedreiro, eletricista, diarista, pintor...), o cadastro de profissional não pede CNPJ.
+              </p>
+              <button onClick={onSouAutonomo} style={{ background:"none", border:"none", padding:0, cursor:"pointer", color:B, fontWeight:900, fontSize:12.5, textDecoration:"underline" }}>
+                Cadastrar como profissional autônomo →
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* LOGO */}
         <div style={{ display:"flex", flexDirection:"column", alignItems:"center", marginBottom:22 }}>
@@ -13410,7 +13437,11 @@ const renderContent = () => {
 
   if (authScreen === "cadastro-empresa") {
     return wrapper(
-      <CadastroEmpresaScreen onBack={() => setAuthScreen("empresa-pitch")} onComplete={handleLoginComplete} showToast={showToast} />
+      <CadastroEmpresaScreen
+        onBack={() => setAuthScreen("empresa-pitch")}
+        onComplete={handleLoginComplete} showToast={showToast}
+        onSouAutonomo={() => { setSignupRole("professional"); setAuthScreen("register"); }}
+      />
     );
   }
   if (authScreen === "reset-password") {
