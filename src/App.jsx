@@ -12574,10 +12574,25 @@ export default function App() {
         // logs. Agora loga o erro e avisa via toast — sem bloquear a ida pra
         // Home (mesmo comportamento de antes), só parando de esconder a
         // falha.
-        upsertPromise = supabase.from("usuarios").upsert(upsertPayload, { onConflict: "email" })
-          .then(({ error }) => {
-            if (error) {
-              console.error("[handleLoginComplete] upsert usuarios falhou:", error.message, { email: session.email, isNewAccount });
+        // CORRIGIDO (achado 2026-09-08, caso Leonardo Moraes/
+        // lc.montagensefretes@gmail.com — ver
+        // multi_lc_montagensefretes_cadastro_travado na memória): faltava
+        // aqui a mesma verificação de linhas afetadas que os outros dois
+        // pontos que promovem role="professional" já tinham (gate
+        // perfilProPendente, ~linha 13123, e VirarProfissionalScreen, ~linha
+        // 13180) — sem isso, o bug de durabilidade já documentado várias
+        // vezes no projeto (upsert/update sem erro nenhum, mas 0 linhas
+        // afetadas) podia deixar a conta com categoria_servico/docs já
+        // gravados por OUTRAS chamadas (CompletarPerfilScreen,
+        // DocumentacaoSection), mas role/whatsapp/city vazios pra sempre —
+        // sem nenhum aviso, porque só o "error" era checado, nunca se a
+        // escrita realmente afetou alguma linha. O fluxo seguia direto pra
+        // "Home" como se tivesse dado certo (reproduzido ao vivo: exatamente
+        // esse padrão no cadastro do Leonardo).
+        upsertPromise = supabase.from("usuarios").upsert(upsertPayload, { onConflict: "email" }).select("email")
+          .then(({ data, error }) => {
+            if (error || !data?.length) {
+              console.error("[handleLoginComplete] upsert usuarios falhou ou não afetou linha:", error?.message, { email: session.email, isNewAccount, linhasAfetadas: data?.length || 0 });
               showToast(
                 isNewAccount
                   ? "⚠️ Conta criada, mas houve um problema ao salvar seu perfil. Complete seu perfil novamente em instantes."
