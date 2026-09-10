@@ -211,6 +211,67 @@ async function fetchReputacao(email) {
   }
 }
 
+// Portfólio real (tabela portfolio_fotos, bucket portfolio-fotos) — grid
+// estilo Instagram no perfil do profissional. Ordena por "ordem" e, como
+// fallback pra fotos antigas que nunca tiveram ordem setada, por created_at.
+async function fetchPortfolioFotos(email) {
+  if (!email) return [];
+  try {
+    const { data, error } = await supabase.from("portfolio_fotos").select("*")
+      .eq("profissional_id", email)
+      .order("ordem", { ascending: true })
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return data || [];
+  } catch {
+    return [];
+  }
+}
+
+// Comprime/redimensiona uma foto antes de subir pro Storage — reduz o lado
+// maior pra no máximo 1080px e recodifica em JPEG qualidade 0.82, cortando o
+// peso do arquivo bastante sem perda visível na tela do app. Usa
+// "window.Image" (não o ícone "Image" importado do lucide-react, que
+// sombreia o identificador global nesse escopo do arquivo).
+function compressImage(file, maxDim = 1080, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+        else { width = Math.round(width * maxDim / height); height = maxDim; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("Falha ao comprimir imagem")), "image/jpeg", quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Falha ao carregar imagem")); };
+    img.src = url;
+  });
+}
+
+// Sobe uma foto (já comprimida) pro bucket "portfolio-fotos" e insere a
+// linha correspondente em portfolio_fotos — usado tanto na edição do
+// próprio perfil (ProfileScreen) quanto em qualquer outro upload futuro de
+// portfólio.
+async function uploadPortfolioFoto(file, profissionalEmail, categoria, ordem) {
+  const blob = await compressImage(file);
+  const path = `${encodeURIComponent(profissionalEmail)}/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+  const { error: upErr } = await supabase.storage.from("portfolio-fotos").upload(path, blob, { contentType: "image/jpeg", upsert: true, cacheControl: "31536000" });
+  if (upErr) throw upErr;
+  const url = supabase.storage.from("portfolio-fotos").getPublicUrl(path).data.publicUrl;
+  const { data, error } = await supabase.from("portfolio_fotos")
+    .insert({ profissional_id: profissionalEmail, foto_url: url, categoria: categoria || null, ordem })
+    .select().single();
+  if (error) throw error;
+  return data;
+}
+
 const NEARBY = [
   { id:"n1", title:"Pintar parede sala",    cat:"pintor",     rating:4.4, price:380, dist:"0,8 km", emoji:"🖌️", bg:"#F3E5F5" },
   { id:"n2", title:"Conserto de encanação", cat:"encanador",  rating:4.8, price:220, dist:"1,1 km", emoji:"🔧", bg:"#E8F4FF" },
@@ -947,6 +1008,11 @@ function CandidatoCard({ proposta: p, perfil, reputacao, onAceitar, onVerPerfil 
   const cats = resolveCats(perfil?.categoria_servico);
   const isEmpresa = !!perfil?.isEmpresa;
   const email = p.profissional_email || p.profissional_id;
+  // Tirinha de até 3 fotos do portfólio real (tabela portfolio_fotos) — só
+  // pra profissional autônomo, não empresa (a tabela é por profissional_id,
+  // ver migration). Busca sob demanda por candidato, igual reputacao já faz.
+  const [portfolioPreview, setPortfolioPreview] = useState([]);
+  useEffect(() => { if (email && !isEmpresa) fetchPortfolioFotos(email).then(f => setPortfolioPreview(f.slice(0, 3))); }, [email, isEmpresa]);
   return (
     <div style={{
       background:"white", borderRadius:16, padding:16, marginBottom:12,
@@ -976,13 +1042,164 @@ function CandidatoCard({ proposta: p, perfil, reputacao, onAceitar, onVerPerfil 
       {perfil?.bio && (
         <div style={{color:"#555",fontSize:12.5,lineHeight:1.5,marginBottom:10,background:"#F8F9FB",borderRadius:10,padding:"8px 10px"}}>{perfil.bio}</div>
       )}
+      {portfolioPreview.length > 0 && (
+        <div style={{ marginBottom:10 }}>
+          <PortfolioGrid fotos={portfolioPreview} compact onPhotoClick={()=>onVerPerfil&&onVerPerfil({ email, isEmpresa })} />
+        </div>
+      )}
       <div style={{color: p.valor != null ? "#007BFF" : "#9CA3AF",fontWeight:800,fontSize:18,margin:"6px 0"}}>{p.valor != null ? `R$ ${p.valor}` : "A combinar"}</div>
       <div style={{color:"#666",fontSize:13,marginBottom:12}}>{p.mensagem||""}</div>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:9 }}>
-        <button onClick={()=>onVerPerfil&&onVerPerfil({ email, isEmpresa })} style={{padding:"12px 0",borderRadius:10,border:`1.5px solid ${B}`,background:"white",color:B,fontWeight:800,fontSize:13,cursor:"pointer"}}>
-          VER PERFIL
+        <button onClick={()=>onVerPerfil&&onVerPerfil({ email, isEmpresa })} style={{padding:"12px 0",borderRadius:10,border:`1.5px solid ${B}`,background:"white",color:B,fontWeight:800,fontSize:12,cursor:"pointer"}}>
+          Ver obras e perfil completo
         </button>
         <button onClick={()=>onAceitar&&onAceitar(p)} style={{padding:"12px 0",background:"#22c55e",color:"white",border:"none",borderRadius:10,fontWeight:800,fontSize:12.5,cursor:"pointer"}}>✅ Aceitar Proposta</button>
+      </div>
+    </div>
+  );
+}
+
+/* Grid de portfólio estilo Instagram — 3 colunas quadradas, object-fit:cover.
+   Reaproveitado em três lugares: perfil público (visão do cliente,
+   editable=false), perfil do próprio profissional (editable=true, mostra
+   "+" e ícone de editar/long-press em cada foto) e a tirinha de 3 fotos no
+   CandidatoCard (compact=true, sem "+" e sem mensagem de vazio). */
+function PortfolioGrid({ fotos, editable = false, compact = false, uploading = false, onPhotoClick, onAddClick, onEditPhoto }) {
+  const longPressTimer = useRef(null);
+  const startLongPress = (foto) => { longPressTimer.current = setTimeout(() => onEditPhoto?.(foto), 550); };
+  const cancelLongPress = () => { if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; } };
+  return (
+    <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap: compact ? 4 : 3 }}>
+      {fotos.map((foto, i) => (
+        <div
+          key={foto.id}
+          onClick={() => onPhotoClick?.(i)}
+          onTouchStart={() => editable && startLongPress(foto)}
+          onTouchEnd={cancelLongPress}
+          onTouchMove={cancelLongPress}
+          style={{ position:"relative", width:"100%", aspectRatio:"1 / 1", borderRadius: compact ? 8 : 3, overflow:"hidden", background:"#EEF0F5", cursor:"pointer" }}
+        >
+          <img src={foto.foto_url} alt={foto.descricao || ""} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+          {editable && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onEditPhoto?.(foto); }}
+              title="Editar ou excluir"
+              style={{ position:"absolute", top:4, right:4, width:22, height:22, borderRadius:"50%", background:"rgba(0,0,0,.55)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}
+            >
+              <Pencil size={11} color="white" />
+            </button>
+          )}
+        </div>
+      ))}
+      {editable && !compact && (
+        <button onClick={onAddClick} disabled={uploading} style={{ width:"100%", aspectRatio:"1 / 1", borderRadius:3, border:"2px dashed #DDD", background:BG, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, cursor: uploading ? "default" : "pointer", color:"#ccc" }}>
+          <Plus size={22} />
+          {uploading && <span style={{ fontSize:9, fontWeight:700 }}>Enviando...</span>}
+        </button>
+      )}
+      {!fotos.length && !editable && !compact && (
+        <div style={{ gridColumn:"1 / -1", textAlign:"center", padding:"24px 0", color:"#bbb", fontSize:12.5 }}>
+          Esse profissional ainda não publicou fotos de trabalhos.
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* Visualizador em tela cheia do portfólio — navegável por swipe (arrastar)
+   horizontal entre as fotos, com a descrição de cada uma embaixo. Fecha por
+   botão X ou tocando fora da foto/dos controles. */
+function PortfolioViewer({ fotos, index, onClose, onChangeIndex }) {
+  const [dragX, setDragX] = useState(0);
+  const draggingRef = useRef(false);
+  const startXRef = useRef(0);
+  const foto = fotos[index];
+  if (!foto) return null;
+
+  const handleStart = (clientX) => { draggingRef.current = true; startXRef.current = clientX; };
+  const handleMove = (clientX) => { if (draggingRef.current) setDragX(clientX - startXRef.current); };
+  const handleEnd = () => {
+    const threshold = 60;
+    if (dragX < -threshold && index < fotos.length - 1) onChangeIndex(index + 1);
+    else if (dragX > threshold && index > 0) onChangeIndex(index - 1);
+    setDragX(0);
+    draggingRef.current = false;
+  };
+
+  return (
+    <div
+      style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.94)", zIndex:9999, display:"flex", flexDirection:"column" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onTouchStart={(e) => handleStart(e.touches[0].clientX)}
+      onTouchMove={(e) => handleMove(e.touches[0].clientX)}
+      onTouchEnd={handleEnd}
+      onMouseDown={(e) => handleStart(e.clientX)}
+      onMouseMove={(e) => handleMove(e.clientX)}
+      onMouseUp={handleEnd}
+      onMouseLeave={() => { if (draggingRef.current) handleEnd(); }}
+    >
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 16px 0", paddingTop:"calc(env(safe-area-inset-top,0px) + 14px)" }}>
+        <span style={{ color:"rgba(255,255,255,.7)", fontSize:12, fontWeight:700 }}>{index + 1} / {fotos.length}</span>
+        <button onClick={onClose} style={{ background:"rgba(255,255,255,.15)", border:"none", borderRadius:"50%", width:32, height:32, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
+          <X size={16} color="white" />
+        </button>
+      </div>
+      <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", touchAction:"pan-y" }}>
+        <img
+          src={foto.foto_url}
+          alt={foto.descricao || ""}
+          draggable={false}
+          style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain", transform:`translateX(${dragX}px)`, transition: draggingRef.current ? "none" : "transform .2s", userSelect:"none" }}
+        />
+      </div>
+      {fotos.length > 1 && (
+        <div style={{ display:"flex", justifyContent:"center", gap:5, padding:"10px 0" }}>
+          {fotos.map((_, i) => (
+            <span key={i} style={{ width: i === index ? 16 : 5, height:5, borderRadius:99, background: i === index ? "white" : "rgba(255,255,255,.35)", transition:"width .2s" }} />
+          ))}
+        </div>
+      )}
+      {foto.descricao && (
+        <div style={{ padding:"6px 20px calc(env(safe-area-inset-bottom,0px) + 20px)", textAlign:"center" }}>
+          <p style={{ color:"white", fontSize:13.5, lineHeight:1.5, margin:0 }}>{foto.descricao}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* Sheet de edição de uma foto do portfólio (própria conta) — editar
+   descrição/categoria ou excluir. Aberto pelo ícone de lápis ou long-press
+   no PortfolioGrid editável. */
+function PortfolioEditSheet({ foto, categorias = [], onClose, onSave, onDelete }) {
+  const [descricao, setDescricao] = useState(foto?.descricao || "");
+  const [categoria, setCategoria] = useState(foto?.categoria || categorias[0]?.id || "");
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  if (!foto) return null;
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.5)", zIndex:9999, display:"flex", alignItems:"flex-end" }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background:"white", width:"100%", borderRadius:"20px 20px 0 0", padding:"18px 20px calc(env(safe-area-inset-bottom,0px) + 20px)" }}>
+        <div style={{ width:36, height:4, borderRadius:99, background:"#E5E7EB", margin:"0 auto 16px" }} />
+        <img src={foto.foto_url} alt="" style={{ width:64, height:64, borderRadius:12, objectFit:"cover", marginBottom:14 }} />
+        <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#6B7280", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Descrição</label>
+        <textarea value={descricao} onChange={e => setDescricao(e.target.value)} maxLength={140} rows={2}
+          placeholder="Ex: Montagem de guarda-roupa 6 portas"
+          style={{ width:"100%", border:"1.5px solid #E5E7EB", borderRadius:12, padding:"10px 12px", fontSize:13.5, outline:"none", fontFamily:"inherit", resize:"none", boxSizing:"border-box", marginBottom:14 }} />
+        {categorias.length > 1 && (
+          <>
+            <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#6B7280", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Categoria</label>
+            <select value={categoria} onChange={e => setCategoria(e.target.value)}
+              style={{ width:"100%", border:"1.5px solid #E5E7EB", borderRadius:12, padding:"10px 12px", fontSize:13.5, outline:"none", marginBottom:14, background:"white" }}>
+              {categorias.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+            </select>
+          </>
+        )}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
+          <button disabled={saving || deleting} onClick={onClose} style={{ padding:"13px 0", borderRadius:12, border:"1.5px solid #E5E7EB", background:"white", color:"#6B7280", fontWeight:800, fontSize:13, cursor:"pointer" }}>Cancelar</button>
+          <button disabled={saving || deleting} onClick={async () => { setSaving(true); await onSave({ ...foto, descricao: descricao.trim(), categoria: categoria || null }); setSaving(false); }} style={{ padding:"13px 0", borderRadius:12, border:"none", background:B, color:"white", fontWeight:800, fontSize:13, cursor:"pointer" }}>{saving ? "Salvando..." : "Salvar"}</button>
+        </div>
+        <button disabled={saving || deleting} onClick={async () => { if (window.confirm("Excluir esta foto do portfólio?")) { setDeleting(true); await onDelete(foto); setDeleting(false); } }} style={{ width:"100%", padding:"12px 0", borderRadius:12, border:"none", background:"#FFF0F0", color:"#E53935", fontWeight:800, fontSize:12.5, cursor:"pointer" }}>{deleting ? "Excluindo..." : "🗑️ Excluir foto"}</button>
       </div>
     </div>
   );
@@ -993,10 +1210,19 @@ function CandidatoCard({ proposta: p, perfil, reputacao, onAceitar, onVerPerfil 
    de CNPJ/WhatsApp direto: contato só é liberado depois que a proposta é
    aceita (chat abre automaticamente via handleAceitarProposta), então essa
    tela deliberadamente não expõe telefone/WhatsApp. Usada pelo "Ver Perfil"
-   do CandidatoCard. */
+   do CandidatoCard. Header com selo verificado (usuarios.approved),
+   categorias e estatísticas reais (reputacao, já buscada por quem chama via
+   fetchReputacao) + portfólio real (tabela portfolio_fotos) em grid 3
+   colunas com visualizador em tela cheia. "Solicitar orçamento" dispara um
+   evento global (mesmo padrão já usado pelo app pra "openRanking") em vez
+   de prop drilling através de RadarSearchScreen/CandidatoPerfilScreen —
+   quem escuta e navega é o App, no topo. */
 function ProfissionalProfileScreen({ perfil, reputacao, onBack }) {
   const cats = resolveCats(perfil?.categoria_servico);
-  const portfolio = perfil?.portfolio || [];
+  const [portfolio, setPortfolio] = useState([]);
+  const [viewerIndex, setViewerIndex] = useState(null);
+  useEffect(() => { if (perfil?.email) fetchPortfolioFotos(perfil.email).then(setPortfolio); }, [perfil?.email]);
+  const isVerificado = perfil?.approved === true;
   return (
     <div style={{ minHeight:"100vh", background:"#f5f5f5" }}>
       <div style={{ background:"linear-gradient(135deg,#1565C0,#0D47A1)", padding:"40px 20px 60px", textAlign:"center", position:"relative" }}>
@@ -1008,37 +1234,59 @@ function ProfissionalProfileScreen({ perfil, reputacao, onBack }) {
             ? <img src={perfil.foto_perfil_url} alt={perfil?.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
             : <User size={36} color="white" />}
         </div>
-        <h2 style={{ color:"white", margin:"0 0 8px", fontSize:22 }}>{perfil?.name || "Profissional"}</h2>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+          <h2 style={{ color:"white", margin:"0 0 8px", fontSize:22 }}>{perfil?.name || "Profissional"}</h2>
+        </div>
+        {isVerificado && (
+          <div style={{ display:"inline-flex", alignItems:"center", gap:4, background:"rgba(255,255,255,.15)", border:"1px solid rgba(255,255,255,.3)", borderRadius:99, padding:"3px 10px", marginBottom:10 }}>
+            <BadgeCheck size={12} color="#4ade80" />
+            <span style={{ fontSize:11, fontWeight:800, color:"#4ade80" }}>Verificado</span>
+          </div>
+        )}
+        {cats.length > 0 && (
+          <div style={{ display:"flex", flexWrap:"wrap", justifyContent:"center", gap:6, marginBottom:10 }}>
+            {cats.map(c => (
+              <span key={c.id} style={{ fontSize:11, color:"white", fontWeight:700, background:"rgba(255,255,255,.15)", borderRadius:99, padding:"3px 10px" }}>{c.emoji} {c.label}</span>
+            ))}
+          </div>
+        )}
         {reputacao && <div style={{ display:"flex", justifyContent:"center" }}><ReputacaoBadge {...reputacao} /></div>}
       </div>
       <div style={{ padding:"16px", marginTop:-20 }}>
+        {/* Estatísticas reais — total de serviços concluídos, nota média e
+            nº de avaliações, tudo vindo de "reputacao" (fetchReputacao,
+            calculada ao vivo a partir de avaliacoes+pedidos — mesma fonte
+            de todo badge de reputação do app, sem número inventado). */}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:12 }}>
+          {[
+            { label:"Concluídos", value: reputacao?.concluidos ?? "—" },
+            { label:"Nota média", value: reputacao?.mediaEstrelas != null ? reputacao.mediaEstrelas.toFixed(1) : "—" },
+            { label:"Avaliações", value: reputacao?.totalAvaliacoes ?? "—" },
+          ].map(s => (
+            <div key={s.label} style={{ background:"white", borderRadius:14, padding:"12px 6px", textAlign:"center", boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
+              <p style={{ margin:"0 0 2px", fontSize:17, fontWeight:900, color:"#1a1a2e" }}>{s.value}</p>
+              <p style={{ margin:0, fontSize:10, color:"#9CA3AF", fontWeight:700 }}>{s.label}</p>
+            </div>
+          ))}
+        </div>
         <div style={{ background:"white", borderRadius:16, padding:"16px", marginBottom:12, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
           <h3 style={{ margin:"0 0 8px", fontSize:15, color:"#333" }}>Sobre o profissional</h3>
           <p style={{ margin:0, fontSize:13, color:"#555", lineHeight:1.6 }}>{perfil?.bio || "Esse profissional ainda não preencheu uma bio."}</p>
         </div>
-        <div style={{ background:"white", borderRadius:16, padding:"16px", marginBottom:12, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
-          <h3 style={{ margin:"0 0 8px", fontSize:15, color:"#333" }}>{cats.length > 1 ? "Categorias" : "Categoria"}</h3>
-          <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-            {cats.length ? cats.map(c => (
-              <span key={c.id} style={{ fontSize:13, color:"#1565C0", fontWeight:700, background:"#EBF4FF", borderRadius:99, padding:"5px 12px" }}>{c.emoji} {c.label}</span>
-            )) : <span style={{ fontSize:14, color:"#555" }}>—</span>}
-          </div>
-        </div>
-        {portfolio.length > 0 && (
-          <div style={{ background:"white", borderRadius:16, padding:"16px", marginBottom:12, boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
-            <h3 style={{ margin:"0 0 10px", fontSize:15, color:"#333" }}>Portfólio</h3>
-            <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-              {portfolio.map((url, i) => (
-                <img key={i} src={url} style={{ width:88, height:88, borderRadius:12, objectFit:"cover" }} alt="" />
-              ))}
-            </div>
-          </div>
-        )}
-        <div style={{ background:"#EEF4FF", borderRadius:16, padding:"16px" }}>
-          <p style={{ margin:0, fontSize:13, color:"#1565C0", fontWeight:700 }}>Esse profissional demonstrou interesse no seu pedido.</p>
-          <p style={{ margin:"6px 0 0", fontSize:12, color:"#555" }}>Pra fechar com ele, use o botão "Aceitar Proposta" no card.</p>
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent("solicitarOrcamento", { detail: { categoria: cats[0]?.id || null } }))}
+          style={{ width:"100%", padding:"14px 0", borderRadius:14, border:"none", background:B, color:"white", fontWeight:800, fontSize:14, cursor:"pointer", marginBottom:12, boxShadow:"0 4px 14px rgba(0,123,255,.3)" }}
+        >
+          Solicitar orçamento
+        </button>
+        <div style={{ background:"white", borderRadius:16, padding:"16px", boxShadow:"0 2px 8px rgba(0,0,0,.06)" }}>
+          <h3 style={{ margin:"0 0 10px", fontSize:15, color:"#333" }}>Portfólio</h3>
+          <PortfolioGrid fotos={portfolio} onPhotoClick={setViewerIndex} />
         </div>
       </div>
+      {viewerIndex != null && (
+        <PortfolioViewer fotos={portfolio} index={viewerIndex} onClose={() => setViewerIndex(null)} onChangeIndex={setViewerIndex} />
+      )}
     </div>
   );
 }
@@ -6611,8 +6859,14 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
       .then(({ count }) => setServicosContratados(count || 0))
       .catch(() => {});
   }, [role, userEmail]);
-  const [portfolioImgs, setPortfolioImgs] = useState([]);
+  // Portfólio real (tabela portfolio_fotos) — substitui o antigo array cru
+  // em usuarios.portfolio (sem descrição/categoria/ordem, só sobrevivia
+  // enquanto essa tela vivia num estado paralelo). O campo antigo fica
+  // intocado no banco, só parou de ser lido/escrito por aqui.
+  const [portfolioFotos, setPortfolioFotos] = useState([]);
   const [uploadingPortfolio, setUploadingPortfolio] = useState(false);
+  const [editingFoto, setEditingFoto] = useState(null);
+  const [viewerIndex, setViewerIndex] = useState(null);
   const [bio, setBio] = useState("");
   const [savingBio, setSavingBio] = useState(false);
   const [categoriaServico, setCategoriaServico] = useState([]);
@@ -6639,15 +6893,18 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
   }, [editMode, categoriaServico]);
   useEffect(() => {
     if (role !== "professional" || !userEmail) return;
-    supabase.from("usuarios").select("categoria_servico,bio,portfolio,trocas_categoria_usadas,trocas_categoria_ultimo_ciclo_em").eq("email", userEmail).maybeSingle()
+    supabase.from("usuarios").select("categoria_servico,bio,trocas_categoria_usadas,trocas_categoria_ultimo_ciclo_em").eq("email", userEmail).maybeSingle()
       .then(({ data }) => {
         if (!categoriaTocadaRef.current) setCategoriaServico(data?.categoria_servico || []);
         setBio(data?.bio || "");
-        setPortfolioImgs((data?.portfolio || []).map(url => ({ id: url, url })));
         setTrocasCategoriaUsadas(data?.trocas_categoria_usadas || 0);
         setTrocasCategoriaUltimoCiclo(data?.trocas_categoria_ultimo_ciclo_em || null);
       })
       .catch(() => {});
+  }, [role, userEmail]);
+  useEffect(() => {
+    if (role !== "professional" || !userEmail) return;
+    fetchPortfolioFotos(userEmail).then(setPortfolioFotos);
   }, [role, userEmail]);
   // HANDOFF 2026-09-03: trava de "só troca categoria na renovação/troca de
   // plano" removida por decisão de negócio — profissional pode editar a
@@ -6729,28 +6986,24 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
     }
   };
 
-  // Portfólio — mesmo bucket, persiste o array completo em usuarios.portfolio
-  // (não só localmente, como antes).
-  const handlePortfolio = async (e) => {
+  // Portfólio — tabela portfolio_fotos + bucket dedicado "portfolio-fotos"
+  // (ver supabase_portfolio_fotos_migration.sql em MULTI-BACKEND). Cada
+  // arquivo é comprimido/redimensionado antes de subir (compressImage) e
+  // vira uma linha própria (com ordem sequencial), diferente do array cru
+  // que essa tela usava antes.
+  const handleAddPortfolioFotos = async (e) => {
     const files = Array.from(e.target.files || []);
     e.target.value = "";
-    if (!files.length) return;
+    if (!files.length || !userEmail) return;
     setUploadingPortfolio(true);
     try {
-      const newUrls = [];
+      let ordem = portfolioFotos.length;
+      const categoriaDefault = categoriaServico?.[0] || null;
+      const novas = [];
       for (const f of files) {
-        const ext = f.type.includes("png") ? "png" : "jpg";
-        const path = `portfolio_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("pedidos-fotos").upload(path, f, { contentType: f.type, upsert: true, cacheControl: "31536000" });
-        if (upErr) throw upErr;
-        newUrls.push(supabase.storage.from("pedidos-fotos").getPublicUrl(path).data.publicUrl);
+        novas.push(await uploadPortfolioFoto(f, userEmail, categoriaDefault, ordem++));
       }
-      const updatedUrls = [...portfolioImgs.map(p => p.url), ...newUrls];
-      setPortfolioImgs(updatedUrls.map(url => ({ id: url, url })));
-      if (userEmail) {
-        const { error } = await supabase.from("usuarios").update({ portfolio: updatedUrls }).eq("email", userEmail);
-        if (error) throw error;
-      }
+      setPortfolioFotos(p => [...p, ...novas]);
     } catch (err) {
       showToast?.("❌ Erro ao enviar foto: " + (err.message || ""), "#DC2626");
     } finally {
@@ -6758,10 +7011,32 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
     }
   };
 
-  const removePortfolioImg = (id) => {
-    const updatedUrls = portfolioImgs.filter(x => x.id !== id).map(p => p.url);
-    setPortfolioImgs(p => p.filter(x => x.id !== id));
-    if (userEmail) supabase.from("usuarios").update({ portfolio: updatedUrls }).eq("email", userEmail).then(() => {}).catch(() => {});
+  const handleSavePortfolioFoto = async (foto) => {
+    const { error } = await supabase.from("portfolio_fotos")
+      .update({ descricao: foto.descricao || null, categoria: foto.categoria || null })
+      .eq("id", foto.id);
+    if (error) { showToast?.("❌ Erro ao salvar: " + (error.message || ""), "#DC2626"); return; }
+    setPortfolioFotos(p => p.map(f => f.id === foto.id ? { ...f, descricao: foto.descricao, categoria: foto.categoria } : f));
+    setEditingFoto(null);
+    showToast?.("✅ Foto atualizada!", G);
+  };
+
+  const handleDeletePortfolioFoto = async (foto) => {
+    const { error } = await supabase.from("portfolio_fotos").delete().eq("id", foto.id);
+    if (error) { showToast?.("❌ Erro ao excluir: " + (error.message || ""), "#DC2626"); return; }
+    setPortfolioFotos(p => p.filter(f => f.id !== foto.id));
+    setEditingFoto(null);
+    // Best-effort — a linha já foi removida (é o que importa pra UI/RLS);
+    // se o path não bater por algum motivo, sobra só o arquivo órfão no
+    // bucket, sem afetar nada visível.
+    try {
+      const marker = "/portfolio-fotos/";
+      const idx = foto.foto_url.indexOf(marker);
+      if (idx >= 0) {
+        const path = decodeURIComponent(foto.foto_url.slice(idx + marker.length).split("?")[0]);
+        await supabase.storage.from("portfolio-fotos").remove([path]);
+      }
+    } catch {}
   };
 
   const handleSaveBio = async (novaBio) => {
@@ -7108,24 +7383,21 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
             </div>
           </div>
 
-          {/* Portfolio */}
-          <SectionLabel label="Portfólio — Antes e Depois" />
+          {/* Portfolio — grid estilo Instagram (tabela portfolio_fotos), toque
+              numa foto abre o visualizador em tela cheia (swipe entre fotos),
+              ícone de lápis (ou long-press no celular) abre editar/excluir. */}
+          <SectionLabel label="Portfólio" />
           <div style={{ background:"white", padding:"14px 16px" }}>
-            <input ref={portfolioRef} type="file" accept="image/*" multiple style={{ display:"none" }} onChange={handlePortfolio} />
-            <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
-              {portfolioImgs.map(img => (
-                <div key={img.id} style={{ width:80, height:80, borderRadius:12, overflow:"hidden", position:"relative", flexShrink:0, boxShadow:"0 2px 8px rgba(0,0,0,.10)" }}>
-                  <img src={img.url} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt="" />
-                  <button onClick={() => removePortfolioImg(img.id)} style={{ position:"absolute", top:3, right:3, width:18, height:18, borderRadius:"50%", background:"rgba(0,0,0,.5)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                    <X size={10} color="white" />
-                  </button>
-                </div>
-              ))}
-              <button onClick={() => portfolioRef.current?.click()} disabled={uploadingPortfolio} style={{ width:80, height:80, borderRadius:12, border:"2px dashed #DDD", background:BG, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, cursor: uploadingPortfolio ? "default" : "pointer", color:"#ccc", flexShrink:0 }}>
-                <Image size={18} /><span style={{ fontSize:10, fontWeight:700 }}>{uploadingPortfolio ? "Enviando..." : "Adicionar"}</span>
-              </button>
-            </div>
-            <p style={{ fontSize:11, color:"#bbb", marginTop:10 }}>Mostre antes & depois dos seus melhores trabalhos</p>
+            <input ref={portfolioRef} type="file" accept="image/*" multiple style={{ display:"none" }} onChange={handleAddPortfolioFotos} />
+            <PortfolioGrid
+              fotos={portfolioFotos}
+              editable
+              uploading={uploadingPortfolio}
+              onPhotoClick={setViewerIndex}
+              onAddClick={() => portfolioRef.current?.click()}
+              onEditPhoto={setEditingFoto}
+            />
+            <p style={{ fontSize:11, color:"#bbb", marginTop:10 }}>Mostre fotos dos seus melhores trabalhos — toque no lápis pra editar a descrição ou excluir uma foto.</p>
           </div>
 
           {/* Verification */}
@@ -7188,6 +7460,19 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
       </div>
 
       <AdminAccessTrigger onOpenAdmin={onOpenAdmin} />
+
+      {viewerIndex != null && (
+        <PortfolioViewer fotos={portfolioFotos} index={viewerIndex} onClose={() => setViewerIndex(null)} onChangeIndex={setViewerIndex} />
+      )}
+      {editingFoto && (
+        <PortfolioEditSheet
+          foto={editingFoto}
+          categorias={resolveCats(categoriaServico)}
+          onClose={() => setEditingFoto(null)}
+          onSave={handleSavePortfolioFoto}
+          onDelete={handleDeletePortfolioFoto}
+        />
+      )}
     </div>
   );
 }
@@ -12035,6 +12320,23 @@ export default function App() {
   // a entrada foi genérica (FAB, banner "Novo Pedido"), pra não vazar a
   // seleção de uma visita anterior.
   const [pendingCat,    setPendingCat]    = useState("");
+  // "Solicitar orçamento" (ProfissionalProfileScreen) dispara esse evento em
+  // vez de receber setScreen/setPendingCat via prop — evitaria enfiar essas
+  // duas props por RadarSearchScreen/CandidatoPerfilScreen (componentes
+  // top-level, fora do closure do App) só pra alcançar esse botão. Mesmo
+  // padrão já usado pelo app pra "openRanking" (AuthHeader → ProfileScreen).
+  // Reaproveita o fluxo normal de "Novo Pedido" com a categoria do
+  // profissional pré-selecionada — não existe (ainda) um pedido "dirigido"
+  // a um profissional específico, então isso publica um pedido aberto na
+  // categoria dele, do jeito que qualquer outro candidato pode responder.
+  useEffect(() => {
+    const h = (e) => {
+      setPendingCat(e.detail?.categoria || "");
+      setScreen("post");
+    };
+    window.addEventListener("solicitarOrcamento", h);
+    return () => window.removeEventListener("solicitarOrcamento", h);
+  }, []);
   // needsSessionRestore=true: começam vazios/"client" até o efeito de boot
   // (perto de isLoggedIn) confirmar a sessão e virar os cinco juntos — ver
   // comentário grande lá.
