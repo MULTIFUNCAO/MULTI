@@ -1182,30 +1182,51 @@ function PortfolioEditSheet({ foto, categorias = [], onClose, onSave, onDelete }
   const [categoria, setCategoria] = useState(foto?.categoria || categorias[0]?.id || "");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // Confirmação de exclusão em 2 toques dentro do próprio sheet, sem
+  // window.confirm() — achado ao vivo 2026-09-10: o confirm() nativo trava a
+  // thread principal da página e derruba a extensão de automação do browser
+  // (Input.dispatchMouseEvent/dispatchKeyEvent dão timeout até alguém clicar
+  // manualmente no dialog do SO). Fora do contexto de automação isso também
+  // é só uma UX inconsistente (nenhum outro modal do app usa confirm nativo
+  // por aqui — os outros já são sheets/telas próprias), então vale a troca
+  // de qualquer forma.
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   if (!foto) return null;
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.5)", zIndex:9999, display:"flex", alignItems:"flex-end" }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{ background:"white", width:"100%", borderRadius:"20px 20px 0 0", padding:"18px 20px calc(env(safe-area-inset-bottom,0px) + 20px)" }}>
         <div style={{ width:36, height:4, borderRadius:99, background:"#E5E7EB", margin:"0 auto 16px" }} />
         <img src={foto.foto_url} alt="" style={{ width:64, height:64, borderRadius:12, objectFit:"cover", marginBottom:14 }} />
-        <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#6B7280", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Descrição</label>
-        <textarea value={descricao} onChange={e => setDescricao(e.target.value)} maxLength={140} rows={2}
-          placeholder="Ex: Montagem de guarda-roupa 6 portas"
-          style={{ width:"100%", border:"1.5px solid #E5E7EB", borderRadius:12, padding:"10px 12px", fontSize:13.5, outline:"none", fontFamily:"inherit", resize:"none", boxSizing:"border-box", marginBottom:14 }} />
-        {categorias.length > 1 && (
+        {confirmingDelete ? (
+          <div style={{ background:"#FFF0F0", border:"1.5px solid #FFD5D5", borderRadius:14, padding:"14px 16px" }}>
+            <p style={{ margin:"0 0 12px", fontSize:13, color:"#B91C1C", fontWeight:700, lineHeight:1.5 }}>Excluir esta foto do portfólio? Essa ação não pode ser desfeita.</p>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+              <button disabled={deleting} onClick={() => setConfirmingDelete(false)} style={{ padding:"12px 0", borderRadius:12, border:"1.5px solid #E5E7EB", background:"white", color:"#6B7280", fontWeight:800, fontSize:13, cursor:"pointer" }}>Cancelar</button>
+              <button disabled={deleting} onClick={async () => { setDeleting(true); await onDelete(foto); setDeleting(false); setConfirmingDelete(false); }} style={{ padding:"12px 0", borderRadius:12, border:"none", background:"#E53935", color:"white", fontWeight:800, fontSize:13, cursor:"pointer" }}>{deleting ? "Excluindo..." : "Sim, excluir"}</button>
+            </div>
+          </div>
+        ) : (
           <>
-            <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#6B7280", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Categoria</label>
-            <select value={categoria} onChange={e => setCategoria(e.target.value)}
-              style={{ width:"100%", border:"1.5px solid #E5E7EB", borderRadius:12, padding:"10px 12px", fontSize:13.5, outline:"none", marginBottom:14, background:"white" }}>
-              {categorias.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
-            </select>
+            <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#6B7280", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Descrição</label>
+            <textarea value={descricao} onChange={e => setDescricao(e.target.value)} maxLength={140} rows={2}
+              placeholder="Ex: Montagem de guarda-roupa 6 portas"
+              style={{ width:"100%", border:"1.5px solid #E5E7EB", borderRadius:12, padding:"10px 12px", fontSize:13.5, outline:"none", fontFamily:"inherit", resize:"none", boxSizing:"border-box", marginBottom:14 }} />
+            {categorias.length > 1 && (
+              <>
+                <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#6B7280", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Categoria</label>
+                <select value={categoria} onChange={e => setCategoria(e.target.value)}
+                  style={{ width:"100%", border:"1.5px solid #E5E7EB", borderRadius:12, padding:"10px 12px", fontSize:13.5, outline:"none", marginBottom:14, background:"white" }}>
+                  {categorias.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+                </select>
+              </>
+            )}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
+              <button disabled={saving} onClick={onClose} style={{ padding:"13px 0", borderRadius:12, border:"1.5px solid #E5E7EB", background:"white", color:"#6B7280", fontWeight:800, fontSize:13, cursor:"pointer" }}>Cancelar</button>
+              <button disabled={saving} onClick={async () => { setSaving(true); await onSave({ ...foto, descricao: descricao.trim(), categoria: categoria || null }); setSaving(false); }} style={{ padding:"13px 0", borderRadius:12, border:"none", background:B, color:"white", fontWeight:800, fontSize:13, cursor:"pointer" }}>{saving ? "Salvando..." : "Salvar"}</button>
+            </div>
+            <button disabled={saving} onClick={() => setConfirmingDelete(true)} style={{ width:"100%", padding:"12px 0", borderRadius:12, border:"none", background:"#FFF0F0", color:"#E53935", fontWeight:800, fontSize:12.5, cursor:"pointer" }}>🗑️ Excluir foto</button>
           </>
         )}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
-          <button disabled={saving || deleting} onClick={onClose} style={{ padding:"13px 0", borderRadius:12, border:"1.5px solid #E5E7EB", background:"white", color:"#6B7280", fontWeight:800, fontSize:13, cursor:"pointer" }}>Cancelar</button>
-          <button disabled={saving || deleting} onClick={async () => { setSaving(true); await onSave({ ...foto, descricao: descricao.trim(), categoria: categoria || null }); setSaving(false); }} style={{ padding:"13px 0", borderRadius:12, border:"none", background:B, color:"white", fontWeight:800, fontSize:13, cursor:"pointer" }}>{saving ? "Salvando..." : "Salvar"}</button>
-        </div>
-        <button disabled={saving || deleting} onClick={async () => { if (window.confirm("Excluir esta foto do portfólio?")) { setDeleting(true); await onDelete(foto); setDeleting(false); } }} style={{ width:"100%", padding:"12px 0", borderRadius:12, border:"none", background:"#FFF0F0", color:"#E53935", fontWeight:800, fontSize:12.5, cursor:"pointer" }}>{deleting ? "Excluindo..." : "🗑️ Excluir foto"}</button>
       </div>
     </div>
   );
