@@ -261,7 +261,13 @@ function compressImage(file, maxDim = 1080, quality = 0.82) {
 // portfólio.
 async function uploadPortfolioFoto(file, profissionalEmail, categoria, ordem) {
   const blob = await compressImage(file);
-  const path = `${encodeURIComponent(profissionalEmail)}/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+  // Não pré-codifica o e-mail aqui: supabase-js já encoda o path internamente
+  // ao montar a URL (getPublicUrl) — pré-codificar também faz dupla
+  // codificação (%40 vira %2540), gerando uma URL pública que não bate com
+  // o objeto de verdade salvo no Storage. Confirmado ao vivo 2026-09-10: a
+  // 1ª tentativa (com encodeURIComponent aqui) subiu o arquivo certinho mas
+  // gerou URL pública quebrada (imagem nunca carregava).
+  const path = `${profissionalEmail}/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
   const { error: upErr } = await supabase.storage.from("portfolio-fotos").upload(path, blob, { contentType: "image/jpeg", upsert: true, cacheControl: "31536000" });
   if (upErr) throw upErr;
   const url = supabase.storage.from("portfolio-fotos").getPublicUrl(path).data.publicUrl;
