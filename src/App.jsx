@@ -278,6 +278,49 @@ async function uploadPortfolioFoto(file, profissionalEmail, categoria, ordem) {
   return data;
 }
 
+// Portfólio "antes/depois" (briefing 2026-09-11, fase 1) — tabela própria
+// (portfolio_antes_depois, ver supabase_portfolio_antes_depois_migration.sql
+// em MULTI-BACKEND) porque cada item é um PAR de fotos, diferente da foto
+// avulsa de portfolio_fotos. Reaproveita o bucket "portfolio-fotos" já
+// criado (sem bucket/policy de Storage novos), só numa subpasta própria.
+async function fetchPortfolioAntesDepois(email) {
+  if (!email) return [];
+  try {
+    const { data, error } = await supabase.from("portfolio_antes_depois").select("*")
+      .eq("profissional_id", email)
+      .order("ordem", { ascending: true })
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return data || [];
+  } catch {
+    return [];
+  }
+}
+
+// Sobe as duas fotos (já comprimidas, mesmo compressImage do portfólio
+// normal) pra subpasta "antes-depois/" do bucket "portfolio-fotos" e insere
+// a linha correspondente em portfolio_antes_depois. Mesmo cuidado de
+// uploadPortfolioFoto: não pré-codifica o e-mail no path (supabase-js já
+// encoda ao montar a URL pública — ver comentário lá sobre o bug de dupla
+// codificação já corrigido).
+async function uploadAntesDepoisPar(fileAntes, fileDepois, profissionalEmail, categoria, descricao, ordem) {
+  const [blobAntes, blobDepois] = await Promise.all([compressImage(fileAntes), compressImage(fileDepois)]);
+  const base = `antes-depois/${profissionalEmail}/${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const pathAntes = `${base}_antes.jpg`;
+  const pathDepois = `${base}_depois.jpg`;
+  const { error: upErrAntes } = await supabase.storage.from("portfolio-fotos").upload(pathAntes, blobAntes, { contentType: "image/jpeg", upsert: true, cacheControl: "31536000" });
+  if (upErrAntes) throw upErrAntes;
+  const { error: upErrDepois } = await supabase.storage.from("portfolio-fotos").upload(pathDepois, blobDepois, { contentType: "image/jpeg", upsert: true, cacheControl: "31536000" });
+  if (upErrDepois) throw upErrDepois;
+  const urlAntes = supabase.storage.from("portfolio-fotos").getPublicUrl(pathAntes).data.publicUrl;
+  const urlDepois = supabase.storage.from("portfolio-fotos").getPublicUrl(pathDepois).data.publicUrl;
+  const { data, error } = await supabase.from("portfolio_antes_depois")
+    .insert({ profissional_id: profissionalEmail, foto_antes_url: urlAntes, foto_depois_url: urlDepois, categoria: categoria || null, descricao: descricao || null, ordem })
+    .select().single();
+  if (error) throw error;
+  return data;
+}
+
 const NEARBY = [
   { id:"n1", title:"Pintar parede sala",    cat:"pintor",     rating:4.4, price:380, dist:"0,8 km", emoji:"🖌️", bg:"#F3E5F5" },
   { id:"n2", title:"Conserto de encanação", cat:"encanador",  rating:4.8, price:220, dist:"1,1 km", emoji:"🔧", bg:"#E8F4FF" },
@@ -1232,6 +1275,194 @@ function PortfolioEditSheet({ foto, categorias = [], onClose, onSave, onDelete }
   );
 }
 
+// Paleta "oficial" citada no briefing de antes/depois (2026-09-11) — usada
+// só nos componentes abaixo, sem reskinar o resto do app (que segue usando
+// B/O/G definidos no topo do arquivo). Constantes locais pra não colidir.
+const AD_AZUL_MULTI = "#0D1B2A";
+const AD_LARANJA_MULTI = "#FF6A00";
+const AD_AZUL_CONEXAO = "#0057FF";
+
+/* Card de um par "antes/depois" — toggle simples entre a foto "antes" e a
+   foto "depois" (em vez do split-screen do componente de referência
+   NovaMultiFeed.jsx anexado ao briefing: mais robusto em telas pequenas e
+   mais fácil de manter — o próprio briefing pede adaptação, não cópia 1:1).
+   CTA "Solicitar orçamento" dispara o mesmo evento global já usado pelo
+   resto do app (ver ProfissionalProfileScreen), levando direto pro fluxo de
+   orçamento existente — sem fluxo de contratação paralelo. editable=true
+   mostra o lápis pra abrir edição/exclusão (mesmo padrão do PortfolioGrid)
+   e esconde o CTA (não faz sentido na tela de edição do próprio perfil).
+   Sem curtida/comentário/métrica de engajamento — fora de escopo da fase 1. */
+function AntesDepoisCard({ par, editable = false, categoriaFallback, onEdit }) {
+  const [mostrarDepois, setMostrarDepois] = useState(false);
+  const fotoUrl = mostrarDepois ? par.foto_depois_url : par.foto_antes_url;
+  return (
+    <div style={{ background:"white", borderRadius:16, overflow:"hidden", boxShadow:"0 2px 10px rgba(0,0,0,.08)", marginBottom:14 }}>
+      <div style={{ position:"relative", width:"100%", aspectRatio:"4 / 3", background:"#EEF0F5" }}>
+        <img src={fotoUrl} alt={mostrarDepois ? "Depois" : "Antes"} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+        <div style={{ position:"absolute", top:10, left:10, display:"flex", background:"rgba(0,0,0,.45)", borderRadius:99, padding:3 }}>
+          {["Antes", "Depois"].map((label, i) => (
+            <button
+              key={label}
+              onClick={() => setMostrarDepois(i === 1)}
+              style={{
+                border:"none", cursor:"pointer", borderRadius:99, padding:"5px 12px", fontSize:11.5, fontWeight:800,
+                background: (i === 1) === mostrarDepois ? "white" : "transparent",
+                color: (i === 1) === mostrarDepois ? AD_AZUL_MULTI : "white",
+              }}
+            >{label}</button>
+          ))}
+        </div>
+        {editable && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit?.(par); }}
+            title="Editar ou excluir"
+            style={{ position:"absolute", top:10, right:10, width:26, height:26, borderRadius:"50%", background:"rgba(0,0,0,.55)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}
+          >
+            <Pencil size={12} color="white" />
+          </button>
+        )}
+      </div>
+      {par.descricao && (
+        <p style={{ margin:0, padding:"10px 14px 0", fontSize:12.5, color:"#555", lineHeight:1.5 }}>{par.descricao}</p>
+      )}
+      {!editable && (
+        <div style={{ padding:14 }}>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("solicitarOrcamento", { detail: { categoria: par.categoria || categoriaFallback || null } }))}
+            style={{ width:"100%", padding:"12px 0", borderRadius:12, border:"none", background:AD_LARANJA_MULTI, color:"white", fontWeight:800, fontSize:13, cursor:"pointer" }}
+          >
+            Solicitar orçamento
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* Sheet pra cadastrar um novo par antes/depois — dois slots de upload (Antes
+   e Depois), descrição opcional e categoria (se o profissional tiver mais
+   de uma). Só habilita "Salvar par" quando as duas fotos estão escolhidas.
+   Mesmo padrão de bottom sheet do PortfolioEditSheet (sem window.confirm —
+   ver comentário lá sobre o dialog nativo travar a automação/UX). */
+function AntesDepoisUploadSheet({ categorias = [], onClose, onSave }) {
+  const [fileAntes, setFileAntes] = useState(null);
+  const [fileDepois, setFileDepois] = useState(null);
+  const [previewAntes, setPreviewAntes] = useState(null);
+  const [previewDepois, setPreviewDepois] = useState(null);
+  const [descricao, setDescricao] = useState("");
+  const [categoria, setCategoria] = useState(categorias[0]?.id || "");
+  const [saving, setSaving] = useState(false);
+  const antesRef = useRef(null);
+  const depoisRef = useRef(null);
+
+  const pickFile = (setFile, setPreview) => (e) => {
+    const f = e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    setFile(f);
+    setPreview(URL.createObjectURL(f));
+  };
+
+  const slotStyle = { flex:1, aspectRatio:"1 / 1", borderRadius:14, border:"2px dashed #DDD", background:BG, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, cursor:"pointer", overflow:"hidden", position:"relative" };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.5)", zIndex:9999, display:"flex", alignItems:"flex-end" }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background:"white", width:"100%", borderRadius:"20px 20px 0 0", padding:"18px 20px calc(env(safe-area-inset-bottom,0px) + 20px)", maxHeight:"88vh", overflowY:"auto", boxSizing:"border-box" }}>
+        <div style={{ width:36, height:4, borderRadius:99, background:"#E5E7EB", margin:"0 auto 16px" }} />
+        <p style={{ margin:"0 0 14px", fontSize:14, fontWeight:800, color:"#1a1a2e" }}>Novo par antes/depois</p>
+        <div style={{ display:"flex", gap:10, marginBottom:14 }}>
+          <input ref={antesRef} type="file" accept="image/*" style={{ display:"none" }} onChange={pickFile(setFileAntes, setPreviewAntes)} />
+          <button type="button" onClick={() => antesRef.current?.click()} style={slotStyle}>
+            {previewAntes
+              ? <img src={previewAntes} alt="Antes" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+              : <><Plus size={20} color="#ccc" /><span style={{ fontSize:11, fontWeight:700, color:"#aaa" }}>Antes</span></>}
+          </button>
+          <input ref={depoisRef} type="file" accept="image/*" style={{ display:"none" }} onChange={pickFile(setFileDepois, setPreviewDepois)} />
+          <button type="button" onClick={() => depoisRef.current?.click()} style={slotStyle}>
+            {previewDepois
+              ? <img src={previewDepois} alt="Depois" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+              : <><Plus size={20} color="#ccc" /><span style={{ fontSize:11, fontWeight:700, color:"#aaa" }}>Depois</span></>}
+          </button>
+        </div>
+        <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#6B7280", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Descrição (opcional)</label>
+        <textarea value={descricao} onChange={e => setDescricao(e.target.value)} maxLength={140} rows={2}
+          placeholder="Ex: Reforma de banheiro completa"
+          style={{ width:"100%", border:"1.5px solid #E5E7EB", borderRadius:12, padding:"10px 12px", fontSize:13.5, outline:"none", fontFamily:"inherit", resize:"none", boxSizing:"border-box", marginBottom:14 }} />
+        {categorias.length > 1 && (
+          <>
+            <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#6B7280", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Categoria</label>
+            <select value={categoria} onChange={e => setCategoria(e.target.value)}
+              style={{ width:"100%", border:"1.5px solid #E5E7EB", borderRadius:12, padding:"10px 12px", fontSize:13.5, outline:"none", marginBottom:14, background:"white" }}>
+              {categorias.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+            </select>
+          </>
+        )}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+          <button disabled={saving} onClick={onClose} style={{ padding:"13px 0", borderRadius:12, border:"1.5px solid #E5E7EB", background:"white", color:"#6B7280", fontWeight:800, fontSize:13, cursor:"pointer" }}>Cancelar</button>
+          <button
+            disabled={saving || !fileAntes || !fileDepois}
+            onClick={async () => { setSaving(true); await onSave({ fileAntes, fileDepois, descricao: descricao.trim(), categoria: categoria || null }); setSaving(false); }}
+            style={{ padding:"13px 0", borderRadius:12, border:"none", background: (!fileAntes || !fileDepois) ? "#ccc" : AD_AZUL_CONEXAO, color:"white", fontWeight:800, fontSize:13, cursor: (!fileAntes || !fileDepois) ? "default" : "pointer" }}
+          >{saving ? "Enviando..." : "Salvar par"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Sheet de edição de um par antes/depois já cadastrado — editar
+   descrição/categoria ou excluir. Mesmo padrão de confirmação em 2 toques
+   do PortfolioEditSheet (sem window.confirm nativo). */
+function AntesDepoisEditSheet({ par, categorias = [], onClose, onSave, onDelete }) {
+  const [descricao, setDescricao] = useState(par?.descricao || "");
+  const [categoria, setCategoria] = useState(par?.categoria || categorias[0]?.id || "");
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  if (!par) return null;
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.5)", zIndex:9999, display:"flex", alignItems:"flex-end" }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background:"white", width:"100%", borderRadius:"20px 20px 0 0", padding:"18px 20px calc(env(safe-area-inset-bottom,0px) + 20px)" }}>
+        <div style={{ width:36, height:4, borderRadius:99, background:"#E5E7EB", margin:"0 auto 16px" }} />
+        <div style={{ display:"flex", gap:8, marginBottom:14 }}>
+          <img src={par.foto_antes_url} alt="Antes" style={{ width:64, height:64, borderRadius:12, objectFit:"cover" }} />
+          <img src={par.foto_depois_url} alt="Depois" style={{ width:64, height:64, borderRadius:12, objectFit:"cover" }} />
+        </div>
+        {confirmingDelete ? (
+          <div style={{ background:"#FFF0F0", border:"1.5px solid #FFD5D5", borderRadius:14, padding:"14px 16px" }}>
+            <p style={{ margin:"0 0 12px", fontSize:13, color:"#B91C1C", fontWeight:700, lineHeight:1.5 }}>Excluir este par antes/depois? Essa ação não pode ser desfeita.</p>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+              <button disabled={deleting} onClick={() => setConfirmingDelete(false)} style={{ padding:"12px 0", borderRadius:12, border:"1.5px solid #E5E7EB", background:"white", color:"#6B7280", fontWeight:800, fontSize:13, cursor:"pointer" }}>Cancelar</button>
+              <button disabled={deleting} onClick={async () => { setDeleting(true); await onDelete(par); setDeleting(false); setConfirmingDelete(false); }} style={{ padding:"12px 0", borderRadius:12, border:"none", background:"#E53935", color:"white", fontWeight:800, fontSize:13, cursor:"pointer" }}>{deleting ? "Excluindo..." : "Sim, excluir"}</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#6B7280", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Descrição</label>
+            <textarea value={descricao} onChange={e => setDescricao(e.target.value)} maxLength={140} rows={2}
+              placeholder="Ex: Reforma de banheiro completa"
+              style={{ width:"100%", border:"1.5px solid #E5E7EB", borderRadius:12, padding:"10px 12px", fontSize:13.5, outline:"none", fontFamily:"inherit", resize:"none", boxSizing:"border-box", marginBottom:14 }} />
+            {categorias.length > 1 && (
+              <>
+                <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#6B7280", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Categoria</label>
+                <select value={categoria} onChange={e => setCategoria(e.target.value)}
+                  style={{ width:"100%", border:"1.5px solid #E5E7EB", borderRadius:12, padding:"10px 12px", fontSize:13.5, outline:"none", marginBottom:14, background:"white" }}>
+                  {categorias.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+                </select>
+              </>
+            )}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
+              <button disabled={saving} onClick={onClose} style={{ padding:"13px 0", borderRadius:12, border:"1.5px solid #E5E7EB", background:"white", color:"#6B7280", fontWeight:800, fontSize:13, cursor:"pointer" }}>Cancelar</button>
+              <button disabled={saving} onClick={async () => { setSaving(true); await onSave({ ...par, descricao: descricao.trim(), categoria: categoria || null }); setSaving(false); }} style={{ padding:"13px 0", borderRadius:12, border:"none", background:B, color:"white", fontWeight:800, fontSize:13, cursor:"pointer" }}>{saving ? "Salvando..." : "Salvar"}</button>
+            </div>
+            <button disabled={saving} onClick={() => setConfirmingDelete(true)} style={{ width:"100%", padding:"12px 0", borderRadius:12, border:"none", background:"#FFF0F0", color:"#E53935", fontWeight:800, fontSize:12.5, cursor:"pointer" }}>🗑️ Excluir par</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* Perfil público de profissional individual — mesmo padrão de
    EmpresaProfileScreen (foto, sobre, categorias), mas com portfólio no lugar
    de CNPJ/WhatsApp direto: contato só é liberado depois que a proposta é
@@ -1248,7 +1479,9 @@ function ProfissionalProfileScreen({ perfil, reputacao, onBack }) {
   const cats = resolveCats(perfil?.categoria_servico);
   const [portfolio, setPortfolio] = useState([]);
   const [viewerIndex, setViewerIndex] = useState(null);
+  const [antesDepois, setAntesDepois] = useState([]);
   useEffect(() => { if (perfil?.email) fetchPortfolioFotos(perfil.email).then(setPortfolio); }, [perfil?.email]);
+  useEffect(() => { if (perfil?.email) fetchPortfolioAntesDepois(perfil.email).then(setAntesDepois); }, [perfil?.email]);
   const isVerificado = perfil?.approved === true;
   return (
     <div style={{ minHeight:"100vh", background:"#f5f5f5" }}>
@@ -1310,6 +1543,18 @@ function ProfissionalProfileScreen({ perfil, reputacao, onBack }) {
           <h3 style={{ margin:"0 0 10px", fontSize:15, color:"#333" }}>Portfólio</h3>
           <PortfolioGrid fotos={portfolio} onPhotoClick={setViewerIndex} />
         </div>
+        {/* Antes/Depois (briefing 2026-09-11, fase 1) — só aparece se o
+            profissional tiver pelo menos um par cadastrado. Cada card já traz
+            o próprio CTA "Solicitar orçamento" (mesmo evento global usado
+            acima), sem fluxo de contratação paralelo. */}
+        {antesDepois.length > 0 && (
+          <div style={{ marginTop:12 }}>
+            <h3 style={{ margin:"0 0 10px", fontSize:15, color:"#333" }}>Antes e Depois</h3>
+            {antesDepois.map(par => (
+              <AntesDepoisCard key={par.id} par={par} categoriaFallback={cats[0]?.id} />
+            ))}
+          </div>
+        )}
       </div>
       {viewerIndex != null && (
         <PortfolioViewer fotos={portfolio} index={viewerIndex} onClose={() => setViewerIndex(null)} onChangeIndex={setViewerIndex} />
@@ -6894,6 +7139,12 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
   const [uploadingPortfolio, setUploadingPortfolio] = useState(false);
   const [editingFoto, setEditingFoto] = useState(null);
   const [viewerIndex, setViewerIndex] = useState(null);
+  // Antes/Depois (briefing 2026-09-11, fase 1) — tabela própria
+  // portfolio_antes_depois, ver fetchPortfolioAntesDepois/uploadAntesDepoisPar.
+  const [antesDepoisPares, setAntesDepoisPares] = useState([]);
+  const [uploadingAntesDepois, setUploadingAntesDepois] = useState(false);
+  const [showAntesDepoisUpload, setShowAntesDepoisUpload] = useState(false);
+  const [editingAntesDepois, setEditingAntesDepois] = useState(null);
   const [bio, setBio] = useState("");
   const [savingBio, setSavingBio] = useState(false);
   const [categoriaServico, setCategoriaServico] = useState([]);
@@ -6932,6 +7183,10 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
   useEffect(() => {
     if (role !== "professional" || !userEmail) return;
     fetchPortfolioFotos(userEmail).then(setPortfolioFotos);
+  }, [role, userEmail]);
+  useEffect(() => {
+    if (role !== "professional" || !userEmail) return;
+    fetchPortfolioAntesDepois(userEmail).then(setAntesDepoisPares);
   }, [role, userEmail]);
   // HANDOFF 2026-09-03: trava de "só troca categoria na renovação/troca de
   // plano" removida por decisão de negócio — profissional pode editar a
@@ -7062,6 +7317,53 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
       if (idx >= 0) {
         const path = decodeURIComponent(foto.foto_url.slice(idx + marker.length).split("?")[0]);
         await supabase.storage.from("portfolio-fotos").remove([path]);
+      }
+    } catch {}
+  };
+
+  // Antes/Depois — mesmo padrão dos handlers de portfolio_fotos acima.
+  const handleAddAntesDepois = async ({ fileAntes, fileDepois, descricao, categoria }) => {
+    if (!userEmail) return;
+    setUploadingAntesDepois(true);
+    try {
+      const categoriaFinal = categoria || categoriaServico?.[0] || null;
+      const novo = await uploadAntesDepoisPar(fileAntes, fileDepois, userEmail, categoriaFinal, descricao, antesDepoisPares.length);
+      setAntesDepoisPares(p => [...p, novo]);
+      setShowAntesDepoisUpload(false);
+      showToast?.("✅ Par antes/depois adicionado!", G);
+    } catch (err) {
+      showToast?.("❌ Erro ao enviar fotos: " + (err.message || ""), "#DC2626");
+    } finally {
+      setUploadingAntesDepois(false);
+    }
+  };
+
+  const handleSaveAntesDepois = async (par) => {
+    const { error } = await supabase.from("portfolio_antes_depois")
+      .update({ descricao: par.descricao || null, categoria: par.categoria || null })
+      .eq("id", par.id);
+    if (error) { showToast?.("❌ Erro ao salvar: " + (error.message || ""), "#DC2626"); return; }
+    setAntesDepoisPares(p => p.map(x => x.id === par.id ? { ...x, descricao: par.descricao, categoria: par.categoria } : x));
+    setEditingAntesDepois(null);
+    showToast?.("✅ Par atualizado!", G);
+  };
+
+  const handleDeleteAntesDepois = async (par) => {
+    const { error } = await supabase.from("portfolio_antes_depois").delete().eq("id", par.id);
+    if (error) { showToast?.("❌ Erro ao excluir: " + (error.message || ""), "#DC2626"); return; }
+    setAntesDepoisPares(p => p.filter(x => x.id !== par.id));
+    setEditingAntesDepois(null);
+    // Best-effort, mesmo padrão de handleDeletePortfolioFoto — a linha já foi
+    // removida (o que importa pra UI/RLS); se o path não bater, sobram só os
+    // 2 arquivos órfãos no bucket, sem afetar nada visível.
+    try {
+      const marker = "/portfolio-fotos/";
+      for (const url of [par.foto_antes_url, par.foto_depois_url]) {
+        const idx = url.indexOf(marker);
+        if (idx >= 0) {
+          const path = decodeURIComponent(url.slice(idx + marker.length).split("?")[0]);
+          await supabase.storage.from("portfolio-fotos").remove([path]);
+        }
       }
     } catch {}
   };
@@ -7427,6 +7729,24 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
             <p style={{ fontSize:11, color:"#bbb", marginTop:10 }}>Mostre fotos dos seus melhores trabalhos — toque no lápis pra editar a descrição ou excluir uma foto.</p>
           </div>
 
+          {/* Antes/Depois (briefing 2026-09-11, fase 1) — tabela própria
+              portfolio_antes_depois. Cada par tem toque no lápis pra editar
+              descrição/categoria ou excluir, mesmo padrão do Portfólio acima. */}
+          <SectionLabel label="Antes e Depois" />
+          <div style={{ background:"white", padding:"14px 16px" }}>
+            {antesDepoisPares.map(par => (
+              <AntesDepoisCard key={par.id} par={par} editable onEdit={setEditingAntesDepois} />
+            ))}
+            <button
+              onClick={() => setShowAntesDepoisUpload(true)}
+              disabled={uploadingAntesDepois}
+              style={{ width:"100%", padding:"13px 0", borderRadius:14, border:"2px dashed #DDD", background:BG, color:"#999", fontWeight:800, fontSize:13, cursor: uploadingAntesDepois ? "default" : "pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}
+            >
+              <Plus size={16} /> {uploadingAntesDepois ? "Enviando..." : "Adicionar par antes/depois"}
+            </button>
+            <p style={{ fontSize:11, color:"#bbb", marginTop:10 }}>Mostre a transformação de um trabalho real — o cliente vê as duas fotos com um toggle "Antes ⇄ Depois" no seu perfil.</p>
+          </div>
+
           {/* Verification */}
           <SectionLabel label="Documentação" />
           <DocumentacaoSection showToast={showToast} docStatus={docStatus} onDocStatusChange={onDocStatusChange} userEmail={userEmail} />
@@ -7498,6 +7818,22 @@ function ProfileScreen({ role, isPro, plano, planoStatus, planoExpiraEm, planoIn
           onClose={() => setEditingFoto(null)}
           onSave={handleSavePortfolioFoto}
           onDelete={handleDeletePortfolioFoto}
+        />
+      )}
+      {showAntesDepoisUpload && (
+        <AntesDepoisUploadSheet
+          categorias={resolveCats(categoriaServico)}
+          onClose={() => setShowAntesDepoisUpload(false)}
+          onSave={handleAddAntesDepois}
+        />
+      )}
+      {editingAntesDepois && (
+        <AntesDepoisEditSheet
+          par={editingAntesDepois}
+          categorias={resolveCats(categoriaServico)}
+          onClose={() => setEditingAntesDepois(null)}
+          onSave={handleSaveAntesDepois}
+          onDelete={handleDeleteAntesDepois}
         />
       )}
     </div>
