@@ -44,7 +44,7 @@ import {
   BellRing, BadgeCheck, Users, ShieldCheck,
   Activity, BarChart2, Package, ChevronUp, Eye, EyeOff,
   Paperclip, Download, ArrowLeftRight, Gem, Coins, Phone,
-  Compass, Heart, Play, Images, MessageSquare,
+  Compass, Heart, Play, Images, MessageSquare, Menu,
 } from "lucide-react";
 
 /* ───────────────────────── DESIGN TOKENS ──────────────────────────────────── */
@@ -52,6 +52,12 @@ const B  = "#007BFF";
 const O  = "#FF5722";
 const BG = "#F5F6FA";
 const G  = "#22c55e";
+// Par "oficial" de marca (Azul Multi / Laranja Multi) — usado só no drawer
+// de navegação novo (reforma 2026-09-17), não reskina o resto do app, que
+// segue com B/O acima. Mesmo espírito da paleta AD_* que existiu antes na
+// fase 1 do antes/depois (removida quando o Feed genérico substituiu).
+const AZUL_MULTI   = "#0D1B2A";
+const LARANJA_MULTI = "#FF6A00";
 
 // Valor mínimo fixo pra publicar um pedido (PostServiceScreen, "Publicar
 // Serviço") — impede pedido de R$0 ou valores irrisórios. Só um mínimo geral
@@ -753,7 +759,7 @@ function Logo({ size = 28, white = false }) {
    isLoggedIn=true   → AuthHeader  (NO toggle, ever, for any reason)
 ───────────────────────────────────────────────────────────────────────────── */
 
-function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua localização", onToggleRole }) {
+function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua localização", onToggleRole, onOpenDrawer }) {
   const isProfessional = userRole === "professional";
   return (
     <div style={{
@@ -769,9 +775,14 @@ function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua
       // navegador normal isso resolve pra 0px, sem efeito nenhum.
       paddingTop:"env(safe-area-inset-top)",
     }}>
-      {/* row 1: location + bells + avatar */}
+      {/* row 1: hambúrguer (só cliente, ver NavDrawer) + location + bells + avatar */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 18px 6px" }}>
         <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+          {!isProfessional && (
+            <button onClick={onOpenDrawer} aria-label="Abrir menu" style={{ background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:30, height:30, display:"flex", alignItems:"center", justifyContent:"center", marginRight:2, flexShrink:0 }}>
+              <Menu size={16} color="white" />
+            </button>
+          )}
           <MapPin size={13} color="rgba(255,255,255,.7)" />
           <div>
             <p style={{ fontSize:9, color:"rgba(255,255,255,.5)", fontWeight:700, margin:0 }}>Sua Localização</p>
@@ -860,7 +871,7 @@ function AuthHeader({ isPro, notifCount, userRole, onAlerts, userLocation = "Sua
   );
 }
 
-function GuestHeader({ onToggleRole, activeRole = "client", onSelectEmpresa, locked = false }) {
+function GuestHeader({ onToggleRole, activeRole = "client", onSelectEmpresa, locked = false, onOpenDrawer }) {
   return (
     <div style={{ position:"sticky", top:0, zIndex:50, background:`linear-gradient(180deg,${B} 0%,#0057d4 100%)`, boxShadow:"0 4px 20px rgba(0,112,255,.28)", borderRadius:"0 0 20px 20px", paddingTop:"env(safe-area-inset-top)" }}>
       {/* row 1 — location escondida quando "locked" (2026-09-02, pedido
@@ -875,6 +886,12 @@ function GuestHeader({ onToggleRole, activeRole = "client", onSelectEmpresa, loc
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 18px 6px" }}>
         {locked ? <div /> : (
           <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+            {/* Hambúrguer some junto com o resto quando "locked" (lead de
+                anúncio pago) — mesmo motivo do toggle de role escondido logo
+                abaixo: não dar uma saída fácil do funil isca. */}
+            <button onClick={onOpenDrawer} aria-label="Abrir menu" style={{ background:"rgba(255,255,255,.15)", border:"none", cursor:"pointer", borderRadius:"50%", width:30, height:30, display:"flex", alignItems:"center", justifyContent:"center", marginRight:2, flexShrink:0 }}>
+              <Menu size={16} color="white" />
+            </button>
             <MapPin size={13} color="rgba(255,255,255,.7)" />
             <div>
               <p style={{ fontSize:9, color:"rgba(255,255,255,.5)", fontWeight:700, margin:0 }}>Sua Localização</p>
@@ -922,11 +939,141 @@ function GuestHeader({ onToggleRole, activeRole = "client", onSelectEmpresa, loc
 }
 
 /* Public façade — picks the right header, nothing shared between them */
-function Header({ isPro, notifCount, isLoggedIn, userRole, onAlerts, userLocation, onToggleRole, activeRole, onSelectEmpresa, guestLocked }) {
+function Header({ isPro, notifCount, isLoggedIn, userRole, onAlerts, userLocation, onToggleRole, activeRole, onSelectEmpresa, guestLocked, onOpenDrawer }) {
   if (isLoggedIn) {
-    return <AuthHeader isPro={isPro} notifCount={notifCount} userRole={userRole} onToggleRole={onToggleRole} onAlerts={onAlerts} userLocation={localStorage.getItem("multiLocation") || userLocation} />;
+    return <AuthHeader isPro={isPro} notifCount={notifCount} userRole={userRole} onToggleRole={onToggleRole} onAlerts={onAlerts} userLocation={localStorage.getItem("multiLocation") || userLocation} onOpenDrawer={onOpenDrawer} />;
   }
-  return <GuestHeader onToggleRole={onToggleRole} activeRole={activeRole} onSelectEmpresa={onSelectEmpresa} locked={guestLocked} />;
+  return <GuestHeader onToggleRole={onToggleRole} activeRole={activeRole} onSelectEmpresa={onSelectEmpresa} locked={guestLocked} onOpenDrawer={onOpenDrawer} />;
+}
+
+/* ───────────────────────── NAV DRAWER (reforma 2026-09-17) ─────────────────
+   Substitui a bottom nav do cliente por um menu lateral aberto pelo
+   hambúrguer da topbar — mesmo padrão de bottom sheet já usado no resto
+   do app (overlay escuro + painel deslizante), só que entra pela esquerda
+   em vez de subir de baixo. Só cliente/convidado usam isso — profissional
+   e empresa continuam com a bottom nav de sempre (ver bloco abaixo).
+   "Configurações" e "Meu Perfil" apontam pro mesmo screen ("profile") —
+   a tela de Perfil já tem a seção Configurações no final, não existe tela
+   separada pra isso ainda. Fecha instantâneo (sem transição de saída),
+   mesmo padrão simples que os outros sheets do app já usam (Comments/
+   PostCreate/etc. — nenhum deles anima ao fechar). */
+function NavDrawer({ open, onClose, isLoggedIn, userName, userEmail, screen, setScreen, requireAuth, onLoginClick, onNovoPedido }) {
+  const [avatarUrl, setAvatarUrl] = useState(null);
+  const [entered, setEntered] = useState(false);
+
+  useEffect(() => {
+    if (!open) { setEntered(false); return; }
+    // dispara a transição CSS um tick depois de montar — senão o browser
+    // já pinta o painel na posição final e o slide não anima.
+    const id = requestAnimationFrame(() => setEntered(true));
+    return () => cancelAnimationFrame(id);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !isLoggedIn || !userEmail) { setAvatarUrl(null); return; }
+    supabase.from("usuarios").select("foto_perfil_url").eq("email", userEmail).maybeSingle()
+      .then(({ data }) => setAvatarUrl(data?.foto_perfil_url || null))
+      .catch(() => {});
+  }, [open, isLoggedIn, userEmail]);
+
+  if (!open) return null;
+
+  const items = [
+    { id:"feed",    label:"Feed de Projetos",     Icon:Compass,        gated:false },
+    { id:"buscar",  label:"Buscar Profissionais", Icon:Search,         gated:false },
+    { id:"mapa",    label:"Serviços no Mapa",      Icon:MapPin,         gated:false },
+    { id:"orders",  label:"Meus Pedidos",          Icon:ClipboardList, gated:true },
+    { id:"chat",    label:"Mensagens",             Icon:MessageCircle, gated:true },
+    { id:"profile", label:"Meu Perfil",            Icon:User,          gated:true },
+  ];
+
+  const goTo = (id, gated) => {
+    const nav = () => { setScreen(id); onClose(); };
+    if (gated) requireAuth(id, nav); else nav();
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:998 }}>
+      <div onClick={onClose} style={{ position:"absolute", inset:0, background:"rgba(0,0,0,.5)", opacity: entered ? 1 : 0, transition:"opacity .25s ease" }} />
+      <div style={{
+        position:"absolute", top:0, left:0, width:"82vw", maxWidth:300, height:"100%",
+        background:"white", display:"flex", flexDirection:"column",
+        transform: entered ? "translateX(0)" : "translateX(-100%)",
+        transition:"transform .25s ease",
+        boxShadow:"4px 0 24px rgba(0,0,0,.2)",
+      }}>
+        {/* Cabeçalho */}
+        <div style={{ background:AZUL_MULTI, padding:"calc(env(safe-area-inset-top,0px) + 20px) 18px 18px", flexShrink:0 }}>
+          <button onClick={onClose} aria-label="Fechar menu" style={{ background:"rgba(255,255,255,.15)", border:"none", borderRadius:"50%", width:28, height:28, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", marginBottom:14 }}>
+            <X size={14} color="white" />
+          </button>
+          {isLoggedIn ? (
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ width:44, height:44, borderRadius:"50%", overflow:"hidden", background:"rgba(255,255,255,.15)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                {avatarUrl ? <img src={avatarUrl} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <User size={20} color="white" />}
+              </div>
+              <div style={{ minWidth:0 }}>
+                <p style={{ margin:0, fontSize:14, fontWeight:900, color:"white", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{userName || "Você"}</p>
+                <p style={{ margin:0, fontSize:11, color:"rgba(255,255,255,.6)", fontWeight:700 }}>Cliente</p>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => { onClose(); onLoginClick(); }} style={{ width:"100%", padding:"11px 0", borderRadius:12, border:"1.5px solid rgba(255,255,255,.3)", background:"rgba(255,255,255,.1)", color:"white", fontWeight:800, fontSize:13, cursor:"pointer" }}>
+              Entrar ou Criar Conta
+            </button>
+          )}
+        </div>
+
+        {/* Itens */}
+        <div style={{ flex:1, overflowY:"auto", padding:"10px 0" }}>
+          {items.map(item => {
+            const active = screen === item.id;
+            return (
+              <button key={item.id} onClick={() => goTo(item.id, item.gated)} style={{
+                width:"100%", display:"flex", alignItems:"center", gap:13, padding:"13px 18px",
+                background: active ? `${LARANJA_MULTI}14` : "none", border:"none", cursor:"pointer",
+                borderLeft: active ? `3px solid ${LARANJA_MULTI}` : "3px solid transparent",
+              }}>
+                <item.Icon size={18} color={active ? LARANJA_MULTI : "#6B7280"} strokeWidth={active ? 2.4 : 1.8} />
+                <span style={{ fontSize:13.5, fontWeight: active ? 800 : 700, color: active ? LARANJA_MULTI : "#333" }}>{item.label}</span>
+              </button>
+            );
+          })}
+          <div style={{ height:1, background:"#EEE", margin:"8px 18px" }} />
+          <button onClick={() => goTo("profile", true)} style={{ width:"100%", display:"flex", alignItems:"center", gap:13, padding:"13px 18px", background:"none", border:"none", cursor:"pointer" }}>
+            <Settings size={18} color="#6B7280" strokeWidth={1.8} />
+            <span style={{ fontSize:13.5, fontWeight:700, color:"#333" }}>Configurações</span>
+          </button>
+        </div>
+
+        {/* Rodapé fixo */}
+        <div style={{ padding:"14px 18px calc(env(safe-area-inset-bottom,0px) + 14px)", borderTop:"1px solid #F0F0F0", flexShrink:0 }}>
+          <button onClick={onNovoPedido} style={{ width:"100%", padding:"13px 0", borderRadius:12, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8, background:`linear-gradient(135deg,${LARANJA_MULTI},#E64A19)`, color:"white", fontWeight:900, fontSize:14, boxShadow:"0 4px 14px rgba(255,106,0,.35)" }}>
+            <Plus size={17} /> Novo Pedido
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Placeholder pros 2 itens novos do NavDrawer (Buscar Profissionais/
+   Serviços no Mapa) que ainda não têm tela de verdade — conteúdo real é
+   tarefa separada, futura (decisão explícita do usuário na reforma de
+   navegação 2026-09-17). */
+function EmBreveScreen({ titulo, Icon, onNovoPedido }) {
+  return (
+    <div style={{ minHeight:"100vh", background:BG, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"40px 24px", textAlign:"center" }}>
+      <div style={{ width:72, height:72, borderRadius:"50%", background:"#EEF0F5", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:18 }}>
+        <Icon size={30} color="#9CA3AF" />
+      </div>
+      <h2 style={{ margin:"0 0 8px", fontSize:18, color:"#1a1a2e" }}>{titulo}</h2>
+      <p style={{ margin:"0 0 24px", fontSize:13, color:"#9CA3AF", maxWidth:260, lineHeight:1.6 }}>Essa área ainda está a caminho. Enquanto isso, continue pedindo serviços normalmente.</p>
+      <button onClick={onNovoPedido} style={{ padding:"12px 24px", borderRadius:99, border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:8, background:`linear-gradient(135deg,${LARANJA_MULTI},#E64A19)`, color:"white", fontWeight:800, fontSize:13.5, boxShadow:"0 4px 14px rgba(255,106,0,.3)" }}>
+        <Plus size={16} /> Novo Pedido
+      </button>
+    </div>
+  );
 }
 
 /* ───────────────────────── BOTTOM NAV ─────────────────────────────────────── */
@@ -13170,7 +13317,14 @@ export default function App() {
   // "virar" cliente/empresa sem querer, então o guest fica preso no mural
   // profissional até completar cadastro/documento/pagamento.
   const [guestLocked, setGuestLocked] = useState(false);
-  const [screen,    setScreen]    = useState("home");
+  // Reforma de navegação (2026-09-17) — Feed de Projetos vira a tela
+  // padrão do cliente/convidado (Início/ClientHome sai da navegação
+  // primária, mas o código continua existindo como destino de segurança
+  // dos setScreen("home") espalhados pelo arquivo — fora de escopo mexer
+  // neles agora). drawerOpen controla o NavDrawer que substitui a bottom
+  // nav do cliente.
+  const [screen,    setScreen]    = useState("feed");
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected,  setSelected]  = useState(null);
   const [avaliacaoSvc, setAvaliacaoSvc] = useState(null);
   const [isPro,     setIsPro]     = useState(false);
@@ -14563,6 +14717,8 @@ const renderContent = () => {
         );
       }
       if (screen === "feed")   return <FeedScreen userEmail={userEmail} userName={userName} requireAuth={requireAuth} showToast={showToast} userLocation={localStorage.getItem("multiLocation") || userLocation} />;
+      if (screen === "buscar") return <EmBreveScreen titulo="Buscar Profissionais" Icon={Search} onNovoPedido={() => { setPendingCat(""); requireAuth("post", () => setScreen("post")); }} />;
+      if (screen === "mapa")   return <EmBreveScreen titulo="Serviços no Mapa" Icon={MapPin} onNovoPedido={() => { setPendingCat(""); requireAuth("post", () => setScreen("post")); }} />;
       if (screen === "post")   return <PostServiceScreen onBack={() => setScreen("home")} onSuccess={handlePostServiceSuccess} initialCat={pendingCat} />;
       if (screen === "radar" && selected) return <RadarSearchScreen service={selected} onStatusChange={handlePedidoStatusChange} showToast={showToast} onAccepted={(pedidoRow) => { setSelected(mapPedidoRow(pedidoRow)); setScreen("service"); }} onAceitarProposta={handleAceitarProposta} onBack={() => setScreen("orders")} />;
       if (screen === "chat")   return <ChatInbox myServices={meusPedidosComCandidatos} onOpenChat={openChatFromService} />;
@@ -14978,7 +15134,27 @@ const renderContent = () => {
           empresa usa o sino de notificação nem o avatar daqui (grep
           confirmou), então pular o Header inteiro não tira função nenhuma. */}
       {!(isLoggedIn && userRole === "empresa") && (
-        <Header isPro={isPro} notifCount={notifCount} isLoggedIn={isLoggedIn} userRole={userRole} onAlerts={() => setScreen("alerts")} userLocation={localStorage.getItem("multiLocation") || userLocation} onToggleRole={setGuestRole} activeRole={guestRole} onSelectEmpresa={() => setAuthScreen("empresa-pitch")} guestLocked={guestLocked} />
+        <Header isPro={isPro} notifCount={notifCount} isLoggedIn={isLoggedIn} userRole={userRole} onAlerts={() => setScreen("alerts")} userLocation={localStorage.getItem("multiLocation") || userLocation} onToggleRole={setGuestRole} activeRole={guestRole} onSelectEmpresa={() => setAuthScreen("empresa-pitch")} guestLocked={guestLocked} onOpenDrawer={() => setDrawerOpen(true)} />
+      )}
+
+      {/* NavDrawer (reforma 2026-09-17) — só faz sentido pro contexto
+          cliente/convidado (mesmo escopo do hambúrguer no Header acima);
+          profissional/empresa nunca chamam onOpenDrawer, então drawerOpen
+          nunca vira true pra eles, mas o guard aqui é redundante de propósito
+          (defesa em profundidade, custa nada). */}
+      {userRole !== "professional" && userRole !== "empresa" && (
+        <NavDrawer
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          isLoggedIn={isLoggedIn}
+          userName={userName}
+          userEmail={userEmail}
+          screen={screen}
+          setScreen={setScreen}
+          requireAuth={requireAuth}
+          onLoginClick={() => setAuthScreen("role-select")}
+          onNovoPedido={() => { setDrawerOpen(false); setPendingCat(""); requireAuth("post", () => setScreen("post")); }}
+        />
       )}
 
       {/* paddingBottom cobre a altura do bottom nav (~55px de conteúdo/padding
@@ -14990,7 +15166,7 @@ const renderContent = () => {
           que o necessário, o que causava o nav sobrepondo conteúdo real).
           Empilhar com o padding próprio de cada tela é seguro (só sobra um
           respiro a mais em algumas), o problema era faltar, nunca sobrar. */}
-      <div style={{ flex:1, overflowY:"auto", paddingBottom:"calc(64px + env(safe-area-inset-bottom))" }}>
+      <div style={{ flex:1, overflowY:"auto", paddingBottom: (isLoggedIn && (userRole === "professional" || userRole === "empresa")) ? "calc(64px + env(safe-area-inset-bottom))" : 0 }}>
         {renderContent()}
       </div>
 
@@ -15008,8 +15184,12 @@ const renderContent = () => {
           padding bottom soma env(safe-area-inset-bottom) pra não deixar os
           botões colados/cobertos pela barra de gestos ou home indicator em
           iPhones sem botão físico — mesma lógica do paddingTop dos headers. */}
+      {/* Bottom nav só sobrevive pra profissional/empresa logados — reforma
+          de navegação 2026-09-17 tirou o cliente/convidado daqui,
+          substituído pelo NavDrawer (hambúrguer na topbar, ver acima). */}
+      {(isLoggedIn && (userRole === "professional" || userRole === "empresa")) && (
       <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:400, background:"white", borderTop:"1px solid #EBEBEB", boxShadow:"0 -3px 16px rgba(0,0,0,.06)", display:"flex", alignItems:"center", justifyContent:"space-around", padding:"8px 0 10px", paddingBottom:"calc(10px + env(safe-area-inset-bottom))", zIndex:90 }}>
-        {(isLoggedIn && userRole === "professional"
+        {(userRole === "professional"
           // ── Professional tabs (no FAB, no + Novo Pedido) ──
           ? [
               { id:"home",    label:"Mural",    Icon:Home },
@@ -15018,20 +15198,11 @@ const renderContent = () => {
               { id:"profile", label:"Perfil",    Icon:User },
             ]
           // ── Empresa parceira tabs ──
-          : (isLoggedIn && userRole === "empresa")
-          ? [
+          : [
               { id:"home",    label:"Início",        Icon:Home },
               { id:"pedidos", label:"Pedidos",       Icon:ClipboardList },
               { id:"editar",  label:"Editar Perfil", Icon:User },
               { id:"sair",    label:"Sair",          Icon:LogOut },
-            ]
-          // ── Client tabs (or guest browsing) ──
-          : [
-              { id:"home",    label:"Início",       Icon:Home },
-              { id:"feed",    label:"Feed",         Icon:Compass },
-              { id:"orders",  label:"Meus Pedidos", Icon:ClipboardList },
-              { id:"chat",    label:"Mensagens",    Icon:MessageCircle },
-              { id:"profile", label:"Perfil",       Icon:User },
             ]
         ).map(({ id, label, Icon }) => {
           const active = screen === id || (id === "home" && !["orders","alerts","upgrade","profile","chat","post","service","radar","activechat","pedidos","editar","feed"].includes(screen));
@@ -15039,12 +15210,13 @@ const renderContent = () => {
           return (
             <button key={id} onClick={() => handleNavTab(id)} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3, background:"none", border:"none", cursor:"pointer", padding:"0 12px", position:"relative" }}>
               {locked && <span style={{ position:"absolute", top:-2, right:6, width:8, height:8, background:O, borderRadius:"50%" }} />}
-              <Icon size={21} color={active ? (isLoggedIn && userRole === "professional" ? O : B) : "#C0C0C0"} strokeWidth={active ? 2.5 : 1.8} />
-              <span style={{ fontSize:10, fontWeight:700, color: active ? (isLoggedIn && userRole === "professional" ? O : B) : "#C0C0C0" }}>{label}</span>
+              <Icon size={21} color={active ? (userRole === "professional" ? O : B) : "#C0C0C0"} strokeWidth={active ? 2.5 : 1.8} />
+              <span style={{ fontSize:10, fontWeight:700, color: active ? (userRole === "professional" ? O : B) : "#C0C0C0" }}>{label}</span>
             </button>
           );
         })}
       </div>
+      )}
     <ChatWidget key="v5" />
       
     </>
